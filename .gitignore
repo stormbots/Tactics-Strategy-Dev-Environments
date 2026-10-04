@@ -1,0 +1,52 @@
+# Generated Chocolatey packages
+*.nupkg
+
+# Distribution archives
+*.zip
+*.tar.gz
+*.tgz
+
+# Temporary and log files
+*.tmp
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE files
+.vscode/
+.idea/
+
+# Node project artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment / secret files
+.env
+.env.*
+!.env.example
+
+# Credentials and keys
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Local database / cache files
+*.sqlite
+*.sqlite3
+*.db
+
+# PowerShell / shell transient files
+*.bak
+*.swp
+*~
+
+# Build / coverage output
+dist/
+build/
+coverage/
