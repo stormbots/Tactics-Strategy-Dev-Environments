@@ -1,0 +1,8 @@
+dbaeumer.vscode-eslint
+esbenp.prettier-vscode
+EditorConfig.EditorConfig
+usernamehw.errorlens
+streetsidesoftware.code-spell-checker
+humao.rest-client
+mhutchie.git-graph
+vitest.explorer
