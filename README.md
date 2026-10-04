@@ -1,7 +1,7 @@
 # Tactics & Strategy Development Environments
 
 Standardized development workstation configuration for the Skyview Robotics
-Tactics & Strategy subteam.
+Bureau of Tactics & Strategy subteam.
 
 This repository contains provisioning, configuration, validation, and
 maintenance tools for student development laptops.
