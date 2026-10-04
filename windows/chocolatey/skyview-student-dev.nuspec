@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>skyview-student-dev</id>
+    <version>1.0.0</version>
+    <title>Skyview Robotics Student Development Workstation</title>
+    <authors>Skyview Robotics</authors>
+    <owners>Skyview Robotics</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Windows 11 development workstation baseline for Skyview Robotics student web and application development laptops.</description>
+    <summary>Skyview Robotics shared-account Windows 11 development workstation.</summary>
+    <tags>skyview robotics frc student development react vite mui node express postgresql github</tags>
+    <dependencies>
+      <dependency id="git" />
+      <dependency id="gh" />
+      <dependency id="nodejs-lts" version="[24.21.0]" />
+      <dependency id="vscodium" />
+      <dependency id="dbeaver" />
+      <dependency id="googlechrome" />
+      <dependency id="firefox" />
+      <dependency id="powershell-core" />
+      <dependency id="7zip" />
+    </dependencies>
+  </metadata>
+</package>
