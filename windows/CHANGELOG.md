@@ -40,4 +40,6 @@ A later end-to-end test reached VSCodium extension installation but failed becau
 
 The next end-to-end test completed the Chocolatey package successfully, but the outer bootstrap falsely reported failure because `Start-Process -PassThru` did not expose the completed child process exit code reliably under Windows PowerShell 5.1. The heartbeat wrapper now uses `System.Diagnostics.Process` directly, waits in one-second intervals for heartbeat purposes, then reads the retained process exit code before disposing the process object.
 
-Before release, repeat the end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`, including the heartbeat behavior and the standalone Chrome-install path on a machine where Chrome is not already present.
+A subsequent bootstrap rerun from `C:\SkyviewRobotics\DevSetup` completed all five outer phases successfully. Chocolatey correctly reported exit code 0, the installer recognized the existing v1.0.1 package, Chrome verification passed, and the workflow reached the final completion message without error.
+
+Before release, perform a clean-machine end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`. That test should exercise the long-running heartbeat path, first-time dependency installation, and the standalone Chrome installation path on a machine where Chrome is not already present.
