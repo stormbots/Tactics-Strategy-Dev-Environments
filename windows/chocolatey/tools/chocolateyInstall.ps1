@@ -54,13 +54,20 @@ Invoke-ConfigStage 3 'Enabling Windows long-path support' {
 
 Invoke-ConfigStage 4 'Enabling Windows Developer Mode setting' {
     $appUnlock = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
-    New-Item -Path $appUnlock -Force | Out-Null
+    if (-not (Test-Path $appUnlock)) {
+        New-Item -Path $appUnlock -Force | Out-Null
+    }
     Set-ItemProperty -Path $appUnlock -Name AllowDevelopmentWithoutDevLicense -Type DWord -Value 1
 }
 
 Invoke-ConfigStage 5 'Showing file extensions in File Explorer' {
     $explorer = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
-    New-Item -Path $explorer -Force | Out-Null
+    # On a normal Windows profile this key already exists. Recreating an existing
+    # Explorer key with New-Item -Force can raise UnauthorizedAccessException even
+    # in an elevated session, so only create it when it is genuinely absent.
+    if (-not (Test-Path $explorer)) {
+        New-Item -Path $explorer -Force | Out-Null
+    }
     Set-ItemProperty -Path $explorer -Name HideFileExt -Type DWord -Value 0
 }
 
@@ -133,5 +140,5 @@ Invoke-ConfigStage 10 'Registering weekly development-tool updates' {
 
 Write-Host ''
 Write-Host 'Skyview Robotics development workstation baseline installed.' -ForegroundColor Green
-Write-Host 'Node.js is pinned to major 24 and Git/GitHub identity is intentionally unconfigured.'
+Write-Host 'Node.js is pinned to major 24 and Git/GHub identity is intentionally unconfigured.'
 Write-Host 'Run C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1 to validate.'
