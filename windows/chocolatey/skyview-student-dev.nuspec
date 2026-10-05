@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>skyview-student-dev</id>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <title>Skyview Robotics Student Development Workstation</title>
     <authors>Skyview Robotics</authors>
     <owners>Skyview Robotics</owners>
@@ -16,7 +16,6 @@
       <dependency id="nodejs-lts" version="[24.21.0]" />
       <dependency id="vscodium" />
       <dependency id="dbeaver" />
-      <dependency id="googlechrome" />
       <dependency id="firefox" />
       <dependency id="powershell-core" />
       <dependency id="7zip" />
