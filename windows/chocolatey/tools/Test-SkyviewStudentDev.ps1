@@ -32,8 +32,16 @@ Write-Host ('  user.name  : ' + $(if ($name) {$name} else {'<unset>'}))
 Write-Host ('  user.email : ' + $(if ($email) {$email} else {'<unset>'}))
 
 Write-Host ''
-Write-Host 'GitHub authentication (policy intentionally undecided):'
-& gh auth status 2>&1 | Select-Object -First 8
+if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+    & gh auth status *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host 'GitHub authentication: CONFIGURED'
+    } else {
+        Write-Host 'GitHub authentication: NOT CONFIGURED (expected)'
+    }
+} else {
+    Write-Warning 'GitHub CLI is not installed, so authentication status cannot be checked.'
+}
 
 Write-Host ''
 $devMode = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -Name AllowDevelopmentWithoutDevLicense -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense
@@ -42,6 +50,21 @@ $fileExt = (Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVers
 Write-Host "Developer Mode registry setting : $devMode (expected 1)"
 Write-Host "Long paths                   : $longPaths (expected 1)"
 Write-Host "Hide file extensions         : $fileExt (expected 0)"
+
+Write-Host ''
+$ssh = Get-WindowsCapability -Online -Name 'OpenSSH.Client*' -ErrorAction SilentlyContinue
+if ($ssh -and $ssh.State -eq 'Installed') {
+    Write-Host 'OpenSSH client                 : Installed'
+} else {
+    Write-Warning 'OpenSSH client is not installed.'
+}
+
+$task = Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue
+if ($task) {
+    Write-Host "Scheduled tool-update task     : Present ($($task.State))"
+} else {
+    Write-Warning 'Scheduled tool-update task is missing.'
+}
 
 Write-Host ''
 Write-Host 'GUI applications:'
