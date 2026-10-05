@@ -19,11 +19,15 @@ Working revision based on acceptance testing of `windows-v1.0.0`.
 - Exclude Chrome from Chocolatey-based maintenance updates; Chrome uses Google Update.
 - Make partial-install recovery and rerunning the installer an explicit supported workflow.
 - Fix File Explorer configuration so an existing `HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced` key is not recreated with `New-Item -Force`, which caused `UnauthorizedAccessException` during acceptance testing.
+- Improve validation output so intentionally-unconfigured GitHub authentication is reported as expected rather than as a PowerShell error.
+- Expand validation to check the Windows OpenSSH client and scheduled development-tool update task.
 
 ### Acceptance Testing Notes
 
 The original v1.0.0 `Attempted to perform an unauthorized operation` failure was isolated by the new stage-level diagnostics. The failure occurred in the File Explorer configuration stage while attempting to recreate an existing registry key. The v1.0.1 branch now only creates that key when it does not already exist, then sets `HideFileExt` directly.
 
-A separate transient overwrite failure was observed for `C:\ProgramData\SkyviewRobotics\AutoUpdate-SkyviewTools.ps1` during partial-install recovery. After renaming the existing file, the configuration stage completed successfully. Continue testing rerun/idempotency behavior before release.
+A separate transient overwrite failure was observed for `C:\ProgramData\SkyviewRobotics\AutoUpdate-SkyviewTools.ps1` during partial-install recovery. After renaming the existing file, configuration completed successfully. A subsequent full rerun of the configuration script passed all 10 stages with the managed files already present, confirming expected idempotent behavior on the acceptance-test laptop.
 
-Do not publish or merge v1.0.1 until the full configuration script and validation pass on the acceptance-test laptop.
+The acceptance-test laptop also passed the workstation validation baseline for Git, GitHub CLI, Node.js 24, npm, VSCodium, PowerShell 7, Developer Mode, long paths, visible file extensions, Chrome, Firefox, and DBeaver.
+
+Before release, perform one end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`, including the new standalone Chrome-install path.
