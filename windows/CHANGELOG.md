@@ -10,7 +10,7 @@ Working revision based on acceptance testing of `windows-v1.0.0`.
 - Add numbered top-level installer phases so long-running work does not appear hung.
 - Add a 20-second Chocolatey heartbeat during silent dependency-resolution/download periods so users can tell the installer is still active.
 - Preserve native Chocolatey console output while the heartbeat is running.
-- Correct heartbeat process handling so Chocolatey's exit code is reliably captured after the child process exits; do not emit a heartbeat after the process has already completed.
+- Replace `Start-Process` in the heartbeat wrapper with `System.Diagnostics.Process` so Windows PowerShell 5.1 reliably retains Chocolatey's process handle and exit code.
 - Add numbered configuration stages inside the Chocolatey install script.
 - Standardize the deployment-package location as `C:\SkyviewRobotics\DevSetup`.
 - Update installation documentation and examples to use the standardized location.
@@ -38,6 +38,6 @@ During end-to-end bootstrap testing, Chocolatey could remain silent for several 
 
 A later end-to-end test reached VSCodium extension installation but failed because VSCodium emitted a Node.js `[DEP0169]` deprecation warning on stderr. Windows PowerShell 5.1 promoted that native stderr output into a terminating error because the package script uses `$ErrorActionPreference = 'Stop'`. v1.0.1 now temporarily relaxes the error preference only around the VSCodium native process, preserves its console output, and uses `$LASTEXITCODE` to determine whether each extension actually failed.
 
-The subsequent end-to-end test completed the Chocolatey package successfully, but the outer bootstrap falsely reported failure because the heartbeat wrapper did not reliably capture the completed child process exit code. The wrapper now refreshes the process after `WaitForExit()`, validates and returns the actual exit code, and suppresses a heartbeat when the process has already exited.
+The next end-to-end test completed the Chocolatey package successfully, but the outer bootstrap falsely reported failure because `Start-Process -PassThru` did not expose the completed child process exit code reliably under Windows PowerShell 5.1. The heartbeat wrapper now uses `System.Diagnostics.Process` directly, waits in one-second intervals for heartbeat purposes, then reads the retained process exit code before disposing the process object.
 
 Before release, repeat the end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`, including the heartbeat behavior and the standalone Chrome-install path on a machine where Chrome is not already present.
