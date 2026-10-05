@@ -7,7 +7,6 @@ $Packages = @(
     'gh',
     'vscodium',
     'dbeaver',
-    'googlechrome',
     'firefox',
     'powershell-core',
     '7zip'
@@ -22,3 +21,4 @@ foreach ($Package in $Packages) {
 }
 
 Write-Host 'Non-runtime development tools updated. Node.js remains pinned.'
+Write-Host 'Google Chrome is intentionally excluded and uses its native Google Update mechanism.'
