@@ -30,33 +30,46 @@ function Invoke-ChocolateyWithHeartbeat {
     Write-Host ("A status heartbeat will appear every {0} seconds while Chocolatey is still running." -f $HeartbeatSeconds)
     Write-Host 'Do not close this window while the heartbeat continues.' -ForegroundColor Yellow
 
-    $process = Start-Process -FilePath $chocoPath -ArgumentList $Arguments -NoNewWindow -PassThru
+    # Use System.Diagnostics.Process directly instead of Start-Process. Windows
+    # PowerShell 5.1 can return a Start-Process object whose ExitCode is unavailable
+    # after the child exits. The .NET process object keeps the handle and exit code
+    # reliably while still allowing Chocolatey to inherit this console for live output.
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $chocoPath
+    $startInfo.Arguments = ($Arguments -join ' ')
+    $startInfo.UseShellExecute = $false
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+
+    if (-not $process.Start()) {
+        throw 'Chocolatey process could not be started.'
+    }
+
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     $nextHeartbeat = $HeartbeatSeconds
 
-    while (-not $process.HasExited) {
-        Start-Sleep -Seconds 1
-        $process.Refresh()
-
-        if ((-not $process.HasExited) -and $stopwatch.Elapsed.TotalSeconds -ge $nextHeartbeat) {
-            $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
-            Write-Host ("  [still working] Chocolatey process is active - elapsed {0}" -f $elapsed) -ForegroundColor DarkGray
-            $nextHeartbeat += $HeartbeatSeconds
+    try {
+        while (-not $process.WaitForExit(1000)) {
+            if ($stopwatch.Elapsed.TotalSeconds -ge $nextHeartbeat) {
+                $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
+                Write-Host ("  [still working] Chocolatey process is active - elapsed {0}" -f $elapsed) -ForegroundColor DarkGray
+                $nextHeartbeat += $HeartbeatSeconds
+            }
         }
+
+        # Ensure asynchronous/native output has fully drained before reading ExitCode.
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
     }
-
-    $process.WaitForExit()
-    $process.Refresh()
-    $stopwatch.Stop()
-
-    $exitCode = $process.ExitCode
-    if ($null -eq $exitCode) {
-        throw 'Chocolatey finished, but its process exit code could not be read.'
+    finally {
+        $stopwatch.Stop()
     }
 
     $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
     Write-Host ("Chocolatey process finished after {0} with exit code {1}." -f $elapsed, $exitCode) -ForegroundColor DarkGray
 
+    $process.Dispose()
     return [int]$exitCode
 }
 
