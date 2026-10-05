@@ -21,6 +21,7 @@ Working revision based on acceptance testing of `windows-v1.0.0`.
 - Exclude Chrome from Chocolatey-based maintenance updates; Chrome uses Google Update.
 - Make partial-install recovery and rerunning the installer an explicit supported workflow.
 - Fix File Explorer configuration so an existing `HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced` key is not recreated with `New-Item -Force`, which caused `UnauthorizedAccessException` during acceptance testing.
+- Prevent harmless VSCodium/Node deprecation warnings written to stderr from aborting extension installation under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`; extension success is now determined by the VSCodium process exit code.
 - Improve validation output so intentionally-unconfigured GitHub authentication is reported as expected rather than as a PowerShell error.
 - Expand validation to check the Windows OpenSSH client and scheduled development-tool update task.
 
@@ -33,5 +34,7 @@ A separate transient overwrite failure was observed for `C:\ProgramData\SkyviewR
 The acceptance-test laptop also passed the workstation validation baseline for Git, GitHub CLI, Node.js 24, npm, VSCodium, PowerShell 7, Developer Mode, long paths, visible file extensions, Chrome, Firefox, and DBeaver.
 
 During end-to-end bootstrap testing, Chocolatey could remain silent for several minutes after `By installing, you accept licenses for the packages.` even with native progress enabled. v1.0.1 now runs Chocolatey as a child process while emitting a 20-second liveness heartbeat with elapsed time, without suppressing Chocolatey's own output.
+
+A later end-to-end test reached VSCodium extension installation but failed because VSCodium emitted a Node.js `[DEP0169]` deprecation warning on stderr. Windows PowerShell 5.1 promoted that native stderr output into a terminating error because the package script uses `$ErrorActionPreference = 'Stop'`. v1.0.1 now temporarily relaxes the error preference only around the VSCodium native process, preserves its console output, and uses `$LASTEXITCODE` to determine whether each extension actually failed.
 
 Before release, repeat the end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`, including the heartbeat behavior and the standalone Chrome-install path on a machine where Chrome is not already present.
