@@ -18,13 +18,12 @@ Working revision based on acceptance testing of `windows-v1.0.0`.
 - Allow a Chrome installation problem to be reported without discarding the completed core development environment.
 - Exclude Chrome from Chocolatey-based maintenance updates; Chrome uses Google Update.
 - Make partial-install recovery and rerunning the installer an explicit supported workflow.
+- Fix File Explorer configuration so an existing `HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced` key is not recreated with `New-Item -Force`, which caused `UnauthorizedAccessException` during acceptance testing.
 
-### Acceptance-Test Issue Still Open
+### Acceptance Testing Notes
 
-During v1.0.0 acceptance testing, the Skyview configuration script failed with:
+The original v1.0.0 `Attempted to perform an unauthorized operation` failure was isolated by the new stage-level diagnostics. The failure occurred in the File Explorer configuration stage while attempting to recreate an existing registry key. The v1.0.1 branch now only creates that key when it does not already exist, then sets `HideFileExt` directly.
 
-```text
-Attempted to perform an unauthorized operation.
-```
+A separate transient overwrite failure was observed for `C:\ProgramData\SkyviewRobotics\AutoUpdate-SkyviewTools.ps1` during partial-install recovery. After renaming the existing file, the configuration stage completed successfully. Continue testing rerun/idempotency behavior before release.
 
-The exact operation has not yet been isolated. v1.0.1 adds step-level configuration diagnostics specifically so the next test run identifies the failing stage. Do not publish or merge v1.0.1 until this failure is understood and corrected.
+Do not publish or merge v1.0.1 until the full configuration script and validation pass on the acceptance-test laptop.
