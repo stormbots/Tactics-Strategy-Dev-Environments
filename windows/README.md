@@ -22,28 +22,58 @@ problem cannot abort the rest of the workstation baseline.
 
 ## Standard Deployment Location
 
-Extract the complete Windows development package to:
+The finished Windows deployment package must be extracted to:
 
 ```text
 C:\SkyviewRobotics\DevSetup
 ```
 
-The folder should contain the bootstrap script and the local Chocolatey package.
+For a normal release installation, that folder must contain these files directly
+at its top level:
+
+```text
+C:\SkyviewRobotics\DevSetup\
+├── Install-SkyviewStudentDev.ps1
+├── repositories.csv
+└── skyview-student-dev.<version>.nupkg
+```
+
 Do not run the package directly from Downloads, Desktop, or another temporary
 location.
 
-## Installation
+> **Important:** Do not use GitHub's **Code > Download ZIP** button as the
+> deployment package. That downloads the entire source repository (`docs`,
+> `linux`, `windows`, etc.), not the ready-to-install Windows package.
 
-1. Download the current Windows release ZIP from GitHub Releases.
-2. Create or empty:
+## Normal Installation from a Published Release
+
+Use this workflow for student laptops once a Windows release has been published.
+
+1. Open the repository's **Releases** page.
+2. Download the Windows deployment asset named similar to:
+
+   ```text
+   Skyview-Windows-Dev-Package-v1.0.1.zip
+   ```
+
+3. Create or empty:
 
    ```text
    C:\SkyviewRobotics\DevSetup
    ```
 
-3. Extract the entire ZIP into that folder.
-4. Open **Windows PowerShell as Administrator**.
-5. Run:
+4. Extract the **contents of the deployment ZIP directly into** that folder.
+   Do not leave the three deployment files inside an extra nested folder.
+5. Verify the folder contents. It should contain at least:
+
+   ```text
+   Install-SkyviewStudentDev.ps1
+   repositories.csv
+   skyview-student-dev.<version>.nupkg
+   ```
+
+6. Open **Windows PowerShell as Administrator**.
+7. Run:
 
    ```powershell
    cd C:\SkyviewRobotics\DevSetup
@@ -51,12 +81,63 @@ location.
    .\Install-SkyviewStudentDev.ps1
    ```
 
-The installer displays numbered phases and native Chocolatey progress. A fresh
-installation may take 10-20 minutes depending on network speed and the laptop.
+The installer displays numbered phases, native Chocolatey output, and periodic
+status heartbeats during quiet Chocolatey operations. A fresh installation may
+take 10-20 minutes depending on network speed and the laptop.
 
 If installation is interrupted or a component fails, correct the reported issue
 and rerun the same installer. The provisioning process is designed to be safe to
 rerun and will reuse already-installed components where possible.
+
+## Testing an Unreleased Branch Build
+
+Use this workflow only when testing a branch such as `windows-v1.0.1` before a
+GitHub Release exists.
+
+The ZIP downloaded from **Code > Download ZIP** is source code. It must be staged
+into the deployment layout before the installer can run.
+
+1. Download the branch source ZIP and extract it somewhere convenient, such as
+   Downloads.
+2. Open **Windows PowerShell as Administrator**.
+3. Change to the extracted repository root. The current directory should contain
+   the repository's `windows` folder.
+4. Create the deployment folder:
+
+   ```powershell
+   New-Item -ItemType Directory -Path "C:\SkyviewRobotics\DevSetup" -Force
+   ```
+
+5. Copy the bootstrap files:
+
+   ```powershell
+   Copy-Item ".\windows\Install-SkyviewStudentDev.ps1" "C:\SkyviewRobotics\DevSetup\" -Force
+   Copy-Item ".\windows\repositories.csv" "C:\SkyviewRobotics\DevSetup\" -Force
+   ```
+
+6. Build the Chocolatey package into the deployment folder:
+
+   ```powershell
+   choco pack ".\windows\chocolatey\skyview-student-dev.nuspec" --output-directory "C:\SkyviewRobotics\DevSetup"
+   ```
+
+7. Verify the staged deployment files:
+
+   ```powershell
+   Get-ChildItem C:\SkyviewRobotics\DevSetup
+   ```
+
+   Confirm that `Install-SkyviewStudentDev.ps1`, `repositories.csv`, and the
+   generated `skyview-student-dev.<version>.nupkg` are present directly in that
+   folder.
+
+8. Run the installer:
+
+   ```powershell
+   cd C:\SkyviewRobotics\DevSetup
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   .\Install-SkyviewStudentDev.ps1
+   ```
 
 ## Validation
 
@@ -81,6 +162,18 @@ C:\Development
 ```
 
 ## Troubleshooting
+
+If PowerShell reports that `Install-SkyviewStudentDev.ps1` is not recognized,
+first check the deployment folder:
+
+```powershell
+Get-ChildItem C:\SkyviewRobotics\DevSetup
+```
+
+If you see repository folders such as `docs`, `linux`, and `windows` instead of
+the three deployment files, you extracted a GitHub source ZIP rather than a
+release deployment ZIP. Follow **Testing an Unreleased Branch Build** above, or
+download the published release asset when one is available.
 
 If the core Chocolatey package fails, review:
 
