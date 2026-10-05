@@ -18,6 +18,41 @@ function Write-Phase {
     Write-Host ("[{0}/{1}] {2}" -f $Number, $Total, $Message) -ForegroundColor Cyan
 }
 
+function Invoke-ChocolateyWithHeartbeat {
+    param(
+        [string[]]$Arguments,
+        [int]$HeartbeatSeconds = 20
+    )
+
+    $chocoPath = (Get-Command choco.exe -ErrorAction Stop).Source
+
+    Write-Host 'Chocolatey may be quiet while resolving package metadata and dependencies.'
+    Write-Host ("A status heartbeat will appear every {0} seconds while Chocolatey is still running." -f $HeartbeatSeconds)
+    Write-Host 'Do not close this window while the heartbeat continues.' -ForegroundColor Yellow
+
+    $process = Start-Process -FilePath $chocoPath -ArgumentList $Arguments -NoNewWindow -PassThru
+    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $nextHeartbeat = $HeartbeatSeconds
+
+    while (-not $process.HasExited) {
+        Start-Sleep -Seconds 1
+        $process.Refresh()
+
+        if ($stopwatch.Elapsed.TotalSeconds -ge $nextHeartbeat) {
+            $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
+            Write-Host ("  [still working] Chocolatey process is active - elapsed {0}" -f $elapsed) -ForegroundColor DarkGray
+            $nextHeartbeat += $HeartbeatSeconds
+        }
+    }
+
+    $process.WaitForExit()
+    $stopwatch.Stop()
+    $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
+    Write-Host ("Chocolatey process finished after {0}." -f $elapsed) -ForegroundColor DarkGray
+
+    return $process.ExitCode
+}
+
 function Test-ChromeInstalled {
     return (
         (Test-Path 'C:\Program Files\Google\Chrome\Application\chrome.exe') -or
@@ -67,7 +102,7 @@ Write-Host " Windows package version $PackageVersion"
 Write-Host '============================================================'
 Write-Host ''
 Write-Host 'This installer may take 10-20 minutes on a fresh laptop.'
-Write-Host 'Live Chocolatey download and installation progress will be shown.'
+Write-Host 'Live Chocolatey output will be shown when available, with periodic status heartbeats during quiet periods.'
 
 Write-Phase 1 5 'Running preflight checks...'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -98,11 +133,18 @@ $local = $PSScriptRoot
 $source = "$local;https://community.chocolatey.org/api/v2/"
 
 Write-Phase 3 5 'Installing core development software...'
-Write-Host 'This is the longest phase. Chocolatey progress will appear below.'
+Write-Host 'This is the longest phase.'
 Write-Host 'Already-installed packages will be skipped or reused.'
 
-& choco.exe install skyview-student-dev --version $PackageVersion --source="$source" -y
-$exit = $LASTEXITCODE
+$chocoArgs = @(
+    'install',
+    'skyview-student-dev',
+    '--version', $PackageVersion,
+    "--source=$source",
+    '-y'
+)
+$exit = Invoke-ChocolateyWithHeartbeat -Arguments $chocoArgs -HeartbeatSeconds 20
+
 if ($exit -notin @(0,1605,1614,1641,3010)) {
     Write-Host ''
     Write-Host 'Core development package installation failed.' -ForegroundColor Red
