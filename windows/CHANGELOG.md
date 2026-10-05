@@ -8,6 +8,8 @@ Working revision based on acceptance testing of `windows-v1.0.0`.
 
 - Restore native Chocolatey progress output during initial installation.
 - Add numbered top-level installer phases so long-running work does not appear hung.
+- Add a 20-second Chocolatey heartbeat during silent dependency-resolution/download periods so users can tell the installer is still active.
+- Preserve native Chocolatey console output while the heartbeat is running.
 - Add numbered configuration stages inside the Chocolatey install script.
 - Standardize the deployment-package location as `C:\SkyviewRobotics\DevSetup`.
 - Update installation documentation and examples to use the standardized location.
@@ -30,4 +32,6 @@ A separate transient overwrite failure was observed for `C:\ProgramData\SkyviewR
 
 The acceptance-test laptop also passed the workstation validation baseline for Git, GitHub CLI, Node.js 24, npm, VSCodium, PowerShell 7, Developer Mode, long paths, visible file extensions, Chrome, Firefox, and DBeaver.
 
-Before release, perform one end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`, including the new standalone Chrome-install path.
+During end-to-end bootstrap testing, Chocolatey could remain silent for several minutes after `By installing, you accept licenses for the packages.` even with native progress enabled. v1.0.1 now runs Chocolatey as a child process while emitting a 20-second liveness heartbeat with elapsed time, without suppressing Chocolatey's own output.
+
+Before release, repeat the end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`, including the heartbeat behavior and the standalone Chrome-install path on a machine where Chrome is not already present.
