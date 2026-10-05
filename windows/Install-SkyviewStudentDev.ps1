@@ -38,7 +38,7 @@ function Invoke-ChocolateyWithHeartbeat {
         Start-Sleep -Seconds 1
         $process.Refresh()
 
-        if ($stopwatch.Elapsed.TotalSeconds -ge $nextHeartbeat) {
+        if ((-not $process.HasExited) -and $stopwatch.Elapsed.TotalSeconds -ge $nextHeartbeat) {
             $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
             Write-Host ("  [still working] Chocolatey process is active - elapsed {0}" -f $elapsed) -ForegroundColor DarkGray
             $nextHeartbeat += $HeartbeatSeconds
@@ -46,11 +46,18 @@ function Invoke-ChocolateyWithHeartbeat {
     }
 
     $process.WaitForExit()
+    $process.Refresh()
     $stopwatch.Stop()
-    $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
-    Write-Host ("Chocolatey process finished after {0}." -f $elapsed) -ForegroundColor DarkGray
 
-    return $process.ExitCode
+    $exitCode = $process.ExitCode
+    if ($null -eq $exitCode) {
+        throw 'Chocolatey finished, but its process exit code could not be read.'
+    }
+
+    $elapsed = $stopwatch.Elapsed.ToString('hh\:mm\:ss')
+    Write-Host ("Chocolatey process finished after {0} with exit code {1}." -f $elapsed, $exitCode) -ForegroundColor DarkGray
+
+    return [int]$exitCode
 }
 
 function Test-ChromeInstalled {
