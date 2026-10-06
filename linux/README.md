@@ -11,6 +11,7 @@ as the Windows environment using native Linux packages and configuration.
 Planned baseline:
 
 - Node.js LTS and npm
+- Python 3.14.x and pip
 - Git
 - GitHub CLI
 - VSCodium
@@ -19,6 +20,11 @@ Planned baseline:
 - Mozilla Firefox
 - OpenSSH client
 - Supporting command-line utilities
+
+Python 3.14 is the cross-platform Python standard for Skyview student laptops.
+Linux provisioning should keep the workstation within the Python 3.14 family
+while allowing normal 3.14.x patch/security updates. Python projects should use
+project-local `.venv` environments.
 
 The Linux environment will be provisioned with native package-management and
 shell scripting rather than Chocolatey.
