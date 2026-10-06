@@ -20,6 +20,7 @@ Working revision based on acceptance testing of `windows-v1.0.0`.
 - Install Chrome separately from Google's official MSI and verify its Authenticode signature.
 - Allow a Chrome installation problem to be reported without discarding the completed core development environment.
 - Exclude Chrome from Chocolatey-based maintenance updates; Chrome uses Google Update.
+- Add JetBrains PyCharm (unified PyCharm) to the Windows development baseline, maintenance updates, and validation checks.
 - Make partial-install recovery and rerunning the installer an explicit supported workflow.
 - Fix File Explorer configuration so an existing `HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced` key is not recreated with `New-Item -Force`, which caused `UnauthorizedAccessException` during acceptance testing.
 - Prevent harmless VSCodium/Node deprecation warnings written to stderr from aborting extension installation under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'`; extension success is now determined by the VSCodium process exit code.
@@ -42,4 +43,4 @@ The next end-to-end test completed the Chocolatey package successfully, but the 
 
 A subsequent bootstrap rerun from `C:\SkyviewRobotics\DevSetup` completed all five outer phases successfully. Chocolatey correctly reported exit code 0, the installer recognized the existing v1.0.1 package, Chrome verification passed, and the workflow reached the final completion message without error.
 
-Before release, perform a clean-machine end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`. That test should exercise the long-running heartbeat path, first-time dependency installation, and the standalone Chrome installation path on a machine where Chrome is not already present.
+Before release, perform a clean-machine end-to-end test using the rebuilt v1.0.1 deployment package from `C:\SkyviewRobotics\DevSetup`. That test should exercise the long-running heartbeat path, first-time dependency installation, PyCharm installation, and the standalone Chrome installation path on a machine where Chrome is not already present.
