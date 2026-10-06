@@ -6,6 +6,7 @@ Tactics & Strategy student development laptops.
 ## Baseline
 
 - Node.js LTS and npm
+- Python 3.14.x and pip
 - Git
 - GitHub CLI
 - VSCodium
@@ -24,6 +25,35 @@ problem cannot abort the rest of the workstation baseline.
 PyCharm is installed using JetBrains' current unified PyCharm product. Its core
 features remain available for free after the included Pro trial ends; a paid Pro
 subscription is only required for Pro-only functionality.
+
+## Python Standard
+
+Student laptops use **Python 3.14.x** as the standard Python runtime. The Windows
+package installs Chocolatey's version-specific `python314` package rather than
+the generic `python` package so normal maintenance stays within the Python 3.14
+family instead of automatically moving the workstation to a future major/minor
+runtime.
+
+Python 3.14 patch and security updates are included in the normal Skyview tool
+update process. Node.js remains separately pinned and mentor-controlled.
+
+For new Python projects, use a project-local virtual environment instead of
+installing project dependencies globally:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+```
+
+PyCharm should use that project's `.venv` as its interpreter.
+
+For Skyview AWS Lambda projects, target the `python3.14` Lambda runtime unless a
+project explicitly specifies another version. The student Windows environment
+matches the Python language/runtime version, but AWS Lambda runs on Linux. Any
+package containing native/compiled code must therefore be built or packaged for
+the Lambda Linux environment rather than copied directly from a Windows virtual
+environment.
 
 ## Standard Deployment Location
 
@@ -152,6 +182,9 @@ immediately visible. Then run:
 ```powershell
 powershell -ExecutionPolicy Bypass -File C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1
 ```
+
+The validator checks the Python runtime and pip in addition to the rest of the
+workstation baseline and expects Python 3.14.x.
 
 ## Persistent Locations
 
