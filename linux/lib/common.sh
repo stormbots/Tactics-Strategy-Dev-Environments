@@ -10,12 +10,9 @@ SKYVIEW_STATE="/var/lib/skyview-robotics/student-dev"
 SKYVIEW_LOG_DIR="/var/log/skyview-robotics/student-dev"
 PYCHARM_API='https://data.services.jetbrains.com/products/releases?code=PCP&latest=true&type=release'
 
-log() { printf '[%s] %s
-' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
-warn() { printf '[%s] WARNING: %s
-' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; }
-die() { printf '[%s] ERROR: %s
-' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; exit 1; }
+log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+warn() { printf '[%s] WARNING: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; }
+die() { printf '[%s] ERROR: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; exit 1; }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
@@ -25,12 +22,9 @@ ubuntu_base_version() {
   . /etc/os-release
   local code="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
   case "$code" in
-    noble) printf '24.04
-' ;;
-    jammy) printf '22.04
-' ;;
-    resolute) printf '26.04
-' ;;
+    noble) printf '24.04\n' ;;
+    jammy) printf '22.04\n' ;;
+    resolute) printf '26.04\n' ;;
     *) return 1 ;;
   esac
 }
@@ -44,8 +38,7 @@ check_supported_mint() {
   esac
   local base
   base="$(ubuntu_base_version)" || die "Unsupported/unknown Ubuntu package base: ${UBUNTU_CODENAME:-${VERSION_CODENAME:-unknown}}"
-  printf '%s
-' "$base"
+  printf '%s\n' "$base"
 }
 
 install_pycharm_latest() {
