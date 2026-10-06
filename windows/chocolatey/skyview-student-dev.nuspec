@@ -9,11 +9,12 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Windows 11 development workstation baseline for Skyview Robotics student web and application development laptops.</description>
     <summary>Skyview Robotics shared-account Windows 11 development workstation.</summary>
-    <tags>skyview robotics frc student development react vite mui node express postgresql github python pycharm</tags>
+    <tags>skyview robotics frc student development react vite mui node express postgresql github python pycharm lambda</tags>
     <dependencies>
       <dependency id="git" />
       <dependency id="gh" />
       <dependency id="nodejs-lts" version="[24.21.0]" />
+      <dependency id="python314" />
       <dependency id="vscodium" />
       <dependency id="dbeaver" />
       <dependency id="pycharm" />
