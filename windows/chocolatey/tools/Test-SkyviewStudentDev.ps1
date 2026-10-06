@@ -5,6 +5,8 @@ $checks = @(
     @{Name='GitHub CLI'; Command='gh'; Args=@('--version')},
     @{Name='Node.js'; Command='node'; Args=@('--version')},
     @{Name='npm'; Command='npm'; Args=@('--version')},
+    @{Name='Python'; Command='python'; Args=@('--version')},
+    @{Name='pip'; Command='python'; Args=@('-m','pip','--version')},
     @{Name='VSCodium'; Command='codium'; Args=@('--version')},
     @{Name='PowerShell 7'; Command='pwsh'; Args=@('--version')}
 )
@@ -23,6 +25,9 @@ $results | Format-Table -AutoSize
 Write-Host ''
 $node = (node --version 2>$null)
 if ($node -and $node -match '^v24\.') { Write-Host "Node baseline: OK ($node)" } else { Write-Warning "Node baseline mismatch: $node (expected major 24)" }
+
+$python = (python --version 2>$null)
+if ($python -and $python -match '^Python 3\.14\.') { Write-Host "Python baseline: OK ($python)" } else { Write-Warning "Python baseline mismatch: $python (expected Python 3.14.x)" }
 
 Write-Host ''
 Write-Host 'Git identity (intentionally not provisioned by Skyview package):'
