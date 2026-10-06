@@ -70,6 +70,7 @@ Write-Host ''
 Write-Host 'GUI applications:'
 $gui = @{
     'DBeaver' = @('C:\Program Files\DBeaver\dbeaver.exe','C:\Program Files\DBeaver\dbeaver-ce.exe');
+    'PyCharm' = @('C:\Program Files\JetBrains\PyCharm*\bin\pycharm64.exe');
     'Chrome' = @('C:\Program Files\Google\Chrome\Application\chrome.exe','C:\Program Files (x86)\Google\Chrome\Application\chrome.exe');
     'Firefox' = @('C:\Program Files\Mozilla Firefox\firefox.exe','C:\Program Files (x86)\Mozilla Firefox\firefox.exe')
 }
