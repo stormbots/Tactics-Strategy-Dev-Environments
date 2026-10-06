@@ -16,6 +16,7 @@ try {
         'gh',
         'vscodium',
         'dbeaver',
+        'pycharm',
         'powershell-core',
         '7zip'
     )
