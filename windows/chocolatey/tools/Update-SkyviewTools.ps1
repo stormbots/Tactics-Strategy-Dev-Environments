@@ -5,6 +5,7 @@ if (-not (Test-Path $Chocolatey)) { throw 'Chocolatey executable not found.' }
 $Packages = @(
     'git',
     'gh',
+    'python314',
     'vscodium',
     'dbeaver',
     'pycharm',
@@ -21,5 +22,7 @@ foreach ($Package in $Packages) {
     }
 }
 
-Write-Host 'Non-runtime development tools updated. Node.js remains pinned.'
+Write-Host 'Development tools updated.'
+Write-Host 'Node.js remains pinned and mentor-controlled.'
+Write-Host 'Python remains on the python314 package family and receives Python 3.14.x updates.'
 Write-Host 'Google Chrome is intentionally excluded and uses its native Google Update mechanism.'
