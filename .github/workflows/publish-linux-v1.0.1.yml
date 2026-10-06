@@ -1,0 +1,92 @@
+name: Publish Linux Mint Student Dev Environment 1.0.1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-linux-v1.0.1.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: linux-v1.0.1
+      ASSET: Skyview-LinuxMint-Dev-Package-v1.0.1.zip
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build and verify deployment package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf dist
+          mkdir -p dist/package/config dist/package/lib dist/package/systemd
+
+          cp linux/Install-SkyviewStudentDev.sh dist/package/
+          cp linux/Update-SkyviewStudentDev.sh dist/package/
+          cp linux/Validate-SkyviewStudentDev.sh dist/package/
+          cp linux/repositories.csv dist/package/
+          cp linux/extensions.txt dist/package/
+          cp linux/VERSION dist/package/
+          cp linux/README.md dist/package/
+          cp linux/SHA256SUMS dist/package/
+          cp linux/config/codium-settings.json dist/package/config/
+          cp linux/lib/common.sh dist/package/lib/
+          cp linux/systemd/skyview-student-dev-update.service dist/package/systemd/
+          cp linux/systemd/skyview-student-dev-update.timer dist/package/systemd/
+
+          chmod +x             dist/package/Install-SkyviewStudentDev.sh             dist/package/Update-SkyviewStudentDev.sh             dist/package/Validate-SkyviewStudentDev.sh
+
+          (
+            cd dist/package
+            sha256sum --check SHA256SUMS
+            zip -X -r "../$ASSET" .
+          )
+
+          (
+            cd dist
+            sha256sum "$ASSET" > SHA256SUMS.txt
+          )
+
+      - name: Write release notes
+        shell: bash
+        run: |
+          cat > dist/RELEASE_NOTES.md <<'EOF'
+          Linux Mint Cinnamon student development environment for the Skyview Robotics Bureau of Tactics & Strategy.
+
+          ### Install
+
+          1. Download `Skyview-LinuxMint-Dev-Package-v1.0.1.zip` from the Assets section below.
+          2. Extract it to a local directory.
+          3. Open a terminal in that directory.
+          4. Run:
+
+             ```bash
+             chmod +x Install-SkyviewStudentDev.sh
+             ./Install-SkyviewStudentDev.sh
+             ```
+
+          Do **not** run the installer itself with `sudo`; it requests elevated privileges only for system-level changes.
+
+          The package targets Linux Mint Cinnamon, primarily Mint 22.x, and mirrors the Windows 11 student development baseline as closely as practical.
+          EOF
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "dist/$ASSET" dist/SHA256SUMS.txt --clobber
+            gh release edit "$TAG"               --title "Linux Mint Student Dev Environment 1.0.1"               --notes-file dist/RELEASE_NOTES.md
+          else
+            gh release create "$TAG"               "dist/$ASSET"               dist/SHA256SUMS.txt               --target "$GITHUB_SHA"               --title "Linux Mint Student Dev Environment 1.0.1"               --notes-file dist/RELEASE_NOTES.md
+          fi
