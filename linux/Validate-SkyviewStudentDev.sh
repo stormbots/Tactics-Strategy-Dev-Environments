@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}\")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f /usr/local/lib/skyview-student-dev/common.sh ]]; then
   # shellcheck source=/usr/local/lib/skyview-student-dev/common.sh
   source /usr/local/lib/skyview-student-dev/common.sh
