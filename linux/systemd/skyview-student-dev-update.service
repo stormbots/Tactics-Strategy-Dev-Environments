@@ -1,0 +1,8 @@
+[Unit]
+Description=Skyview Robotics student development environment maintenance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/skyview-student-dev-update
