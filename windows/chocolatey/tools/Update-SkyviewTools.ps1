@@ -7,6 +7,7 @@ $Packages = @(
     'gh',
     'vscodium',
     'dbeaver',
+    'pycharm',
     'firefox',
     'powershell-core',
     '7zip'
