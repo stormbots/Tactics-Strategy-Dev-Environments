@@ -32,22 +32,31 @@ Examples include:
 
 - Git
 - GitHub CLI
+- Python 3.14.x and pip
 - VSCodium
 - DBeaver
 - PowerShell or shell utilities
 - Editor extensions
 
-### Mentor-controlled runtimes
+### Runtime version policy
 
 Runtime-sensitive development tools should not automatically move to a new
-major version.
+major or minor runtime family without mentor review.
 
-Examples:
+Current standards:
 
-- Node.js
+- **Node.js:** pinned and mentor-controlled. Major-version changes are deliberate.
+- **Python:** standardized on Python 3.14. Patch/security releases within the
+  Python 3.14 family may update normally, but moving to Python 3.15 or later
+  requires an explicit baseline change.
 
-Major-version changes should be tested against current team projects before
+Runtime-family changes should be tested against current team projects before
 being added to the standard environment.
+
+Python projects should use project-local virtual environments (`.venv`) rather
+than global project dependencies. Skyview AWS Lambda Python projects should
+normally target the `python3.14` Lambda runtime unless the project explicitly
+requires another version.
 
 ## Repository Policy
 
@@ -82,7 +91,7 @@ state by:
 3. Running the current platform provisioning package.
 4. Running the platform validation script.
 5. Provisioning current team repositories as needed.
-6. Verifying browser, Git, editor, Node.js, and database-client operation.
+6. Verifying browser, Git, editor, Node.js, Python, and database-client operation.
 
 Platform-specific instructions are maintained in:
 

@@ -5,6 +5,8 @@ $checks = @(
     @{Name='GitHub CLI'; Command='gh'; Args=@('--version')},
     @{Name='Node.js'; Command='node'; Args=@('--version')},
     @{Name='npm'; Command='npm'; Args=@('--version')},
+    @{Name='Python'; Command='python'; Args=@('--version')},
+    @{Name='pip'; Command='python'; Args=@('-m','pip','--version')},
     @{Name='VSCodium'; Command='codium'; Args=@('--version')},
     @{Name='PowerShell 7'; Command='pwsh'; Args=@('--version')}
 )
@@ -24,6 +26,9 @@ Write-Host ''
 $node = (node --version 2>$null)
 if ($node -and $node -match '^v24\.') { Write-Host "Node baseline: OK ($node)" } else { Write-Warning "Node baseline mismatch: $node (expected major 24)" }
 
+$python = (python --version 2>$null)
+if ($python -and $python -match '^Python 3\.14\.') { Write-Host "Python baseline: OK ($python)" } else { Write-Warning "Python baseline mismatch: $python (expected Python 3.14.x)" }
+
 Write-Host ''
 Write-Host 'Git identity (intentionally not provisioned by Skyview package):'
 $name = git config --global --get user.name 2>$null
@@ -32,8 +37,16 @@ Write-Host ('  user.name  : ' + $(if ($name) {$name} else {'<unset>'}))
 Write-Host ('  user.email : ' + $(if ($email) {$email} else {'<unset>'}))
 
 Write-Host ''
-Write-Host 'GitHub authentication (policy intentionally undecided):'
-& gh auth status 2>&1 | Select-Object -First 8
+if (Get-Command gh.exe -ErrorAction SilentlyContinue) {
+    & gh auth status *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host 'GitHub authentication: CONFIGURED'
+    } else {
+        Write-Host 'GitHub authentication: NOT CONFIGURED (expected)'
+    }
+} else {
+    Write-Warning 'GitHub CLI is not installed, so authentication status cannot be checked.'
+}
 
 Write-Host ''
 $devMode = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -Name AllowDevelopmentWithoutDevLicense -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense
@@ -44,9 +57,25 @@ Write-Host "Long paths                   : $longPaths (expected 1)"
 Write-Host "Hide file extensions         : $fileExt (expected 0)"
 
 Write-Host ''
+$ssh = Get-WindowsCapability -Online -Name 'OpenSSH.Client*' -ErrorAction SilentlyContinue
+if ($ssh -and $ssh.State -eq 'Installed') {
+    Write-Host 'OpenSSH client                 : Installed'
+} else {
+    Write-Warning 'OpenSSH client is not installed.'
+}
+
+$task = Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue
+if ($task) {
+    Write-Host "Scheduled tool-update task     : Present ($($task.State))"
+} else {
+    Write-Warning 'Scheduled tool-update task is missing.'
+}
+
+Write-Host ''
 Write-Host 'GUI applications:'
 $gui = @{
     'DBeaver' = @('C:\Program Files\DBeaver\dbeaver.exe','C:\Program Files\DBeaver\dbeaver-ce.exe');
+    'PyCharm' = @('C:\Program Files\JetBrains\PyCharm*\bin\pycharm64.exe');
     'Chrome' = @('C:\Program Files\Google\Chrome\Application\chrome.exe','C:\Program Files (x86)\Google\Chrome\Application\chrome.exe');
     'Firefox' = @('C:\Program Files\Mozilla Firefox\firefox.exe','C:\Program Files (x86)\Mozilla Firefox\firefox.exe')
 }
