@@ -9,6 +9,7 @@ Tactics & Strategy student development laptops.
 - Git
 - GitHub CLI
 - VSCodium
+- JetBrains PyCharm
 - DBeaver
 - Google Chrome
 - Mozilla Firefox
@@ -19,6 +20,10 @@ Tactics & Strategy student development laptops.
 The environment is provisioned primarily through Chocolatey. Google Chrome is
 installed and verified separately so a transient Chocolatey browser-package
 problem cannot abort the rest of the workstation baseline.
+
+PyCharm is installed using JetBrains' current unified PyCharm product. Its core
+features remain available for free after the included Pro trial ends; a paid Pro
+subscription is only required for Pro-only functionality.
 
 ## Standard Deployment Location
 
