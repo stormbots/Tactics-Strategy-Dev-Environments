@@ -10,10 +10,13 @@ try {
     if (-not (Test-Path $Chocolatey)) { throw 'Chocolatey executable not found.' }
 
     # Node.js is intentionally excluded. It is pinned and mentor-controlled.
+    # Python is kept on the python314 package family so patch/security updates
+    # stay within the standardized Python 3.14 runtime.
     $Packages = @(
         'chocolatey',
         'git',
         'gh',
+        'python314',
         'vscodium',
         'dbeaver',
         'pycharm',
