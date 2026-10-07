@@ -12,9 +12,9 @@ Windows results reported by the user on **2026-10-07** for **v1.1.5** (release c
 | 200% scaling | **PASS** | User-reported manual test |
 | Narrator | **PASS** | User-reported manual test |
 
-These results record the reported accessibility portions of step 2. Its other conditions and the remaining acceptance steps still require separate sign-off. Linux Mint keyboard navigation, scaling and Orca testing remain pending.
+These results record the reported Windows accessibility portions of step 2. Its other conditions and the remaining acceptance steps still require separate sign-off. Linux Mint accessibility results are recorded below.
 
-## Recorded Linux Mint installation results
+## Recorded Linux Mint installation and validation results
 
 Results reported by the user on **2026-10-07**, with logs confirming **Linux Mint 22.3 Cinnamon**, Ubuntu base **24.04**, **amd64**. The Linux backend identifies itself as **v1.1.0**; the supplied logs do not identify the GUI package version, release commit or package checksum.
 
@@ -26,10 +26,14 @@ Results reported by the user on **2026-10-07**, with logs confirming **Linux Min
 | Editor configuration and extensions | **PASS** | Repair validation: baseline settings and all eight required VSCodium extensions present |
 | Development workspace exists | **PASS** | Repair validation: `/home/skyview/Development` exists; access/ownership still needs manual verification |
 | Weekly maintenance timer enabled and active | **PASS** | Repair validation; execution and persistence after reboot still need verification |
+| Separate Validate run after repair | **PASS** | User-reported follow-up test on 2026-10-07 |
+| Keyboard navigation | **PASS** | User-reported manual test on 2026-10-07 |
+| 200% scaling | **PASS** | User-reported manual test on 2026-10-07 |
+| Orca | **PASS** | User-reported manual test on 2026-10-07 |
 
 The separate `validate-b932f989-827c-4052-b232-79932d5df1bd.log` records **16 PASS, 1 WARN, 12 FAIL** before repair (archive timestamp 14:27:32; repair begins at 14:27:50 and finishes around 14:32). Repair's final validation resolves those missing-tool, configuration and maintenance checks. The final validation summary has no warnings; the repair transcript also contains upstream APT CLI and VSCodium deprecation notices.
 
-These results confirm the reported package installation and logged repair checks. Full Linux acceptance still requires a separate unelevated Validate run after repair, keyboard navigation, 200% scaling, Orca, profile ownership/access, data preservation, reboot, an actual maintenance run and sign-off on the remaining procedure checks.
+The user subsequently reported that a separate Validate run passed and that keyboard navigation, scaling and Orca worked. These results confirm the reported package installation, follow-up validation, accessibility checks and logged repair checks. Full Linux acceptance still requires confirmation of normal-user validation without an administrative prompt, profile ownership/access, data preservation, reboot, an actual maintenance run and sign-off on the remaining procedure checks.
 
 ## Acceptance procedure
 
