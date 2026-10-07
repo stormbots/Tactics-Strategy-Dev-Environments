@@ -45,7 +45,8 @@ major or minor runtime family without mentor review.
 
 Current standards:
 
-- **Node.js:** pinned and mentor-controlled. Major-version changes are deliberate.
+- **Node.js:** constrained to 24.x. GUI and weekly managed updates include safe
+  patch releases in that family; major-version changes require mentor review.
 - **Python:** standardized on Python 3.14. Patch/security releases within the
   Python 3.14 family may update normally, but moving to Python 3.15 or later
   requires an explicit baseline change.
@@ -73,13 +74,14 @@ GitHub Release assets rather than committed to the repository.
 
 ## Platform Releases
 
-Windows and Linux environments are versioned independently.
+The shared graphical app uses a single `v1.1.0` release containing both native
+installers. Earlier platform releases remain independent stable fallbacks.
 
 Examples:
 
-- `windows-v1.0.0`
-- `windows-v1.1.0`
-- `linux-v1.0.0`
+- `v1.1.0` (shared GUI, mentor testing)
+- `windows-v1.0.1` (stable fallback)
+- `linux-v1.0.1` (stable fallback)
 
 ## Rebuilding a Laptop
 
@@ -88,9 +90,9 @@ state by:
 
 1. Installing the supported operating system.
 2. Applying operating-system updates.
-3. Running the current platform provisioning package.
-4. Running the platform validation script.
-5. Provisioning current team repositories as needed.
+3. Opening the graphical installer and clicking Install.
+4. Reviewing its automatic validation results.
+5. Using optional configured repositories as needed.
 6. Verifying browser, Git, editor, Node.js, Python, and database-client operation.
 
 Platform-specific instructions are maintained in:

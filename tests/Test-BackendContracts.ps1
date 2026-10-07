@@ -1,0 +1,16 @@
+$ErrorActionPreference = 'Stop'
+$root = Split-Path $PSScriptRoot -Parent
+Get-ChildItem (Join-Path $root 'windows') -Recurse -Filter *.ps1 | ForEach-Object {
+    $tokens = $null; $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$tokens,[ref]$parseErrors)
+    if ($parseErrors) { throw "PowerShell parse failed: $($_.FullName): $parseErrors" }
+}
+# Execute only validation against a fake executable directory, never provisioning.
+$validator = Join-Path $root 'windows/chocolatey/tools/Validate-SkyviewEnvironment.ps1'
+$lines = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $validator 2>&1
+$code = $LASTEXITCODE
+if (-not ($lines -match '^SKYVIEW_EVENT\|summary\|[0-9]+\|')) { throw 'Validator did not emit a structured summary.' }
+$failed = @($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|FAIL\|' })
+if ($failed.Count -gt 0 -and $code -eq 0) { throw 'Validator incorrectly returned success despite failures.' }
+if ($lines -match '^SKYVIEW_EVENT\|validation\|FAIL\|Git (identity|Hub authentication)') { throw 'Optional identity became a failure.' }
+Write-Host 'PowerShell parsing and real validator exit contract passed.'
