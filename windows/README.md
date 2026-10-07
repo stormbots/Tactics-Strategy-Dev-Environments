@@ -2,7 +2,7 @@
 
 For normal student installation, use the [graphical installer](../README.md).
 The terminal workflow below documents the **stable v1.0.1 manual fallback**.
-Current 1.1.3 source no longer requires a fixed extraction directory; the GUI
+Current 1.1.5 source no longer requires a fixed extraction directory; the GUI
 packages this backend automatically. Node 24.x patches now use the same managed
 Update operation; major-version changes remain mentor-controlled.
 

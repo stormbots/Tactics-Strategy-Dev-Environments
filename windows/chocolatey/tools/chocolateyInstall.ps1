@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $Skyview = 'C:\ProgramData\SkyviewRobotics'
 $Logs = Join-Path $Skyview 'Logs'
 $Tools = Split-Path -Parent $MyInvocation.MyCommand.Definition
+. (Join-Path $Tools 'ScheduledMaintenance.ps1')
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'
 $ConfigStages = 10
 
@@ -48,6 +49,7 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'Setup-SkyviewRepositories.ps1',
         'Test-SkyviewStudentDev.ps1',
         'Validate-SkyviewEnvironment.ps1',
+        'ScheduledMaintenance.ps1',
         'Configure-SkyviewUser.ps1',
         'extensions.txt',
         'settings.json',
@@ -172,6 +174,7 @@ Invoke-ConfigStage 10 'Registering weekly development-tool updates' {
     $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 3:00am
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null
+    Set-SkyviewMaintenanceReadAccess -TaskName $taskName
 }
 
 Write-Host ''

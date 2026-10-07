@@ -84,6 +84,7 @@ jobs:
           $errors = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error
           if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
           ./tests/Test-BackendContracts.ps1
+          ./tests/Test-MaintenanceCI.ps1
       - run: npm ci
         working-directory: installer
       - name: Rust tests

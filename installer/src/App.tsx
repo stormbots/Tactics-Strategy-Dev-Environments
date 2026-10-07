@@ -228,7 +228,7 @@ export default function App() {
             <br />
             <strong>Tactics &amp; Strategy</strong>
           </p>
-          <span>Skyview Dev Setup · 1.1.4</span>
+          <span>Skyview Dev Setup · 1.1.5</span>
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
@@ -610,7 +610,7 @@ export default function App() {
           </div>
         </details>
         <footer>
-          Skyview Robotics <span>Student Development Environment · 1.1.4</span>
+          Skyview Robotics <span>Student Development Environment · 1.1.5</span>
         </footer>
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {s.stage === "checking"

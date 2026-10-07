@@ -55,8 +55,9 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     if ($LASTEXITCODE -eq 0) { Result INFO 'GitHub authentication: configured locally' }
     else { Result INFO 'GitHub authentication: not configured (optional)' }
 }
-$task = Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue
-Check ($null -ne $task -and $task.State -ne 'Disabled') 'Weekly maintenance enabled'
+. (Join-Path $PSScriptRoot 'ScheduledMaintenance.ps1')
+$maintenance = Get-SkyviewMaintenanceResult
+Result $maintenance.Status $maintenance.Message
 $longPaths = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -ErrorAction SilentlyContinue).LongPathsEnabled
 Check ($longPaths -eq 1) 'Windows long paths enabled'
 $devMode = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' -Name AllowDevelopmentWithoutDevLicense -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense

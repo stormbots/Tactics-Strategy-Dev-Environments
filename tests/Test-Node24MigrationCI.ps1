@@ -42,4 +42,5 @@ for ($attempt = 1; $attempt -le 2; $attempt++) {
 if (-not (Test-Path 'C:\ProgramData\SkyviewRobotics\Node24.ps1')) { throw 'Maintenance migration helper was not deployed.' }
 if (-not (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue)) { throw 'Weekly maintenance task was not registered.' }
 if (-not (Test-Path 'C:\Development')) { throw 'Development workspace was not created.' }
+& (Join-Path $PSScriptRoot 'Test-MaintenanceCI.ps1') -CheckInstalledTask
 Write-Host 'SKYVIEW_SYSTEM_SETUP_OK'
