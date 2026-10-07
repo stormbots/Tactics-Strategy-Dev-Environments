@@ -241,7 +241,7 @@ async fn inspect_system(
             app,
             Operation::Validate,
             uuid::Uuid::new_v4().to_string(),
-            false,
+            true,
         )
     })
     .await

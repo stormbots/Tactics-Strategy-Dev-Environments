@@ -107,8 +107,9 @@ jobs:
           if [ "$BUNDLE" = deb ]; then
             dpkg-deb --info "dist/$ASSET"
             dpkg-deb --contents "dist/$ASSET" > dist/package-contents.txt
+            cat dist/package-contents.txt
             grep -q 'usr/bin/skyview-dev-setup' dist/package-contents.txt
-            grep -q 'usr/lib/skyview-dev-setup/backend/linux/Install-SkyviewStudentDev.sh' dist/package-contents.txt
+            grep -Fq 'usr/lib/Skyview Dev Setup/backend/linux/Install-SkyviewStudentDev.sh' dist/package-contents.txt
           fi
           cd dist
           sha256sum "$ASSET" > "$ASSET.sha256"

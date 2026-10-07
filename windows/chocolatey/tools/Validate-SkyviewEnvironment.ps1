@@ -80,7 +80,8 @@ if (Test-Path $config) {
 }
 if ($CheckUpdates -and (Get-Command choco -ErrorAction SilentlyContinue)) {
     $managed = @('git','gh','nodejs-lts','python314','vscodium','dbeaver','pycharm','firefox','powershell-core','7zip')
-    $rows = & choco outdated --limit-output --ignore-pinned 2>$null
+    $rows = & choco outdated --limit-output --ignore-unfound 2>$null
+    if ($LASTEXITCODE -notin @(0,2)) { Result WARNING 'Available updates could not be checked. Your installed tool checks are still valid.' }
     foreach ($row in $rows) {
         $parts = $row -split '\|'
         if ($parts.Count -ge 3 -and $parts[0] -in $managed) {

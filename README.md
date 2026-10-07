@@ -24,7 +24,7 @@ The first 1.1.0 release is a **mentor-testing prerelease**. Complete the [laptop
 | Validate | Checks tools, runtime versions, extensions, configuration, and weekly maintenance without installing packages. |
 | Update | Updates managed development tools within the Node 24.x and Python 3.14.x families, then validates. |
 
-The app checks your workstation when it opens. Validation uses explicit **PASS**, **WARNING**, **FAIL**, and **INFORMATION** labels. Git identity and GitHub authentication are optional information; neither is set automatically. **Show details** displays native output and the saved log location. **Advanced** can check available managed updates; Linux uses the latest available local APT metadata.
+The app checks your workstation and available managed updates when it opens. Validation uses explicit **PASS**, **WARNING**, **FAIL**, and **INFORMATION** labels. Git identity and GitHub authentication are optional information; neither is set automatically. **Show details** displays native output and the saved log location. **Advanced** can include another update check during validation; Linux uses the latest available local APT metadata.
 
 Tools include Git, GitHub CLI, Node/npm, Python, VSCodium and the repository's standard extension set, PyCharm, DBeaver, Chrome, Firefox, PowerShell 7, OpenSSH, and 7-Zip utilities. Linux's system Python remains untouched and Snap stays disabled. Student repositories and existing editor settings are preserved. Existing strict-JSON Linux settings receive missing defaults; user values win. Windows and JSONC settings remain intact with a warning where defaults cannot safely be merged.
 

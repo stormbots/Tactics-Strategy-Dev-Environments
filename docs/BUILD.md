@@ -12,7 +12,7 @@ Before a Windows release build, run `choco pack windows/chocolatey/skyview-stude
 
 ## Automated packaging
 
-`build-dev-setup.yml` runs for PRs, main, implementation branches and `v1.1.*` tags. Frontend type/build/tests, axe/browser tests, npm audit, Bash analysis, PowerShell parsing/analysis, backend safety contracts, Actions validation and native Rust tests gate builds. A matrix builds Windows NSIS and Linux DEB; each artifact is nonempty, uniquely identified and SHA-256 checked. Linux additionally inspects DEB metadata and expected executable/backend paths.
+`build-dev-setup.yml` runs for PRs, main and `v1.1.*` tags. Frontend type/build/tests, axe/browser tests, npm audit, Bash analysis, PowerShell parsing/analysis, backend safety contracts, Actions validation and native Rust tests gate release publication. A matrix builds Windows NSIS and Linux DEB in parallel with the other checks; each artifact is nonempty, uniquely identified and SHA-256 checked. Linux additionally inspects DEB metadata and expected executable/backend paths.
 
 Each successful run exposes `Skyview-Dev-Setup-Windows-x64.exe` and `Skyview-Dev-Setup-LinuxMint-amd64.deb` as workflow artifacts, each with its checksum. UI screenshots are uploaded separately. Dependency lockfiles are checked in. Rebuilding a commit reproduces dependency selection; third-party vendor package availability and byte-for-byte NSIS reproducibility are not guaranteed.
 

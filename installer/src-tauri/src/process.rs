@@ -1,6 +1,8 @@
 use crate::protocol::redact;
+#[cfg(windows)]
+use std::io::Write;
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::mpsc,
@@ -50,8 +52,11 @@ pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, 
     let err = child.stderr.take().unwrap();
     let a = tx.clone();
     let first = std::thread::spawn(move || {
-        for line in BufReader::new(out).lines() {
-            if let Ok(s) = line {
+        for line in BufReader::new(out).split(b'\n') {
+            if let Ok(bytes) = line {
+                let s = String::from_utf8_lossy(&bytes)
+                    .trim_end_matches('\r')
+                    .to_owned();
                 if a.send(s).is_err() {
                     break;
                 }
@@ -59,8 +64,11 @@ pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, 
         }
     });
     let second = std::thread::spawn(move || {
-        for line in BufReader::new(err).lines() {
-            if let Ok(s) = line {
+        for line in BufReader::new(err).split(b'\n') {
+            if let Ok(bytes) = line {
+                let s = String::from_utf8_lossy(&bytes)
+                    .trim_end_matches('\r')
+                    .to_owned();
                 if tx.send(s).is_err() {
                     break;
                 }
@@ -76,6 +84,32 @@ pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, 
         .wait()
         .map(|s| s.code().unwrap_or(1))
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn drains_both_streams_and_reports_child_failure() {
+        #[cfg(windows)]
+        let mut command = Command::new(r"C:\Windows\System32\cmd.exe");
+        #[cfg(windows)]
+        command.args(["/d","/c","echo SKYVIEW_EVENT^|progress^|5^|Checking & echo Package download failed 1>&2 & exit /b 7"]);
+        #[cfg(not(windows))]
+        let mut command = Command::new("/bin/sh");
+        #[cfg(not(windows))]
+        command.args(["-c","printf 'SKYVIEW_EVENT|progress|5|Checking\\n'; printf 'Package download failed\\n' >&2; exit 7"]);
+        let mut lines = Vec::new();
+        assert_eq!(stream(command, |s| lines.push(s)).unwrap(), 7);
+        assert!(lines.iter().any(|s| s.contains("Package download failed")));
+        assert!(lines.iter().any(|s| crate::protocol::parse(s).is_some()));
+    }
+    #[test]
+    fn child_start_errors_are_actionable() {
+        let error =
+            stream(Command::new("skyview-missing-executable-for-test"), |_| {}).unwrap_err();
+        assert!(error.contains("Could not start"));
+    }
 }
 
 pub fn resource_backend() -> Result<PathBuf, String> {
@@ -97,7 +131,7 @@ pub fn resource_backend() -> Result<PathBuf, String> {
     }
     #[cfg(not(windows))]
     {
-        Ok(PathBuf::from("/usr/lib/skyview-dev-setup/backend"))
+        Ok(PathBuf::from("/usr/lib/Skyview Dev Setup/backend"))
     }
 }
 
