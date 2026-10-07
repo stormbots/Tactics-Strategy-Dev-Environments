@@ -23,7 +23,22 @@ if (-not ($pins -match '^nodejs-lts\|')) { throw 'Approved Node package is not p
 Write-Host 'SKYVIEW_NODE_MIGRATION_OK'
 # Continue through the real system setup so dependency/configuration failures
 # beyond the previously failing MSI are covered before shipping another patch.
-& (Join-Path $PSScriptRoot '../windows/Install-SkyviewStudentDev.ps1') -SystemOnly
+for ($attempt = 1; $attempt -le 2; $attempt++) {
+    try {
+        & (Join-Path $PSScriptRoot '../windows/Install-SkyviewStudentDev.ps1') -SystemOnly
+        break
+    }
+    catch {
+        # The public feed occasionally returns a gateway error after installing
+        # dependencies. Retry that external failure once, using the real backend;
+        # application/MSI/assertion errors still fail immediately.
+        $feedFailure = Get-Content 'C:\ProgramData\chocolatey\logs\chocolatey.log' -Tail 80 |
+            Select-String -Pattern 'Failed to fetch.*(50[234]|Gateway Timeout)'
+        if ($attempt -eq 2 -or $_.Exception.Message -ne 'Chocolatey returned exit code 1' -or -not $feedFailure) { throw }
+        Write-Host 'Retrying the real system backend once after a temporary Chocolatey feed gateway failure.'
+        Start-Sleep -Seconds 15
+    }
+}
 if (-not (Test-Path 'C:\ProgramData\SkyviewRobotics\Node24.ps1')) { throw 'Maintenance migration helper was not deployed.' }
 if (-not (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue)) { throw 'Weekly maintenance task was not registered.' }
 if (-not (Test-Path 'C:\Development')) { throw 'Development workspace was not created.' }
