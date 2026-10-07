@@ -13,7 +13,7 @@ Download your installer from the [1.1.5 release](https://github.com/stormbots/Ta
 
 In the app, click **Install Development Environment**, approve the system's administrator prompt, and keep the window open until validation finishes. No terminal commands, folder preparation, or manual validation are required.
 
-Version **1.1.5** has completed [manual acceptance testing](docs/ACCEPTANCE-TEST.md) on fresh Windows and Linux machines, with all checks reported as passing, including keyboard navigation, 200% scaling and Narrator/Orca. Stable promotion retains the tested installers and their checksums. The application installers are currently unsigned; Windows code signing remains a release-operations follow-up. Keep operating-system protections enabled.
+Version **1.1.5** has completed [manual acceptance testing](docs/ACCEPTANCE-TEST.md) on fresh Windows and Linux machines, with all checks reported as passing, including keyboard navigation, 200% scaling and Narrator/Orca. Stable promotion retains the tested installers and their checksums. Windows installers ship unsigned by project decision. Keep operating-system protections enabled.
 
 ## Manage a workstation
 

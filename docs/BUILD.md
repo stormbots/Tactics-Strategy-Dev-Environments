@@ -22,4 +22,4 @@ Patch releases use the same gate on `release/v1.1.*` branches: the tag comes fro
 
 New releases are initially published for mentor testing. Complete `ACCEPTANCE-TEST.md` and merge the reviewed implementation before marking a tested release stable. Promote the existing GitHub release by clearing its prerelease status and marking it latest, then update its notes with acceptance evidence. Preserve the existing tag, installers and checksum asset so users receive the exact binaries that passed acceptance; do not rerun release publication or replace assets for promotion. Version 1.1.5 completed manual acceptance on fresh Windows and Linux machines on 2026-10-07.
 
-Code-signing/notarization credentials are not added to the repository; Windows code signing should be configured through protected CI secrets when available.
+Windows releases ship unsigned by project decision, confirmed on 2026-10-07. Windows code signing is excluded from release requirements and follow-up work.

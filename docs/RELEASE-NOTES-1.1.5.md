@@ -12,4 +12,4 @@ Follow the Windows installer's update/reinstall flow, relaunch Skyview Dev Setup
 
 Manual acceptance was completed on fresh Windows and Linux machines on **2026-10-07**, with all checks reported as passing. This includes installation, validation, keyboard navigation, 200% scaling, Narrator/Orca, repair and data preservation, reboot, updates and maintenance. See the [acceptance record](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/main/docs/ACCEPTANCE-TEST.md) for the test procedure and evidence.
 
-Stable promotion retains the existing **v1.1.5** tag at `ec58ad147a938f6f596632691b3b3ce46724425b` and the tested installer assets; no rebuild is required. Verify downloads against the attached `SHA256SUMS.txt`. The Windows installer remains unsigned; code signing is a release-operations follow-up. Keep operating-system protections enabled.
+Stable promotion retains the existing **v1.1.5** tag at `ec58ad147a938f6f596632691b3b3ce46724425b` and the tested installer assets; no rebuild is required. Verify downloads against the attached `SHA256SUMS.txt`. Windows installers ship unsigned by project decision. Keep operating-system protections enabled.
