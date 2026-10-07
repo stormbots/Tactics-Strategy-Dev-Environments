@@ -22,7 +22,8 @@ fn powershell_path(path: &Path) -> PathBuf {
     // Rust/Tauri canonical paths use the Win32 verbatim prefix. Windows
     // PowerShell 5.1 treats that spelling as a provider path, breaking
     // $PSScriptRoot + Join-Path in packaged scripts. Keep canonical paths for
-    // trust checks and file IO; normalize only the PowerShell -File boundary.
+    // trust checks and file IO; normalize script and temporary paths passed to
+    // Windows PowerShell and older .NET package installers.
     let text = path.to_string_lossy();
     if let Some(unc) = text.strip_prefix(r"\\?\UNC\") {
         PathBuf::from(format!(r"\\{unc}"))
@@ -31,6 +32,28 @@ fn powershell_path(path: &Path) -> PathBuf {
     } else {
         path.to_path_buf()
     }
+}
+
+#[cfg(windows)]
+fn windows_system_environment(cmd: &mut Command, private_temp: &Path) {
+    let temp = powershell_path(private_temp);
+    cmd.env_clear()
+        .env("PATH",r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd")
+        .env("SystemRoot",r"C:\Windows").env("WINDIR",r"C:\Windows")
+        // Windows known-folder lookup needs SYSTEMDRIVE even when ProgramData
+        // is explicitly populated. Without it .NET returns an empty common
+        // application-data path and Chocolatey creates a relative HTTP cache.
+        .env("SYSTEMDRIVE", "C:")
+        .env("ComSpec",r"C:\Windows\System32\cmd.exe")
+        .env("ProgramData",r"C:\ProgramData").env("ALLUSERSPROFILE",r"C:\ProgramData")
+        .env("ProgramFiles",r"C:\Program Files").env("ProgramFiles(x86)",r"C:\Program Files (x86)")
+        .env("ChocolateyInstall",r"C:\ProgramData\chocolatey")
+        .env("TEMP", &temp).env("TMP", &temp)
+        .env("USERPROFILE",r"C:\Windows\System32\config\systemprofile")
+        .env("APPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
+        .env("LOCALAPPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Local")
+        .env("PSModulePath",r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules")
+        .env("PATHEXT",".COM;.EXE;.BAT;.CMD").env("PROCESSOR_ARCHITECTURE","AMD64");
 }
 
 pub fn script(root: &Path, name: &str) -> Command {
@@ -158,6 +181,90 @@ mod tests {
         assert!(lines.iter().any(|s| s.contains("Package download failed")));
         assert!(lines.iter().any(|s| crate::protocol::parse(s).is_some()));
     }
+    #[cfg(windows)]
+    #[test]
+    fn clean_system_environment_resolves_machine_folders_and_temp() {
+        let root =
+            std::env::temp_dir().join(format!("Skyview environment test {}", uuid::Uuid::new_v4()));
+        let scripts = root.join("windows");
+        std::fs::create_dir_all(&scripts).unwrap();
+        std::fs::write(scripts.join("environment.ps1"), r#"$ErrorActionPreference='Stop'; $data=[Environment]::GetFolderPath('CommonApplicationData'); if ($data -ne 'C:\ProgramData' -or -not [IO.Path]::IsPathRooted($data)) { throw 'Machine data folder not resolved' }; if ($env:SKYVIEW_UNTRUSTED) { throw 'User environment leaked' }; $marker=Join-Path $env:TEMP 'environment-marker.txt'; [IO.File]::WriteAllText($marker,'probe'); if (-not (Test-Path $marker)) { throw 'Temporary path unusable' }; Write-Output 'machine-environment-ok'; exit 0"#).unwrap();
+        let root = root.canonicalize().unwrap();
+        let mut cmd = script(&root, "environment.ps1");
+        cmd.env("SKYVIEW_UNTRUSTED", "must-not-reach-child");
+        windows_system_environment(&mut cmd, &root);
+        let mut lines = Vec::new();
+        assert_eq!(
+            stream(cmd, |line| lines.push(line)).unwrap(),
+            0,
+            "{lines:?}"
+        );
+        assert!(lines.iter().any(|line| line == "machine-environment-ok"));
+    }
+    #[cfg(windows)]
+    #[test]
+    fn github_runner_installs_chocolatey_fixture_with_clean_environment() {
+        // Real package-manager coverage only on the disposable Windows runner,
+        // never on a developer/student workstation. The fixture has no tools or
+        // dependencies and changes only Chocolatey's own test package records.
+        if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
+            return;
+        }
+        let root =
+            std::env::temp_dir().join(format!("Skyview Chocolatey test {}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("tools")).unwrap();
+        std::fs::write(root.join("tools/chocolateyInstall.ps1"), "if ([Environment]::GetFolderPath('CommonApplicationData') -ne 'C:\\ProgramData') { throw 'Incorrect machine cache root' }; Write-Host 'SKYVIEW_CI_PACKAGE_OK'").unwrap();
+        std::fs::write(root.join("fixture.nuspec"), r#"<?xml version="1.0"?><package><metadata><id>skyview-ci-environment-probe</id><version>1.0.0</version><authors>Skyview Robotics</authors><description>Disposable CI environment probe</description></metadata><files><file src="tools\**" target="tools"/></files></package>"#).unwrap();
+        let root = root.canonicalize().unwrap();
+        let choco = r"C:\ProgramData\chocolatey\bin\choco.exe";
+        let mut pack = Command::new(choco);
+        pack.current_dir(&root)
+            .arg("pack")
+            .arg(powershell_path(&root.join("fixture.nuspec")))
+            .arg("--outputdirectory")
+            .arg(powershell_path(&root));
+        windows_system_environment(&mut pack, &root);
+        let mut output = Vec::new();
+        assert_eq!(
+            stream(pack, |line| output.push(line)).unwrap(),
+            0,
+            "{output:?}"
+        );
+        let mut install = Command::new(choco);
+        install
+            .current_dir(&root)
+            .args([
+                "install",
+                "skyview-ci-environment-probe",
+                "--yes",
+                "--source",
+            ])
+            .arg(powershell_path(&root));
+        windows_system_environment(&mut install, &root);
+        output.clear();
+        assert_eq!(
+            stream(install, |line| output.push(line)).unwrap(),
+            0,
+            "{output:?}"
+        );
+        assert!(
+            output
+                .iter()
+                .any(|line| line.contains("SKYVIEW_CI_PACKAGE_OK")),
+            "{output:?}"
+        );
+        let mut uninstall = Command::new(choco);
+        uninstall
+            .current_dir(&root)
+            .args(["uninstall", "skyview-ci-environment-probe", "--yes"]);
+        windows_system_environment(&mut uninstall, &root);
+        output.clear();
+        assert_eq!(
+            stream(uninstall, |line| output.push(line)).unwrap(),
+            0,
+            "{output:?}"
+        );
+    }
     #[test]
     fn child_start_errors_are_actionable() {
         let error =
@@ -259,19 +366,7 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
             .join("operation-temp")
             .join(session);
         std::fs::create_dir_all(&private_temp).map_err(|e| e.to_string())?;
-        cmd.env_clear()
-            .env("PATH",r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd")
-            .env("SystemRoot",r"C:\Windows").env("WINDIR",r"C:\Windows")
-            .env("ComSpec",r"C:\Windows\System32\cmd.exe")
-            .env("ProgramData",r"C:\ProgramData").env("ALLUSERSPROFILE",r"C:\ProgramData")
-            .env("ProgramFiles",r"C:\Program Files").env("ProgramFiles(x86)",r"C:\Program Files (x86)")
-            .env("ChocolateyInstall",r"C:\ProgramData\chocolatey")
-            .env("TEMP", &private_temp).env("TMP", &private_temp)
-            .env("USERPROFILE",r"C:\Windows\System32\config\systemprofile")
-            .env("APPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
-            .env("LOCALAPPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Local")
-            .env("PSModulePath",r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules")
-            .env("PATHEXT",".COM;.EXE;.BAT;.CMD").env("PROCESSOR_ARCHITECTURE","AMD64");
+        windows_system_environment(&mut cmd, &private_temp);
     }
     #[cfg(unix)]
     {
