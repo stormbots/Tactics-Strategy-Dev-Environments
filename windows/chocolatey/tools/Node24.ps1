@@ -59,14 +59,18 @@ function Install-SkyviewNode24 {
     if (([version]$Version).Major -ne 24) { throw "Refusing Node.js $Version; this baseline requires Node 24." }
     Write-Host "SKYVIEW_EVENT|phase|node24|Configuring the approved Node.js $Version runtime"
     foreach ($id in $remove) {
-        $current = @(& $choco list --limit-output)
-        if ($LASTEXITCODE -ne 0) { throw 'Could not recheck the runtime package before migration.' }
-        if (-not ($current -match ('^' + [regex]::Escape($id) + '\|'))) { continue }
         Write-Host "Switching Chocolatey package $id ($($packages[$id])) to the Node 24 LTS channel..."
-        # Exact package names only. Let Chocolatey reject dependent-package conflicts.
-        Invoke-SkyviewNodeChocolatey $choco @('uninstall', $id, '-y', '--no-progress')
     }
-    Invoke-SkyviewNodeChocolatey $choco @('pin', 'remove', '--name=nodejs-lts')
+    if ($remove.Count) {
+        # Include both exact channel records together to avoid the metapackage's
+        # interactive dependency question. Never force/remove other dependencies.
+        Invoke-SkyviewNodeChocolatey $choco (@('uninstall') + $remove + @('-y', '--no-progress'))
+    }
+    $before = @(& $choco list --limit-output)
+    if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the LTS package before installation.' }
+    if ($before -match '^nodejs-lts\|') {
+        Invoke-SkyviewNodeChocolatey $choco @('pin', 'remove', '--name=nodejs-lts')
+    }
     try {
         Invoke-SkyviewNodeChocolatey $choco @('upgrade', 'nodejs-lts', '--version', $Version, '-y', '--no-progress', '--allow-downgrade')
         $node = 'C:\Program Files\nodejs\node.exe'
@@ -75,6 +79,9 @@ function Install-SkyviewNode24 {
         if ($LASTEXITCODE -ne 0 -or $actual -notmatch '^v24\.') { throw "Expected Node 24 after installation; detected $actual." }
     }
     finally {
-        Invoke-SkyviewNodeChocolatey $choco @('pin', 'add', '--name=nodejs-lts')
+        $after = @(& $choco list --limit-output)
+        if ($LASTEXITCODE -eq 0 -and $after -match '^nodejs-lts\|') {
+            Invoke-SkyviewNodeChocolatey $choco @('pin', 'add', '--name=nodejs-lts')
+        }
     }
 }
