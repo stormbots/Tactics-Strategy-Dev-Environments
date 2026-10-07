@@ -1,6 +1,6 @@
 [package]
 name = "skyview-dev-setup"
-version = "1.1.0"
+version = "1.1.1"
 description = "Skyview Robotics Student Development Environment"
 authors = ["Skyview Robotics"]
 edition = "2021"

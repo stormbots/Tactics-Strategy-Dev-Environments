@@ -17,6 +17,22 @@ pub fn hidden(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
+#[cfg(windows)]
+fn powershell_path(path: &Path) -> PathBuf {
+    // Rust/Tauri canonical paths use the Win32 verbatim prefix. Windows
+    // PowerShell 5.1 treats that spelling as a provider path, breaking
+    // $PSScriptRoot + Join-Path in packaged scripts. Keep canonical paths for
+    // trust checks and file IO; normalize only the PowerShell -File boundary.
+    let text = path.to_string_lossy();
+    if let Some(unc) = text.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{unc}"))
+    } else if let Some(disk) = text.strip_prefix(r"\\?\") {
+        PathBuf::from(disk)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 pub fn script(root: &Path, name: &str) -> Command {
     #[cfg(windows)]
     {
@@ -28,7 +44,7 @@ pub fn script(root: &Path, name: &str) -> Command {
             "Bypass",
             "-File",
         ])
-        .arg(root.join("windows").join(name));
+        .arg(powershell_path(&root.join("windows").join(name)));
         hidden(&mut c);
         c
     }
@@ -89,6 +105,44 @@ pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn powershell_scripts_use_provider_compatible_paths() {
+        let c = script(
+            Path::new(r"\\?\C:\Program Files\Skyview Dev Setup\backend"),
+            "chocolatey/tools/Test-SkyviewStudentDev.ps1",
+        );
+        assert_eq!(
+            c.get_args().last().unwrap(),
+            std::ffi::OsStr::new(
+                r"C:\Program Files\Skyview Dev Setup\backend\windows\chocolatey/tools/Test-SkyviewStudentDev.ps1"
+            )
+        );
+        assert_eq!(
+            powershell_path(Path::new(r"\\?\UNC\server\share\backend")),
+            PathBuf::from(r"\\server\share\backend")
+        );
+        assert_eq!(
+            powershell_path(Path::new(r"C:\Program Files\backend")),
+            PathBuf::from(r"C:\Program Files\backend")
+        );
+    }
+    #[cfg(windows)]
+    #[test]
+    fn packaged_powershell_relative_lookups_work_with_verbatim_roots() {
+        let root = std::env::temp_dir().join(format!("Skyview path test {}", uuid::Uuid::new_v4()));
+        let scripts = root.join("windows");
+        std::fs::create_dir_all(&scripts).unwrap();
+        std::fs::write(scripts.join("marker.txt"), "fixture").unwrap();
+        std::fs::write(scripts.join("probe.ps1"), "$ErrorActionPreference='Stop'; $marker=Join-Path $PSScriptRoot 'marker.txt'; if (-not (Test-Path $marker)) { exit 1 }; Write-Output 'relative-lookup-ok'; exit 0").unwrap();
+        let verbatim = root.canonicalize().unwrap();
+        let mut lines = Vec::new();
+        assert_eq!(
+            stream(script(&verbatim, "probe.ps1"), |line| lines.push(line)).unwrap(),
+            0
+        );
+        assert!(lines.iter().any(|line| line == "relative-lookup-ok"));
+    }
     #[test]
     fn drains_both_streams_and_reports_child_failure() {
         #[cfg(windows)]

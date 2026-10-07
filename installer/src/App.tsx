@@ -186,7 +186,7 @@ export default function App() {
             <br />
             <strong>Tactics &amp; Strategy</strong>
           </p>
-          <span>Skyview Dev Setup · 1.1.0</span>
+          <span>Skyview Dev Setup Â· 1.1.1</span>
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
@@ -255,7 +255,7 @@ export default function App() {
                   <p>DEVELOPMENT ENVIRONMENT</p>
                   <h2>
                     {s.stage === "checking"
-                      ? "Checking this workstation…"
+                      ? "Checking this workstationâ€¦"
                       : busy
                         ? "Setup in progress"
                         : status}
@@ -355,7 +355,7 @@ export default function App() {
                   </div>
                   <progress value={s.progress} max={100} aria-label={s.phase} />
                   <p>
-                    Keep this window open. Setup can take 10–20 minutes on a
+                    Keep this window open. Setup can take 10â€“20 minutes on a
                     fresh laptop.
                   </p>
                 </div>
@@ -519,13 +519,13 @@ export default function App() {
               <code>repositories.csv</code>. Existing folders are preserved.
             </p>
             <p>
-              Node.js 24.x · Python 3.14.x · No automatic Git identity or GitHub
+              Node.js 24.x Â· Python 3.14.x Â· No automatic Git identity or GitHub
               sign-in.
             </p>
           </div>
         </details>
         <footer>
-          Skyview Robotics <span>Student Development Environment · 1.1.0</span>
+          Skyview Robotics <span>Student Development Environment Â· 1.1.1</span>
         </footer>
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {s.stage === "checking"
