@@ -11,6 +11,7 @@ import {
   Info,
   Laptop,
   LayoutDashboard,
+  LoaderCircle,
   RefreshCw,
   ShieldCheck,
   Terminal,
@@ -19,12 +20,12 @@ import {
   XCircle,
 } from "lucide-react";
 import {
-  checksFrom,
   environmentStatus,
   initialState,
   reducer,
   type Check,
   type Mode,
+  type State,
 } from "./model";
 import { inspect, native, open, operate } from "./bridge";
 const modes: Record<
@@ -71,6 +72,44 @@ function StatusIcon({ status }: { status: Check["status"] }) {
           : Info;
   return <Icon size={17} aria-hidden="true" />;
 }
+function LogOutput({ s, openLogs }: { s: State; openLogs: () => void }) {
+  const output = useRef<HTMLPreElement>(null);
+  const following = useRef(true);
+  useEffect(() => {
+    if (output.current && following.current)
+      output.current.scrollTop = output.current.scrollHeight;
+  }, [s.logs]);
+  return (
+    <div className="log-output">
+      <pre
+        ref={output}
+        role="region"
+        aria-label="Provisioning log"
+        tabIndex={0}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          following.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+        }}
+      >
+        {s.logs.join("\n") || "Waiting for setup output…"}
+      </pre>
+      <p className="muted">
+        Latest 2,000 lines. Full logs are saved on this laptop.
+      </p>
+      {s.stage !== "running" && s.logPath && (
+        <p className="log-path">{s.logPath}</p>
+      )}
+      <button
+        className="secondary"
+        disabled={!native || !s.logPath}
+        onClick={openLogs}
+      >
+        <FolderOpen size={15} /> Open log folder
+      </button>
+    </div>
+  );
+}
 export default function App() {
   const [s, dispatch] = useReducer(reducer, initialState);
   const [mode, setMode] = useState<Mode>("install");
@@ -80,6 +119,7 @@ export default function App() {
   const runId = useRef("");
   const started = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  const progressHeading = useRef<HTMLDivElement>(null);
   const busy = s.stage === "running" || s.stage === "checking";
   const status = environmentStatus(s.checks, s.updates);
   const passes = s.checks.filter((c) => c.status === "PASS").length;
@@ -111,12 +151,14 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
+    if (s.stage === "running") progressHeading.current?.focus();
     if (s.stage === "success" || s.stage === "failure")
       resultHeading.current?.focus();
   }, [s.stage]);
   async function start(selected: Mode) {
     if (busy) return;
     setNotice("");
+    setMode(selected);
     setPage("overview");
     runId.current = crypto.randomUUID();
     dispatch({ type: "start", mode: selected });
@@ -186,7 +228,7 @@ export default function App() {
             <br />
             <strong>Tactics &amp; Strategy</strong>
           </p>
-          <span>Skyview Dev Setup · 1.1.3</span>
+          <span>Skyview Dev Setup · 1.1.4</span>
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
@@ -216,6 +258,22 @@ export default function App() {
             {notice}
           </div>
         )}
+        {s.stage === "checking" && (
+          <section
+            className="checking-panel"
+            aria-label="Workstation check"
+            aria-busy="true"
+          >
+            <LoaderCircle className="spinner" size={34} aria-hidden="true" />
+            <div>
+              <h2>Checking your workstation…</h2>
+              <p>
+                Looking for installed tools and checking your configuration.
+                Please wait.
+              </p>
+            </div>
+          </section>
+        )}
         {!s.platform.supported && s.stage !== "checking" && (
           <div className="notice" role="status">
             This system is outside the supported platforms. You can still run
@@ -224,55 +282,62 @@ export default function App() {
         )}
         {page === "overview" ? (
           <>
-            <section className="hero" aria-labelledby="hero-heading">
-              <div>
-                <span className="hero-label">SKYVIEW ROBOTICS</span>
-                <h2 id="hero-heading">
-                  Your tools.
-                  <br />
-                  One place.
-                </h2>
-                <p>
-                  Everything you need for student web and
-                  <br className="desktop-break" /> application development, set
-                  up together.
-                </p>
-                <span className="hero-footer">
-                  <ShieldCheck size={16} />
-                  Built for the Bureau of Tactics &amp; Strategy
-                </span>
-              </div>
-              <div className="hero-logo">
-                <img src="/skyview-logo.png" alt="" />
-              </div>
-            </section>
-            <section className="status-card" aria-label="Workstation status">
-              <div className="status-title">
-                <div className="status-icon">
-                  <Laptop size={22} />
-                </div>
-                <div>
-                  <p>DEVELOPMENT ENVIRONMENT</p>
-                  <h2>
-                    {s.stage === "checking"
-                      ? "Checking this workstation…"
-                      : busy
-                        ? "Setup in progress"
-                        : status}
-                  </h2>
-                </div>
-              </div>
-              <div className="status-counts">
-                <span>
-                  <CheckCircle2 size={17} />
-                  <strong>{passes}</strong> passed
-                </span>
-                <span>
-                  <TriangleAlert size={17} />
-                  <strong>{fails}</strong> need attention
-                </span>
-              </div>
-            </section>
+            {s.stage !== "running" && (
+              <>
+                <section className="hero" aria-labelledby="hero-heading">
+                  <div>
+                    <span className="hero-label">SKYVIEW ROBOTICS</span>
+                    <h2 id="hero-heading">
+                      Your tools.
+                      <br />
+                      One place.
+                    </h2>
+                    <p>
+                      Everything you need for student web and
+                      <br className="desktop-break" /> application development,
+                      set up together.
+                    </p>
+                    <span className="hero-footer">
+                      <ShieldCheck size={16} />
+                      Built for the Bureau of Tactics &amp; Strategy
+                    </span>
+                  </div>
+                  <div className="hero-logo">
+                    <img src="/skyview-logo.png" alt="" />
+                  </div>
+                </section>
+                <section
+                  className="status-card"
+                  aria-label="Workstation status"
+                >
+                  <div className="status-title">
+                    <div className="status-icon">
+                      <Laptop size={22} />
+                    </div>
+                    <div>
+                      <p>DEVELOPMENT ENVIRONMENT</p>
+                      <h2>
+                        {s.stage === "checking"
+                          ? "Checking this workstation…"
+                          : busy
+                            ? "Setup in progress"
+                            : status}
+                      </h2>
+                    </div>
+                  </div>
+                  <div className="status-counts">
+                    <span>
+                      <CheckCircle2 size={17} />
+                      <strong>{passes}</strong> passed
+                    </span>
+                    <span>
+                      <TriangleAlert size={17} />
+                      <strong>{fails}</strong> need attention
+                    </span>
+                  </div>
+                </section>
+              </>
+            )}
             {(s.stage === "success" || s.stage === "failure") && (
               <section
                 className={`result ${s.stage}`}
@@ -349,8 +414,20 @@ export default function App() {
               <p className="operation-description">{current.description}</p>
               {s.stage === "running" ? (
                 <div className="progress-panel">
-                  <div className="progress-heading" role="status">
-                    <span>{s.phase}</span>
+                  <div
+                    className="progress-heading"
+                    ref={progressHeading}
+                    tabIndex={-1}
+                    role="status"
+                  >
+                    <span>
+                      <LoaderCircle
+                        className="spinner"
+                        size={20}
+                        aria-hidden="true"
+                      />
+                      {s.phase}
+                    </span>
                     <strong>{s.progress}%</strong>
                   </div>
                   <progress value={s.progress} max={100} aria-label={s.phase} />
@@ -380,6 +457,24 @@ export default function App() {
                   </p>
                 </>
               )}
+              {runId.current && (
+                <section
+                  className="live-details"
+                  aria-labelledby="live-details-heading"
+                >
+                  <h2 id="live-details-heading">
+                    <Terminal size={17} aria-hidden="true" />
+                    {s.stage === "running"
+                      ? "Live details"
+                      : "Operation details"}
+                  </h2>
+                  <LogOutput
+                    key={runId.current}
+                    s={s}
+                    openLogs={() => openTarget("logs")}
+                  />
+                </section>
+              )}
             </section>
             {s.warnings.length > 0 && (
               <div className="notice" role="status">
@@ -391,40 +486,45 @@ export default function App() {
                 </div>
               </div>
             )}
-            <section className="tools-preview" aria-labelledby="tools-heading">
-              <div className="section-header">
-                <h2 id="tools-heading">Development tools</h2>
-                <button
-                  className="text-button"
-                  onClick={() => setPage("validation")}
-                >
-                  See all checks <ArrowRight size={14} />
-                </button>
-              </div>
-              <div className="tool-grid">
-                {s.checks
-                  .filter((c) =>
-                    /^(Git:|GitHub CLI:|Node.js:|Python|VSCodium:|DBeaver:|PyCharm:|Chrome:|Firefox:|Git$|GitHub CLI$|Node.js$|VSCodium$|DBeaver$|PyCharm$|Firefox$|Google Chrome)/.test(
-                      c.message,
-                    ),
-                  )
-                  .slice(0, 9)
-                  .map((c, i) => (
-                    <div className={`tool ${c.status.toLowerCase()}`} key={i}>
-                      <StatusIcon status={c.status} />
-                      <span>{c.message.split(":")[0]}</span>
-                      <span className="tool-status">
-                        {c.status === "PASS"
-                          ? "Ready"
-                          : "Missing / needs repair"}
-                      </span>
-                    </div>
-                  ))}
-                {!s.checks.length && (
-                  <p>Tool status appears after the workstation check.</p>
-                )}
-              </div>
-            </section>
+            {s.stage !== "running" && (
+              <section
+                className="tools-preview"
+                aria-labelledby="tools-heading"
+              >
+                <div className="section-header">
+                  <h2 id="tools-heading">Development tools</h2>
+                  <button
+                    className="text-button"
+                    onClick={() => setPage("validation")}
+                  >
+                    See all checks <ArrowRight size={14} />
+                  </button>
+                </div>
+                <div className="tool-grid">
+                  {s.checks
+                    .filter((c) =>
+                      /^(Git:|GitHub CLI:|Node.js:|Python|VSCodium:|DBeaver:|PyCharm:|Chrome:|Firefox:|Git$|GitHub CLI$|Node.js$|VSCodium$|DBeaver$|PyCharm$|Firefox$|Google Chrome)/.test(
+                        c.message,
+                      ),
+                    )
+                    .slice(0, 9)
+                    .map((c, i) => (
+                      <div className={`tool ${c.status.toLowerCase()}`} key={i}>
+                        <StatusIcon status={c.status} />
+                        <span>{c.message.split(":")[0]}</span>
+                        <span className="tool-status">
+                          {c.status === "PASS"
+                            ? "Ready"
+                            : "Missing / needs repair"}
+                        </span>
+                      </div>
+                    ))}
+                  {!s.checks.length && (
+                    <p>Tool status appears after the workstation check.</p>
+                  )}
+                </div>
+              </section>
+            )}
           </>
         ) : (
           <section className="validation-card">
@@ -470,30 +570,15 @@ export default function App() {
             {!s.checks.length && <p>Run validation to see your results.</p>}
           </section>
         )}
-        <details className="details">
-          <summary>
-            <Terminal size={17} />
-            Show details <ChevronDown size={15} />
-          </summary>
-          <div>
-            <p className="muted">
-              Full logs are saved on this laptop. This view shows the latest
-              2,000 lines.
-            </p>
-            {s.logPath && <p className="log-path">{s.logPath}</p>}
-            <button
-              className="secondary"
-              disabled={!native || !s.logPath}
-              onClick={() => openTarget("logs")}
-            >
-              <FolderOpen size={15} />
-              Open log folder
-            </button>
-            <pre aria-label="Provisioning log" tabIndex={0}>
-              {s.logs.join("\n") || "No log output yet."}
-            </pre>
-          </div>
-        </details>
+        {(page === "validation" || !runId.current) && (
+          <details className="details">
+            <summary>
+              <Terminal size={17} />
+              Show details <ChevronDown size={15} />
+            </summary>
+            <LogOutput s={s} openLogs={() => openTarget("logs")} />
+          </details>
+        )}
         <details className="details advanced">
           <summary>
             <Wrench size={17} />
@@ -525,7 +610,7 @@ export default function App() {
           </div>
         </details>
         <footer>
-          Skyview Robotics <span>Student Development Environment · 1.1.3</span>
+          Skyview Robotics <span>Student Development Environment · 1.1.4</span>
         </footer>
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {s.stage === "checking"

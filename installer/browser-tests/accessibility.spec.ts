@@ -40,6 +40,17 @@ test("desktop contrast, keyboard access, progress and completion", async ({
     .click();
   await expect(page.getByRole("progressbar")).toBeVisible();
   await expect(
+    page.getByRole("region", { name: "Provisioning log" }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole("heading", { name: "Live details" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Provisioning log" }),
+  ).toContainText("Checking system");
+  await audit(page);
+  await page.screenshot({ path: "test-results/installation-desktop.png" });
+  await expect(
     page.getByRole("heading", { name: "Development environment ready." }),
   ).toBeVisible();
   await expect(
@@ -55,6 +66,7 @@ test("desktop contrast, keyboard access, progress and completion", async ({
   });
 });
 test("mobile layout and labels", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(
@@ -70,4 +82,17 @@ test("mobile layout and labels", async ({ page }) => {
     path: "test-results/overview-mobile.png",
     fullPage: true,
   });
+  await page
+    .getByRole("button", { name: "Install Development Environment" })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Provisioning log" }),
+  ).toBeInViewport();
+  expect(
+    await page
+      .locator(".progress-panel .spinner")
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("none");
+  await audit(page);
+  await page.screenshot({ path: "test-results/installation-mobile.png" });
 });

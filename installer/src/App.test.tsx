@@ -8,9 +8,10 @@ import {
 } from "@testing-library/react";
 import axe from "axe-core";
 import App from "./App";
+import { inspect, operate } from "./bridge";
 vi.mock("./bridge", () => ({
   native: false,
-  inspect: async () => ({
+  inspect: vi.fn(async () => ({
     code: 0,
     success: true,
     lines: [
@@ -19,8 +20,8 @@ vi.mock("./bridge", () => ({
     ],
     log_path: "Preview",
     platform: { label: "Windows 11 x64", supported: true },
-  }),
-  operate: async () => ({
+  })),
+  operate: vi.fn(async () => ({
     code: 1,
     success: false,
     lines: [
@@ -29,10 +30,49 @@ vi.mock("./bridge", () => ({
     ],
     log_path: "test.log",
     platform: { label: "Windows 11", supported: true },
-  }),
+  })),
   open: async () => {},
 }));
 afterEach(cleanup);
+it("shows a prominent busy indicator while startup validation is pending", async () => {
+  vi.mocked(inspect).mockReturnValueOnce(new Promise(() => {}));
+  const { container } = render(<App />);
+  expect(
+    screen
+      .getByRole("region", { name: "Workstation check" })
+      .getAttribute("aria-busy"),
+  ).toBe("true");
+  expect(
+    screen.getByRole("heading", { name: "Checking your workstation…" }),
+  ).toBeTruthy();
+  expect(container.querySelector(".checking-panel .spinner")).toBeTruthy();
+  expect(
+    (
+      await axe.run(container, {
+        rules: { "color-contrast": { enabled: false } },
+      })
+    ).violations,
+  ).toEqual([]);
+});
+it("puts streaming installation output beside progress without expanding details", async () => {
+  vi.mocked(operate).mockImplementationOnce(
+    async (_mode, _id, _updates, emit) => {
+      emit("Installing Git…");
+      return new Promise(() => {});
+    },
+  );
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready" });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  expect(
+    screen.getByRole("region", { name: "Provisioning log" }).textContent,
+  ).toBe("Installing Git…");
+  expect(screen.getByRole("heading", { name: "Live details" })).toBeTruthy();
+  expect(screen.queryByText("Show details")).toBeNull();
+  expect(document.activeElement?.getAttribute("role")).toBe("status");
+});
 it("shows a keyboard-accessible UI with no detected axe violations", async () => {
   const { container } = render(<App />);
   await screen.findByRole("heading", { name: "Ready" });
