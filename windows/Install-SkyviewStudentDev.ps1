@@ -6,7 +6,7 @@ $OutputEncoding = [Console]::OutputEncoding
 
 $ErrorActionPreference = 'Stop'
 
-$PackageVersion = '1.1.0'
+$PackageVersion = '1.1.3'
 function Write-SkyviewEvent($Type, $Key, $Message) { Write-Host ('SKYVIEW_EVENT|{0}|{1}|{2}' -f $Type,$Key,($Message -replace '[\r\n]', ' ')) }
 $env:SKYVIEW_SYSTEM_ONLY = if ($SystemOnly) { '1' } else { '0' }
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'
@@ -156,12 +156,16 @@ Write-Phase 3 5 'Installing core development software...'
 Write-Host 'This is the longest phase.'
 Write-Host 'Already-installed packages will be skipped or reused.'
 
+# Resolve the Node package-channel conflict before the metapackage's MSI dependency.
+. (Join-Path $PSScriptRoot 'chocolatey/tools/Node24.ps1')
+Install-SkyviewNode24
+
 $chocoArgs = @(
     'upgrade',
     'skyview-student-dev',
     '--version', $PackageVersion,
     "--source=`"$source`"",
-    '-y'
+    '-y', '--no-progress'
 )
 # Rerun the small configuration package even when already current. Installed
 # dependencies remain managed by Chocolatey rather than reinstalling everything.

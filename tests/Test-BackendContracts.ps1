@@ -20,4 +20,5 @@ $failed = @($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validatio
 if ($failed.Count -gt 0 -and $code -eq 0) { throw 'Validator incorrectly returned success despite failures.' }
 if ($lines -match '^SKYVIEW_EVENT\|validation\|FAIL\|Git (identity|Hub authentication)') { throw 'Optional identity became a failure.' }
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
+& (Join-Path $PSScriptRoot 'Test-Node24Policy.ps1')
 $global:LASTEXITCODE = 0

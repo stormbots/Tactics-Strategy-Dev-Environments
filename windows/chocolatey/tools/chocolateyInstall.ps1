@@ -44,6 +44,7 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'AutoUpdate-SkyviewTools.ps1',
         'Update-SkyviewTools.ps1',
         'Update-Node24.ps1',
+        'Node24.ps1',
         'Setup-SkyviewRepositories.ps1',
         'Test-SkyviewStudentDev.ps1',
         'Validate-SkyviewEnvironment.ps1',

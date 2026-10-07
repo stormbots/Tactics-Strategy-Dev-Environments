@@ -129,6 +129,42 @@ pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, 
 mod tests {
     use super::*;
     #[cfg(windows)]
+    static CHOCOLATEY_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    #[cfg(windows)]
+    #[test]
+    fn github_runner_migrates_real_node26_to_node24_with_clean_environment() {
+        if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
+            return;
+        }
+        let _guard = CHOCOLATEY_TEST_LOCK.lock().unwrap();
+        let temp =
+            std::env::temp_dir().join(format!("Skyview Node migration {}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp).unwrap();
+        let test = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/Test-Node24MigrationCI.ps1")
+            .canonicalize()
+            .unwrap();
+        let mut cmd = Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+        cmd.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+        ])
+        .arg(powershell_path(&test));
+        windows_system_environment(&mut cmd, &temp);
+        cmd.env("GITHUB_ACTIONS", "true");
+        let mut lines = Vec::new();
+        assert_eq!(
+            stream(cmd, |line| lines.push(line)).unwrap(),
+            0,
+            "{lines:?}"
+        );
+        assert!(lines.iter().any(|line| line == "SKYVIEW_NODE_MIGRATION_OK"));
+        assert!(lines.iter().any(|line| line == "SKYVIEW_SYSTEM_SETUP_OK"));
+    }
+    #[cfg(windows)]
     #[test]
     fn powershell_scripts_use_provider_compatible_paths() {
         let c = script(
@@ -210,6 +246,7 @@ mod tests {
         if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
             return;
         }
+        let _guard = CHOCOLATEY_TEST_LOCK.lock().unwrap();
         let root =
             std::env::temp_dir().join(format!("Skyview Chocolatey test {}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(root.join("tools")).unwrap();
