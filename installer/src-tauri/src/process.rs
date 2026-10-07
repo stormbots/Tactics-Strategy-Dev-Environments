@@ -199,6 +199,12 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
     // Privileged commands use a system-only search path and no user startup code.
     #[cfg(windows)]
     {
+        let private_temp = backend
+            .parent()
+            .unwrap()
+            .join("operation-temp")
+            .join(session);
+        std::fs::create_dir_all(&private_temp).map_err(|e| e.to_string())?;
         cmd.env_clear()
             .env("PATH",r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd")
             .env("SystemRoot",r"C:\Windows").env("WINDIR",r"C:\Windows")
@@ -206,7 +212,7 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
             .env("ProgramData",r"C:\ProgramData").env("ALLUSERSPROFILE",r"C:\ProgramData")
             .env("ProgramFiles",r"C:\Program Files").env("ProgramFiles(x86)",r"C:\Program Files (x86)")
             .env("ChocolateyInstall",r"C:\ProgramData\chocolatey")
-            .env("TEMP",r"C:\Windows\Temp").env("TMP",r"C:\Windows\Temp")
+            .env("TEMP", &private_temp).env("TMP", &private_temp)
             .env("USERPROFILE",r"C:\Windows\System32\config\systemprofile")
             .env("APPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
             .env("LOCALAPPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Local")
