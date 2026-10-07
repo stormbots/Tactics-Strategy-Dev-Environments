@@ -14,6 +14,23 @@ Windows results reported by the user on **2026-10-07** for **v1.1.5** (release c
 
 These results record the reported accessibility portions of step 2. Its other conditions and the remaining acceptance steps still require separate sign-off. Linux Mint keyboard navigation, scaling and Orca testing remain pending.
 
+## Recorded Linux Mint installation results
+
+Results reported by the user on **2026-10-07**, with logs confirming **Linux Mint 22.3 Cinnamon**, Ubuntu base **24.04**, **amd64**. The Linux backend identifies itself as **v1.1.0**; the supplied logs do not identify the GUI package version, release commit or package checksum.
+
+| Check | Linux Mint result | Evidence |
+|---|---|---|
+| GUI package installs | **PASS** | User-reported installation |
+| Repair completes with final validation | **PASS** | `repair-69e8cfa9-b80f-4f85-bf0d-392bd545ed2c.log`: 35 PASS, 0 WARN, 0 FAIL; reaches 100% / Development environment ready |
+| Required runtime families | **PASS** | Repair validation: Node.js v24.21.0, Python 3.14.8, working Python venv and project-local pip |
+| Editor configuration and extensions | **PASS** | Repair validation: baseline settings and all eight required VSCodium extensions present |
+| Development workspace exists | **PASS** | Repair validation: `/home/skyview/Development` exists; access/ownership still needs manual verification |
+| Weekly maintenance timer enabled and active | **PASS** | Repair validation; execution and persistence after reboot still need verification |
+
+The separate `validate-b932f989-827c-4052-b232-79932d5df1bd.log` records **16 PASS, 1 WARN, 12 FAIL** before repair (archive timestamp 14:27:32; repair begins at 14:27:50 and finishes around 14:32). Repair's final validation resolves those missing-tool, configuration and maintenance checks. The final validation summary has no warnings; the repair transcript also contains upstream APT CLI and VSCodium deprecation notices.
+
+These results confirm the reported package installation and logged repair checks. Full Linux acceptance still requires a separate unelevated Validate run after repair, keyboard navigation, 200% scaling, Orca, profile ownership/access, data preservation, reboot, an actual maintenance run and sign-off on the remaining procedure checks.
+
 ## Acceptance procedure
 
 1. Download the EXE/DEB and verify against `SHA256SUMS.txt`. Open the downloaded package graphically. Windows publisher/SmartScreen behavior must be evaluated because the initial build is unsigned; do not disable UAC or other security protections. Mint should use Software Installer, then show a working application menu entry and logo.
