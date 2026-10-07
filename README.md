@@ -13,7 +13,7 @@ Download your installer from the [1.1.5 release](https://github.com/stormbots/Ta
 
 In the app, click **Install Development Environment**, approve the system's administrator prompt, and keep the window open until validation finishes. No terminal commands, folder preparation, or manual validation are required.
 
-The first 1.1.5 release is a **mentor-testing prerelease**. Complete the [laptop acceptance test](docs/ACCEPTANCE-TEST.md) before deploying to the fleet. The application installers are currently unsigned; mentor testing should include Windows publisher/SmartScreen behavior. Signing is a release-operations follow-up, not a reason to disable operating-system protection.
+Version **1.1.5** has completed [manual acceptance testing](docs/ACCEPTANCE-TEST.md) on fresh Windows and Linux machines, with all checks reported as passing, including keyboard navigation, 200% scaling and Narrator/Orca. Stable promotion retains the tested installers and their checksums. The application installers are currently unsigned; Windows code signing remains a release-operations follow-up. Keep operating-system protections enabled.
 
 ## Manage a workstation
 
@@ -41,4 +41,4 @@ For mentor-led command-line setup, see [Windows manual instructions](windows/REA
 
 One Tauri 2 / React / Vite app orchestrates the existing PowerShell/Chocolatey and Bash/APT backends. See [architecture and security](docs/ARCHITECTURE.md), [build instructions](docs/BUILD.md), [maintenance](docs/maintenance.md), and [acceptance tests](docs/ACCEPTANCE-TEST.md).
 
-GitHub Actions tests the app and backends, builds native NSIS and DEB installers on their respective runners, verifies checksums, and publishes a single `v1.1.5` prerelease only when both packages succeed. Existing platform tags and published fallback assets are preserved.
+GitHub Actions tests the app and backends, builds native NSIS and DEB installers on their respective runners, verifies checksums, and initially publishes a prerelease only when both packages succeed. After manual acceptance and merge review, the tested release is promoted to stable without replacing its tag or assets. Existing platform tags and published fallback assets are preserved.

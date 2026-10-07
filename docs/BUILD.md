@@ -20,4 +20,6 @@ A `v1.1.*` tag triggers release publication. For the first release, creating the
 
 Patch releases use the same gate on `release/v1.1.*` branches: the tag comes from the branch suffix and notes from `docs/RELEASE-NOTES-<version>.md`. For example, `release/v1.1.1` creates a new immutable `v1.1.1` release after both native builds and all checks pass. Existing tags/assets are never replaced.
 
-The first release is for mentor testing. Complete `ACCEPTANCE-TEST.md` before marking it stable. Code-signing/notarization credentials are not added to the repository; Windows code signing should be configured through protected CI secrets when available.
+New releases are initially published for mentor testing. Complete `ACCEPTANCE-TEST.md` and merge the reviewed implementation before marking a tested release stable. Promote the existing GitHub release by clearing its prerelease status and marking it latest, then update its notes with acceptance evidence. Preserve the existing tag, installers and checksum asset so users receive the exact binaries that passed acceptance; do not rerun release publication or replace assets for promotion. Version 1.1.5 completed manual acceptance on fresh Windows and Linux machines on 2026-10-07.
+
+Code-signing/notarization credentials are not added to the repository; Windows code signing should be configured through protected CI secrets when available.

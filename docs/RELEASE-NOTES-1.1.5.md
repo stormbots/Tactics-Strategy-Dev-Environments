@@ -8,4 +8,8 @@ The Windows backend package is 1.1.5 so the task-permission helper and revised v
 
 Windows CI reproduces the access-denied failure with a temporary standard account and a harmless task, applies the permission fix, checks enabled/disabled/missing results, and verifies that the account cannot execute the SYSTEM task or change its permissions. Full system provisioning then verifies the real maintenance task from a standard-user process. Machine-changing tests run only on disposable GitHub runners.
 
-Follow the Windows installer's update/reinstall flow, relaunch Skyview Dev Setup, and run **Repair** once to update the existing task's permissions. Then run **Validate**; all installed software can be reused. Updating the application alone does not change the task. This remains an unsigned mentor-testing prerelease requiring physical-laptop and assistive-technology acceptance testing.
+Follow the Windows installer's update/reinstall flow, relaunch Skyview Dev Setup, and run **Repair** once to update the existing task's permissions. Then run **Validate**; all installed software can be reused. Updating the application alone does not change the task.
+
+Manual acceptance was completed on fresh Windows and Linux machines on **2026-10-07**, with all checks reported as passing. This includes installation, validation, keyboard navigation, 200% scaling, Narrator/Orca, repair and data preservation, reboot, updates and maintenance. See the [acceptance record](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/main/docs/ACCEPTANCE-TEST.md) for the test procedure and evidence.
+
+Stable promotion retains the existing **v1.1.5** tag at `ec58ad147a938f6f596632691b3b3ce46724425b` and the tested installer assets; no rebuild is required. Verify downloads against the attached `SHA256SUMS.txt`. The Windows installer remains unsigned; code signing is a release-operations follow-up. Keep operating-system protections enabled.
