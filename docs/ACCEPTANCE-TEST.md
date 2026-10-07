@@ -1,6 +1,20 @@
-# Mentor laptop acceptance test — 1.1.0
+# Mentor laptop acceptance test � 1.1.5
 
 Use one expendable/test Windows 11 x64 laptop and one Linux Mint Cinnamon 22.x amd64 laptop. Back up student projects first. Record laptop model, OS version, release commit, checksums and results. Do not test provisioning on a mentor's primary workstation.
+
+## Recorded accessibility results
+
+Windows results reported by the user on **2026-10-07** for **v1.1.5** (release commit `ec58ad147a938f6f596632691b3b3ce46724425b`):
+
+| Check | Windows result | Evidence |
+|---|---|---|
+| Keyboard navigation | **PASS** | User-reported manual test |
+| 200% scaling | **PASS** | User-reported manual test |
+| Narrator | **PASS** | User-reported manual test |
+
+These results record the reported accessibility portions of step 2. Its other conditions and the remaining acceptance steps still require separate sign-off. Linux Mint keyboard navigation, scaling and Orca testing remain pending.
+
+## Acceptance procedure
 
 1. Download the EXE/DEB and verify against `SHA256SUMS.txt`. Open the downloaded package graphically. Windows publisher/SmartScreen behavior must be evaluated because the initial build is unsigned; do not disable UAC or other security protections. Mint should use Software Installer, then show a working application menu entry and logo.
 2. Launch as a normal student user. Confirm the detected OS and real tool statuses. Use Tab/Shift+Tab/Enter to reach every operation and Show details/Advanced. Confirm visible focus, readable text at 200% scaling, and no content loss at narrow window sizes. Check headings, buttons, validation table, progress and result announcements with Narrator or Orca.
