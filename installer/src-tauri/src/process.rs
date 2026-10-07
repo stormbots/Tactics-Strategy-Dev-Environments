@@ -113,9 +113,9 @@ mod tests {
             "chocolatey/tools/Test-SkyviewStudentDev.ps1",
         );
         assert_eq!(
-            c.get_args().last().unwrap(),
-            std::ffi::OsStr::new(
-                r"C:\Program Files\Skyview Dev Setup\backend\windows\chocolatey/tools/Test-SkyviewStudentDev.ps1"
+            Path::new(c.get_args().last().unwrap()),
+            Path::new(
+                r"C:\Program Files\Skyview Dev Setup\backend\windows\chocolatey\tools\Test-SkyviewStudentDev.ps1"
             )
         );
         assert_eq!(
