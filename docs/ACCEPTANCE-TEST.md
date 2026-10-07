@@ -1,4 +1,4 @@
-# Mentor laptop acceptance test � 1.1.5
+# Mentor laptop acceptance test — 1.1.5
 
 Use one expendable/test Windows 11 x64 laptop and one Linux Mint Cinnamon 22.x amd64 laptop. Back up student projects first. Record laptop model, OS version, release commit, checksums and results. Do not test provisioning on a mentor's primary workstation.
 
