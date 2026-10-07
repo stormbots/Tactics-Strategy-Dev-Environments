@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SKYVIEW_VERSION="1.0.1"
+SKYVIEW_VERSION="1.1.0"
 SKYVIEW_NAME="Skyview Robotics Student Dev Environment"
 SKYVIEW_ETC="/etc/skyview-robotics/student-dev"
 SKYVIEW_LIB="/usr/local/lib/skyview-student-dev"
@@ -10,9 +10,11 @@ SKYVIEW_STATE="/var/lib/skyview-robotics/student-dev"
 SKYVIEW_LOG_DIR="/var/log/skyview-robotics/student-dev"
 PYCHARM_API='https://data.services.jetbrains.com/products/releases?code=PCP&latest=true&type=release'
 
+# Stable protocol: type, key/percentage, and escaped one-line description.
+event() { printf 'SKYVIEW_EVENT|%s|%s|%s\n' "$1" "$2" "${3//$'\n'/ }"; }
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
-warn() { printf '[%s] WARNING: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; }
-die() { printf '[%s] ERROR: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; exit 1; }
+warn() { event warning provisioning "$*" >&2; printf '[%s] WARNING: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; }
+die() { event error provisioning "$*" >&2; printf '[%s] ERROR: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; exit 1; }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
@@ -78,7 +80,7 @@ install_pycharm_latest() {
   actual="$(sha256sum "$archive" | awk '{print $1}')"
   [[ "${actual,,}" == "${expected,,}" ]] || die "PyCharm checksum verification failed."
 
-  rm -rf "$install_dir"
+  [[ ! -e "$install_dir" ]] || die "Existing PyCharm directory is incomplete; mentor review required: $install_dir"
   mkdir -p "$install_dir"
   tar -xzf "$archive" -C "$install_dir" --strip-components=1
   [[ -x "$install_dir/bin/pycharm" ]] || die "PyCharm archive did not contain the expected launcher."
@@ -99,7 +101,6 @@ Categories=Development;IDE;
 StartupWMClass=jetbrains-pycharm
 DESKTOP
 
-  find /opt -maxdepth 1 -mindepth 1 -type d -name 'pycharm-*' ! -path "$install_dir" -print0 2>/dev/null | xargs -0r rm -rf
   log "Installed PyCharm ${version}."
   rm -rf "$tmpdir"
   trap - RETURN

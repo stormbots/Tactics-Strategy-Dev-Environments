@@ -1,10 +1,14 @@
+param([switch]$SystemOnly, [switch]$Repair)
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = [Console]::OutputEncoding
 # Skyview Robotics Windows 11 development workstation bootstrap
 # Run from an elevated Windows PowerShell prompt while logged in to the shared local-admin account.
 
 $ErrorActionPreference = 'Stop'
 
-$PackageVersion = '1.0.1'
-$ExpectedSetupRoot = 'C:\SkyviewRobotics\DevSetup'
+$PackageVersion = '1.1.0'
+function Write-SkyviewEvent($Type, $Key, $Message) { Write-Host ('SKYVIEW_EVENT|{0}|{1}|{2}' -f $Type,$Key,($Message -replace '[\r\n]', ' ')) }
+$env:SKYVIEW_SYSTEM_ONLY = if ($SystemOnly) { '1' } else { '0' }
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'
 
 function Write-Phase {
@@ -14,6 +18,7 @@ function Write-Phase {
         [string]$Message
     )
 
+    Write-SkyviewEvent progress ([int](($Number - 1) * 18 + 5)) $Message
     Write-Host ''
     Write-Host ("[{0}/{1}] {2}" -f $Number, $Total, $Message) -ForegroundColor Cyan
 }
@@ -132,12 +137,6 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 Write-Host 'Administrator privileges: OK' -ForegroundColor Green
 
-$actualSetupRoot = [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')
-if (-not $actualSetupRoot.Equals($ExpectedSetupRoot, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Extract the complete development package to $ExpectedSetupRoot, then run the installer from that folder. Current folder: $actualSetupRoot"
-}
-Write-Host "Deployment location: $ExpectedSetupRoot" -ForegroundColor Green
-
 Write-Phase 2 5 'Checking Chocolatey package manager...'
 if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
     Write-Host 'Chocolatey is not installed. Installing it now...'
@@ -157,12 +156,15 @@ Write-Host 'This is the longest phase.'
 Write-Host 'Already-installed packages will be skipped or reused.'
 
 $chocoArgs = @(
-    'install',
+    'upgrade',
     'skyview-student-dev',
     '--version', $PackageVersion,
-    "--source=$source",
+    "--source=`"$source`"",
     '-y'
 )
+# Rerun the small configuration package even when already current. Installed
+# dependencies remain managed by Chocolatey rather than reinstalling everything.
+$chocoArgs += '--force'
 $exit = Invoke-ChocolateyWithHeartbeat -Arguments $chocoArgs -HeartbeatSeconds 20
 
 if ($exit -notin @(0,1605,1614,1641,3010)) {
@@ -180,6 +182,7 @@ try {
     Install-GoogleChrome
 }
 catch {
+    Write-SkyviewEvent warning chrome $_.Exception.Message
     Write-Warning "Google Chrome could not be installed automatically: $($_.Exception.Message)"
     Write-Warning 'The core development environment will remain installed. Chrome can be installed manually and the installer rerun later.'
 }
@@ -192,3 +195,4 @@ Write-Host 'Then validate the workstation with:'
 Write-Host '  powershell -ExecutionPolicy Bypass -File C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1'
 Write-Host ''
 Write-Host 'This installer is designed to be rerun safely after a partial or interrupted installation.'
+

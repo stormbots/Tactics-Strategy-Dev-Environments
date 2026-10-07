@@ -1,11 +1,7 @@
 name: Publish Linux Mint Student Dev Environment 1.0.1
 
+# Frozen fallback. Build only from the immutable v1.0.1 tag, never current main.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/publish-linux-v1.0.1.yml
   workflow_dispatch:
 
 permissions:
@@ -21,6 +17,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: linux-v1.0.1
 
       - name: Build and verify deployment package
         shell: bash
@@ -85,8 +83,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "dist/$ASSET" dist/SHA256SUMS.txt --clobber
-            gh release edit "$TAG"               --title "Linux Mint Student Dev Environment 1.0.1"               --notes-file dist/RELEASE_NOTES.md
+            echo "Existing stable release is preserved."
+            exit 0
           else
             gh release create "$TAG"               "dist/$ASSET"               dist/SHA256SUMS.txt               --target "$GITHUB_SHA"               --title "Linux Mint Student Dev Environment 1.0.1"               --notes-file dist/RELEASE_NOTES.md
           fi
