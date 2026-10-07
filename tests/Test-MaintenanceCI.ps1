@@ -39,6 +39,7 @@ if ($DenyControl) {
     }
 }
 Write-Output 'STANDARD_USER_TASK_CHECK_OK'
+exit 0
 '@ | Set-Content -LiteralPath $probe -Encoding UTF8
 $password = ConvertTo-SecureString ("Ci!" + [guid]::NewGuid().ToString('N') + 'aA7') -AsPlainText -Force
 $credential = New-Object Management.Automation.PSCredential("$env:COMPUTERNAME\$userName",$password)
@@ -48,11 +49,15 @@ function Invoke-StandardUserProbe($Name,$Status,$Message,[switch]$DenyControl) {
     $arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$probe`" -TaskName `"$Name`" -ExpectedStatus $Status -ExpectedMessage `"$Message`""
     if ($DenyControl) { $arguments += ' -DenyControl' }
     $process = Start-Process -FilePath 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    [void]$process.Handle
     if (-not $process.WaitForExit(45000)) { $process.Kill(); throw 'Standard-user task probe timed out.' }
-    $process.Refresh()
+    $exitCode = $process.ExitCode
     $output = Get-Content -LiteralPath $stdout -Raw
-    if ($process.ExitCode -ne 0 -or $output -notmatch 'STANDARD_USER_TASK_CHECK_OK') {
-        throw "Standard-user task probe failed: $output $(Get-Content -LiteralPath $stderr -Raw)"
+    # Windows PowerShell 5.1 can leave ExitCode null for credentialed children.
+    # The marker is emitted only after every assertion; all reported nonzero
+    # exit codes and missing markers still fail the test.
+    if (($null -ne $exitCode -and $exitCode -ne 0) -or $output -notmatch '(?m)^STANDARD_USER_TASK_CHECK_OK\s*$') {
+        throw "Standard-user task probe failed (exit $exitCode): $output $(Get-Content -LiteralPath $stderr -Raw)"
     }
     Write-Host $output
 }
