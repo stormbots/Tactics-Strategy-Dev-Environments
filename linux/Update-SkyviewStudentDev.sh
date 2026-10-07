@@ -18,11 +18,6 @@ mkdir -p "$SKYVIEW_LOG_DIR"
 LOG_FILE="$SKYVIEW_LOG_DIR/update-$(date '+%Y%m%d-%H%M%S').log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-TARGET_USER="$(cat "$SKYVIEW_ETC/target-user" 2>/dev/null || true)"
-TARGET_HOME="$(cat "$SKYVIEW_ETC/target-home" 2>/dev/null || true)"
-
-
-
 log "$SKYVIEW_NAME updater v$SKYVIEW_VERSION"
 check_supported_mint >/dev/null
 

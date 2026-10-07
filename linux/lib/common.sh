@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SKYVIEW_VERSION="1.1.0"
-SKYVIEW_NAME="Skyview Robotics Student Dev Environment"
-SKYVIEW_ETC="/etc/skyview-robotics/student-dev"
-SKYVIEW_LIB="/usr/local/lib/skyview-student-dev"
-SKYVIEW_SHARE="/usr/local/share/skyview-robotics/student-dev"
-SKYVIEW_STATE="/var/lib/skyview-robotics/student-dev"
-SKYVIEW_LOG_DIR="/var/log/skyview-robotics/student-dev"
+export SKYVIEW_VERSION="1.1.0"
+export SKYVIEW_NAME="Skyview Robotics Student Dev Environment"
+export SKYVIEW_ETC="/etc/skyview-robotics/student-dev"
+export SKYVIEW_LIB="/usr/local/lib/skyview-student-dev"
+export SKYVIEW_SHARE="/usr/local/share/skyview-robotics/student-dev"
+export SKYVIEW_STATE="/var/lib/skyview-robotics/student-dev"
+export SKYVIEW_LOG_DIR="/var/log/skyview-robotics/student-dev"
 PYCHARM_API='https://data.services.jetbrains.com/products/releases?code=PCP&latest=true&type=release'
 
 # Stable protocol: type, key/percentage, and escaped one-line description.

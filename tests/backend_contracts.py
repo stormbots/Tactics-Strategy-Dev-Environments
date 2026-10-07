@@ -23,7 +23,7 @@ class Backends(unittest.TestCase):
             self.assertNotIn('gh auth login',self.text(p))
     def test_privileged_interface(self):
         rust=self.text('installer/src-tauri/src/process.rs')
-        self.assertIn('["install","repair","update"]',rust)
+        self.assertIn('["install","repair","update"]',re.sub(r'\s+', '', rust))
         self.assertIn('parse_str(session)',rust)
         self.assertIn('debug_assertions',rust)
         self.assertIn('env_clear()',rust)

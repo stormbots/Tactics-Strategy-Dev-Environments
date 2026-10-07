@@ -187,7 +187,7 @@ fi
 REPO_FILE="$SKYVIEW_ETC/repositories.csv"
 [[ -f "$REPO_FILE" ]] || REPO_FILE="$SCRIPT_DIR/repositories.csv"
 if [[ -f "$REPO_FILE" ]]; then
-  while IFS=, read -r name url branch enabled; do
+  while IFS=, read -r name _url _branch enabled; do
     name="${name//\r/}"; enabled="${enabled//\r/}"
     [[ -z "$name" ]] && continue
     case "${enabled,,}" in
