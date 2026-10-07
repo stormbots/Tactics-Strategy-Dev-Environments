@@ -195,10 +195,23 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
         }
         _ => unreachable!(),
     };
+    cmd.current_dir(&backend);
     // Privileged commands use a system-only search path and no user startup code.
     #[cfg(windows)]
     {
-        cmd.env("PATH",r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd");
+        cmd.env_clear()
+            .env("PATH",r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd")
+            .env("SystemRoot",r"C:\Windows").env("WINDIR",r"C:\Windows")
+            .env("ComSpec",r"C:\Windows\System32\cmd.exe")
+            .env("ProgramData",r"C:\ProgramData").env("ALLUSERSPROFILE",r"C:\ProgramData")
+            .env("ProgramFiles",r"C:\Program Files").env("ProgramFiles(x86)",r"C:\Program Files (x86)")
+            .env("ChocolateyInstall",r"C:\ProgramData\chocolatey")
+            .env("TEMP",r"C:\Windows\Temp").env("TMP",r"C:\Windows\Temp")
+            .env("USERPROFILE",r"C:\Windows\System32\config\systemprofile")
+            .env("APPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
+            .env("LOCALAPPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Local")
+            .env("PSModulePath",r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules")
+            .env("PATHEXT",".COM;.EXE;.BAT;.CMD").env("PROCESSOR_ARCHITECTURE","AMD64");
     }
     #[cfg(unix)]
     {
@@ -266,19 +279,21 @@ pub fn elevated(
             .join("operation-logs")
             .join(format!("{session}.log"));
         let mut offset = 0;
-        let mut pending = String::new();
+        let mut pending = Vec::new();
         let mut helper_exit = None;
         loop {
             if let Ok(mut file) = std::fs::File::open(&log) {
                 file.seek(SeekFrom::Start(offset))
                     .map_err(|e| e.to_string())?;
-                let mut chunk = String::new();
-                file.read_to_string(&mut chunk).map_err(|e| e.to_string())?;
+                let mut chunk = Vec::new();
+                file.read_to_end(&mut chunk).map_err(|e| e.to_string())?;
                 offset += chunk.len() as u64;
-                pending.push_str(&chunk);
-                while let Some(end) = pending.find('\n') {
-                    let line = pending[..end].trim_end_matches('\r').to_string();
-                    pending.drain(..=end);
+                pending.extend(chunk);
+                while let Some(end) = pending.iter().position(|b| *b == b'\n') {
+                    let bytes: Vec<_> = pending.drain(..=end).collect();
+                    let line = String::from_utf8_lossy(&bytes)
+                        .trim_end_matches(['\r', '\n'])
+                        .to_owned();
                     if let Some(n) = line.strip_prefix("SKYVIEW_HELPER_EXIT|") {
                         helper_exit = n.parse::<i32>().ok();
                     } else {
@@ -297,7 +312,8 @@ pub fn elevated(
                 // One final iteration drains data written between the read and exit.
                 if log.exists() {
                     let text = std::fs::read_to_string(&log).map_err(|e| e.to_string())?;
-                    for line in text[offset as usize..].lines() {
+                    for line in String::from_utf8_lossy(&text.as_bytes()[offset as usize..]).lines()
+                    {
                         if let Some(n) = line.strip_prefix("SKYVIEW_HELPER_EXIT|") {
                             helper_exit = n.parse::<i32>().ok();
                         } else {

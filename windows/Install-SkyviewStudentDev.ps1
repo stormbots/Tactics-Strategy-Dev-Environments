@@ -147,7 +147,8 @@ if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
     Write-Host 'Chocolatey is already installed.' -ForegroundColor Green
 }
 
-$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
+if (-not $SystemOnly) { $env:Path += ';' + [Environment]::GetEnvironmentVariable('Path','User') }
 $local = $PSScriptRoot
 $source = "$local;https://community.chocolatey.org/api/v2/"
 

@@ -1,7 +1,7 @@
 name: Build Skyview Dev Setup
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/v1.1.0']
     tags: ['v1.1.*']
   pull_request:
   workflow_dispatch:
@@ -123,7 +123,7 @@ jobs:
           if-no-files-found: error
   release:
     needs: [checks, native]
-    if: startsWith(github.ref, 'refs/tags/v1.1.')
+    if: startsWith(github.ref, 'refs/tags/v1.1.') || github.ref == 'refs/heads/release/v1.1.0'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -148,9 +148,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          if [ "$GITHUB_REF" = refs/heads/release/v1.1.0 ]; then
+            tag=v1.1.0
+            if existing=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null); then
+              test "$existing" = "$GITHUB_SHA"
+            else
+              gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$GITHUB_SHA"
+            fi
+          fi
+          gh release create "$tag" \
             dist/Skyview-Dev-Setup-Windows-x64.exe \
             dist/Skyview-Dev-Setup-LinuxMint-amd64.deb dist/SHA256SUMS.txt \
             --verify-tag --prerelease \
-            --title "Skyview Student Development Environment ${GITHUB_REF_NAME#v}" \
+            --title "Skyview Student Development Environment ${tag#v}" \
             --notes-file docs/RELEASE-NOTES-1.1.0.md

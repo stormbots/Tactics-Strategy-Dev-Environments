@@ -14,6 +14,8 @@ The backend remains one provisioning implementation per platform. Linux splits e
 
 **Linux:** the app invokes `/usr/bin/pkexec` on its own executable with the same narrow helper arguments. The desktop PolicyKit agent provides the graphical authentication dialog. The helper requires root, validates the packaged executable/resources are root-owned and not group/world-writable or symbolic links, clears the inherited environment, and uses a system-only PATH. It runs the same Bash installer with `--system-only` or the managed updater. No student home/user arguments are accepted by the privileged interface. The original GUI account then runs profile configuration and validation with its normal HOME. The entire webview remains unelevated. Mint's existing PolicyKit agent is required; no custom permissive policy is installed.
 
+Both privileged platforms clear inherited user environment variables and use system-only executable/module search paths. Windows system provisioning uses a neutral system profile for installer caches, while the original GUI account owns subsequent profile work. Native byte output is decoded safely and protected-log polling waits for complete lines, including UTF-8 split across writes.
+
 The app prevents normal window closure while a process is active. There is no mid-package cancellation button because forcibly terminating a package transaction can damage the package database. If the process or machine crashes, preserve the logs and use Repair; package-manager recovery may require mentor help.
 
 ## Protocol, logs, and failures
