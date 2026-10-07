@@ -50,3 +50,14 @@ yarn-error.log*
 dist/
 build/
 coverage/
+
+installer/node_modules/
+installer/dist/
+installer/src-tauri/target/
+installer/src-tauri/gen/
+windows/*.nupkg
+dist/
+__pycache__/
+installer/test-results/
+installer/playwright-report/
+installer/tsconfig.tsbuildinfo

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Skyview Development Environment Setup
+Comment=Install, repair, validate and update your student development tools
+Exec=skyview-dev-setup
+Icon=skyview-dev-setup
+Terminal=false
+Categories=Development;Education;

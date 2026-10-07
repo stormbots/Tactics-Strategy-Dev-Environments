@@ -6,33 +6,8 @@ $Log = Join-Path $LogDir ("AutoUpdate-{0:yyyyMMdd-HHmmss}.log" -f (Get-Date))
 Start-Transcript -Path $Log -Force | Out-Null
 
 try {
-    $Chocolatey = 'C:\ProgramData\chocolatey\bin\choco.exe'
-    if (-not (Test-Path $Chocolatey)) { throw 'Chocolatey executable not found.' }
+    & (Join-Path $PSScriptRoot 'Update-SkyviewTools.ps1')
 
-    # Node.js is intentionally excluded. It is pinned and mentor-controlled.
-    # Python is kept on the python314 package family so patch/security updates
-    # stay within the standardized Python 3.14 runtime.
-    $Packages = @(
-        'chocolatey',
-        'git',
-        'gh',
-        'python314',
-        'vscodium',
-        'dbeaver',
-        'pycharm',
-        'powershell-core',
-        '7zip'
-    )
-
-    foreach ($Package in $Packages) {
-        Write-Host "Updating $Package..."
-        & $Chocolatey upgrade $Package -y --no-progress
-        if ($LASTEXITCODE -notin @(0, 1605, 1614, 1641, 3010)) {
-            Write-Warning "$Package update returned exit code $LASTEXITCODE"
-        }
-    }
-
-    Write-Host 'Automatic Skyview tool update complete.'
 }
 finally {
     Stop-Transcript | Out-Null

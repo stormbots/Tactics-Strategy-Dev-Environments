@@ -1,8 +1,13 @@
 # Skyview Robotics Linux Mint Student Development Package
 
-**Version:** 1.0.1  
-**Target:** Linux Mint Cinnamon student development laptops  
-**Primary baseline:** Linux Mint 22.x (Ubuntu 24.04/Noble package base)  
+For normal student installation, use the [graphical installer](../README.md).
+The ZIP instructions below document the **stable v1.0.1 manual fallback**.
+Current source is version 1.1.0 and retains the same manual Bash entry points.
+The GUI's supported target is Mint Cinnamon 22.x amd64.
+
+**Version:** 1.0.1
+**Target:** Linux Mint Cinnamon student development laptops
+**Primary baseline:** Linux Mint 22.x (Ubuntu 24.04/Noble package base)
 **Also supported by the installer:** Linux Mint 21.x (Ubuntu 22.04/Jammy package base)
 
 This package is the Linux Mint counterpart to `Skyview-Windows-Dev-Package-v1.0.1`. It intentionally keeps the two environments as close as practical while respecting Linux packaging conventions and Linux Mint's defaults.

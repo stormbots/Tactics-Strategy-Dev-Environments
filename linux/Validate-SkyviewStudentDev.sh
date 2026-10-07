@@ -2,14 +2,12 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f /usr/local/lib/skyview-student-dev/common.sh ]]; then
-  # shellcheck source=/usr/local/lib/skyview-student-dev/common.sh
-  source /usr/local/lib/skyview-student-dev/common.sh
-else
+if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
   # shellcheck source=lib/common.sh
   source "$SCRIPT_DIR/lib/common.sh"
-  # common.sh enables -e; validation must collect all results instead.
-  set +e
+else
+  # shellcheck source=/usr/local/lib/skyview-student-dev/common.sh
+  source /usr/local/lib/skyview-student-dev/common.sh
 fi
 set +e
 
@@ -17,15 +15,19 @@ PASS_COUNT=0
 WARN_COUNT=0
 FAIL_COUNT=0
 
-pass() { printf 'PASS  %s\n' "$*"; PASS_COUNT=$((PASS_COUNT+1)); }
-warnv() { printf 'WARN  %s\n' "$*"; WARN_COUNT=$((WARN_COUNT+1)); }
-fail() { printf 'FAIL  %s\n' "$*"; FAIL_COUNT=$((FAIL_COUNT+1)); }
-info() { printf 'INFO  %s\n' "$*"; }
+pass() { event validation PASS "$*"; printf 'PASS  %s\n' "$*"; PASS_COUNT=$((PASS_COUNT+1)); }
+warnv() { event validation WARNING "$*"; printf 'WARN  %s\n' "$*"; WARN_COUNT=$((WARN_COUNT+1)); }
+fail() { event validation FAIL "$*"; printf 'FAIL  %s\n' "$*"; FAIL_COUNT=$((FAIL_COUNT+1)); }
+info() { event validation INFO "$*"; printf 'INFO  %s\n' "$*"; }
 
 check_command() {
   local cmd="$1" label="${2:-$1}"
   if command -v "$cmd" >/dev/null 2>&1; then
-    pass "$label found: $(command -v "$cmd")"
+    local version=""
+    case "$cmd" in
+      git|node|npm|gh|pwsh|python3.14) version="$("$cmd" --version 2>/dev/null | head -n1)" ;;
+    esac
+    pass "$label${version:+: $version}"
   else
     fail "$label not found"
   fi
@@ -51,8 +53,8 @@ else
   warnv "Cinnamon desktop session not detected in this shell"
 fi
 
-TARGET_USER="$(cat "$SKYVIEW_ETC/target-user" 2>/dev/null || printf '%s' "${USER:-}")"
-TARGET_HOME="$(cat "$SKYVIEW_ETC/target-home" 2>/dev/null || printf '%s' "${HOME:-}")"
+TARGET_USER="$(id -un)"
+TARGET_HOME="$HOME"
 [[ -n "$TARGET_HOME" ]] || TARGET_HOME="$HOME"
 info "Configured student/shared user: ${TARGET_USER:-unknown} (${TARGET_HOME:-unknown})"
 
@@ -114,7 +116,7 @@ if command -v git >/dev/null 2>&1; then
   if [[ -z "$GIT_NAME" && -z "$GIT_EMAIL" ]]; then
     info "Git user identity is intentionally unset"
   else
-    info "Git identity is configured locally: ${GIT_NAME:-<no name>} / ${GIT_EMAIL:-<no email>}"
+    info "Git identity is configured locally"
   fi
 fi
 
@@ -185,7 +187,7 @@ fi
 REPO_FILE="$SKYVIEW_ETC/repositories.csv"
 [[ -f "$REPO_FILE" ]] || REPO_FILE="$SCRIPT_DIR/repositories.csv"
 if [[ -f "$REPO_FILE" ]]; then
-  while IFS=, read -r name url branch enabled; do
+  while IFS=, read -r name _url _branch enabled; do
     name="${name//\r/}"; enabled="${enabled//\r/}"
     [[ -z "$name" ]] && continue
     case "${enabled,,}" in
@@ -201,8 +203,20 @@ if [[ -f "$REPO_FILE" ]]; then
 fi
 
 printf '%s\n' "------------------------------------------------------------"
+if [[ "${1:-}" == "--check-updates" ]]; then
+  for package in git gh nodejs codium dbeaver-ce firefox powershell python3.14 python3.14-venv openssh-client p7zip-full google-chrome-stable; do
+    current="$(dpkg-query -W -f='${Version}' "$package" 2>/dev/null)"
+    candidate="$(apt-cache policy "$package" 2>/dev/null | awk '/Candidate:/ {print $2}')"
+    [[ -n "$current" && -n "$candidate" && "$candidate" != '(none)' ]] || continue
+    [[ "$package" != nodejs || "$candidate" =~ ^24\. ]] || continue
+    if dpkg --compare-versions "$candidate" gt "$current"; then
+      event update available "$package: $current to $candidate"
+    fi
+  done
+fi
 printf 'RESULT: %d PASS, %d WARN, %d FAIL\n' "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 
+event summary "$FAIL_COUNT" "$PASS_COUNT passed; $WARN_COUNT warnings; $FAIL_COUNT failed"
 if (( FAIL_COUNT > 0 )); then
   exit 1
 fi

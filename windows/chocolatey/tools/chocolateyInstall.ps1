@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $Skyview = 'C:\ProgramData\SkyviewRobotics'
 $Logs = Join-Path $Skyview 'Logs'
 $Tools = Split-Path -Parent $MyInvocation.MyCommand.Definition
+. (Join-Path $Tools 'ScheduledMaintenance.ps1')
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'
 $ConfigStages = 10
 
@@ -13,6 +14,8 @@ function Invoke-ConfigStage {
         [scriptblock]$Action
     )
 
+    Write-Host ("SKYVIEW_EVENT|phase|config-{0}|{1}" -f $Number,$Name)
+    if ($env:SKYVIEW_SYSTEM_ONLY -eq '1' -and $Number -in @(5,9)) { return }
     Write-Host ("[Config {0}/{1}] {2}..." -f $Number, $ConfigStages, $Name) -ForegroundColor Cyan
     try {
         & $Action
@@ -30,7 +33,11 @@ Write-Host 'Configuring Skyview Robotics Windows development workstation...'
 Invoke-ConfigStage 1 'Creating Skyview and development directories' {
     New-Item -ItemType Directory -Path $Skyview -Force | Out-Null
     New-Item -ItemType Directory -Path $Logs -Force | Out-Null
-    New-Item -ItemType Directory -Path 'C:\Development' -Force | Out-Null
+    if (-not (Test-Path 'C:\Development')) {
+        New-Item -ItemType Directory -Path 'C:\Development' | Out-Null
+        & icacls.exe 'C:\Development' /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not grant students access to their Development folder.' }
+    }
 }
 
 Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
@@ -38,12 +45,19 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'AutoUpdate-SkyviewTools.ps1',
         'Update-SkyviewTools.ps1',
         'Update-Node24.ps1',
+        'Node24.ps1',
         'Setup-SkyviewRepositories.ps1',
         'Test-SkyviewStudentDev.ps1',
+        'Validate-SkyviewEnvironment.ps1',
+        'ScheduledMaintenance.ps1',
+        'Configure-SkyviewUser.ps1',
         'extensions.txt',
+        'settings.json',
         'repositories.csv'
     )) {
-        Copy-Item (Join-Path $Tools $file) (Join-Path $Skyview $file) -Force
+        if ($file -ne 'repositories.csv' -or -not (Test-Path (Join-Path $Skyview $file))) {
+            Copy-Item (Join-Path $Tools $file) (Join-Path $Skyview $file) -Force
+        }
     }
 }
 
@@ -85,8 +99,11 @@ Invoke-ConfigStage 6 'Ensuring the Windows OpenSSH client is installed' {
 Invoke-ConfigStage 7 'Applying team Git defaults' {
     if (Get-Command git.exe -ErrorAction SilentlyContinue) {
         git config --system core.longpaths true
-        git config --global init.defaultBranch main
-        git config --global fetch.prune true
+        if ($env:SKYVIEW_SYSTEM_ONLY -ne '1') {
+            git config --global init.defaultBranch main
+            git config --global fetch.prune true
+            git config --global pull.ff only
+        }
     }
 }
 
@@ -145,7 +162,9 @@ Invoke-ConfigStage 9 'Configuring VSCodium and standard extensions' {
 
     $settingsDir = Join-Path $env:APPDATA 'VSCodium\User'
     New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
-    Copy-Item (Join-Path $Tools 'settings.json') (Join-Path $settingsDir 'settings.json') -Force
+    if (-not (Test-Path (Join-Path $settingsDir 'settings.json'))) {
+        Copy-Item (Join-Path $Tools 'settings.json') (Join-Path $settingsDir 'settings.json')
+    }
 }
 
 Invoke-ConfigStage 10 'Registering weekly development-tool updates' {
@@ -155,6 +174,7 @@ Invoke-ConfigStage 10 'Registering weekly development-tool updates' {
     $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 3:00am
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null
+    Set-SkyviewMaintenanceReadAccess -TaskName $taskName
 }
 
 Write-Host ''

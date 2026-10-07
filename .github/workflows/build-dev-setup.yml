@@ -1,0 +1,167 @@
+name: Build Skyview Dev Setup
+on:
+  push:
+    branches: [main, 'release/v1.1.*']
+    tags: ['v1.1.*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: dev-setup-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
+      - run: npm ci && npm test && npm run build && npm audit --audit-level=high
+        working-directory: installer
+      - name: Bash static analysis and integrity
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck --external-sources --severity=warning linux/*.sh linux/lib/*.sh
+          python3 tests/backend_contracts.py
+          cd linux
+          sha256sum --check SHA256SUMS
+      - name: Validate Actions definitions
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
+      - name: Browser accessibility and interaction checks
+        working-directory: installer
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:browser
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-verification
+          path: installer/test-results/
+          if-no-files-found: error
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            bundle: nsis
+            asset: Skyview-Dev-Setup-Windows-x64.exe
+          - os: ubuntu-24.04
+            bundle: deb
+            asset: Skyview-Dev-Setup-LinuxMint-amd64.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: installer/src-tauri -> target
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Package the existing Chocolatey backend
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco pack windows/chocolatey/skyview-student-dev.nuspec --outputdirectory windows
+          if ($LASTEXITCODE -ne 0) { throw 'Chocolatey packaging failed.' }
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $errors = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error
+          if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
+          ./tests/Test-BackendContracts.ps1
+          ./tests/Test-MaintenanceCI.ps1
+      - run: npm ci
+        working-directory: installer
+      - name: Rust tests
+        run: cargo test --locked
+        working-directory: installer/src-tauri
+      - name: Build native installer
+        run: npm run tauri build -- --bundles ${{ matrix.bundle }}
+        working-directory: installer
+      - name: Verify package contents and stage release asset
+        shell: bash
+        env:
+          BUNDLE: ${{ matrix.bundle }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          mapfile -t packages < <(find installer/src-tauri/target/release/bundle/"$BUNDLE" -maxdepth 1 -type f \( -name '*.exe' -o -name '*.deb' \))
+          test "${#packages[@]}" = 1
+          test -s "${packages[0]}"
+          cp "${packages[0]}" "dist/$ASSET"
+          if [ "$BUNDLE" = deb ]; then
+            dpkg-deb --info "dist/$ASSET"
+            dpkg-deb --contents "dist/$ASSET" > dist/package-contents.txt
+            cat dist/package-contents.txt
+            grep -q 'usr/bin/skyview-dev-setup' dist/package-contents.txt
+            grep -Fq 'usr/lib/Skyview Dev Setup/backend/linux/Install-SkyviewStudentDev.sh' dist/package-contents.txt
+          fi
+          cd dist
+          sha256sum "$ASSET" > "$ASSET.sha256"
+          sha256sum --check "$ASSET.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: |
+            dist/${{ matrix.asset }}
+            dist/${{ matrix.asset }}.sha256
+          if-no-files-found: error
+  release:
+    needs: [checks, native]
+    if: startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Skyview-Dev-Setup-*
+          path: dist
+          merge-multiple: true
+      - name: Verify both installers before publishing
+        run: |
+          set -euo pipefail
+          cd dist
+          test -s Skyview-Dev-Setup-Windows-x64.exe
+          test -s Skyview-Dev-Setup-LinuxMint-amd64.deb
+          sha256sum --check Skyview-Dev-Setup-Windows-x64.exe.sha256
+          sha256sum --check Skyview-Dev-Setup-LinuxMint-amd64.deb.sha256
+          cat Skyview-Dev-Setup-Windows-x64.exe.sha256 Skyview-Dev-Setup-LinuxMint-amd64.deb.sha256 > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+      - name: Publish mentor-testing prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          if [[ "$GITHUB_REF" == refs/heads/release/v1.1.* ]]; then
+            tag="${GITHUB_REF_NAME#release/}"
+            if existing=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null); then
+              test "$existing" = "$GITHUB_SHA"
+            else
+              gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$GITHUB_SHA"
+            fi
+          fi
+          gh release create "$tag" \
+            dist/Skyview-Dev-Setup-Windows-x64.exe \
+            dist/Skyview-Dev-Setup-LinuxMint-amd64.deb dist/SHA256SUMS.txt \
+            --verify-tag --prerelease \
+            --title "Skyview Student Development Environment ${tag#v}" \
+            --notes-file "docs/RELEASE-NOTES-${tag#v}.md"
