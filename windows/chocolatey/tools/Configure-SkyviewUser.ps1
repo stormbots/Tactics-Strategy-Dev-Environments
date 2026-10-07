@@ -36,4 +36,3 @@ $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'
 if (-not (Test-Path $config)) { $config = Join-Path $PSScriptRoot 'repositories.csv' }
 & (Join-Path $PSScriptRoot 'Setup-SkyviewRepositories.ps1') -Config $config
 Event progress 94 'Your workspace is configured'
-

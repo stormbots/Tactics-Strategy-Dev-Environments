@@ -92,4 +92,3 @@ if ($CheckUpdates -and (Get-Command choco -ErrorAction SilentlyContinue)) {
 Write-Host "SKYVIEW_EVENT|summary|$script:Failures|Validation completed with $script:Failures failed checks"
 if ($script:Failures -gt 0) { exit 1 }
 exit 0
-

@@ -177,4 +177,3 @@ Write-Host ''
 Write-Host 'Skyview Robotics development workstation baseline installed.' -ForegroundColor Green
 Write-Host 'Node.js is pinned to major 24 and Git/GitHub identity is intentionally unconfigured.'
 Write-Host 'Run C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1 to validate.'
-

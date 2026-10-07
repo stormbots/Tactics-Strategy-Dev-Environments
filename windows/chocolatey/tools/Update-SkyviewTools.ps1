@@ -30,4 +30,3 @@ Write-Host 'Development tools updated.'
 Write-Host 'Node.js remains pinned and mentor-controlled.'
 Write-Host 'Python remains on the python314 package family and receives Python 3.14.x updates.'
 Write-Host 'Google Chrome is intentionally excluded and uses its native Google Update mechanism.'
-
