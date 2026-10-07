@@ -4,3 +4,4 @@
 *.json text eol=lf
 *.rs text eol=lf
 *.lock text eol=lf
+linux/** text eol=lf
