@@ -25,7 +25,8 @@ event progress 10 "Checking managed package updates"
 log "Refreshing APT metadata..."
 apt-get update
 
-NODE_VERSION="$(apt-cache madison nodejs | awk '$3 ~ /^24\./ {print $3; exit}')"
+# Consume the full listing so apt-cache cannot hit SIGPIPE under pipefail.
+NODE_VERSION="$(apt-cache madison nodejs | awk '$3 ~ /^24\./ && !found {print $3; found=1}')"
 [[ -n "$NODE_VERSION" ]] || die "No Node.js 24.x package is available."
 event progress 35 "Updating managed development packages"
 log "Updating the provisioned package set without performing a full OS upgrade..."

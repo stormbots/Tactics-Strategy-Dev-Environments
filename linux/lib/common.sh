@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-export SKYVIEW_VERSION="1.2.0"
+export SKYVIEW_VERSION="1.2.1"
 export SKYVIEW_NAME="Skyview Robotics Student Dev Environment"
 export SKYVIEW_ETC="/etc/skyview-robotics/student-dev"
 export SKYVIEW_LIB="/usr/local/lib/skyview-student-dev"

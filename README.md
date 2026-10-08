@@ -3,7 +3,7 @@
 Graphical setup and workstation management for the **Bureau of Tactics & Strategy**.
 Version **1.1.5** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
 
-Source development is **1.2.0**, adding version-aware updates, a read-only **Schedule** page, and **About**. The stable download below remains the tested 1.1.5 release until the [1.2.0 acceptance checklist](docs/ACCEPTANCE-1.2.0.md) is completed. See [candidate release notes](docs/RELEASE-NOTES-1.2.0.md).
+Source development is **1.2.1**, correcting a Linux installation/update failure in the candidate that adds version-aware updates, a read-only **Schedule** page, and **About**. The stable download below remains the tested 1.1.5 release until the [1.2.1 acceptance checklist](docs/ACCEPTANCE-1.2.1.md) is completed. See [candidate release notes](docs/RELEASE-NOTES-1.2.1.md).
 
 ## Install with the app
 

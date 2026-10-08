@@ -6,7 +6,7 @@ $OutputEncoding = [Console]::OutputEncoding
 
 $ErrorActionPreference = 'Stop'
 
-$PackageVersion = '1.2.0'
+$PackageVersion = '1.2.1'
 function Write-SkyviewEvent($Type, $Key, $Message) { Write-Host ('SKYVIEW_EVENT|{0}|{1}|{2}' -f $Type,$Key,($Message -replace '[\r\n]', ' ')) }
 $env:SKYVIEW_SYSTEM_ONLY = if ($SystemOnly) { '1' } else { '0' }
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'

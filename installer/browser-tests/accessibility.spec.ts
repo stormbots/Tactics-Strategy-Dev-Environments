@@ -136,7 +136,7 @@ for (const width of [1140, 520]) {
     await expect(
       page.getByRole("heading", { name: "About Skyview Dev Setup" }),
     ).toBeFocused();
-    await expect(page.getByText("1.2.0", { exact: true })).toBeVisible();
+    await expect(page.getByText("1.2.1", { exact: true })).toBeVisible();
     const github = page.getByRole("link", {
       name: /View the project on GitHub/,
     });

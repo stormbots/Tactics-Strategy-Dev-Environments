@@ -2,7 +2,7 @@
 
 For normal student installation, use the [graphical installer](../README.md).
 The ZIP instructions below document the **stable v1.0.1 manual fallback**.
-Current source is version 1.2.0 and retains the same manual Bash entry points.
+Current source is version 1.2.1 and retains the same manual Bash entry points.
 The GUI's supported target is Mint Cinnamon 22.x amd64.
 
 **Version:** 1.0.1
