@@ -1,5 +1,9 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import type { Mode, Report } from "./model";
+import type { Mode, Report, Schedule } from "./model";
+import { version } from "../package.json";
+export const appVersion = version;
+export type Destination =
+  "editor" | "workspace" | "logs" | "maintenance" | "repository" | "skyview";
 export const native = isTauri();
 const sample = [
   "SKYVIEW_EVENT|validation|PASS|Git: git version 2.49.0",
@@ -15,12 +19,45 @@ const sample = [
   "SKYVIEW_EVENT|validation|FAIL|Weekly maintenance enabled",
   "SKYVIEW_EVENT|validation|INFO|Git identity: not configured (optional)",
   "SKYVIEW_EVENT|validation|INFO|GitHub authentication: not configured (optional)",
-  "SKYVIEW_EVENT|summary|7|Some components are missing",
+  "SKYVIEW_EVENT|summary|6|Some components are missing",
 ];
+const previewTools = [
+  {
+    tool: "Git",
+    installedVersion: "2.49.0",
+    availableVersion: "2.50.0",
+    updateAvailable: true,
+    updateCheck: "current",
+  },
+  {
+    tool: "GitHub CLI",
+    installedVersion: "2.76.0",
+    availableVersion: null,
+    updateAvailable: false,
+    updateCheck: "current",
+  },
+  {
+    tool: "Node.js",
+    installedVersion: "24.10.0",
+    availableVersion: "24.11.0",
+    updateAvailable: true,
+    updateCheck: "current",
+  },
+  {
+    tool: "Firefox",
+    installedVersion: "144.0",
+    availableVersion: null,
+    updateAvailable: false,
+    updateCheck: "unavailable",
+  },
+];
+const metadata = previewTools.map(
+  (t) => `SKYVIEW_EVENT|tool|${t.tool}|${JSON.stringify(t)}`,
+);
 const previewReport: Report = {
   code: 1,
   success: false,
-  lines: sample,
+  lines: [...sample, ...metadata],
   log_path: "Preview — no files are written",
   platform: { label: "Linux Mint 22.2 · amd64", supported: true },
 };
@@ -61,11 +98,25 @@ export async function operate(
             .replace("|FAIL|", "|PASS|")
             .replace(": not installed", ": installed")
             .replace(
-              "|summary|7|Some components are missing",
+              "|summary|6|Some components are missing",
               "|summary|0|All required checks passed",
             ),
         );
-  results.forEach((line) => {
+  const records = previewTools.map((t) => ({
+    ...t,
+    updateAvailable: checkUpdates && mode !== "update" && t.updateAvailable,
+    availableVersion:
+      checkUpdates && mode !== "update" ? t.availableVersion : null,
+    installedVersion:
+      mode === "update"
+        ? t.availableVersion || t.installedVersion
+        : t.installedVersion,
+    updateCheck: checkUpdates ? t.updateCheck : "notChecked",
+  }));
+  [
+    ...results,
+    ...records.map((t) => `SKYVIEW_EVENT|tool|${t.tool}|${JSON.stringify(t)}`),
+  ].forEach((line) => {
     lines.push(line);
     emit(line);
   });
@@ -76,6 +127,23 @@ export async function operate(
     success: mode !== "validate",
   };
 }
-export async function open(destination: "editor" | "workspace" | "logs") {
+export async function inspectSchedule(): Promise<Schedule> {
+  if (native) return invoke("inspect_schedule");
+  return {
+    status: "enabled",
+    active: true,
+    identifier: "skyview-student-dev-update.timer",
+    frequency: "Sunday at 03:00; randomized delay up to 1 hour (local time)",
+    nextRun: "2026-10-11T10:40:00Z",
+    lastRun: "2026-10-04T10:20:00Z",
+    lastResult: "success",
+    resultDetail: "Service result: success; exit status: 0",
+    catchUp: true,
+    logFolder: "/var/log/skyview-robotics/student-dev",
+    logsAvailable: true,
+    note: "",
+  };
+}
+export async function open(destination: Destination) {
   if (native) await invoke("open_destination", { destination });
 }

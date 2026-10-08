@@ -38,4 +38,9 @@ class Backends(unittest.TestCase):
         fallback=self.text('.github/workflows/publish-linux-v1.0.1.yml')
         self.assertIn('ref: linux-v1.0.1',fallback)
         self.assertNotIn('--clobber',fallback)
+    def test_metadata_helpers_are_persisted(self):
+        windows=self.text('windows/chocolatey/tools/chocolateyInstall.ps1')
+        self.assertIn("'ToolRecords.ps1'",windows)
+        self.assertIn("'Inspect-SkyviewSchedule.ps1'",windows)
+        self.assertIn('"$SKYVIEW_LIB/tool_records.py"',self.text('linux/Install-SkyviewStudentDev.sh'))
 if __name__=='__main__': unittest.main()

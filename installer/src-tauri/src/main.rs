@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod process;
 mod protocol;
+mod schedule;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -269,9 +270,36 @@ enum Destination {
     Editor,
     Workspace,
     Logs,
+    Maintenance,
+    Repository,
+    Skyview,
+}
+#[tauri::command]
+async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
+    let root = backend(&app)?;
+    tauri::async_runtime::spawn_blocking(move || schedule::inspect(&root))
+        .await
+        .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(), String> {
+    let url = match destination {
+        Destination::Repository => {
+            Some("https://github.com/stormbots/Tactics-Strategy-Dev-Environments")
+        }
+        Destination::Skyview => Some("https://skyviewrobotics.com"),
+        _ => None,
+    };
+    if let Some(url) = url {
+        #[cfg(windows)]
+        let mut command = std::process::Command::new(r"C:\Windows\explorer.exe");
+        #[cfg(not(windows))]
+        let mut command = std::process::Command::new("/usr/bin/xdg-open");
+        crate::process::hidden(command.arg(url))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
     let path = match destination {
         #[cfg(windows)]
         Destination::Editor => PathBuf::from(r"C:\Program Files\VSCodium\VSCodium.exe"),
@@ -286,6 +314,11 @@ fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(
             .map_err(|e| e.to_string())?
             .join("Development"),
         Destination::Logs => app.path().app_log_dir().map_err(|e| e.to_string())?,
+        #[cfg(windows)]
+        Destination::Maintenance => PathBuf::from(r"C:\ProgramData\SkyviewRobotics\Logs"),
+        #[cfg(not(windows))]
+        Destination::Maintenance => PathBuf::from("/var/log/skyview-robotics/student-dev"),
+        Destination::Repository | Destination::Skyview => unreachable!(),
     };
     if !path.exists() {
         return Err(
@@ -325,6 +358,7 @@ fn main() {
         .manage(Busy::default())
         .invoke_handler(tauri::generate_handler![
             inspect_system,
+            inspect_schedule,
             run_operation,
             open_destination
         ])
@@ -353,6 +387,8 @@ mod tests {
     fn rejects_unapproved_operations() {
         assert!(serde_json::from_str::<Operation>("\"shell\"").is_err());
         assert!(process::helper("bash", "invalid").is_err());
+        assert!(serde_json::from_str::<Destination>("\"https://example.com\"").is_err());
+        assert!(serde_json::from_str::<Destination>("\"C:\\\\Windows\"").is_err());
     }
     #[test]
     fn operation_lock_recovers() {

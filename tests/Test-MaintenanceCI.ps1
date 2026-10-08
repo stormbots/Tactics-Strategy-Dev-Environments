@@ -8,11 +8,13 @@ $taskName = "Skyview CI maintenance $suffix"
 $fixture = Join-Path 'C:\Users\Public' "Skyview maintenance probe $suffix"
 New-Item -ItemType Directory -Path $fixture | Out-Null
 Copy-Item (Join-Path $PSScriptRoot '../windows/chocolatey/tools/ScheduledMaintenance.ps1') $fixture
+Copy-Item (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Inspect-SkyviewSchedule.ps1') $fixture
 $probe = Join-Path $fixture 'Probe.ps1'
 @'
 param($TaskName,$ExpectedStatus,$ExpectedMessage,[switch]$DenyControl)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'ScheduledMaintenance.ps1')
+. (Join-Path $PSScriptRoot 'Inspect-SkyviewSchedule.ps1')
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Probe must run as a standard user.' }
@@ -23,6 +25,8 @@ if ($DenyControl) {
     $service = New-Object -ComObject Schedule.Service
     $service.Connect()
     $task = $service.GetFolder('\').GetTask($TaskName)
+    $schedule = ConvertTo-SkyviewSchedule -Task $task
+    if ($schedule.status -ne 'enabled' -or $schedule.lastResult -ne 'never') { throw 'Normal user could not read schedule details.' }
     foreach ($operation in @('run','change permissions')) {
         $denied = $false
         try {

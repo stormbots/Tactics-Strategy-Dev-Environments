@@ -131,6 +131,7 @@ fi
 log "Installing persistent Skyview maintenance files..."
 sudo install -d -m 0755 "$SKYVIEW_ETC" "$SKYVIEW_LIB" "$SKYVIEW_SHARE" "$SKYVIEW_STATE"
 sudo install -m 0644 "$SCRIPT_DIR/lib/common.sh" "$SKYVIEW_LIB/common.sh"
+sudo install -m 0644 "$SCRIPT_DIR/lib/tool_records.py" "$SKYVIEW_LIB/tool_records.py"
 sudo install -m 0644 "$SCRIPT_DIR/extensions.txt" "$SKYVIEW_SHARE/extensions.txt"
 sudo install -m 0644 "$SCRIPT_DIR/config/codium-settings.json" "$SKYVIEW_SHARE/codium-settings.json"
 if [[ ! -f "$SKYVIEW_ETC/repositories.csv" ]]; then
