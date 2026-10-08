@@ -5,7 +5,7 @@ Version **1.1.5** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
 
 ## Install with the app
 
-Download your installer from the [1.1.5 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.1.5).
+[Download your installer from the 1.1.5 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.1.5).
 
 **Windows:** open `Skyview-Dev-Setup-Windows-x64.exe`, approve installation, then launch **Skyview Dev Setup**.
 
