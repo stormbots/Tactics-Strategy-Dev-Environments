@@ -8,6 +8,7 @@ import {
   toolsFrom,
   toolStatus,
   toolForCheck,
+  updateInspectionIncomplete,
   type Mode,
   type Report,
 } from "./model";
@@ -144,6 +145,26 @@ describe("tool metadata", () => {
     updateCheck: "current",
   };
   const line = (r: unknown) => `SKYVIEW_EVENT|tool|Git|${JSON.stringify(r)}`;
+  it("does not count unavailable version metadata as a completed update check", () => {
+    const checks = [{ status: "PASS" as const, message: "Git: 2.43.0" }];
+    expect(
+      updateInspectionIncomplete(checks, [
+        {
+          ...record,
+          installedVersion: null,
+          availableVersion: null,
+          updateAvailable: false,
+          updateCheck: "unavailable",
+        },
+      ]),
+    ).toBe(true);
+    expect(
+      updateInspectionIncomplete(checks, [
+        { ...record, updateCheck: "current" },
+      ]),
+    ).toBe(false);
+    expect(updateInspectionIncomplete(checks, [])).toBe(true);
+  });
   it("deduplicates records and keeps update availability independent of failures", () => {
     const state = reducer(initialState, {
       type: "initial",

@@ -27,9 +27,11 @@ import {
   toolForCheck,
   toolStatus,
   toolNames,
+  updateInspectionIncomplete,
   type Check,
   type Mode,
   type State,
+  type ToolRecord,
 } from "./model";
 import {
   appVersion,
@@ -83,6 +85,26 @@ function StatusIcon({ status }: { status: Check["status"] }) {
           ? TriangleAlert
           : Info;
   return <Icon size={17} aria-hidden="true" />;
+}
+function ToolItem({ check, record }: { check: Check; record?: ToolRecord }) {
+  const detail =
+    !record || record.updateCheck === "unavailable"
+      ? "Update check unavailable"
+      : record.updateCheck === "notChecked"
+        ? "Updates not checked"
+        : record.updateCheck === "native"
+          ? "Updates managed by the tool or its runtime"
+          : "";
+  return (
+    <div className={`tool ${check.status.toLowerCase()}`}>
+      <StatusIcon status={check.status} />
+      <span>{toolForCheck(check)}</span>
+      <span className="tool-status">{toolStatus(check, record)}</span>
+      {check.status === "PASS" && detail && (
+        <span className="tool-status">{detail}</span>
+      )}
+    </div>
+  );
 }
 function LogOutput({ s, openLogs }: { s: State; openLogs: () => void }) {
   const output = useRef<HTMLPreElement>(null);
@@ -141,13 +163,7 @@ export default function App() {
   const passes = s.checks.filter((c) => c.status === "PASS").length;
   const fails = s.checks.filter((c) => c.status === "FAIL").length;
   const updateCount = s.tools.filter((t) => t.updateAvailable).length;
-  const partialUpdateCheck =
-    !s.tools.length ||
-    s.tools.some(
-      (t) =>
-        t.installedVersion &&
-        ["unavailable", "notChecked"].includes(t.updateCheck),
-    );
+  const partialUpdateCheck = updateInspectionIncomplete(s.checks, s.tools);
   useEffect(() => {
     if (previousPage.current !== page) pageHeading.current?.focus();
     previousPage.current = page;
@@ -576,32 +592,11 @@ export default function App() {
                         toolNames.findIndex((name) => name === toolForCheck(b)),
                     )
                     .map((c, i) => (
-                      <div className={`tool ${c.status.toLowerCase()}`} key={i}>
-                        <StatusIcon status={c.status} />
-                        <span>{toolForCheck(c)}</span>
-                        <span className="tool-status">
-                          {toolStatus(
-                            c,
-                            s.tools.find((t) => t.tool === toolForCheck(c)),
-                          )}
-                        </span>
-                        {c.status === "PASS" && (
-                          <span className="tool-status">
-                            {(() => {
-                              const r = s.tools.find(
-                                (t) => t.tool === toolForCheck(c),
-                              );
-                              return !r || r.updateCheck === "unavailable"
-                                ? "Update check unavailable"
-                                : r.updateCheck === "notChecked"
-                                  ? "Updates not checked"
-                                  : r.updateCheck === "native"
-                                    ? "Updates managed by the tool or its runtime"
-                                    : "";
-                            })()}
-                          </span>
-                        )}
-                      </div>
+                      <ToolItem
+                        key={i}
+                        check={c}
+                        record={s.tools.find((t) => t.tool === toolForCheck(c))}
+                      />
                     ))}
                   {!s.checks.length && (
                     <p>Tool status appears after the workstation check.</p>

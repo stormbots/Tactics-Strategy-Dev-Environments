@@ -102,6 +102,22 @@ export function toolStatus(c: Check, r?: ToolRecord): string {
     return `Update available · ${r.installedVersion} → ${r.availableVersion}`;
   return `Ready · ${r?.installedVersion || "Version unavailable"}`;
 }
+export function updateInspectionIncomplete(
+  checks: Check[],
+  tools: ToolRecord[],
+): boolean {
+  return (
+    !tools.length ||
+    checks.some((c) => {
+      const name = toolForCheck(c);
+      if (c.status !== "PASS" || !name) return false;
+      const record = tools.find((t) => t.tool === name);
+      return (
+        !record || ["unavailable", "notChecked"].includes(record.updateCheck)
+      );
+    })
+  );
+}
 export type Report = {
   code: number;
   success: boolean;
