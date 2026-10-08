@@ -13,6 +13,14 @@ Linux student development environments.
 
 ## Update Strategy
 
+### Viewing the installed schedule
+
+In GUI version 1.2.0, choose **Schedule** to inspect maintenance as a normal user. Refresh reads the actual task/timer and service history; it does not run or modify maintenance. Times are displayed in the machine's local time. Missing schedules, access errors, and unavailable execution history are shown explicitly. **Open maintenance log folder** opens the system maintenance logs, separately from the GUI's per-operation logs.
+
+Windows uses `\Skyview Robotics - Dev Tool Updates` as SYSTEM, normally Sunday at 03:00 with missed-run catch-up. Linux uses `skyview-student-dev-update.timer` and `skyview-student-dev-update.service`, normally Sunday at 03:00 with up to one hour of randomized delay and persistent catch-up. The page reads actual settings, so changes made outside the GUI are reflected there. Neither schedule upgrades the setup app itself. User editor extensions are refreshed by GUI Install, Repair, and Update in the student's profile, rather than by the system maintenance account.
+
+Overview counts tool updates separately from failed validation checks. Installed/available versions are retained as structured records. **Ready** means validation passed; unavailable or skipped package checks are identified rather than interpreted as proof of no updates. Linux availability uses existing APT metadata (the GUI does not refresh it during validation) and the JetBrains stable PyCharm API. Windows uses Chocolatey metadata and resolves pinned Node 24 releases independently. Chrome uses native Google Update on Windows and managed APT updates on Linux.
+
 ### Automatically updated
 
 The following should generally remain current through their normal update
@@ -74,12 +82,14 @@ GitHub Release assets rather than committed to the repository.
 
 ## Platform Releases
 
-The shared graphical app uses a single `v1.1.0` release containing both native
-installers. Earlier platform releases remain independent stable fallbacks.
+The shared graphical app publishes both native installers in each shared release.
+Version 1.1.5 is stable; 1.2.1 retains the UI features above, fixes the Linux Node version selector, and requires its own manual acceptance. Earlier platform releases remain independent stable fallbacks.
 
 Examples:
 
-- `v1.1.0` (shared GUI, mentor testing)
+- `v1.1.5` (shared GUI, stable)
+- `v1.2.0` (shared GUI with Schedule/About, mentor testing)
+- `v1.2.1` (Linux installation and maintenance broken-pipe correction, mentor testing)
 - `windows-v1.0.1` (stable fallback)
 - `linux-v1.0.1` (stable fallback)
 

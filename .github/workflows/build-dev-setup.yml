@@ -1,8 +1,8 @@
 name: Build Skyview Dev Setup
 on:
   push:
-    branches: [main, 'release/v1.1.*']
-    tags: ['v1.1.*']
+    branches: [main, 'release/v1.1.*', 'release/v1.2.*']
+    tags: ['v1.1.*', 'v1.2.*']
   pull_request:
   workflow_dispatch:
 
@@ -30,6 +30,8 @@ jobs:
           sudo apt-get install -y shellcheck
           shellcheck --external-sources --severity=warning linux/*.sh linux/lib/*.sh
           python3 tests/backend_contracts.py
+          python3 -m unittest discover -s tests -p 'test_metadata.py'
+          python3 -m unittest discover -s tests -p 'test_linux_runtime.py'
           cd linux
           sha256sum --check SHA256SUMS
       - name: Validate Actions definitions
@@ -84,6 +86,7 @@ jobs:
           $errors = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error
           if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
           ./tests/Test-BackendContracts.ps1
+          ./tests/Test-MetadataContracts.ps1
           ./tests/Test-MaintenanceCI.ps1
       - run: npm ci
         working-directory: installer
@@ -124,7 +127,7 @@ jobs:
           if-no-files-found: error
   release:
     needs: [checks, native]
-    if: startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.')
+    if: startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.') || startsWith(github.ref, 'refs/tags/v1.2.') || startsWith(github.ref, 'refs/heads/release/v1.2.')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -151,7 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
-          if [[ "$GITHUB_REF" == refs/heads/release/v1.1.* ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/release/v1.* ]]; then
             tag="${GITHUB_REF_NAME#release/}"
             if existing=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null); then
               test "$existing" = "$GITHUB_SHA"

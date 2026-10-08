@@ -5,6 +5,10 @@ import {
   parseEvent,
   environmentStatus,
   checksFrom,
+  toolsFrom,
+  toolStatus,
+  toolForCheck,
+  updateInspectionIncomplete,
   type Mode,
   type Report,
 } from "./model";
@@ -125,8 +129,95 @@ describe("workstation state detection", () => {
       ]),
     ).toBe("Needs repair");
     expect(environmentStatus(checksFrom(valid))).toBe("Ready");
-    expect(environmentStatus(checksFrom(valid), true)).toBe("Needs update");
+    expect(environmentStatus(checksFrom(valid), true)).toBe(
+      "Updates available",
+    );
   });
   it("does not fail optional identity or authentication", () =>
     expect(environmentStatus(checksFrom(valid))).toBe("Ready"));
+});
+describe("tool metadata", () => {
+  const record = {
+    tool: "Git",
+    installedVersion: "2.43.0",
+    availableVersion: "2.44.0",
+    updateAvailable: true,
+    updateCheck: "current",
+  };
+  const line = (r: unknown) => `SKYVIEW_EVENT|tool|Git|${JSON.stringify(r)}`;
+  it("does not count unavailable version metadata as a completed update check", () => {
+    const checks = [{ status: "PASS" as const, message: "Git: 2.43.0" }];
+    expect(
+      updateInspectionIncomplete(checks, [
+        {
+          ...record,
+          installedVersion: null,
+          availableVersion: null,
+          updateAvailable: false,
+          updateCheck: "unavailable",
+        },
+      ]),
+    ).toBe(true);
+    expect(
+      updateInspectionIncomplete(checks, [
+        { ...record, updateCheck: "current" },
+      ]),
+    ).toBe(false);
+    expect(updateInspectionIncomplete(checks, [])).toBe(true);
+  });
+  it("deduplicates records and keeps update availability independent of failures", () => {
+    const state = reducer(initialState, {
+      type: "initial",
+      report: report([...valid, line(record), line(record)]),
+    });
+    expect(state.tools).toHaveLength(1);
+    expect(state.updates).toBe(true);
+    expect(state.checks.some((c) => c.status === "FAIL")).toBe(false);
+    expect(reducer(state, { type: "start", mode: "validate" }).tools).toEqual(
+      [],
+    );
+  });
+  it("rejects incomplete, contradictory, malformed, or mismatched records", () => {
+    for (const r of [
+      { ...record, installedVersion: null },
+      { ...record, availableVersion: null },
+      { ...record, updateCheck: "unavailable" },
+      { ...record, tool: "Firefox" },
+      { ...record, updateAvailable: "true" },
+    ])
+      expect(toolsFrom([line(r)])).toEqual([]);
+    expect(
+      toolsFrom(["SKYVIEW_EVENT|tool|Git|{bad", "Git 2.44.0 available"]),
+    ).toEqual([]);
+  });
+  it("displays versions, unavailable versions, and repair status without guessing", () => {
+    const check = { status: "PASS" as const, message: "Git: 2.43.0" };
+    expect(toolStatus(check, { ...record, updateCheck: "current" })).toBe(
+      "Update available · 2.43.0 → 2.44.0",
+    );
+    expect(
+      toolStatus(check, {
+        ...record,
+        availableVersion: null,
+        updateAvailable: false,
+        updateCheck: "current",
+      }),
+    ).toBe("Ready · 2.43.0");
+    expect(toolStatus(check)).toBe("Ready · Version unavailable");
+    expect(
+      toolStatus(
+        { ...check, status: "FAIL" },
+        { ...record, updateCheck: "current" },
+      ),
+    ).toBe("Missing / needs repair");
+    expect(
+      toolForCheck({
+        status: "PASS",
+        message: "Python is on required 3.14.x family",
+      }),
+    ).toBeUndefined();
+    expect(
+      toolForCheck({ status: "PASS", message: "Google Chrome found" }),
+    ).toBe("Chrome");
+  });
 });

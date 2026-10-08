@@ -203,17 +203,9 @@ if [[ -f "$REPO_FILE" ]]; then
 fi
 
 printf '%s\n' "------------------------------------------------------------"
-if [[ "${1:-}" == "--check-updates" ]]; then
-  for package in git gh nodejs codium dbeaver-ce firefox powershell python3.14 python3.14-venv openssh-client p7zip-full google-chrome-stable; do
-    current="$(dpkg-query -W -f='${Version}' "$package" 2>/dev/null)"
-    candidate="$(apt-cache policy "$package" 2>/dev/null | awk '/Candidate:/ {print $2}')"
-    [[ -n "$current" && -n "$candidate" && "$candidate" != '(none)' ]] || continue
-    [[ "$package" != nodejs || "$candidate" =~ ^24\. ]] || continue
-    if dpkg --compare-versions "$candidate" gt "$current"; then
-      event update available "$package: $current to $candidate"
-    fi
-  done
-fi
+TOOL_RECORDS="$SCRIPT_DIR/lib/tool_records.py"
+[[ -f "$TOOL_RECORDS" ]] || TOOL_RECORDS="$SKYVIEW_LIB/tool_records.py"
+python3 "$TOOL_RECORDS" "${1:-}" || warnv "Tool version and update metadata is unavailable"
 printf 'RESULT: %d PASS, %d WARN, %d FAIL\n' "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 
 event summary "$FAIL_COUNT" "$PASS_COUNT passed; $WARN_COUNT warnings; $FAIL_COUNT failed"

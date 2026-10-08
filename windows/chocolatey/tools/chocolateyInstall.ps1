@@ -50,6 +50,8 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'Test-SkyviewStudentDev.ps1',
         'Validate-SkyviewEnvironment.ps1',
         'ScheduledMaintenance.ps1',
+        'Inspect-SkyviewSchedule.ps1',
+        'ToolRecords.ps1',
         'Configure-SkyviewUser.ps1',
         'extensions.txt',
         'settings.json',

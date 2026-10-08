@@ -99,7 +99,8 @@ sudo add-apt-repository -y ppa:deadsnakes/ppa
 event progress 40 "Installing development applications"
 # Enforce the runtime family even if another repository offers a newer major.
 sudo apt-get update
-NODE_VERSION="$(apt-cache madison nodejs | awk '$3 ~ /^24\./ {print $3; exit}')"
+# Consume the full listing so apt-cache cannot hit SIGPIPE under pipefail.
+NODE_VERSION="$(apt-cache madison nodejs | awk '$3 ~ /^24\./ && !found {print $3; found=1}')"
 [[ -n "$NODE_VERSION" ]] || die "No Node.js 24.x package is available from configured sources."
 log "Installing development applications..."
 sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -131,6 +132,7 @@ fi
 log "Installing persistent Skyview maintenance files..."
 sudo install -d -m 0755 "$SKYVIEW_ETC" "$SKYVIEW_LIB" "$SKYVIEW_SHARE" "$SKYVIEW_STATE"
 sudo install -m 0644 "$SCRIPT_DIR/lib/common.sh" "$SKYVIEW_LIB/common.sh"
+sudo install -m 0644 "$SCRIPT_DIR/lib/tool_records.py" "$SKYVIEW_LIB/tool_records.py"
 sudo install -m 0644 "$SCRIPT_DIR/extensions.txt" "$SKYVIEW_SHARE/extensions.txt"
 sudo install -m 0644 "$SCRIPT_DIR/config/codium-settings.json" "$SKYVIEW_SHARE/codium-settings.json"
 if [[ ! -f "$SKYVIEW_ETC/repositories.csv" ]]; then

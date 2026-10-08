@@ -4,6 +4,120 @@ export type Check = {
   message: string;
 };
 export type Event = { kind: string; key: string; message: string };
+export type ToolRecord = {
+  tool: string;
+  installedVersion: string | null;
+  availableVersion: string | null;
+  updateAvailable: boolean;
+  updateCheck: "current" | "notChecked" | "unavailable" | "native";
+};
+export type Schedule = {
+  status: "enabled" | "disabled" | "missing" | "unavailable";
+  active: boolean;
+  identifier: string;
+  frequency: string;
+  nextRun: string | null;
+  lastRun: string | null;
+  lastResult: "success" | "failure" | "never" | "running" | "unavailable";
+  resultDetail: string;
+  catchUp: boolean | null;
+  logFolder: string;
+  logsAvailable: boolean;
+  note: string;
+};
+export const toolNames = [
+  "Git",
+  "GitHub CLI",
+  "Node.js",
+  "Python",
+  "Python venv",
+  "VSCodium",
+  "DBeaver",
+  "PyCharm",
+  "Chrome",
+  "Firefox",
+  "PowerShell 7",
+  "OpenSSH",
+  "7-Zip",
+  "npm",
+] as const;
+export function toolRecord(e: Event | null): ToolRecord | null {
+  if (e?.kind !== "tool") return null;
+  try {
+    const r = JSON.parse(e.message);
+    const version = (v: unknown) =>
+      v === null ||
+      (typeof v === "string" &&
+        v.length > 0 &&
+        v.length <= 120 &&
+        !/[\r\n|]/.test(v));
+    if (
+      !toolNames.includes(r.tool) ||
+      e.key !== r.tool ||
+      !version(r.installedVersion) ||
+      !version(r.availableVersion) ||
+      typeof r.updateAvailable !== "boolean" ||
+      !["current", "notChecked", "unavailable", "native"].includes(
+        r.updateCheck,
+      ) ||
+      (r.updateAvailable &&
+        (!r.installedVersion ||
+          !r.availableVersion ||
+          r.updateCheck !== "current"))
+    )
+      return null;
+    return r;
+  } catch {
+    return null;
+  }
+}
+export function toolsFrom(lines: string[]): ToolRecord[] {
+  const records = new Map<string, ToolRecord>();
+  for (const line of lines) {
+    const r = toolRecord(parseEvent(line));
+    if (r) records.set(r.tool, r);
+  }
+  return [...records.values()];
+}
+export function toolForCheck(c: Check): string | undefined {
+  if (
+    [
+      "Python 3.14 venv and project-local pip work",
+      "Python 3.14 could not create a venv with pip",
+    ].includes(c.message)
+  )
+    return "Python venv";
+  if (/^Python(?: 3\.14)?(?::|$| not found)/.test(c.message)) return "Python";
+  if (/^Google Chrome (found|not found)$/.test(c.message)) return "Chrome";
+  return toolNames.find(
+    (name) =>
+      c.message === name ||
+      c.message.startsWith(`${name}:`) ||
+      c.message === `${name} not found`,
+  );
+}
+export function toolStatus(c: Check, r?: ToolRecord): string {
+  if (c.status !== "PASS") return "Missing / needs repair";
+  if (r?.updateAvailable)
+    return `Update available · ${r.installedVersion} → ${r.availableVersion}`;
+  return `Ready · ${r?.installedVersion || "Version unavailable"}`;
+}
+export function updateInspectionIncomplete(
+  checks: Check[],
+  tools: ToolRecord[],
+): boolean {
+  return (
+    !tools.length ||
+    checks.some((c) => {
+      const name = toolForCheck(c);
+      if (c.status !== "PASS" || !name) return false;
+      const record = tools.find((t) => t.tool === name);
+      return (
+        !record || ["unavailable", "notChecked"].includes(record.updateCheck)
+      );
+    })
+  );
+}
 export type Report = {
   code: number;
   success: boolean;
@@ -25,6 +139,7 @@ export function parseEvent(line: string): Event | null {
       "error",
       "summary",
       "update",
+      "tool",
     ].includes(kind)
   )
     return null;
@@ -47,18 +162,14 @@ export function checksFrom(lines: string[]): Check[] {
   });
 }
 export function environmentStatus(checks: Check[], updates = false) {
-  const managed = checks.filter((c) =>
-    /^(Git:|GitHub CLI:|Node.js:|Python:|VSCodium:|DBeaver:|PyCharm:|Chrome:|Firefox:|Git$|GitHub CLI$|Node.js$|Python 3.14$|VSCodium$|DBeaver$|PyCharm$|Firefox$|Google Chrome)/.test(
-      c.message,
-    ),
-  );
+  const managed = checks.filter((c) => toolForCheck(c));
   const installed = managed.filter((c) => c.status === "PASS").length;
   const failed = checks.some((c) => c.status === "FAIL");
   if (!checks.length) return "Not checked";
   if (!installed && failed) return "Not installed";
   if (failed && installed < managed.length) return "Partially installed";
   if (failed) return "Needs repair";
-  return updates ? "Needs update" : "Ready";
+  return updates ? "Updates available" : "Ready";
 }
 export type State = {
   stage: "checking" | "idle" | "running" | "success" | "failure";
@@ -71,6 +182,7 @@ export type State = {
   error: string;
   logPath: string;
   updates: boolean;
+  tools: ToolRecord[];
   platform: Report["platform"];
 };
 export const initialState: State = {
@@ -84,6 +196,7 @@ export const initialState: State = {
   error: "",
   logPath: "",
   updates: false,
+  tools: [],
   platform: { label: "Detecting system…", supported: false },
 };
 export type Action =
@@ -106,7 +219,10 @@ export function reducer(s: State, a: Action): State {
       logs: a.report.lines.slice(-2000),
       logPath: a.report.log_path,
       platform: a.report.platform,
-      updates: a.report.lines.some((l) => parseEvent(l)?.kind === "update"),
+      updates:
+        toolsFrom(a.report.lines).some((t) => t.updateAvailable) ||
+        a.report.lines.some((l) => parseEvent(l)?.kind === "update"),
+      tools: toolsFrom(a.report.lines),
     };
   if (a.type === "start")
     return {
@@ -123,6 +239,7 @@ export function reducer(s: State, a: Action): State {
       warnings: [],
       error: "",
       updates: false,
+      tools: [],
     };
   if (a.type === "error") return { ...s, stage: "failure", error: a.message };
   if (a.type === "complete") {
@@ -151,7 +268,10 @@ export function reducer(s: State, a: Action): State {
         ? ""
         : errors.at(-1)?.message ||
           "Some checks need attention. Review the validation results and use Repair to restore missing components.",
-      updates: a.report.lines.some((l) => parseEvent(l)?.kind === "update"),
+      updates:
+        toolsFrom(a.report.lines).some((t) => t.updateAvailable) ||
+        a.report.lines.some((l) => parseEvent(l)?.kind === "update"),
+      tools: toolsFrom(a.report.lines),
     };
   }
   const e = parseEvent(a.line);
@@ -172,5 +292,10 @@ export function reducer(s: State, a: Action): State {
   if (e.kind === "warning") next.warnings = [...s.warnings, e.message];
   if (e.kind === "error") next.error = e.message;
   if (e.kind === "update") next.updates = true;
+  const record = toolRecord(e);
+  if (record) {
+    next.tools = [...s.tools.filter((t) => t.tool !== record.tool), record];
+    if (record.updateAvailable) next.updates = true;
+  }
   return next;
 }

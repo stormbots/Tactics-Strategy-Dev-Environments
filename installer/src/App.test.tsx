@@ -8,9 +8,24 @@ import {
 } from "@testing-library/react";
 import axe from "axe-core";
 import App from "./App";
-import { inspect, operate } from "./bridge";
+import { inspect, operate, inspectSchedule, open } from "./bridge";
 vi.mock("./bridge", () => ({
   native: false,
+  appVersion: "1.2.0",
+  inspectSchedule: vi.fn(async () => ({
+    status: "enabled",
+    active: true,
+    identifier: "Test timer",
+    frequency: "Sunday at 03:00",
+    nextRun: null,
+    lastRun: null,
+    lastResult: "never",
+    resultDetail: "No history",
+    catchUp: true,
+    logFolder: "/logs",
+    logsAvailable: false,
+    note: "",
+  })),
   inspect: vi.fn(async () => ({
     code: 0,
     success: true,
@@ -31,7 +46,7 @@ vi.mock("./bridge", () => ({
     log_path: "test.log",
     platform: { label: "Windows 11", supported: true },
   })),
-  open: async () => {},
+  open: vi.fn(async () => {}),
 }));
 afterEach(cleanup);
 it("shows a prominent busy indicator while startup validation is pending", async () => {
@@ -104,4 +119,70 @@ it("offers a retry and focuses the result after a child failure", async () => {
       "Your environment needs attention.",
     ),
   );
+});
+it("shows updates separately from successful validation, including both versions", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.43.0",
+      'SKYVIEW_EVENT|tool|Git|{"tool":"Git","installedVersion":"2.43.0","availableVersion":"2.44.0","updateAvailable":true,"updateCheck":"current"}',
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "",
+    platform: { label: "Windows 11", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "Updates available",
+  });
+  expect(screen.getByText("Update available · 2.43.0 → 2.44.0")).toBeTruthy();
+  expect(screen.getByText(/need attention/).textContent).toContain("0");
+  expect(
+    screen.getByText(/update available$/, { selector: ".update-count" })
+      .textContent,
+  ).toContain("1");
+});
+it("reads and refreshes Schedule, displays never-run history, and recovers from errors", async () => {
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready" });
+  fireEvent.click(screen.getByRole("button", { name: "Schedule" }));
+  await screen.findByText("Test timer");
+  expect(screen.getByRole("heading", { name: "Maintenance schedule" })).toBe(
+    document.activeElement,
+  );
+  expect(screen.getAllByText("Never run").length).toBe(2);
+  expect(screen.queryByText("Show details")).toBeNull();
+  vi.mocked(inspectSchedule).mockRejectedValueOnce(
+    new Error("Test access denied"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await screen.findByText(/Schedule unavailable.*Test access denied/);
+  expect(screen.queryByText("Test timer")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await screen.findByText("Test timer");
+  expect(vi.mocked(open)).not.toHaveBeenCalled();
+});
+it("shows the version and approved external links on About", async () => {
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { name: "Ready" });
+  fireEvent.click(screen.getByRole("button", { name: "About" }));
+  expect(screen.getByText("1.2.0", { selector: "dd" })).toBeTruthy();
+  expect(
+    screen
+      .getByRole("link", { name: /View the project on GitHub/ })
+      .getAttribute("href"),
+  ).toBe("https://github.com/stormbots/Tactics-Strategy-Dev-Environments");
+  expect(
+    screen
+      .getByRole("link", { name: /Visit Skyview Robotics/ })
+      .getAttribute("rel"),
+  ).toContain("noopener");
+  expect(
+    (
+      await axe.run(container, {
+        rules: { "color-contrast": { enabled: false } },
+      })
+    ).violations,
+  ).toEqual([]);
 });

@@ -4,6 +4,7 @@ $OutputEncoding = [Console]::OutputEncoding
 $ErrorActionPreference = 'Continue'
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
 $script:Failures = 0
+$installed = @{}
 function Result($Status,$Message) {
     if ($Status -eq 'FAIL') { $script:Failures++ }
     Write-Host ("SKYVIEW_EVENT|validation|{0}|{1}" -f $Status,($Message -replace '[\r\n]',' '))
@@ -27,6 +28,7 @@ foreach ($check in @(
     $out = @(& $cmd.Source @($check.Args) 2>&1)
     $code = $LASTEXITCODE
     $version = [string]($out | Where-Object { [string]$_ -notmatch '^\s*$' } | Select-Object -First 1)
+    if ($code -eq 0 -and $version -match '\d+(?:\.\d+)+(?:[^\s]*)?') { $installed[$check.Name] = $Matches[0] }
     if ($code -ne 0 -or ($check.Family -and $version -notmatch $check.Family)) {
         Result FAIL "$($check.Name): expected runtime family or usable command; detected $version"
     } else { Result PASS "$($check.Name): $version" }
@@ -38,7 +40,17 @@ foreach ($entry in @(
     @{Name='Firefox'; Paths=@('C:\Program Files\Mozilla Firefox\firefox.exe','C:\Program Files (x86)\Mozilla Firefox\firefox.exe')}
 )) {
     $found = @($entry.Paths | ForEach-Object { Get-Item $_ -ErrorAction SilentlyContinue } | Select-Object -First 1)
-    if ($found.Count) { Result PASS "$($entry.Name): $($found[0].VersionInfo.ProductVersion)" }
+    if ($found.Count) {
+        $productVersion = $found[0].VersionInfo.ProductVersion
+        if ($productVersion -match '\d+(?:\.\d+)+(?:[^\s]*)?') { $installed[$entry.Name] = $Matches[0] }
+        if ($entry.Name -eq 'PyCharm') {
+            $productInfo = Join-Path (Split-Path (Split-Path $found[0].FullName -Parent) -Parent) 'product-info.json'
+            if (Test-Path $productInfo) {
+                try { $installed.PyCharm = (Get-Content $productInfo -Raw | ConvertFrom-Json).version } catch { Write-Verbose 'PyCharm version metadata unavailable.' }
+            }
+        }
+        Result PASS "$($entry.Name): $productVersion"
+    }
     else { Result FAIL "$($entry.Name): not installed" }
 }
 Check (Test-Path 'C:\Development') 'Development folder'
@@ -79,17 +91,10 @@ if (Test-Path $config) {
         Check (Test-Path (Join-Path "C:\Development\$folder" '.git')) "Configured repository: $($repo.Name)"
     }
 }
-if ($CheckUpdates -and (Get-Command choco -ErrorAction SilentlyContinue)) {
-    $managed = @('git','gh','nodejs-lts','python314','vscodium','dbeaver','pycharm','firefox','powershell-core','7zip')
-    $rows = & choco outdated --limit-output --ignore-unfound 2>$null
-    if ($LASTEXITCODE -notin @(0,2)) { Result WARNING 'Available updates could not be checked. Your installed tool checks are still valid.' }
-    foreach ($row in $rows) {
-        $parts = $row -split '\|'
-        if ($parts.Count -ge 3 -and $parts[0] -in $managed) {
-            if ($parts[0] -eq 'nodejs-lts' -and $parts[2] -notmatch '^24\.') { continue }
-            Write-Host "SKYVIEW_EVENT|update|available|$($parts[0]): $($parts[1]) to $($parts[2])"
-        }
-    }
+. (Join-Path $PSScriptRoot 'ToolRecords.ps1')
+foreach ($record in (Get-SkyviewToolRecords -Installed $installed -CheckUpdates ([bool]$CheckUpdates))) {
+    Write-Host ("SKYVIEW_EVENT|tool|{0}|{1}" -f $record.tool, ($record | ConvertTo-Json -Compress))
+    if ($record.updateAvailable) { Write-Host "SKYVIEW_EVENT|update|available|$($record.tool): $($record.installedVersion) to $($record.availableVersion)" }
 }
 Write-Host "SKYVIEW_EVENT|summary|$script:Failures|Validation completed with $script:Failures failed checks"
 if ($script:Failures -gt 0) { exit 1 }

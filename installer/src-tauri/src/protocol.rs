@@ -24,7 +24,8 @@ pub fn parse(line: &str) -> Option<Event> {
         }
         "validation" if !["PASS", "WARNING", "FAIL", "INFO"].contains(&key) => return None,
         "summary" if key.parse::<u32>().is_err() => return None,
-        "phase" | "status" | "warning" | "error" | "validation" | "summary" | "update" => {}
+        "phase" | "status" | "warning" | "error" | "validation" | "summary" | "update" | "tool" => {
+        }
         _ => return None,
     }
     Some(Event {
