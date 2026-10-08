@@ -1,13 +1,13 @@
 # Skyview Robotics Student Development Environment
 
 Graphical setup and workstation management for the **Bureau of Tactics & Strategy**.
-Version **1.1.5** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
+Version **1.2.1** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
 
-Source development is **1.2.1**, correcting a Linux installation/update failure in the candidate that adds version-aware updates, a read-only **Schedule** page, and **About**. The stable download below remains the tested 1.1.5 release until the [1.2.1 acceptance checklist](docs/ACCEPTANCE-1.2.1.md) is completed. See [candidate release notes](docs/RELEASE-NOTES-1.2.1.md).
+Stable version **1.2.1** adds version-aware updates, a read-only **Schedule** page, and **About**, and corrects a Linux installation/update failure. The project owner accepted all release checklist items on **2026-10-08**. See the [acceptance record](docs/ACCEPTANCE-1.2.1.md) and [release notes](docs/RELEASE-NOTES-1.2.1.md).
 
 ## Install with the app
 
-[Download your installer from the 1.1.5 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.1.5).
+[Download your installer from the 1.2.1 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.1).
 
 **Windows:** open `Skyview-Dev-Setup-Windows-x64.exe`, approve installation, then launch **Skyview Dev Setup**.
 
@@ -15,7 +15,7 @@ Source development is **1.2.1**, correcting a Linux installation/update failure 
 
 In the app, click **Install Development Environment**, approve the system's administrator prompt, and keep the window open until validation finishes. No terminal commands, folder preparation, or manual validation are required.
 
-Version **1.1.5** has completed [manual acceptance testing](docs/ACCEPTANCE-TEST.md) on fresh Windows and Linux machines, with all checks reported as passing, including keyboard navigation, 200% scaling and Narrator/Orca. Stable promotion retains the tested installers and their checksums. Windows installers ship unsigned by project decision. Keep operating-system protections enabled.
+Version **1.2.1** is [accepted on both platforms](docs/ACCEPTANCE-1.2.1.md) by the project owner's sign-off. The supplied Mint 22.3 logs confirm 35 passed checks after installation and in a separate validation run; automated checks and both native builds also passed. Stable promotion retains the tested installers and their checksums. Windows installers ship unsigned by project decision. Keep operating-system protections enabled.
 
 ## Manage a workstation
 

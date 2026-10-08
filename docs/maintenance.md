@@ -83,13 +83,13 @@ GitHub Release assets rather than committed to the repository.
 ## Platform Releases
 
 The shared graphical app publishes both native installers in each shared release.
-Version 1.1.5 is stable; 1.2.1 retains the UI features above, fixes the Linux Node version selector, and requires its own manual acceptance. Earlier platform releases remain independent stable fallbacks.
+Version 1.2.1 is stable following the project owner's acceptance on 2026-10-08. It includes the UI features above and fixes the Linux Node version selector. Earlier releases remain available as fallbacks.
 
 Examples:
 
-- `v1.1.5` (shared GUI, stable)
+- `v1.1.5` (previous shared stable release)
 - `v1.2.0` (shared GUI with Schedule/About, mentor testing)
-- `v1.2.1` (Linux installation and maintenance broken-pipe correction, mentor testing)
+- `v1.2.1` (current stable; Schedule/About and Linux broken-pipe correction)
 - `windows-v1.0.1` (stable fallback)
 - `linux-v1.0.1` (stable fallback)
 

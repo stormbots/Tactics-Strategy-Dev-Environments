@@ -1,8 +1,14 @@
-# Mentor laptop acceptance test — 1.1.5
+# Mentor laptop acceptance procedure
 
 Use one expendable/test Windows 11 x64 laptop and one Linux Mint Cinnamon 22.x amd64 laptop. Back up student projects first. Record laptop model, OS version, release commit, checksums and results. Do not test provisioning on a mentor's primary workstation.
 
-## Full acceptance sign-off
+## Current release sign-off — 1.2.1
+
+On **2026-10-08**, the project owner instructed **"Mark all as accepted, merge, and publish to stable."** All ten applicable procedure steps below are **Accepted** on Windows and Linux Mint, along with the 1.2 UI feature checklist. The [1.2.1 acceptance record](ACCEPTANCE-1.2.1.md) records the release source, checksum/CI evidence, supplied Mint installation and validation results, and the accepted PowerShell reporting limitation.
+
+This is an owner acceptance decision. The agent did not independently repeat every manual test. The earlier 1.1.5 manual test reports below remain historical evidence for that version.
+
+## Historical full acceptance sign-off — 1.1.5
 
 On **2026-10-07**, the user reported testing on **fresh Windows and Linux machines** and confirmed that **all checks pass**. All ten steps of the acceptance procedure are recorded as **PASS on both platforms**, based on that manual test report.
 
