@@ -192,6 +192,31 @@ jobs:
           cd dist
           sha256sum "$ASSET" > "$ASSET.sha256"
           sha256sum --check "$ASSET.sha256"
+      - name: Verify Windows application bootstrap without applying a baseline
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
+          $before = (Get-FileHash $baseline -Algorithm SHA256).Hash
+          $installer = (Resolve-Path 'dist/Skyview-Dev-Setup-Windows-x64.exe').Path
+          $process = Start-Process $installer -ArgumentList '/S','/UPDATE' -Wait -PassThru
+          if ($process.ExitCode -notin @(0,3010)) { throw "Application bootstrap failed: $($process.ExitCode)" }
+          if ((Get-FileHash $baseline -Algorithm SHA256).Hash -ne $before) { throw 'Application installation changed the applied maintenance baseline.' }
+          $status = & ./coordination/target/release/sde-coordination.exe status | ConvertFrom-Json
+          if ($status -ne 'idle') { throw "Application bootstrap left unsafe coordination: $status" }
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Skyview Dev Setup'
+          $expected = (Get-Content installer/src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
+      - name: Verify Linux application bootstrap without applying a baseline
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          test ! -e /var/lib/skyview-student-dev/version
+          sudo apt-get install -y ./dist/Skyview-Dev-Setup-LinuxMint-amd64.deb
+          test -r /var/lib/skyview-robotics-coordination/sessions.gate
+          test -r /var/lib/skyview-robotics-coordination/operations.gate
+          test "$(coordination/target/release/sde-coordination status)" = '"idle"'
+          test ! -e /var/lib/skyview-student-dev/version
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}

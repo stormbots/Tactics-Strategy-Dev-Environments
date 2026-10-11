@@ -40,9 +40,10 @@ for ($attempt = 1; $attempt -le 2; $attempt++) {
         if (Test-Path $journal) {
             # This fixture observed the completed Chocolatey failure and contains
             # no other actors. Clear only the SDE record, never package locks.
-            Remove-Item $journal -Force
+            $gate = [IO.File]::Open('C:\ProgramData\SkyviewRoboticsCoordination\operations.gate','Open','Read','None')
+            try { Remove-Item $journal -Force } finally { $gate.Dispose() }
         }
-        Write-Host 'Retrying the real system backend once after a temporary Chocolatey feed gateway failure.' 
+        Write-Host 'Retrying the real system backend once after a temporary Chocolatey feed gateway failure.'
         Start-Sleep -Seconds 15
     }
 }
@@ -53,4 +54,4 @@ if (-not (Test-Path 'C:\Development')) { throw 'Development workspace was not cr
 $coordinator = Join-Path $PSScriptRoot '../coordination/target/release/sde-coordination.exe'
 $status = & $coordinator status | ConvertFrom-Json
 if ($status -ne 'idle') { throw "Provisioned maintenance is not safely coordinated: $status" }
-Write-Host 'SKYVIEW_SYSTEM_SETUP_OK' 
+Write-Host 'SKYVIEW_SYSTEM_SETUP_OK'

@@ -117,7 +117,10 @@ behavior. Synthetic Windows PowerShell tests exercise same-process nesting,
 elevated child reuse, contention, crash journaling and blocked repetition. A real
 standard-user fixture verifies read-only leases and denied state mutation. Fixtures
 never run package managers; the separate existing native application regression
-suite still exercises the real Windows provisioning chain.
+suite still exercises the real Windows provisioning chain. Both native application
+packages are actually installed on disposable runners to verify their bootstrap
+hooks, with checks that application installation does not apply or change a
+maintenance baseline.
 
 Server/Ubuntu runners validate operating-system behavior; they are not Windows 11
 or Linux Mint desktop UAT. #42 will exercise the completed installers under these
