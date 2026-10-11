@@ -342,7 +342,15 @@ mod tests {
         process::{Command, Stdio},
     };
 
-    struct Fixture(PathBuf);
+    // A concurrent fork briefly inherits other threads' descriptors until exec,
+    // even with CLOEXEC. Isolate fixtures so such an unrelated fork cannot retain
+    // a lease just released by another test. Each contention test still runs
+    // several real processes against its own gates.
+    static FIXTURE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    struct Fixture {
+        path: PathBuf,
+        _guard: std::sync::MutexGuard<'static, ()>,
+    }
     impl Fixture {
         fn new() -> Option<Self> {
             #[cfg(unix)]
@@ -353,6 +361,7 @@ mod tests {
                 );
                 return None;
             }
+            let guard = FIXTURE_LOCK.lock().unwrap();
             let name = format!(
                 "coordination-test-{}-{}",
                 std::process::id(),
@@ -366,12 +375,15 @@ mod tests {
             #[cfg(unix)]
             let path = PathBuf::from("/var/lib").join(name);
             initialize_at(&path).unwrap();
-            Some(Self(path))
+            Some(Self {
+                path,
+                _guard: guard,
+            })
         }
     }
     impl Drop for Fixture {
         fn drop(&mut self) {
-            std::fs::remove_dir_all(&self.0).unwrap();
+            std::fs::remove_dir_all(&self.path).unwrap();
         }
     }
     #[test]
@@ -419,66 +431,66 @@ mod tests {
     #[test]
     fn cross_process_sessions_operations_crash_and_installation_race() {
         let Some(f) = Fixture::new() else { return };
-        let mut gui = child(&f.0, "session");
-        let second_gui = acquire_at(&f.0, "sessions.gate", true).unwrap();
-        assert_eq!(installation_at(&f.0).unwrap_err(), Error::Busy);
+        let mut gui = child(&f.path, "session");
+        let second_gui = acquire_at(&f.path, "sessions.gate", true).unwrap();
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Busy);
         // Failed second-gate acquisition must release the first gate.
-        drop(acquire_at(&f.0, "operations.gate", false).unwrap());
+        drop(acquire_at(&f.path, "operations.gate", false).unwrap());
         drop(second_gui);
         gui.kill().unwrap();
         gui.wait().unwrap();
-        let installation = installation_at(&f.0).unwrap();
+        let installation = installation_at(&f.path).unwrap();
         assert_eq!(
-            acquire_at(&f.0, "sessions.gate", true).unwrap_err(),
+            acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
             Error::Busy
         );
         assert_eq!(
-            acquire_at(&f.0, "operations.gate", false).unwrap_err(),
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
             Error::Busy
         );
         drop(installation);
-        let mut backend = child(&f.0, "operation");
-        assert_eq!(installation_at(&f.0).unwrap_err(), Error::Busy);
+        let mut backend = child(&f.path, "operation");
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Busy);
         assert_eq!(
-            acquire_at(&f.0, "operations.gate", false).unwrap_err(),
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
             Error::Busy
         );
         backend.kill().unwrap();
         backend.wait().unwrap();
-        drop(installation_at(&f.0).unwrap()); // OS releases handles after abrupt exit.
+        drop(installation_at(&f.path).unwrap()); // OS releases handles after abrupt exit.
     }
     #[test]
     fn durable_installation_intent_and_bootstrap_preserve_live_gates() {
         let Some(f) = Fixture::new() else { return };
-        let install = installation_at(&f.0).unwrap();
-        initialize_at(&f.0).unwrap();
+        let install = installation_at(&f.path).unwrap();
+        initialize_at(&f.path).unwrap();
         assert_eq!(
-            acquire_at(&f.0, "operations.gate", false).unwrap_err(),
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
             Error::Busy
         );
         let transaction = install.begin_transaction().unwrap();
         transaction.complete().unwrap();
-        assert!(!f.0.join("transaction.json").exists());
+        assert!(!f.path.join("transaction.json").exists());
         let transaction = install.begin_transaction().unwrap();
         drop(transaction);
         drop(install);
-        assert_eq!(installation_at(&f.0).unwrap_err(), Error::Interrupted);
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
     }
 
     #[test]
     fn interrupted_record_blocks_even_with_free_kernel_gates() {
         let Some(f) = Fixture::new() else { return };
         std::fs::write(
-            f.0.join("transaction.json"),
+            f.path.join("transaction.json"),
             b"not instructions; stale or malformed state",
         )
         .unwrap();
-        assert_eq!(installation_at(&f.0).unwrap_err(), Error::Interrupted);
-        drop(acquire_at(&f.0, "operations.gate", false).unwrap());
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+        drop(acquire_at(&f.path, "operations.gate", false).unwrap());
         // Initialization/reboot-style reopening must never delete a journal or
         // replace the lock inode to make an interrupted transaction look idle.
-        initialize_at(&f.0).unwrap();
-        assert_eq!(installation_at(&f.0).unwrap_err(), Error::Interrupted);
+        initialize_at(&f.path).unwrap();
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
     }
     #[test]
     fn native_storage_rejects_links_writable_gates_and_untrusted_directories() {
@@ -486,31 +498,31 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::{symlink, PermissionsExt};
-            let gate = f.0.join("operations.gate");
+            let gate = f.path.join("operations.gate");
             std::fs::set_permissions(&gate, std::fs::Permissions::from_mode(0o644)).unwrap();
             assert_eq!(
-                acquire_at(&f.0, "operations.gate", false).unwrap_err(),
+                acquire_at(&f.path, "operations.gate", false).unwrap_err(),
                 Error::Untrusted
             );
             std::fs::set_permissions(&gate, std::fs::Permissions::from_mode(0o444)).unwrap();
-            std::fs::hard_link(&gate, f.0.join("alias")).unwrap();
+            std::fs::hard_link(&gate, f.path.join("alias")).unwrap();
             assert_eq!(
-                acquire_at(&f.0, "operations.gate", false).unwrap_err(),
+                acquire_at(&f.path, "operations.gate", false).unwrap_err(),
                 Error::Untrusted
             );
-            std::fs::remove_file(f.0.join("alias")).unwrap();
+            std::fs::remove_file(f.path.join("alias")).unwrap();
             std::fs::remove_file(&gate).unwrap();
             symlink("sessions.gate", &gate).unwrap();
-            assert!(acquire_at(&f.0, "operations.gate", false).is_err());
-            std::fs::set_permissions(&f.0, std::fs::Permissions::from_mode(0o777)).unwrap();
+            assert!(acquire_at(&f.path, "operations.gate", false).is_err());
+            std::fs::set_permissions(&f.path, std::fs::Permissions::from_mode(0o777)).unwrap();
             assert_eq!(
-                acquire_at(&f.0, "sessions.gate", true).unwrap_err(),
+                acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
                 Error::Untrusted
             );
         }
         #[cfg(windows)]
         {
-            let path = f.0.to_string_lossy();
+            let path = f.path.to_string_lossy();
             let command = format!("icacls '{path}' /grant '*S-1-5-32-545:(OI)(CI)M'");
             assert!(
                 Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
@@ -520,7 +532,7 @@ mod tests {
                     .success()
             );
             assert_eq!(
-                acquire_at(&f.0, "sessions.gate", true).unwrap_err(),
+                acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
                 Error::Untrusted
             );
         }
