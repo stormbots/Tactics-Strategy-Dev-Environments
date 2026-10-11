@@ -32,7 +32,9 @@ class Backends(unittest.TestCase):
         self.assertNotIn('fs:',cap)
     def test_release_gate(self):
         workflow=self.text('.github/workflows/build-dev-setup.yml')
-        self.assertIn('needs: [checks, native]',workflow)
+        self.assertIn('needs: [checks, native, update-trust]',workflow)
+        self.assertIn('environment: sde-release-signing',workflow)
+        self.assertIn('dist/sde-update.json dist/sde-update.json.minisig',workflow)
         self.assertIn('--verify-tag --prerelease',workflow)
         self.assertIn('sha256sum --check',workflow)
         fallback=self.text('.github/workflows/publish-linux-v1.0.1.yml')
