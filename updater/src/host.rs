@@ -1,7 +1,9 @@
 //! Fixed native package identity and administrator-controlled storage.
 use crate::discovery::{Failure, Result};
+#[cfg(not(windows))]
+use std::fs::OpenOptions;
 use std::{
-    fs::{File, OpenOptions},
+    fs::File,
     path::{Path, PathBuf},
 };
 
@@ -22,15 +24,7 @@ pub fn installed() -> Result<Installed> {
         return Err(Failure::Unsupported);
     }
     let os = std::fs::read_to_string("/etc/os-release").map_err(|_| Failure::Unsupported)?;
-    if !os
-        .lines()
-        .any(|s| s == "ID=linuxmint" || s == "ID=\"linuxmint\"")
-        || !os.lines().any(|s| {
-            s.starts_with("VERSION_ID=\"22")
-                || s == "VERSION_ID=22"
-                || s.starts_with("VERSION_ID=22.")
-        })
-    {
+    if !mint_supported(&os) {
         return Err(Failure::Unsupported);
     }
     let mut command = std::process::Command::new("/usr/bin/dpkg-query");
@@ -52,6 +46,21 @@ pub fn installed() -> Result<Installed> {
         version: version(lines[1])?,
         platform: "linux-amd64",
     })
+}
+#[cfg(target_os = "linux")]
+fn mint_supported(os: &str) -> bool {
+    let field = |name: &str| {
+        os.lines()
+            .find_map(|line| line.strip_prefix(name))
+            .map(|v| v.trim_matches('"'))
+    };
+    field("ID=") == Some("linuxmint")
+        && field("VERSION_ID=").is_some_and(|v| {
+            v == "22"
+                || v.strip_prefix("22.").is_some_and(|minor| {
+                    !minor.is_empty() && minor.bytes().all(|c| c.is_ascii_digit())
+                })
+        })
 }
 #[cfg(target_os = "linux")]
 fn bounded_command(mut command: std::process::Command) -> Result<String> {
@@ -146,18 +155,25 @@ pub(crate) fn create_private(path: &Path) -> Result<()> {
     validate(path)
 }
 pub(crate) fn exclusive(path: &Path) -> Result<File> {
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(target_os = "linux")]
+    #[cfg(windows)]
     {
-        use std::os::unix::fs::OpenOptionsExt;
-        options
-            .mode(0o600)
-            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        return windows::exclusive(path);
     }
-    let file = options.open(path).map_err(|_| Failure::Staging)?;
-    validate(path)?;
-    Ok(file)
+    #[cfg(not(windows))]
+    {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options
+                .mode(0o600)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        }
+        let file = options.open(path).map_err(|_| Failure::Staging)?;
+        validate(path)?;
+        Ok(file)
+    }
 }
 pub(crate) fn store() -> Result<PathBuf> {
     #[cfg(target_os = "linux")]
@@ -199,7 +215,7 @@ mod windows {
         Foundation::*,
         Security::{Authorization::*, *},
         Storage::FileSystem::*,
-        System::Registry::*,
+        System::{Registry::*, Threading::*},
     };
     fn wide(value: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
         value.as_ref().encode_wide().chain(Some(0)).collect()
@@ -215,6 +231,19 @@ mod windows {
         }
         Ok(buffer)
     }
+    fn sid_from_string(value: &str) -> Result<Vec<u32>> {
+        let mut raw = ptr::null_mut();
+        if unsafe { ConvertStringSidToSidW(wide(value).as_ptr(), &mut raw) } == 0 {
+            return Err(Failure::Staging);
+        }
+        let bytes = unsafe { GetLengthSid(raw) } as usize;
+        let mut result = vec![0u32; bytes.div_ceil(4)];
+        unsafe {
+            ptr::copy_nonoverlapping(raw.cast::<u8>(), result.as_mut_ptr().cast::<u8>(), bytes);
+            LocalFree(raw);
+        }
+        Ok(result)
+    }
     fn trusted(value: PSID, system: &[u32], admins: &[u32]) -> bool {
         !value.is_null()
             && unsafe {
@@ -223,6 +252,9 @@ mod windows {
             }
     }
     pub(super) fn validate(path: &Path) -> Result<()> {
+        validate_acl(path, false)
+    }
+    fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
         let info = std::fs::symlink_metadata(path).map_err(|_| Failure::Staging)?;
         if info.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
             || !(info.is_dir() || info.is_file())
@@ -251,14 +283,21 @@ mod windows {
         let result = (|| {
             let system = sid(WinLocalSystemSid)?;
             let admins = sid(WinBuiltinAdministratorsSid)?;
-            if !trusted(owner, &system, &admins) || acl.is_null() {
+            // The servicing identity is allowed only at Windows system anchors.
+            let servicing =
+                sid_from_string("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464")?;
+            let trusted_here = |value: PSID| {
+                trusted(value, &system, &admins)
+                    || (anchor && unsafe { EqualSid(value, servicing.as_ptr() as PSID) != 0 })
+            };
+            if !trusted_here(owner) || acl.is_null() {
                 return Err(Failure::Staging);
             }
-            let write = FILE_WRITE_DATA
-                | FILE_APPEND_DATA
-                | FILE_WRITE_EA
-                | FILE_WRITE_ATTRIBUTES
-                | FILE_DELETE_CHILD
+            let write = (if anchor {
+                0
+            } else {
+                FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES
+            }) | FILE_DELETE_CHILD
                 | DELETE
                 | WRITE_DAC
                 | WRITE_OWNER
@@ -270,6 +309,9 @@ mod windows {
                     return Err(Failure::Staging);
                 }
                 let header = unsafe { &*ace.cast::<ACE_HEADER>() };
+                if anchor && header.AceFlags & INHERIT_ONLY_ACE != 0 {
+                    continue;
+                }
                 if header.AceType == 1 {
                     continue;
                 } // Deny ACEs cannot grant write access.
@@ -278,7 +320,7 @@ mod windows {
                 }
                 let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
                 let trustee = ptr::addr_of!(allow.SidStart) as PSID;
-                if allow.Mask & write != 0 && !trusted(trustee, &system, &admins) {
+                if allow.Mask & write != 0 && !trusted_here(trustee) {
                     return Err(Failure::Staging);
                 }
             }
@@ -317,10 +359,52 @@ mod windows {
         }
         validate(path)
     }
+    pub(super) fn exclusive(path: &Path) -> Result<File> {
+        use std::os::windows::io::FromRawHandle;
+        let mut descriptor = ptr::null_mut();
+        if unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                wide("O:BAG:BAD:P(A;FA;;;SY)(A;FA;;;BA)").as_ptr(),
+                1,
+                &mut descriptor,
+                ptr::null_mut(),
+            )
+        } == 0
+        {
+            return Err(Failure::Staging);
+        }
+        let attributes = SECURITY_ATTRIBUTES {
+            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: descriptor,
+            bInheritHandle: 0,
+        };
+        let handle = unsafe {
+            CreateFileW(
+                wide(path).as_ptr(),
+                GENERIC_WRITE,
+                0,
+                &attributes,
+                CREATE_NEW,
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT,
+                ptr::null_mut(),
+            )
+        };
+        unsafe {
+            LocalFree(descriptor);
+        }
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(Failure::Staging);
+        }
+        let file = unsafe { File::from_raw_handle(handle) };
+        validate(path)?;
+        Ok(file)
+    }
     pub(super) fn store() -> Result<PathBuf> {
         // The supported Windows installation contract uses this fixed machine path.
         // Never accept an environment, working-directory, or caller-supplied root.
         let mut root = PathBuf::from(r"C:\ProgramData");
+        validate_acl(Path::new(r"C:\"), true)?;
+        validate_acl(&root, true)?;
         if std::fs::symlink_metadata(&root)
             .map_err(|_| Failure::Staging)?
             .file_attributes()
@@ -369,6 +453,19 @@ mod windows {
         if std::env::consts::ARCH != "x86_64" {
             return Err(Failure::Unsupported);
         }
+        let mut process_machine = 0u16;
+        let mut native_machine = 0u16;
+        if unsafe {
+            IsWow64Process2(
+                GetCurrentProcess(),
+                &mut process_machine,
+                &mut native_machine,
+            )
+        } == 0
+            || native_machine != 0x8664
+        {
+            return Err(Failure::Unsupported);
+        }
         // RtlGetVersion avoids manifest-dependent version virtualization.
         #[repr(C)]
         struct OsVersion {
@@ -378,6 +475,11 @@ mod windows {
             build: u32,
             platform: u32,
             service: [u16; 128],
+            service_pack_major: u16,
+            service_pack_minor: u16,
+            suite: u16,
+            product_type: u8,
+            reserved: u8,
         }
         #[link(name = "ntdll")]
         unsafe extern "system" {
@@ -385,7 +487,11 @@ mod windows {
         }
         let mut os: OsVersion = unsafe { std::mem::zeroed() };
         os.size = std::mem::size_of::<OsVersion>() as u32;
-        if unsafe { RtlGetVersion(&mut os) } != 0 || os.major != 10 || os.build < 22000 {
+        if unsafe { RtlGetVersion(&mut os) } != 0
+            || os.major != 10
+            || os.build < 22000
+            || os.product_type != 1
+        {
             return Err(Failure::Unsupported);
         }
         let registered = version(&registry("DisplayVersion")?)?;
@@ -402,7 +508,9 @@ mod windows {
         for component in path.components() {
             current.push(component);
             if current.is_dir() {
-                validate(&current).map_err(|_| Failure::InvalidInstalled)?;
+                let anchor =
+                    current == Path::new(r"C:\") || current == Path::new(r"C:\Program Files");
+                validate_acl(&current, anchor).map_err(|_| Failure::InvalidInstalled)?;
             }
         }
         let binary = path.join("skyview-dev-setup.exe");
@@ -454,6 +562,19 @@ mod windows {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn mint_version_gate() {
+        for value in [
+            "ID=ubuntu\nVERSION_ID=22",
+            "ID=linuxmint\nVERSION_ID=220",
+            "ID=linuxmint\nVERSION_ID=22.evil",
+            "ID=linuxmint\nVERSION_ID=21.3",
+        ] {
+            assert!(!mint_supported(value));
+        }
+        assert!(mint_supported("ID=linuxmint\nVERSION_ID=\"22.1\""));
+    }
     #[test]
     fn installed_version_is_canonical() {
         for v in ["", "bad", "1.2", "01.2.3", "1.2.3+old", "1.2.3-rc.1"] {

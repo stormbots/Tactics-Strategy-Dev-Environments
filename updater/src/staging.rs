@@ -209,11 +209,12 @@ fn stage_with(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::discovery::Sink;
     use minisign::KeyPair;
     use std::{collections::VecDeque, io::Cursor};
     struct Downloads(VecDeque<Result<Vec<u8>>>);
     impl Transport for Downloads {
-        fn get(&mut self, _: &str, max: u64, out: &mut dyn Write) -> Result<()> {
+        fn get(&mut self, _: &str, max: u64, out: &mut dyn Sink) -> Result<()> {
             let bytes = self.0.pop_front().unwrap()?;
             if bytes.len() as u64 > max {
                 return Err(Failure::Malformed);

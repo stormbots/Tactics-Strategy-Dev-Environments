@@ -133,8 +133,26 @@ fn safe_url(url: &Url, initial: &Url) -> bool {
         && url.host_str() == Some("release-assets.githubusercontent.com")
         && url.path().starts_with("/github-production-release-asset/")
 }
+pub(crate) trait Sink: Write {
+    fn reset(&mut self) -> Result<()>;
+}
+impl Sink for Vec<u8> {
+    fn reset(&mut self) -> Result<()> {
+        self.clear();
+        Ok(())
+    }
+}
+impl Sink for std::fs::File {
+    fn reset(&mut self) -> Result<()> {
+        use std::io::{Seek, SeekFrom};
+        self.set_len(0)
+            .and_then(|_| self.seek(SeekFrom::Start(0)))
+            .map_err(|_| Failure::Staging)?;
+        Ok(())
+    }
+}
 pub(crate) trait Transport {
-    fn get(&mut self, url: &str, limit: u64, output: &mut dyn Write) -> Result<()>;
+    fn get(&mut self, url: &str, limit: u64, output: &mut dyn Sink) -> Result<()>;
 }
 pub struct GitHub {
     client: Client,
@@ -166,111 +184,147 @@ impl GitHub {
         std::thread::sleep(delay);
         Ok(())
     }
-    fn request(&self, initial: &Url) -> Result<reqwest::blocking::Response> {
-        for attempt in 0..3 {
-            let mut url = initial.clone();
-            let mut transient = false;
-            for hop in 0..=MAX_REDIRECTS {
-                if !safe_url(&url, initial) {
-                    return Err(Failure::Untrusted);
-                }
-                let result = self
-                    .client
-                    .get(url.clone())
-                    .header(
-                        "Accept",
-                        if initial.host_str() == Some("api.github.com") {
-                            "application/vnd.github+json"
-                        } else {
-                            "application/octet-stream"
-                        },
-                    )
-                    .header("X-GitHub-Api-Version", "2022-11-28")
-                    .timeout(self.remaining()?.min(Duration::from_secs(30)))
-                    .send();
-                let response = match result {
-                    Ok(r) => r,
-                    Err(_) => {
-                        transient = true;
-                        break;
-                    }
-                };
-                let status = response.status();
-                if status.is_redirection() {
+    fn request(
+        &self,
+        initial: &Url,
+    ) -> std::result::Result<reqwest::blocking::Response, RequestError> {
+        let mut url = initial.clone();
+        for hop in 0..=MAX_REDIRECTS {
+            if !safe_url(&url, initial) {
+                return Err(RequestError::Abort(Failure::Untrusted));
+            }
+            let response = self
+                .client
+                .get(url.clone())
+                .header(
+                    "Accept",
+                    if initial.host_str() == Some("api.github.com") {
+                        "application/vnd.github+json"
+                    } else {
+                        "application/octet-stream"
+                    },
+                )
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .timeout(
+                    self.remaining()
+                        .map_err(RequestError::Abort)?
+                        .min(Duration::from_secs(30)),
+                )
+                .send()
+                .map_err(|_| RequestError::Retry(Failure::Offline, None))?;
+            let now = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| RequestError::Abort(Failure::Offline))?
+                .as_secs();
+            match response_action(response.status().as_u16(), response.headers(), now) {
+                Action::Ready => return Ok(response),
+                Action::Abort(failure) => return Err(RequestError::Abort(failure)),
+                Action::Retry(failure, delay) => return Err(RequestError::Retry(failure, delay)),
+                Action::Redirect => {
                     if hop == MAX_REDIRECTS {
-                        return Err(Failure::Untrusted);
+                        return Err(RequestError::Abort(Failure::Untrusted));
                     }
                     let location = response
                         .headers()
                         .get("location")
                         .and_then(|s| s.to_str().ok())
-                        .ok_or(Failure::Untrusted)?;
-                    url = url.join(location).map_err(|_| Failure::Untrusted)?;
-                    continue;
+                        .ok_or(RequestError::Abort(Failure::Untrusted))?;
+                    url = url
+                        .join(location)
+                        .map_err(|_| RequestError::Abort(Failure::Untrusted))?;
                 }
-                if status.as_u16() == 429
-                    || (status.as_u16() == 403
-                        && (response
-                            .headers()
-                            .get("x-ratelimit-remaining")
-                            .and_then(|v| v.to_str().ok())
-                            == Some("0")
-                            || response.headers().contains_key("retry-after")))
-                {
-                    let now = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .map_err(|_| Failure::RateLimited)?
-                        .as_secs();
-                    let delay = response
-                        .headers()
-                        .get("retry-after")
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|v| v.parse::<u64>().ok())
-                        .or_else(|| {
-                            response
-                                .headers()
-                                .get("x-ratelimit-reset")
-                                .and_then(|v| v.to_str().ok())
-                                .and_then(|v| v.parse::<u64>().ok())
-                                .map(|reset| reset.saturating_sub(now).saturating_add(1))
-                        });
-                    if attempt == 2 {
-                        return Err(Failure::RateLimited);
-                    }
-                    self.pause(
-                        Duration::from_secs(delay.ok_or(Failure::RateLimited)?.max(1)),
-                        Failure::RateLimited,
-                    )?;
-                    transient = true;
-                    break;
-                }
-                if status.is_server_error() || status.as_u16() == 408 {
-                    transient = true;
-                    break;
-                }
-                if !status.is_success() {
-                    return Err(if status.as_u16() == 404 {
-                        Failure::Incomplete
-                    } else {
-                        Failure::Offline
-                    });
-                }
-                return Ok(response);
-            }
-            if !transient {
-                return Err(Failure::Untrusted);
-            }
-            if attempt < 2 {
-                self.pause(Duration::from_secs(1 << attempt), Failure::Offline)?;
             }
         }
-        Err(Failure::Offline)
+        Err(RequestError::Abort(Failure::Untrusted))
     }
 }
+enum RequestError {
+    Abort(Failure),
+    Retry(Failure, Option<Duration>),
+}
+#[derive(Debug, PartialEq, Eq)]
+enum Action {
+    Ready,
+    Redirect,
+    Abort(Failure),
+    Retry(Failure, Option<Duration>),
+}
+fn response_action(status: u16, headers: &reqwest::header::HeaderMap, now: u64) -> Action {
+    if (300..400).contains(&status) {
+        return Action::Redirect;
+    }
+    if status == 429
+        || (status == 403
+            && (headers
+                .get("x-ratelimit-remaining")
+                .and_then(|v| v.to_str().ok())
+                == Some("0")
+                || headers.contains_key("retry-after")))
+    {
+        let delay = headers
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok())
+            .or_else(|| {
+                headers
+                    .get("x-ratelimit-reset")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .map(|reset| reset.saturating_sub(now).saturating_add(1))
+            });
+        return match delay {
+            Some(delay) => Action::Retry(
+                Failure::RateLimited,
+                Some(Duration::from_secs(delay.max(1))),
+            ),
+            None => Action::Abort(Failure::RateLimited),
+        };
+    }
+    if (500..600).contains(&status) || status == 408 {
+        return Action::Retry(Failure::Offline, None);
+    }
+    if status == 200 {
+        Action::Ready
+    } else {
+        Action::Abort(if status == 404 {
+            Failure::Incomplete
+        } else {
+            Failure::Offline
+        })
+    }
+}
+fn copy_bounded(
+    reader: &mut impl Read,
+    output: &mut dyn Sink,
+    limit: u64,
+    deadline: Instant,
+) -> Result<u64> {
+    let mut count = 0u64;
+    let mut buffer = [0u8; 65536];
+    loop {
+        if Instant::now() >= deadline {
+            return Err(Failure::Offline);
+        }
+        let n = reader.read(&mut buffer).map_err(|_| Failure::Offline)?;
+        if n == 0 {
+            break;
+        }
+        count = count.checked_add(n as u64).ok_or(Failure::Malformed)?;
+        if count > limit {
+            return Err(Failure::Malformed);
+        }
+        output
+            .write_all(&buffer[..n])
+            .map_err(|_| Failure::Staging)?;
+    }
+    if count == 0 {
+        return Err(Failure::Incomplete);
+    }
+    Ok(count)
+}
 impl Transport for GitHub {
-    fn get(&mut self, url: &str, limit: u64, output: &mut dyn Write) -> Result<()> {
+    fn get(&mut self, url: &str, limit: u64, output: &mut dyn Sink) -> Result<()> {
         let initial = Url::parse(url).map_err(|_| Failure::Untrusted)?;
-        // Callers only construct these routes internally; no configurable repository.
         if !(url.starts_with(&format!(
             "https://api.github.com/repos/{REPOSITORY}/releases?per_page=100&page="
         )) || url.starts_with(&format!(
@@ -278,32 +332,39 @@ impl Transport for GitHub {
         ))) {
             return Err(Failure::Untrusted);
         }
-        let mut response = self.request(&initial)?;
-        if response.content_length().is_some_and(|len| len > limit) {
-            return Err(Failure::Malformed);
-        }
-        let mut count = 0u64;
-        let mut buffer = [0u8; 65536];
-        loop {
-            self.remaining()?;
-            let n = response.read(&mut buffer).map_err(|_| Failure::Offline)?;
-            if n == 0 {
-                break;
+        for attempt in 0..3 {
+            output.reset()?;
+            let result = match self.request(&initial) {
+                Ok(mut response) => {
+                    if response.content_length().is_some_and(|len| len > limit) {
+                        return Err(Failure::Malformed);
+                    }
+                    match copy_bounded(&mut response, output, limit, self.deadline) {
+                        Ok(count) if response.content_length().is_some_and(|len| len != count) => {
+                            Err(RequestError::Retry(Failure::Offline, None))
+                        }
+                        Ok(_) => return Ok(()),
+                        Err(Failure::Offline) => Err(RequestError::Retry(Failure::Offline, None)),
+                        Err(failure) => Err(RequestError::Abort(failure)),
+                    }
+                }
+                Err(error) => Err(error),
+            };
+            match result {
+                Err(RequestError::Abort(failure)) => return Err(failure),
+                Err(RequestError::Retry(failure, delay)) => {
+                    if attempt == 2 {
+                        return Err(failure);
+                    }
+                    self.pause(delay.unwrap_or(Duration::from_secs(1 << attempt)), failure)?;
+                }
+                Ok(()) => return Ok(()),
             }
-            count = count.checked_add(n as u64).ok_or(Failure::Malformed)?;
-            if count > limit {
-                return Err(Failure::Malformed);
-            }
-            output
-                .write_all(&buffer[..n])
-                .map_err(|_| Failure::Staging)?;
         }
-        if count == 0 {
-            return Err(Failure::Incomplete);
-        }
-        Ok(())
+        Err(Failure::Offline)
     }
 }
+
 pub(crate) fn discover_with(
     transport: &mut impl Transport,
     installed: &str,
@@ -408,9 +469,73 @@ mod tests {
             &Url::parse("https://api.github.com/repos/x/releases").unwrap()
         ));
     }
+    #[test]
+    fn network_status_retry_deadline_and_size_contracts() {
+        use reqwest::header::HeaderMap;
+        let empty = HeaderMap::new();
+        assert_eq!(response_action(200, &empty, 100), Action::Ready);
+        assert_eq!(
+            response_action(206, &empty, 100),
+            Action::Abort(Failure::Offline)
+        );
+        assert_eq!(response_action(302, &empty, 100), Action::Redirect);
+        assert_eq!(
+            response_action(404, &empty, 100),
+            Action::Abort(Failure::Incomplete)
+        );
+        assert_eq!(
+            response_action(503, &empty, 100),
+            Action::Retry(Failure::Offline, None)
+        );
+        assert_eq!(
+            response_action(429, &empty, 100),
+            Action::Abort(Failure::RateLimited)
+        );
+        let mut limited = HeaderMap::new();
+        limited.insert("retry-after", "600".parse().unwrap());
+        assert_eq!(
+            response_action(429, &limited, 100),
+            Action::Retry(Failure::RateLimited, Some(Duration::from_secs(600)))
+        );
+        limited.clear();
+        limited.insert("x-ratelimit-remaining", "0".parse().unwrap());
+        limited.insert("x-ratelimit-reset", "130".parse().unwrap());
+        assert_eq!(
+            response_action(403, &limited, 100),
+            Action::Retry(Failure::RateLimited, Some(Duration::from_secs(31)))
+        );
+        let mut github = GitHub::new().unwrap();
+        github.deadline = Instant::now();
+        assert_eq!(
+            github.pause(Duration::from_secs(1), Failure::RateLimited),
+            Err(Failure::RateLimited)
+        );
+        let mut output = vec![9];
+        assert_eq!(
+            copy_bounded(
+                &mut std::io::Cursor::new(b"abc"),
+                &mut output,
+                2,
+                Instant::now() + Duration::from_secs(1)
+            ),
+            Err(Failure::Malformed)
+        );
+        assert_eq!(output, vec![9]);
+        assert_eq!(
+            copy_bounded(
+                &mut std::io::Cursor::new(b"abc"),
+                &mut output,
+                3,
+                Instant::now()
+            ),
+            Err(Failure::Offline)
+        );
+        output.reset().unwrap();
+        assert!(output.is_empty());
+    }
     struct Pages(Vec<Result<Vec<u8>>>);
     impl Transport for Pages {
-        fn get(&mut self, _: &str, _: u64, out: &mut dyn Write) -> Result<()> {
+        fn get(&mut self, _: &str, _: u64, out: &mut dyn Sink) -> Result<()> {
             out.write_all(&self.0.remove(0)?).unwrap();
             Ok(())
         }
