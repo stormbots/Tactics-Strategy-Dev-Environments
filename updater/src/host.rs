@@ -157,7 +157,7 @@ pub(crate) fn create_private(path: &Path) -> Result<()> {
 pub(crate) fn exclusive(path: &Path) -> Result<File> {
     #[cfg(windows)]
     {
-        return windows::exclusive(path);
+        windows::exclusive(path)
     }
     #[cfg(not(windows))]
     {
@@ -280,56 +280,57 @@ mod windows {
         if status != ERROR_SUCCESS {
             return Err(Failure::Staging);
         }
-        let result = (|| {
-            let system = sid(WinLocalSystemSid)?;
-            let admins = sid(WinBuiltinAdministratorsSid)?;
-            // The servicing identity is allowed only at Windows system anchors.
-            let servicing =
-                sid_from_string("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464")?;
-            let trusted_here = |value: PSID| {
-                trusted(value, &system, &admins)
-                    || (anchor && unsafe { EqualSid(value, servicing.as_ptr() as PSID) != 0 })
-            };
-            if !trusted_here(owner) || acl.is_null() {
-                return Err(Failure::Staging);
-            }
-            let write = (if anchor {
-                0
-            } else {
-                FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES
-            }) | FILE_DELETE_CHILD
-                | DELETE
-                | WRITE_DAC
-                | WRITE_OWNER
-                | GENERIC_WRITE
-                | GENERIC_ALL;
-            for index in 0..unsafe { (*acl).AceCount } as u32 {
-                let mut ace: *mut c_void = ptr::null_mut();
-                if unsafe { GetAce(acl, index, &mut ace) } == 0 || ace.is_null() {
-                    return Err(Failure::Staging);
-                }
-                let header = unsafe { &*ace.cast::<ACE_HEADER>() };
-                if anchor && u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
-                    continue;
-                }
-                if header.AceType == 1 {
-                    continue;
-                } // Deny ACEs cannot grant write access.
-                if header.AceType != 0 {
-                    return Err(Failure::Staging);
-                }
-                let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
-                let trustee = ptr::addr_of!(allow.SidStart) as PSID;
-                if allow.Mask & write != 0 && !trusted_here(trustee) {
-                    return Err(Failure::Staging);
-                }
-            }
-            Ok(())
-        })();
+        let result = check_acl(owner, acl, anchor);
         unsafe {
             LocalFree(descriptor);
         }
         result
+    }
+    fn check_acl(owner: PSID, acl: *mut ACL, anchor: bool) -> Result<()> {
+        let system = sid(WinLocalSystemSid)?;
+        let admins = sid(WinBuiltinAdministratorsSid)?;
+        // The servicing identity is allowed only at Windows system anchors.
+        let servicing =
+            sid_from_string("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464")?;
+        let trusted_here = |value: PSID| {
+            trusted(value, &system, &admins)
+                || (anchor && unsafe { EqualSid(value, servicing.as_ptr() as PSID) != 0 })
+        };
+        if !trusted_here(owner) || acl.is_null() {
+            return Err(Failure::Staging);
+        }
+        let write = (if anchor {
+            0
+        } else {
+            FILE_WRITE_DATA | FILE_APPEND_DATA | FILE_WRITE_EA | FILE_WRITE_ATTRIBUTES
+        }) | FILE_DELETE_CHILD
+            | DELETE
+            | WRITE_DAC
+            | WRITE_OWNER
+            | GENERIC_WRITE
+            | GENERIC_ALL;
+        for index in 0..unsafe { (*acl).AceCount } as u32 {
+            let mut ace: *mut c_void = ptr::null_mut();
+            if unsafe { GetAce(acl, index, &mut ace) } == 0 || ace.is_null() {
+                return Err(Failure::Staging);
+            }
+            let header = unsafe { &*ace.cast::<ACE_HEADER>() };
+            if anchor && u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
+                continue;
+            }
+            if header.AceType == 1 {
+                continue;
+            } // Deny ACEs cannot grant write access.
+            if header.AceType != 0 {
+                return Err(Failure::Staging);
+            }
+            let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
+            let trustee = ptr::addr_of!(allow.SidStart) as PSID;
+            if allow.Mask & write != 0 && !trusted_here(trustee) {
+                return Err(Failure::Staging);
+            }
+        }
+        Ok(())
     }
     pub(super) fn create_private(path: &Path) -> Result<()> {
         let sddl = wide("O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)");
@@ -381,7 +382,7 @@ mod windows {
         let handle = unsafe {
             CreateFileW(
                 wide(path).as_ptr(),
-                GENERIC_WRITE,
+                GENERIC_WRITE | READ_CONTROL,
                 0,
                 &attributes,
                 CREATE_NEW,
@@ -396,7 +397,38 @@ mod windows {
             return Err(Failure::Staging);
         }
         let file = unsafe { File::from_raw_handle(handle) };
-        validate(path)?;
+        // Query the existing exclusive handle; reopening its pathname would fail
+        // Windows sharing checks and is unnecessary for owner/ACL validation.
+        let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+        if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0
+            || info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)
+                != 0
+        {
+            return Err(Failure::Staging);
+        }
+        let mut owner = ptr::null_mut();
+        let mut acl = ptr::null_mut();
+        let mut descriptor = ptr::null_mut();
+        if unsafe {
+            GetSecurityInfo(
+                handle,
+                SE_FILE_OBJECT,
+                OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+                &mut owner,
+                ptr::null_mut(),
+                &mut acl,
+                ptr::null_mut(),
+                &mut descriptor,
+            )
+        } != ERROR_SUCCESS
+        {
+            return Err(Failure::Staging);
+        }
+        let result = check_acl(owner, acl, false);
+        unsafe {
+            LocalFree(descriptor);
+        }
+        result?;
         Ok(file)
     }
     pub(super) fn store() -> Result<PathBuf> {
