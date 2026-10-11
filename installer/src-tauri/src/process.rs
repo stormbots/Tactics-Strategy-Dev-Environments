@@ -157,7 +157,11 @@ mod tests {
         cmd.env("GITHUB_ACTIONS", "true");
         let mut lines = Vec::new();
         assert_eq!(
-            stream(cmd, |line| lines.push(line)).unwrap(),
+            stream(cmd, |line| {
+                eprintln!("{}", crate::protocol::redact(&line));
+                lines.push(line);
+            })
+            .unwrap(),
             0,
             "{lines:?}"
         );
