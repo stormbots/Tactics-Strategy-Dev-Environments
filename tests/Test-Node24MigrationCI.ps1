@@ -21,6 +21,22 @@ if (-not ($packages -match '^nodejs-lts\|24\.21\.0$')) { throw 'Approved Node pa
 $pins = @(& $choco pin list --limit-output)
 if (-not ($pins -match '^nodejs-lts\|')) { throw 'Approved Node package is not pinned.' }
 Write-Host 'SKYVIEW_NODE_MIGRATION_OK'
+# The hosted runner executes CI inside its preinstalled PowerShell Core. Adopt
+# that exact runtime through the upstream package's normal (non-forced) install
+# path, which verifies/reuses an existing equal-or-newer installation. Do not
+# replace CI's own shell or enter the package's unbounded ancestor walk during
+# this unrelated Node/SDE regression. No scripts, checksums or package DB are
+# bypassed; the real backend below still installs/configures the metapackage.
+$core = 'C:\Program Files\PowerShell\7\pwsh.exe'
+if (Test-Path $core) {
+    $version = (Get-Command $core).Version
+    if ($version.Major -ne 7) { throw 'Expected the hosted runner PowerShell 7 fixture.' }
+    $packageVersion = '{0}.{1}.{2}' -f $version.Major,$version.Minor,$version.Build
+    & $choco install powershell-core --version $packageVersion -y --no-progress
+    if ($LASTEXITCODE -notin @(0,3010)) { throw 'Could not adopt the existing CI PowerShell runtime through Chocolatey.' }
+    if ((Get-Command $core).Version -ne $version) { throw 'CI shell adoption unexpectedly replaced the runtime.' }
+    Write-Host 'SKYVIEW_CI_POWERSHELL_REUSE_OK'
+}
 # Continue through the real system setup so dependency/configuration failures
 # beyond the previously failing MSI are covered before shipping another patch.
 for ($attempt = 1; $attempt -le 2; $attempt++) {
