@@ -382,7 +382,7 @@ mod windows {
         let handle = unsafe {
             CreateFileW(
                 wide(path).as_ptr(),
-                GENERIC_WRITE | READ_CONTROL,
+                GENERIC_WRITE | READ_CONTROL | FILE_READ_ATTRIBUTES,
                 0,
                 &attributes,
                 CREATE_NEW,
@@ -394,6 +394,10 @@ mod windows {
             LocalFree(descriptor);
         }
         if handle == INVALID_HANDLE_VALUE {
+            #[cfg(test)]
+            eprintln!("Exclusive CreateFileW failed: {}", unsafe {
+                GetLastError()
+            });
             return Err(Failure::Staging);
         }
         let file = unsafe { File::from_raw_handle(handle) };
@@ -404,12 +408,16 @@ mod windows {
             || info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)
                 != 0
         {
+            #[cfg(test)]
+            eprintln!("Exclusive handle metadata failed: {}", unsafe {
+                GetLastError()
+            });
             return Err(Failure::Staging);
         }
         let mut owner = ptr::null_mut();
         let mut acl = ptr::null_mut();
         let mut descriptor = ptr::null_mut();
-        if unsafe {
+        let security_status = unsafe {
             GetSecurityInfo(
                 handle,
                 SE_FILE_OBJECT,
@@ -420,11 +428,17 @@ mod windows {
                 ptr::null_mut(),
                 &mut descriptor,
             )
-        } != ERROR_SUCCESS
-        {
+        };
+        if security_status != ERROR_SUCCESS {
+            #[cfg(test)]
+            eprintln!("Exclusive GetSecurityInfo failed: {security_status}");
             return Err(Failure::Staging);
         }
         let result = check_acl(owner, acl, false);
+        #[cfg(test)]
+        if result.is_err() {
+            eprintln!("Exclusive file ACL check failed");
+        }
         unsafe {
             LocalFree(descriptor);
         }
