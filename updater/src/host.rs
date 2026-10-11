@@ -297,6 +297,11 @@ pub(crate) mod windows {
                 || (anchor && unsafe { EqualSid(value, servicing.as_ptr() as PSID) != 0 })
         };
         if !trusted_here(owner) || acl.is_null() {
+            #[cfg(test)]
+            eprintln!(
+                "ACL ownership rejected: anchor={anchor}, servicing={}",
+                unsafe { EqualSid(owner, servicing.as_ptr() as PSID) != 0 }
+            );
             return Err(Failure::Staging);
         }
         let write = (if anchor {
@@ -324,11 +329,18 @@ pub(crate) mod windows {
                 continue;
             } // Deny ACEs cannot grant write access.
             if header.AceType != 0 {
+                #[cfg(test)]
+                eprintln!("ACL ACE type rejected: {}", header.AceType);
                 return Err(Failure::Staging);
             }
             let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
             let trustee = ptr::addr_of!(allow.SidStart) as PSID;
             if allow.Mask & write != 0 && !trusted_here(trustee) {
+                #[cfg(test)]
+                eprintln!(
+                    "ACL write ACE rejected: mask={:#x}, flags={:#x}",
+                    allow.Mask, header.AceFlags
+                );
                 return Err(Failure::Staging);
             }
         }

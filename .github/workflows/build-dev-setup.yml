@@ -230,6 +230,11 @@ jobs:
           if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
           $env:SDE_APPONLY_IDENTITY_FIXTURE = 'true'
           try {
+            # Public fixture permissions only; no environment/credentials.
+            foreach ($path in @('C:\Program Files\Skyview Dev Setup','C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe')) {
+              Write-Output "Installed permission diagnostic: $path"
+              Write-Output (Get-Acl -LiteralPath $path).Sddl
+            }
             cargo test --locked --manifest-path updater/Cargo.toml --lib host::tests::installed_native_fixture_identity -- --exact --nocapture
             if ($LASTEXITCODE -ne 0) { throw 'Installed native identity failed before provisioning.' }
           } finally { Remove-Item Env:SDE_APPONLY_IDENTITY_FIXTURE }
