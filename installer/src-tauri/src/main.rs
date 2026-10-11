@@ -354,8 +354,30 @@ fn main() {
         };
         std::process::exit(code);
     }
+    if args.get(1).map(String::as_str) == Some("--coordination-init") && args.len() == 2 {
+        match sde_coordination::initialize() {
+            Ok(()) => return,
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        }
+    }
+    let session = match sde_coordination::session() {
+        Ok(lease) => lease,
+        Err(e) => {
+            let message = if e == sde_coordination::Error::Busy {
+                "SDE is being updated. Please reopen it shortly.".to_string()
+            } else {
+                e.to_string()
+            };
+            process::coordination_message(&message);
+            return;
+        }
+    };
     tauri::Builder::default()
         .manage(Busy::default())
+        .manage(session)
         .invoke_handler(tauri::generate_handler![
             inspect_system,
             inspect_schedule,

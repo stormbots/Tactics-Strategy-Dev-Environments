@@ -1065,12 +1065,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sde-coordination"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "sde-update-trust"
 version = "0.1.0"
 dependencies = [
  "libc",
  "minisign",
  "reqwest",
+ "sde-coordination",
  "semver",
  "serde",
  "serde_json",

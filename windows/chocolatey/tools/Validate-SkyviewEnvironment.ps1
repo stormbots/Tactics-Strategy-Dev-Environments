@@ -1,4 +1,8 @@
 param([switch]$CheckUpdates)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Coordination.ps1')
+try {
+Invoke-SkyviewCoordinated -Action {
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 $ErrorActionPreference = 'Continue'
@@ -99,3 +103,12 @@ foreach ($record in (Get-SkyviewToolRecords -Installed $installed -CheckUpdates 
 Write-Host "SKYVIEW_EVENT|summary|$script:Failures|Validation completed with $script:Failures failed checks"
 if ($script:Failures -gt 0) { exit 1 }
 exit 0
+
+}
+} catch {
+    if ($_.Exception.Message -eq 'SKYVIEW_DEFERRED') {
+        Write-Host 'SKYVIEW_EVENT|warning|deferred|SDE is busy. Maintenance will retry at its next scheduled invocation.'
+        exit 75
+    }
+    throw
+}

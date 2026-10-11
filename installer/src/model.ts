@@ -18,7 +18,7 @@ export type Schedule = {
   frequency: string;
   nextRun: string | null;
   lastRun: string | null;
-  lastResult: "success" | "failure" | "never" | "running" | "unavailable";
+  lastResult: "success" | "failure" | "never" | "running" | "deferred" | "unavailable";
   resultDetail: string;
   catchUp: boolean | null;
   logFolder: string;

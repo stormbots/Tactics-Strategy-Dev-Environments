@@ -22,12 +22,17 @@
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost",
-      "capabilities": ["main"]
+      "capabilities": [
+        "main"
+      ]
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "deb"],
+    "targets": [
+      "nsis",
+      "deb"
+    ],
     "category": "DeveloperTool",
     "publisher": "Skyview Robotics",
     "shortDescription": "Student development workstation setup",
@@ -42,7 +47,11 @@
       "../../linux/": "backend/linux/"
     },
     "windows": {
-      "nsis": { "installMode": "perMachine", "displayLanguageSelector": false }
+      "nsis": {
+        "installMode": "perMachine",
+        "displayLanguageSelector": false,
+        "installerHooks": "hooks/coordination.nsh"
+      }
     },
     "linux": {
       "deb": {
@@ -54,7 +63,8 @@
           "bash",
           "python3"
         ],
-        "desktopTemplate": "skyview.desktop"
+        "desktopTemplate": "skyview.desktop",
+        "postInstallScript": "hooks/postinst"
       }
     }
   }

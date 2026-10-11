@@ -42,6 +42,25 @@ if ($DenyControl) {
         if (-not $denied) { throw "Standard user could $operation the SYSTEM task." }
     }
 }
+$coordination = 'C:\ProgramData\SkyviewRoboticsCoordination'
+if (Test-Path $coordination) {
+    $sessionGate = Join-Path $coordination 'sessions.gate'
+    $lease = [IO.File]::Open($sessionGate, 'Open', 'Read', 'Read')
+    $lease.Dispose()
+    try {
+        foreach ($attempt in @('write gate','replace gate','create transaction')) {
+            $denied = $false
+            try {
+                switch ($attempt) {
+                    'write gate' { [IO.File]::WriteAllText($sessionGate, 'unsafe') }
+                    'replace gate' { [IO.File]::Delete($sessionGate) }
+                    'create transaction' { [IO.File]::WriteAllText((Join-Path $coordination 'transaction.json'), '{}') }
+                }
+            } catch [UnauthorizedAccessException] { $denied = $true }
+            if (-not $denied) { throw "Standard user could $attempt." }
+        }
+    } finally { $lease.Dispose() }
+}
 Write-Output 'STANDARD_USER_TASK_CHECK_OK'
 exit 0
 '@ | Set-Content -LiteralPath $probe -Encoding UTF8

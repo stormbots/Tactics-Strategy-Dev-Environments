@@ -31,6 +31,7 @@ const results: Record<Schedule["lastResult"], string> = {
   success: "Succeeded",
   failure: "Failed",
   never: "Never run",
+  deferred: "Deferred while SDE is busy",
   running: "Running",
   unavailable: "Unavailable",
 };

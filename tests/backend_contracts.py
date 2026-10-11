@@ -12,7 +12,9 @@ class Backends(unittest.TestCase):
         self.assertIn('must not run as root',user)
         install=self.text('linux/Install-SkyviewStudentDev.sh')
         self.assertIn('"$SYSTEM_ONLY" != 1',install)
-        self.assertNotIn('/usr/bin/python3 ',install)
+        # System Python runs coordination utilities; the student runtime stays 3.14.
+        self.assertIn('python3.14 python3.14-venv', install)
+        self.assertNotRegex(install, r'apt-get[^\n]*install[^\n]*\bpython3(?:\s|$)')
         update=self.text('linux/Update-SkyviewStudentDev.sh')
         self.assertNotRegex(update,r'apt-get\s+(dist-upgrade|upgrade|full-upgrade)')
         self.assertIn('"nodejs=$NODE_VERSION"',update)

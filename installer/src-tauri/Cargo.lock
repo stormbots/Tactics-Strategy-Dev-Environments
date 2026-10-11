@@ -2591,6 +2591,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sde-coordination"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2797,6 +2807,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "sde-coordination",
  "tauri",
  "tauri-build",
  "uuid",

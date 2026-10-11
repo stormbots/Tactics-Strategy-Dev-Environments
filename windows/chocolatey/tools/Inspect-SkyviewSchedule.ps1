@@ -24,7 +24,7 @@ function ConvertTo-SkyviewSchedule {
     # Scheduler may report a next time for disabled triggers. Hide it unless
     # both the task and at least one of its triggers are enabled.
     if ($Task.Enabled -and $hasEnabledTrigger -and [datetime]$Task.NextRunTime -gt [datetime]'2000-01-01') { $next = ([datetimeoffset]([datetime]$Task.NextRunTime)).ToString('o') }
-    $result = if ($Task.State -in @(2,4)) { 'running' } elseif (-not $last) { 'never' } elseif ($Task.LastTaskResult -eq 0) { 'success' } else { 'failure' }
+    $result = if ($Task.State -in @(2,4)) { 'running' } elseif (-not $last) { 'never' } elseif ($Task.LastTaskResult -eq 75) { 'deferred' } elseif ($Task.LastTaskResult -eq 0) { 'success' } else { 'failure' }
     $code = [int64]$Task.LastTaskResult -band 0xffffffffL
     [pscustomobject]@{
         status = $(if ($Task.Enabled) { 'enabled' } else { 'disabled' })

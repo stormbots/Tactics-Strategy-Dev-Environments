@@ -1,4 +1,8 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Coordination.ps1')
+try {
+Invoke-SkyviewCoordinated -Mutation -Action {
+$ErrorActionPreference = 'Stop'
 
 $Skyview = 'C:\ProgramData\SkyviewRobotics'
 $Logs = Join-Path $Skyview 'Logs'
@@ -43,6 +47,7 @@ Invoke-ConfigStage 1 'Creating Skyview and development directories' {
 Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
     foreach ($file in @(
         'AutoUpdate-SkyviewTools.ps1',
+        'Coordination.ps1',
         'Update-SkyviewTools.ps1',
         'Update-Node24.ps1',
         'Node24.ps1',
@@ -183,3 +188,12 @@ Write-Host ''
 Write-Host 'Skyview Robotics development workstation baseline installed.' -ForegroundColor Green
 Write-Host 'Node.js is pinned to major 24 and Git/GitHub identity is intentionally unconfigured.'
 Write-Host 'Run C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1 to validate.'
+
+}
+} catch {
+    if ($_.Exception.Message -eq 'SKYVIEW_DEFERRED') {
+        Write-Host 'SKYVIEW_EVENT|warning|deferred|SDE is busy. Maintenance will retry at its next scheduled invocation.'
+        exit 75
+    }
+    throw
+}

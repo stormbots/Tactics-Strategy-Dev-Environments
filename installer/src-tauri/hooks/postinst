@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+  /usr/bin/skyview-dev-setup --coordination-init
+fi

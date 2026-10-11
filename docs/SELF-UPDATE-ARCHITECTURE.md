@@ -119,6 +119,12 @@ Journal each so a crash between them is detectable and repairable.
 
 ## Shared coordination contract (#38)
 
+Implemented interfaces, migration boundaries, interrupted-state behavior and tests
+are documented in [SELF-UPDATE-COORDINATION.md](SELF-UPDATE-COORDINATION.md). Native
+installers must retain the shared installation lease, rather than use a status
+snapshot as permission to replace files.
+
+
 Use two OS-managed gates in an administrator-created protected location:
 
 - **Session gate:** each GUI holds a shared lease for its entire lifetime, acquired

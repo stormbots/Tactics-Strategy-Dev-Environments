@@ -2,6 +2,10 @@ param(
     [string]$Config = 'C:\ProgramData\SkyviewRobotics\repositories.csv',
     [string]$Root = 'C:\Development'
 )
+. (Join-Path $PSScriptRoot 'Coordination.ps1')
+try {
+Invoke-SkyviewCoordinated -Action {
+
 
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $Config)) { throw "Repository configuration not found: $Config" }
@@ -36,4 +40,13 @@ foreach ($Repo in $Repos) {
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Clone failed for $($Repo.Name). Authentication may be required; GitHub authentication policy is intentionally not configured by this package."
     }
+}
+
+}
+} catch {
+    if ($_.Exception.Message -eq 'SKYVIEW_DEFERRED') {
+        Write-Host 'SKYVIEW_EVENT|warning|deferred|SDE is busy. Please retry later.'
+        exit 75
+    }
+    throw
 }
