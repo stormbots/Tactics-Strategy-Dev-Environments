@@ -55,6 +55,7 @@ jobs:
             (cd "$dir"; awk '$2 == "Skyview-Dev-Setup-LinuxMint-amd64.deb"' SHA256SUMS.txt > selected.sha256; test "$(wc -l < selected.sha256)" = 1; sha256sum --check selected.sha256)
           done
       - name: Inspect and upgrade DEBs as root (Ubuntu evidence, not Mint UAT)
+        shell: bash
         run: sudo env GITHUB_ACTIONS=true bash tests/probe_native_upgrade.sh "$RUNNER_TEMP/sde-probe" | tee "$RUNNER_TEMP/sde-probe/linux.txt"
       - uses: actions/upload-artifact@v4
         if: always()
