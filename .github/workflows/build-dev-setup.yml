@@ -122,7 +122,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: installer/src-tauri -> target
+          workspaces: |
+            installer/src-tauri -> target
+            updater -> target
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -205,7 +207,12 @@ jobs:
           if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Unexpected existing baseline maintenance task.' }
           $installer = (Resolve-Path 'dist/Skyview-Dev-Setup-Windows-x64.exe').Path
           $process = Start-Process $installer -ArgumentList '/S','/UPDATE' -Wait -PassThru
-          if ($process.ExitCode -notin @(0,3010)) { throw "Application bootstrap failed: $($process.ExitCode)" }
+          if ($process.ExitCode -notin @(0,3010)) {
+            # Installer has finished. Invoke only the installed narrow bootstrap
+            # on this disposable runner to surface NSIS's hidden hook diagnostic.
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
+            throw "Application bootstrap failed: $($process.ExitCode)"
+          }
           if (Test-Path $baseline) { throw 'App-only installation applied a maintenance baseline.' }
           if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'App-only installation scheduled tool maintenance.' }
           $status = & ./coordination/target/release/sde-coordination.exe status | ConvertFrom-Json
