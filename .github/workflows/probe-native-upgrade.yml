@@ -1,0 +1,64 @@
+name: Probe native SDE upgrade contract
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/probe-native-upgrade.yml'
+      - 'tests/Probe-NativeUpgrade.ps1'
+      - 'tests/probe_native_upgrade.sh'
+      - 'docs/SELF-UPDATE-ARCHITECTURE.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download archived installers and verify published checksums
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          foreach ($version in @('1.2.0', '1.2.1')) {
+            $dir = Join-Path $env:RUNNER_TEMP "sde-probe/$version"
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            gh release download "v$version" --repo "$env:GITHUB_REPOSITORY" --pattern 'Skyview-Dev-Setup-Windows-x64.exe' --pattern 'SHA256SUMS.txt' --dir $dir
+            if ($LASTEXITCODE -ne 0) { throw 'Release download failed' }
+            $asset = 'Skyview-Dev-Setup-Windows-x64.exe'
+            $line = @(Get-Content "$dir/SHA256SUMS.txt" | Where-Object { $_ -match ('^[a-fA-F0-9]{64}\s+\*?' + [regex]::Escape($asset) + '$') })
+            if ($line.Count -ne 1) { throw 'Missing or ambiguous checksum' }
+            if ((Get-FileHash "$dir/$asset" -Algorithm SHA256).Hash -ne $line[0].Substring(0,64)) { throw 'Checksum mismatch' }
+          }
+      - name: Install and upgrade as SYSTEM on disposable runner
+        shell: pwsh
+        run: ./tests/Probe-NativeUpgrade.ps1 -InstallerRoot "$env:RUNNER_TEMP/sde-probe"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-native-upgrade-evidence
+          path: '${{ runner.temp }}/sde-probe/*.txt'
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download archived installers and verify published checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for version in 1.2.0 1.2.1; do
+            dir="$RUNNER_TEMP/sde-probe/$version"
+            mkdir -p "$dir"
+            gh release download "v$version" --repo "$GITHUB_REPOSITORY" --pattern 'Skyview-Dev-Setup-LinuxMint-amd64.deb' --pattern SHA256SUMS.txt --dir "$dir"
+            (cd "$dir"; awk '$2 == "Skyview-Dev-Setup-LinuxMint-amd64.deb"' SHA256SUMS.txt > selected.sha256; test "$(wc -l < selected.sha256)" = 1; sha256sum --check selected.sha256)
+          done
+      - name: Inspect and upgrade DEBs as root (Ubuntu evidence, not Mint UAT)
+        shell: bash
+        run: sudo env GITHUB_ACTIONS=true bash tests/probe_native_upgrade.sh "$RUNNER_TEMP/sde-probe" | tee "$RUNNER_TEMP/sde-probe/linux.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-native-upgrade-evidence
+          path: '${{ runner.temp }}/sde-probe/*.txt'

@@ -1,5 +1,10 @@
 # Architecture and security
 
+For the proposed unattended application update work in issue #35, see
+[the self-update contract](SELF-UPDATE-ARCHITECTURE.md) and
+[native verification evidence](SELF-UPDATE-VERIFICATION.md). Those documents
+describe future behavior; the implementation below remains the current system.
+
 ## Shared application
 
 `installer/src` contains the shared React UI, typed event parser, operation reducer, and native bridge. `installer/src-tauri` contains the Rust process manager and platform-specific elevation bridge. Browser development previews are explicitly marked as simulated; installed Tauri apps use real system inspection and provisioning.
