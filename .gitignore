@@ -64,3 +64,6 @@ installer/tsconfig.tsbuildinfo
 
 # Standalone update verifier build output
 /updater/target/
+
+# Cross-process coordination build output
+/coordination/target/

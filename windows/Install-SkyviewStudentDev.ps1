@@ -1,4 +1,8 @@
 param([switch]$SystemOnly, [switch]$Repair)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'chocolatey/tools/Coordination.ps1')
+try {
+Invoke-SkyviewCoordinated -Mutation -Action {
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 # Skyview Robotics Windows 11 development workstation bootstrap
@@ -200,3 +204,12 @@ Write-Host 'Then validate the workstation with:'
 Write-Host '  powershell -ExecutionPolicy Bypass -File C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1'
 Write-Host ''
 Write-Host 'This installer is designed to be rerun safely after a partial or interrupted installation.'
+
+}
+} catch {
+    if ($_.Exception.Message -eq 'SKYVIEW_DEFERRED') {
+        Write-Host 'SKYVIEW_EVENT|warning|deferred|SDE is busy. Maintenance will retry at its next scheduled invocation.'
+        exit 75
+    }
+    throw
+}

@@ -157,7 +157,11 @@ mod tests {
         cmd.env("GITHUB_ACTIONS", "true");
         let mut lines = Vec::new();
         assert_eq!(
-            stream(cmd, |line| lines.push(line)).unwrap(),
+            stream(cmd, |line| {
+                eprintln!("{}", crate::protocol::redact(&line));
+                lines.push(line);
+            })
+            .unwrap(),
             0,
             "{lines:?}"
         );
@@ -343,6 +347,7 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
     if cfg!(debug_assertions) {
         return Err("Privileged operations require an installed release build.".into());
     }
+    let _session = sde_coordination::session().map_err(|e| e.to_string())?;
     let backend = resource_backend()?;
     #[cfg(unix)]
     {
@@ -518,4 +523,23 @@ pub fn elevated(
             std::thread::sleep(std::time::Duration::from_millis(150));
         }
     }
+}
+
+/// Show a brief native message before any webview or provisioning starts.
+pub fn coordination_message(message: &str) {
+    #[cfg(windows)]
+    {
+        let text = message.replace('\'', "''");
+        let mut command =
+            Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+        command.args(["-NoProfile", "-NonInteractive", "-Command", &format!("Add-Type -AssemblyName System.Windows.Forms; [void][System.Windows.Forms.MessageBox]::Show('{text}', 'Skyview Dev Setup')")]);
+        let _ = hidden(&mut command).status();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = Command::new("/usr/bin/zenity")
+            .args(["--info", "--title=Skyview Dev Setup", "--text", message])
+            .status();
+    }
+    eprintln!("{message}");
 }

@@ -1,3 +1,7 @@
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Coordination.ps1')
+try {
+Invoke-SkyviewCoordinated -Action {
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 $ErrorActionPreference = 'Stop'
@@ -36,3 +40,12 @@ $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'
 if (-not (Test-Path $config)) { $config = Join-Path $PSScriptRoot 'repositories.csv' }
 & (Join-Path $PSScriptRoot 'Setup-SkyviewRepositories.ps1') -Config $config
 Event progress 94 'Your workspace is configured'
+
+}
+} catch {
+    if ($_.Exception.Message -eq 'SKYVIEW_DEFERRED') {
+        Write-Host 'SKYVIEW_EVENT|warning|deferred|SDE is busy. Maintenance will retry at its next scheduled invocation.'
+        exit 75
+    }
+    throw
+}

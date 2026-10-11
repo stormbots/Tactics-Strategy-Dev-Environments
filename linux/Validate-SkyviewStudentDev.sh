@@ -2,6 +2,14 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/coordination.sh
+if [[ -f "$SCRIPT_DIR/lib/coordination.sh" ]]; then
+  source "$SCRIPT_DIR/lib/coordination.sh"
+else
+  # shellcheck source=/usr/local/lib/skyview-student-dev/coordination.sh
+  source /usr/local/lib/skyview-student-dev/coordination.sh
+fi
+skyview_coordinate operation "$@"
 if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
   # shellcheck source=lib/common.sh
   source "$SCRIPT_DIR/lib/common.sh"

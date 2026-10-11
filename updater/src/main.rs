@@ -5,6 +5,14 @@ use sde_update_trust::{
 use std::path::Path;
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.as_slice() == ["coordination-status"] {
+        println!(
+            "{}",
+            serde_json::to_string(&sde_coordination::status())
+                .map_err(|_| "Report encoding failed")?
+        );
+        return Ok(());
+    }
     if args.len() == 1 && matches!(args[0].as_str(), "check" | "stage") {
         let report = sde_update_trust::staging::run(args[0] == "stage");
         println!(

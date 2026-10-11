@@ -1,8 +1,12 @@
 $ErrorActionPreference = 'Stop'
+$Tools = $PSScriptRoot
+. (Join-Path $PSScriptRoot 'Coordination.ps1')
+try {
+Invoke-SkyviewCoordinated -Mutation -Action {
+$ErrorActionPreference = 'Stop'
 
 $Skyview = 'C:\ProgramData\SkyviewRobotics'
 $Logs = Join-Path $Skyview 'Logs'
-$Tools = Split-Path -Parent $MyInvocation.MyCommand.Definition
 . (Join-Path $Tools 'ScheduledMaintenance.ps1')
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'
 $ConfigStages = 10
@@ -33,6 +37,13 @@ Write-Host 'Configuring Skyview Robotics Windows development workstation...'
 Invoke-ConfigStage 1 'Creating Skyview and development directories' {
     New-Item -ItemType Directory -Path $Skyview -Force | Out-Null
     New-Item -ItemType Directory -Path $Logs -Force | Out-Null
+    # Preserve baseline contents while restricting mutation of SYSTEM entry points
+    # and mentor-controlled policy to Administrators/SYSTEM.
+    foreach ($directory in @($Skyview, $Logs)) {
+        $security = New-Object Security.AccessControl.DirectorySecurity
+        $security.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)')
+        Set-Acl -LiteralPath $directory -AclObject $security
+    }
     if (-not (Test-Path 'C:\Development')) {
         New-Item -ItemType Directory -Path 'C:\Development' | Out-Null
         & icacls.exe 'C:\Development' /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null
@@ -43,6 +54,7 @@ Invoke-ConfigStage 1 'Creating Skyview and development directories' {
 Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
     foreach ($file in @(
         'AutoUpdate-SkyviewTools.ps1',
+        'Coordination.ps1',
         'Update-SkyviewTools.ps1',
         'Update-Node24.ps1',
         'Node24.ps1',
@@ -60,6 +72,9 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         if ($file -ne 'repositories.csv' -or -not (Test-Path (Join-Path $Skyview $file))) {
             Copy-Item (Join-Path $Tools $file) (Join-Path $Skyview $file) -Force
         }
+        $security = New-Object Security.AccessControl.FileSecurity
+        $security.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
+        Set-Acl -LiteralPath (Join-Path $Skyview $file) -AclObject $security
     }
 }
 
@@ -183,3 +198,12 @@ Write-Host ''
 Write-Host 'Skyview Robotics development workstation baseline installed.' -ForegroundColor Green
 Write-Host 'Node.js is pinned to major 24 and Git/GitHub identity is intentionally unconfigured.'
 Write-Host 'Run C:\ProgramData\SkyviewRobotics\Test-SkyviewStudentDev.ps1 to validate.'
+
+}
+} catch {
+    if ($_.Exception.Message -eq 'SKYVIEW_DEFERRED') {
+        Write-Host 'SKYVIEW_EVENT|warning|deferred|SDE is busy. Maintenance will retry at its next scheduled invocation.'
+        exit 75
+    }
+    throw
+}

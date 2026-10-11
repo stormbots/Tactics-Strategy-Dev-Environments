@@ -16,6 +16,7 @@ pub enum LastResult {
     Failure,
     Never,
     Running,
+    Deferred,
     Unavailable,
 }
 #[derive(Debug, Deserialize, Serialize)]

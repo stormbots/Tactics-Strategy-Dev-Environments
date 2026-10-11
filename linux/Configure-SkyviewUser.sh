@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/coordination.sh
+if [[ -f "$SCRIPT_DIR/lib/coordination.sh" ]]; then
+  source "$SCRIPT_DIR/lib/coordination.sh"
+else
+  # shellcheck source=/usr/local/lib/skyview-student-dev/coordination.sh
+  source /usr/local/lib/skyview-student-dev/coordination.sh
+fi
+skyview_coordinate operation "$@"
 # shellcheck source=lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
 [[ "$(id -u)" -ne 0 ]] || die "User configuration must not run as root."

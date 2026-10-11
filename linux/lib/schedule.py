@@ -71,7 +71,7 @@ def inspect():
             result = service.get("Result")
             exit_code = service.get("ExecMainStatus")
             if result and exit_code is not None:
-                r.update(lastResult="success" if result == "success" and exit_code == "0" else "failure",
+                r.update(lastResult="deferred" if exit_code == "75" else "success" if result == "success" and exit_code == "0" else "failure",
                          resultDetail=f"Service result: {result}; exit status: {exit_code}")
     except (OSError, subprocess.TimeoutExpired) as error:
         r["note"] = str(error)

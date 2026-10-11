@@ -185,7 +185,16 @@ fn run(
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());
             let code = process::elevated(op.name(), &run_id, &mut emit)?;
             if code != 0 {
-                emit(format!("SKYVIEW_EVENT|error|system|System setup stopped (exit {code}). Review the last package error in Show details, then retry."));
+                if code == 75 {
+                    emit("SKYVIEW_EVENT|warning|deferred|Another SDE operation is running. Please retry when it finishes.".into());
+                } else if matches!(
+                    sde_coordination::status(),
+                    sde_coordination::Status::Interrupted
+                ) {
+                    emit("SKYVIEW_EVENT|error|system|System setup stopped. An interrupted operation needs mentor review before another change.".into());
+                } else {
+                    emit(format!("SKYVIEW_EVENT|error|system|System setup stopped (exit {code}). Review the last package error in Show details, then retry."));
+                }
                 return Ok(code);
             }
             #[cfg(windows)]
@@ -354,8 +363,30 @@ fn main() {
         };
         std::process::exit(code);
     }
+    if args.get(1).map(String::as_str) == Some("--coordination-init") && args.len() == 2 {
+        match sde_coordination::initialize() {
+            Ok(()) => return,
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        }
+    }
+    let session = match sde_coordination::session() {
+        Ok(lease) => lease,
+        Err(e) => {
+            let message = if e == sde_coordination::Error::Busy {
+                "SDE is being updated. Please reopen it shortly.".to_string()
+            } else {
+                e.to_string()
+            };
+            process::coordination_message(&message);
+            return;
+        }
+    };
     tauri::Builder::default()
         .manage(Busy::default())
+        .manage(session)
         .invoke_handler(tauri::generate_handler![
             inspect_system,
             inspect_schedule,

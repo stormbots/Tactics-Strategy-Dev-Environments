@@ -69,6 +69,10 @@ class ScheduleMetadata(unittest.TestCase):
         self.assertIsNone(result["nextRun"])
         self.assertEqual(result["lastResult"], "failure")
 
+    def test_busy_maintenance_is_deferred_and_not_success(self):
+        result = self.inspect(service={**self.service, "Result": "exit-code", "ExecMainStatus": "75"})
+        self.assertEqual(result["lastResult"], "deferred")
+
     def test_never_run_vs_lost_history_after_restart(self):
         service = {**self.service, "ExecMainStartTimestamp": ""}
         self.assertEqual(self.inspect(service=service)["lastResult"], "never")

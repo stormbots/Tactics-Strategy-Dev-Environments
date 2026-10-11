@@ -1,7 +1,19 @@
 #!/usr/bin/env bash
+# SDE_COORDINATION_V1
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "$(id -u)" -ne 0 ]]; then
+  exec sudo "$0" "$@"
+fi
+# shellcheck source=lib/coordination.sh
+if [[ -f "$SCRIPT_DIR/lib/coordination.sh" ]]; then
+  source "$SCRIPT_DIR/lib/coordination.sh"
+else
+  # shellcheck source=/usr/local/lib/skyview-student-dev/coordination.sh
+  source /usr/local/lib/skyview-student-dev/coordination.sh
+fi
+skyview_coordinate system "$@"
 if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
   # shellcheck source=lib/common.sh
   source "$SCRIPT_DIR/lib/common.sh"
@@ -10,9 +22,7 @@ else
   source /usr/local/lib/skyview-student-dev/common.sh
 fi
 
-if [[ "$(id -u)" -ne 0 ]]; then
-  exec sudo "$0" "$@"
-fi
+
 
 mkdir -p "$SKYVIEW_LOG_DIR"
 LOG_FILE="$SKYVIEW_LOG_DIR/update-$(date '+%Y%m%d-%H%M%S').log"

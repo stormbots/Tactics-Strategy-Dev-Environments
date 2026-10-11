@@ -7,8 +7,11 @@ Start-Transcript -Path $Log -Force | Out-Null
 
 try {
     & (Join-Path $PSScriptRoot 'Update-SkyviewTools.ps1')
+    $code = $LASTEXITCODE
 
 }
 finally {
     Stop-Transcript | Out-Null
 }
+
+exit $code

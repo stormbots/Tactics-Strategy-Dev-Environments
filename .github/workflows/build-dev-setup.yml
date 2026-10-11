@@ -62,6 +62,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: updater -> target
+      - name: Native cross-process coordination contracts
+        env:
+          SDE_REQUIRE_COORDINATION: ${{ runner.os == 'Windows' && '1' || '' }}
+        run: |
+          cargo test --locked --manifest-path coordination/Cargo.toml
+          cargo fmt --manifest-path coordination/Cargo.toml --check
+          cargo clippy --locked --manifest-path coordination/Cargo.toml --all-targets -- -D warnings
+      - name: Root-owned coordination contracts
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo env "PATH=$PATH" "CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}" "RUSTUP_HOME=${RUSTUP_HOME:-$HOME/.rustup}" SDE_REQUIRE_COORDINATION=1 cargo test --locked --manifest-path coordination/Cargo.toml
+          sudo env SDE_REQUIRE_COORDINATION=1 python3 -m unittest discover -s tests -p 'test_coordination.py'
       - name: Native Minisign interoperability dependency
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y minisign
@@ -115,6 +128,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Initialize coordination on disposable native runners
+        run: cargo build --release --locked --manifest-path coordination/Cargo.toml
+      - name: Prepare Windows coordination fixtures
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./coordination/target/release/sde-coordination.exe init
+          if ($LASTEXITCODE -ne 0) { throw 'Coordination initialization failed.' }
+      - name: Prepare Linux coordination fixtures
+        if: runner.os == 'Linux'
+        run: sudo coordination/target/release/sde-coordination init
       - name: Package the existing Chocolatey backend
         if: runner.os == 'Windows'
         shell: pwsh
@@ -124,13 +148,15 @@ jobs:
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
           $errors = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error
           if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-CoordinationCI.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Coordination supervision failed.' }
           ./tests/Test-BackendContracts.ps1
           ./tests/Test-MetadataContracts.ps1
           ./tests/Test-MaintenanceCI.ps1
       - run: npm ci
         working-directory: installer
       - name: Rust tests
-        run: cargo test --locked
+        run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri
       - name: Build native installer
         run: npm run tauri build -- --bundles ${{ matrix.bundle }}
@@ -166,6 +192,31 @@ jobs:
           cd dist
           sha256sum "$ASSET" > "$ASSET.sha256"
           sha256sum --check "$ASSET.sha256"
+      - name: Verify Windows application bootstrap without applying a baseline
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
+          $before = (Get-FileHash $baseline -Algorithm SHA256).Hash
+          $installer = (Resolve-Path 'dist/Skyview-Dev-Setup-Windows-x64.exe').Path
+          $process = Start-Process $installer -ArgumentList '/S','/UPDATE' -Wait -PassThru
+          if ($process.ExitCode -notin @(0,3010)) { throw "Application bootstrap failed: $($process.ExitCode)" }
+          if ((Get-FileHash $baseline -Algorithm SHA256).Hash -ne $before) { throw 'Application installation changed the applied maintenance baseline.' }
+          $status = & ./coordination/target/release/sde-coordination.exe status | ConvertFrom-Json
+          if ($status -ne 'idle') { throw "Application bootstrap left unsafe coordination: $status" }
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Skyview Dev Setup'
+          $expected = (Get-Content installer/src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
+      - name: Verify Linux application bootstrap without applying a baseline
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          test ! -e /var/lib/skyview-robotics/student-dev/version
+          sudo apt-get install -y ./dist/Skyview-Dev-Setup-LinuxMint-amd64.deb
+          test -r /var/lib/skyview-robotics-coordination/sessions.gate
+          test -r /var/lib/skyview-robotics-coordination/operations.gate
+          test "$(coordination/target/release/sde-coordination status)" = '"idle"'
+          test ! -e /var/lib/skyview-robotics/student-dev/version
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}

@@ -1,23 +1,42 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
-source "$SCRIPT_DIR/lib/common.sh"
-
 SYSTEM_ONLY=0
 [[ "${1:-}" == "--system-only" ]] && SYSTEM_ONLY=1
 if [[ "$(id -u)" -eq 0 && "$SYSTEM_ONLY" != 1 ]]; then
-  die "Run this installer as the student/shared desktop user, not with sudo. The script will request sudo when needed."
+  printf '%s\n' 'Run this installer as the student/shared desktop user, not with sudo. The script will request sudo when needed.' >&2
+  exit 1
 fi
-
+# Keep a session throughout the manual workflow, but let the elevated system
+# phase own its operation gate; sudo does not preserve arbitrary user descriptors.
+if [[ "$SYSTEM_ONLY" != 1 ]]; then
+  if [[ -z "${SKYVIEW_SESSION_FD:-}" ]]; then
+    exec /usr/bin/python3 "$SCRIPT_DIR/lib/coordination.py" run session /bin/bash "$0" "$@"
+  fi
+  sudo -v
+  TARGET_USER="$(id -un)"
+  sudo /bin/bash "$0" --system-only "$TARGET_USER"
+  /bin/bash "$SCRIPT_DIR/Configure-SkyviewUser.sh"
+  /bin/bash "$SCRIPT_DIR/Validate-SkyviewStudentDev.sh"
+  exit "$?"
+fi
+# shellcheck source=lib/coordination.sh
+source "$SCRIPT_DIR/lib/coordination.sh"
+skyview_coordinate system "$@"
+# Read baseline policy only after acquiring the transaction gate.
+# shellcheck source=lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+[[ "$(id -u)" -eq 0 ]] || die "System provisioning requires administrative privileges."
+sudo() { "$@"; }
 TARGET_USER="$(id -un)"
 TARGET_HOME="$HOME"
-if [[ "$SYSTEM_ONLY" == 1 ]]; then
-  [[ "$(id -u)" -eq 0 ]] || die "System provisioning requires administrative privileges."
-  sudo() { "$@"; }
-else
-  sudo -v
+RECORD_TARGET_USER=0
+if [[ -n "${2:-}" ]]; then
+  [[ "$2" =~ ^[a-zA-Z_][a-zA-Z0-9_.-]*\$?$ ]] || die "Invalid target account."
+  TARGET_USER="$2"
+  TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
+  [[ -n "$TARGET_HOME" ]] || die "Target account was not found."
+  RECORD_TARGET_USER=1
 fi
 event progress 5 "Checking system"
 trap 'event error provisioning "System setup failed at line $LINENO. See details for the package error."' ERR
@@ -133,12 +152,14 @@ log "Installing persistent Skyview maintenance files..."
 sudo install -d -m 0755 "$SKYVIEW_ETC" "$SKYVIEW_LIB" "$SKYVIEW_SHARE" "$SKYVIEW_STATE"
 sudo install -m 0644 "$SCRIPT_DIR/lib/common.sh" "$SKYVIEW_LIB/common.sh"
 sudo install -m 0644 "$SCRIPT_DIR/lib/tool_records.py" "$SKYVIEW_LIB/tool_records.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/coordination.py" "$SKYVIEW_LIB/coordination.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/coordination.sh" "$SKYVIEW_LIB/coordination.sh"
 sudo install -m 0644 "$SCRIPT_DIR/extensions.txt" "$SKYVIEW_SHARE/extensions.txt"
 sudo install -m 0644 "$SCRIPT_DIR/config/codium-settings.json" "$SKYVIEW_SHARE/codium-settings.json"
 if [[ ! -f "$SKYVIEW_ETC/repositories.csv" ]]; then
   sudo install -m 0644 "$SCRIPT_DIR/repositories.csv" "$SKYVIEW_ETC/repositories.csv"
 fi
-if [[ "$SYSTEM_ONLY" != 1 ]]; then
+if [[ "$RECORD_TARGET_USER" == 1 ]]; then
   printf '%s\n' "$TARGET_USER" | sudo tee "$SKYVIEW_ETC/target-user" >/dev/null
   printf '%s\n' "$TARGET_HOME" | sudo tee "$SKYVIEW_ETC/target-home" >/dev/null
 fi
