@@ -29,7 +29,13 @@ for version in 1.2.0 1.2.1; do
   [[ -x /usr/bin/skyview-dev-setup ]]
   [[ -f '/usr/lib/Skyview Dev Setup/backend/linux/Update-SkyviewStudentDev.sh' ]]
   [[ ! -e "$maintenance" ]]
-  ! pgrep -f '^/usr/bin/skyview-dev-setup( |$)'
+  if pgrep -f '^/usr/bin/skyview-dev-setup( |$)'; then
+    echo 'Installer launched GUI as root'
+    exit 1
+  else
+    probe_status=$?
+    [[ "$probe_status" == 1 ]] || { echo 'Process inspection failed'; exit 1; }
+  fi
   [[ "$(cat "$sentinel")" == 'student preservation sentinel' ]]
   echo "PASS $version: package configured, resources, no provisioning, no GUI launch, student marker"
 done
