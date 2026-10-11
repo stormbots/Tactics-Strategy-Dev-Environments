@@ -228,6 +228,11 @@ jobs:
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
           $policy = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -Raw | ConvertFrom-Json
           if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
+          $env:SDE_APPONLY_IDENTITY_FIXTURE = 'true'
+          try {
+            cargo test --locked --manifest-path updater/Cargo.toml --lib host::tests::installed_native_fixture_identity -- --exact --nocapture
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native identity failed before provisioning.' }
+          } finally { Remove-Item Env:SDE_APPONLY_IDENTITY_FIXTURE }
       - name: Rust tests
         run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri

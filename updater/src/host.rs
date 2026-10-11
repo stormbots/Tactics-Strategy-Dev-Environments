@@ -315,7 +315,9 @@ pub(crate) mod windows {
                 return Err(Failure::Staging);
             }
             let header = unsafe { &*ace.cast::<ACE_HEADER>() };
-            if anchor && u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
+            // Inherit-only entries grant no access to this object. Check each
+            // descendant separately so effective student-write grants fail.
+            if u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
                 continue;
             }
             if header.AceType == 1 {
@@ -589,11 +591,19 @@ pub(crate) mod windows {
             if current.is_dir() {
                 let anchor =
                     current == Path::new(r"C:\") || current == Path::new(r"C:\Program Files");
-                validate_acl(&current, anchor).map_err(|_| Failure::InvalidInstalled)?;
+                validate_acl(&current, anchor).map_err(|_| {
+                    #[cfg(test)]
+                    eprintln!("Installed ancestor ACL rejected: {}", current.display());
+                    Failure::InvalidInstalled
+                })?;
             }
         }
         let binary = path.join("skyview-dev-setup.exe");
-        validate(&binary).map_err(|_| Failure::InvalidInstalled)?;
+        validate(&binary).map_err(|_| {
+            #[cfg(test)]
+            eprintln!("Installed executable ACL rejected: {}", binary.display());
+            Failure::InvalidInstalled
+        })?;
         let binary = wide(&binary);
         let mut handle = 0;
         let size = unsafe { GetFileVersionInfoSizeW(binary.as_ptr(), &mut handle) };
@@ -630,6 +640,8 @@ pub(crate) mod windows {
             fixed.dwProductVersionLS >> 16
         );
         if actual != registered {
+            #[cfg(test)]
+            eprintln!("Installed PE version {actual} differs from registry {registered}");
             return Err(Failure::InvalidInstalled);
         }
         Ok(Installed {
@@ -676,6 +688,14 @@ mod tests {
     }
     #[cfg(windows)]
     #[test]
+    fn installed_native_fixture_identity() {
+        if std::env::var_os("SDE_APPONLY_IDENTITY_FIXTURE").is_none() {
+            return;
+        }
+        assert_eq!(windows::installed_identity().unwrap().version, "1.2.1");
+    }
+    #[cfg(windows)]
+    #[test]
     fn windows_private_acl_and_reparse_rejection() {
         for anchor in [r"C:\", r"C:\Program Files", r"C:\ProgramData"] {
             windows::validate_acl(Path::new(anchor), true).unwrap();
@@ -688,6 +708,19 @@ mod tests {
         let file = exclusive(&private.join("installer")).unwrap();
         file.sync_all().unwrap();
         assert!(exclusive(&private.join("installer")).is_err());
+        drop(file);
+        // Inherit-only rights cannot write the parent, but effective inherited
+        // rights on a child must be rejected. Exercise actual Windows ACLs.
+        let status = std::process::Command::new(r"C:\Windows\System32\icacls.exe")
+            .arg(&private)
+            .args(["/grant", "*S-1-5-32-545:(OI)(CI)(IO)(F)"])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        validate(&private).unwrap();
+        let unsafe_child = private.join("inherited-student-write");
+        std::fs::write(&unsafe_child, b"fixture").unwrap();
+        assert_eq!(validate(&unsafe_child), Err(Failure::Staging));
         // Junctions are available without Developer Mode or symlink privilege.
         let junction = dir.path().join("junction");
         let status = std::process::Command::new(r"C:\Windows\System32\cmd.exe")

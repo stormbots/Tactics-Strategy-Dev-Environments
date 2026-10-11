@@ -124,6 +124,11 @@ scheduling settings through the hook. It also checks payload tamper rejection an
 a signed synthetic failing executable: durable intent survives and blocks retry
 without terminating any package process.
 
+An early native check validates the real installed registry/PE identity before
+provisioning. Windows permission tests distinguish inherit-only rules (which grant
+no access to their current object) from effective inherited student-write grants
+on child files, which remain rejected.
+
 The next-run fixture executes the actual fixed launcher and packaged production
 worker with a deterministic no-package tool script, restoring the applied script
 in `finally`. It confirms the new engine and independent tool result. Production
