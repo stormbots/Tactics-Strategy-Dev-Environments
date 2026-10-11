@@ -29,7 +29,7 @@ for version in 1.2.0 1.2.1; do
   [[ -x /usr/bin/skyview-dev-setup ]]
   [[ -f '/usr/lib/Skyview Dev Setup/backend/linux/Update-SkyviewStudentDev.sh' ]]
   [[ ! -e "$maintenance" ]]
-  ! pgrep -x skyview-dev-setup
+  ! pgrep -f '^/usr/bin/skyview-dev-setup( |$)'
   [[ "$(cat "$sentinel")" == 'student preservation sentinel' ]]
   echo "PASS $version: package configured, resources, no provisioning, no GUI launch, student marker"
 done

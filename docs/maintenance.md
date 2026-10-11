@@ -13,6 +13,12 @@ Linux student development environments.
 
 ## Update Strategy
 
+The proposed unattended SDE application update design is documented in
+[the self-update contract](SELF-UPDATE-ARCHITECTURE.md), with executed native
+installer checks and remaining gates in [the verification record](SELF-UPDATE-VERIFICATION.md).
+This design is not yet implemented. It separates application/maintenance-engine
+updates from applying a development baseline, which remains an explicit operation.
+
 ### Viewing the installed schedule
 
 In GUI version 1.2.0, choose **Schedule** to inspect maintenance as a normal user. Refresh reads the actual task/timer and service history; it does not run or modify maintenance. Times are displayed in the machine's local time. Missing schedules, access errors, and unavailable execution history are shown explicitly. **Open maintenance log folder** opens the system maintenance logs, separately from the GUI's per-operation logs.
