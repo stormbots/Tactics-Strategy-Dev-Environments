@@ -1,5 +1,8 @@
 //! Authenticated release contract shared by discovery and native installers.
-//! Network selection, protected staging, and package execution belong to callers.
+//! Discovery and protected staging never execute a package.
+pub mod discovery;
+pub mod host;
+pub mod staging;
 use minisign::{PublicKey, SignatureBox};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

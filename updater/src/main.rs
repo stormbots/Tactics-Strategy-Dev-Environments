@@ -5,9 +5,20 @@ use sde_update_trust::{
 use std::path::Path;
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.len() == 1 && matches!(args[0].as_str(), "check" | "stage") {
+        let report = sde_update_trust::staging::run(args[0] == "stage");
+        println!(
+            "{}",
+            serde_json::to_string(&report).map_err(|_| "Report encoding failed")?
+        );
+        if report.status == sde_update_trust::staging::Status::Unavailable {
+            std::process::exit(2);
+        }
+        return Ok(());
+    }
     if args.len() != 3 {
         return Err(
-            "Usage: sde-update-trust <create|sign|verify> <release-directory> <vMAJOR.MINOR.PATCH>"
+            "Usage: sde-update-trust <check|stage> OR <create|sign|verify> <release-directory> <vMAJOR.MINOR.PATCH>"
                 .into(),
         );
     }
