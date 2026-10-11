@@ -204,7 +204,7 @@ pub(crate) fn store() -> Result<PathBuf> {
     }
 }
 #[cfg(windows)]
-mod windows {
+pub(crate) mod windows {
     use super::*;
     use std::{
         ffi::c_void,
@@ -500,6 +500,10 @@ mod windows {
         String::from_utf16(&buffer[..len - 1]).map_err(|_| Failure::InvalidInstalled)
     }
     pub(super) fn installed() -> Result<Installed> {
+        supported()?;
+        installed_identity()
+    }
+    fn supported() -> Result<()> {
         if std::env::consts::ARCH != "x86_64" {
             return Err(Failure::Unsupported);
         }
@@ -544,6 +548,23 @@ mod windows {
         {
             return Err(Failure::Unsupported);
         }
+        Ok(())
+    }
+    pub(crate) fn install_location() -> Result<PathBuf> {
+        let path = PathBuf::from(registry("InstallLocation")?.trim_matches('"'));
+        if !path.is_absolute() || !path.starts_with(r"C:\Program Files") {
+            return Err(Failure::InvalidInstalled);
+        }
+        for ancestor in path.ancestors() {
+            validate_acl(
+                ancestor,
+                ancestor == Path::new(r"C:\") || ancestor == Path::new(r"C:\Program Files"),
+            )
+            .map_err(|_| Failure::InvalidInstalled)?;
+        }
+        Ok(path)
+    }
+    pub(crate) fn installed_identity() -> Result<Installed> {
         let registered = version(&registry("DisplayVersion")?)?;
         let location = registry("InstallLocation")?;
         let location = location.trim_matches('"');

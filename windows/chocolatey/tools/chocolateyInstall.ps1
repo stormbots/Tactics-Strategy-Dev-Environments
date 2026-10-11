@@ -187,7 +187,9 @@ Invoke-ConfigStage 9 'Configuring VSCodium and standard extensions' {
 Invoke-ConfigStage 10 'Registering weekly development-tool updates' {
     $taskName = 'Skyview Robotics - Dev Tool Updates'
     $script = Join-Path $Skyview 'AutoUpdate-SkyviewTools.ps1'
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$script`""
+    $selfUpdateLauncher = Join-Path $Skyview 'SelfUpdate/Invoke-SkyviewMaintenance.ps1'
+    if (Test-Path $selfUpdateLauncher) { $script = $selfUpdateLauncher }
+    $action = New-ScheduledTaskAction -Execute 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$script`""
     $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 3:00am
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -User 'SYSTEM' -RunLevel Highest -Force | Out-Null

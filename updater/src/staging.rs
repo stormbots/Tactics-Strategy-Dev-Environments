@@ -76,8 +76,8 @@ pub fn run(download: bool) -> Report {
     })();
     result.unwrap_or_else(|failure| Report::new(Status::Unavailable, None, Some(failure), None))
 }
-struct Staged {
-    id: String,
+pub(crate) struct Staged {
+    pub(crate) id: String,
 }
 struct Transaction {
     path: PathBuf,
@@ -120,7 +120,7 @@ impl Drop for Transaction {
         }
     }
 }
-fn stage_with(
+pub(crate) fn stage_with(
     transport: &mut impl Transport,
     root: &Path,
     candidate: &Candidate,

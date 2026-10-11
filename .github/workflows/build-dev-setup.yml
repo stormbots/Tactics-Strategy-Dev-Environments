@@ -158,6 +158,13 @@ jobs:
       - name: Rust tests
         run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri
+      - name: Bundle external Windows maintenance worker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cargo build --release --locked --manifest-path updater/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Maintenance worker build failed.' }
+          Copy-Item updater/target/release/sde-update-trust.exe windows/self-update/sde-update-trust.exe
       - name: Build native installer
         run: npm run tauri build -- --bundles ${{ matrix.bundle }}
         working-directory: installer
@@ -207,6 +214,25 @@ jobs:
           $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Skyview Dev Setup'
           $expected = (Get-Content installer/src-tauri/tauri.conf.json | ConvertFrom-Json).version
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
+      - name: Build unpublished newer Windows fixture and verify signed SYSTEM upgrade
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $override = Join-Path $env:RUNNER_TEMP 'sde-native-fixture.json'
+          '{"version":"1.2.2"}' | Set-Content $override -Encoding utf8
+          npm --prefix installer run tauri build -- --config $override --bundles nsis
+          if ($LASTEXITCODE -ne 0) { throw 'Newer native fixture build failed.' }
+          $fixture = Join-Path $env:RUNNER_TEMP 'sde-newer-fixture'
+          New-Item -ItemType Directory $fixture | Out-Null
+          $package = @(Get-ChildItem installer/src-tauri/target/release/bundle/nsis/*1.2.2*.exe)
+          if ($package.Count -ne 1) { throw 'Expected one newer fixture installer.' }
+          Copy-Item $package[0].FullName (Join-Path $fixture 'Skyview-Dev-Setup-Windows-x64.exe')
+          cargo test --locked --manifest-path updater/Cargo.toml --no-run --message-format json | Set-Content (Join-Path $env:RUNNER_TEMP 'sde-test-build.jsonl')
+          if ($LASTEXITCODE -ne 0) { throw 'Native test binary build failed.' }
+          $binaries = @(Get-Content (Join-Path $env:RUNNER_TEMP 'sde-test-build.jsonl') | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { $_.reason -eq 'compiler-artifact' -and $_.profile.test -and $_.target.kind -contains 'lib' -and $_.executable })
+          if ($binaries.Count -ne 1) { throw 'Expected one native updater test binary.' }
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/Test-WindowsSelfUpdateCI.ps1 -FixtureRoot $fixture -TestExecutable $binaries[0].executable
+          if ($LASTEXITCODE -ne 0) { throw 'Required signed SYSTEM upgrade failed.' }
       - name: Verify Linux application bootstrap without applying a baseline
         if: runner.os == 'Linux'
         shell: bash
