@@ -29,14 +29,15 @@ try {
     # action, then restored. The worker is the real packaged production binary.
     $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
     $bytes = [IO.File]::ReadAllBytes($baseline)
+    $gui = [IO.File]::Open('C:\ProgramData\SkyviewRoboticsCoordination\sessions.gate','Open','Read','Read')
     try {
         [IO.File]::WriteAllText($baseline, '# SDE_COORDINATION_V1' + [Environment]::NewLine + 'exit 0')
         & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\ProgramData\SkyviewRobotics\SelfUpdate\Invoke-SkyviewMaintenance.ps1'
         # Server 2022 is intentionally ineligible for production discovery. The
         # native installation test above injects only a test authentication key.
         $status = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\status.json' -Raw | ConvertFrom-Json
-        if ($status.maintenanceEngineVersion -ne '1.2.2' -or $status.toolExit -ne 0 -or $status.detail -notlike '*Unsupported*') { throw 'Next invocation did not use the new engine and independent tool outcome.' }
-    } finally { [IO.File]::WriteAllBytes($baseline,$bytes) }
+        if ($status.maintenanceEngineVersion -ne '1.2.2' -or $status.toolExit -ne 0 -or $status.outcome -ne 'unavailable' -or $status.detail -notlike '*Unsupported*') { throw 'Next invocation did not use the new engine and independent tool outcome.' }
+    } finally { $gui.Dispose(); [IO.File]::WriteAllBytes($baseline,$bytes) }
     Set-Content (Join-Path $root 'done') 'PASS' 
 } catch { Write-Output $_; Set-Content (Join-Path $root 'done') 'FAIL'; exit 1 }
 finally { Stop-Transcript | Out-Null }

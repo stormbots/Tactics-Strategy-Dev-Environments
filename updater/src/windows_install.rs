@@ -40,6 +40,13 @@ fn authenticate_staged(
     Ok(manifest)
 }
 
+fn coordination_outcome(error: sde_coordination::Error) -> &'static str {
+    match error {
+        sde_coordination::Error::Busy => "deferred",
+        sde_coordination::Error::Interrupted | sde_coordination::Error::NeedsRepair => "failed",
+        _ => "unavailable",
+    }
+}
 #[derive(Debug, PartialEq, Eq)]
 enum NativeOutcome {
     Success,
@@ -357,8 +364,10 @@ mod native {
         authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
         identity: impl Fn() -> Result<String>,
     ) -> Result<()> {
-        let lease = sde_coordination::installation()
-            .map_err(|e| format!("Installation deferred or requires repair: {e}"))?;
+        let lease = sde_coordination::installation().map_err(|e| {
+            report.outcome = coordination_outcome(e).into();
+            format!("Installation deferred or requires repair: {e}")
+        })?;
         if policy()? {
             report.outcome = "paused".into();
             return Ok(());
@@ -372,6 +381,7 @@ mod native {
         }
         let manifest = authenticate_staged(directory, candidate, authenticate)?;
         let asset = &manifest.metadata().platforms["windows-x86_64"];
+        report.outcome = "failed".into();
         let journal = lease.begin_transaction().map_err(|e| e.to_string())?;
         atomic_json(
             &Path::new(ROOT).join("installation.json"),
@@ -557,7 +567,10 @@ mod native {
             }
             let mut github = GitHub::new().map_err(|_| "GitHub unavailable")?;
             let staging_root = host::store().map_err(|_| "Protected staging unavailable")?;
-            let operation = sde_coordination::operation().map_err(|e| e.to_string())?;
+            let operation = sde_coordination::operation().map_err(|e| {
+                report.outcome = coordination_outcome(e).into();
+                e.to_string()
+            })?;
             prune_staging(&staging_root)?;
             report.recovery_available =
                 seed_recovery(&mut github, &staging_root, &installed.version).unwrap_or(false);
@@ -600,12 +613,6 @@ mod native {
         })();
         if let Err(ref e) = result {
             report.detail = e.clone();
-            report.outcome = match sde_coordination::status() {
-                sde_coordination::Status::Busy => "deferred",
-                sde_coordination::Status::Interrupted => "failed",
-                _ => "unavailable",
-            }
-            .into();
         }
         atomic_json(&Path::new(ROOT).join("status.json"), &report)?;
         // Set only the sanitized status readable by students, never private state.
@@ -788,6 +795,7 @@ mod native {
                     .map_err(|_| "Invalid installation".into())
             )
             .is_err());
+            assert_eq!(report.outcome, "deferred");
             drop(session);
             install_selected(
                 &directory,
@@ -870,6 +878,7 @@ mod native {
             )
             .is_err());
             assert!(report.native_exit.is_some_and(|code| code != 0));
+            assert_eq!(report.outcome, "failed");
             assert!(matches!(
                 sde_coordination::status(),
                 sde_coordination::Status::Interrupted

@@ -125,6 +125,7 @@ jobs:
           workspaces: |
             installer/src-tauri -> target
             updater -> target
+          cache-on-failure: true
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -210,7 +211,10 @@ jobs:
           if ($process.ExitCode -notin @(0,3010)) {
             # Installer has finished. Invoke only the installed narrow bootstrap
             # on this disposable runner to surface NSIS's hidden hook diagnostic.
+            & 'C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe' --coordination-init
+            Write-Output "Installed coordination init diagnostic exit=$LASTEXITCODE"
             & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
+            Write-Output "Installed 64-bit bootstrap diagnostic exit=$LASTEXITCODE"
             throw "Application bootstrap failed: $($process.ExitCode)"
           }
           if (Test-Path $baseline) { throw 'App-only installation applied a maintenance baseline.' }
