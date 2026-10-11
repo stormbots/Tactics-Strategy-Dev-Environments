@@ -210,6 +210,9 @@ never installs or grants the GUI a privileged arbitrary-path interface.
 
 ### Windows
 
+Implemented host, engine-generation, pause and native verification behavior is
+documented in [SELF-UPDATE-WINDOWS.md](SELF-UPDATE-WINDOWS.md).
+
 Execute the protected staged NSIS installer as SYSTEM with `/S /UPDATE`; do not
 pass `/R` (Tauri's application relaunch flag), `/P` (passive UI), or `/D` overrides.
 `/S` is case-sensitive. Use the existing registered machine location after trust

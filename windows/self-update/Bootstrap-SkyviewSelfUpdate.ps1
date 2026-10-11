@@ -42,7 +42,7 @@ if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid application version.'
 # Parent directories must already be machine-protected or freshly created here.
 New-ProtectedDirectory 'C:\ProgramData\SkyviewRobotics' -Readable
 New-ProtectedDirectory $root -Readable
-foreach ($name in @('engines','runs','staging')) { New-ProtectedDirectory (Join-Path $root $name) }
+foreach ($name in @('engines','runs','staging','logs')) { New-ProtectedDirectory (Join-Path $root $name) }
 $generation = [guid]::NewGuid().ToString()
 $engine = Join-Path (Join-Path $root 'engines') $generation
 New-ProtectedDirectory $engine
@@ -72,9 +72,8 @@ $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
 $taskName = 'Skyview Robotics - Dev Tool Updates'
 if (Test-Path $baseline) {
     Assert-TrustedItem $baseline
-    if ((Get-Content $baseline -Raw) -notmatch '# SDE_COORDINATION_V1') { throw 'Legacy maintenance needs mentor-approved Repair before task migration.' }
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-    if ($task) {
+    if ($task -and (Get-Content $baseline -Raw) -match '# SDE_COORDINATION_V1') {
         if ($task.Principal.UserId -notin @('SYSTEM','S-1-5-18','NT AUTHORITY\SYSTEM')) { throw 'Unexpected maintenance task principal.' }
         $launcher = Join-Path $root 'Invoke-SkyviewMaintenance.ps1'
         $action = New-ScheduledTaskAction -Execute 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$launcher`""

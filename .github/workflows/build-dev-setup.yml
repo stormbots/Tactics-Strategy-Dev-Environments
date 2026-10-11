@@ -155,9 +155,6 @@ jobs:
           ./tests/Test-MaintenanceCI.ps1
       - run: npm ci
         working-directory: installer
-      - name: Rust tests
-        run: cargo test --locked -- --nocapture
-        working-directory: installer/src-tauri
       - name: Bundle external Windows maintenance worker
         if: runner.os == 'Windows'
         shell: pwsh
@@ -204,16 +201,23 @@ jobs:
         shell: pwsh
         run: |
           $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
-          $before = (Get-FileHash $baseline -Algorithm SHA256).Hash
+          if (Test-Path $baseline) { throw 'Expected an app-only bootstrap fixture.' }
+          if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Unexpected existing baseline maintenance task.' }
           $installer = (Resolve-Path 'dist/Skyview-Dev-Setup-Windows-x64.exe').Path
           $process = Start-Process $installer -ArgumentList '/S','/UPDATE' -Wait -PassThru
           if ($process.ExitCode -notin @(0,3010)) { throw "Application bootstrap failed: $($process.ExitCode)" }
-          if ((Get-FileHash $baseline -Algorithm SHA256).Hash -ne $before) { throw 'Application installation changed the applied maintenance baseline.' }
+          if (Test-Path $baseline) { throw 'App-only installation applied a maintenance baseline.' }
+          if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'App-only installation scheduled tool maintenance.' }
           $status = & ./coordination/target/release/sde-coordination.exe status | ConvertFrom-Json
           if ($status -ne 'idle') { throw "Application bootstrap left unsafe coordination: $status" }
           $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Skyview Dev Setup'
           $expected = (Get-Content installer/src-tauri/tauri.conf.json | ConvertFrom-Json).version
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
+          $policy = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -Raw | ConvertFrom-Json
+          if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
+      - name: Rust tests
+        run: cargo test --locked -- --nocapture
+        working-directory: installer/src-tauri
       - name: Build unpublished newer Windows fixture and verify signed SYSTEM upgrade
         if: runner.os == 'Windows'
         shell: pwsh
