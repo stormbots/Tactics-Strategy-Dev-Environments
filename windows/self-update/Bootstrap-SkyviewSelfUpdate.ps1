@@ -1,4 +1,7 @@
 # Packaging hook only: no tool provisioning, package actions or maintenance launch.
+# An intermediate NSIS process can inherit PowerShell 7's incompatible module
+# paths. Load only native system modules, including ACL and scheduled-task APIs.
+$env:PSModulePath = 'C:\Windows\System32\WindowsPowerShell\v1.0\Modules'
 $ErrorActionPreference = 'Stop'
 $root = 'C:\ProgramData\SkyviewRobotics\SelfUpdate'
 function Assert-TrustedItem([string]$Path) {

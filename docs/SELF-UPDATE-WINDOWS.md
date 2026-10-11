@@ -7,7 +7,10 @@ SYSTEM, validates the protected receipt/engine, and copies the complete engine
 (binary plus version receipt) into a private per-invocation snapshot. The worker
 runs outside Program Files, so it does not keep the installed application or its
 bundled verifier open while NSIS replaces them. The privileged GUI interface is
-unchanged.
+unchanged. The hook selects the native Windows shell and the bootstrap pins its
+module path to native system modules. This also handles installers started from
+PowerShell 7, whose module paths otherwise leak through intermediate processes
+([Microsoft explanation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath?view=powershell-7.6)).
 
 ## Expected behavior
 
