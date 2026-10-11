@@ -238,6 +238,7 @@ impl GitHub {
         Err(RequestError::Abort(Failure::Untrusted))
     }
 }
+#[derive(Debug)]
 enum RequestError {
     Abort(Failure),
     Retry(Failure, Option<Duration>),
@@ -322,6 +323,27 @@ fn copy_bounded(
     }
     Ok(count)
 }
+fn receive_response(
+    mut response: reqwest::blocking::Response,
+    output: &mut dyn Sink,
+    limit: u64,
+    deadline: Instant,
+) -> std::result::Result<(), RequestError> {
+    // Reqwest's content_length is the remaining body's size hint, not an immutable
+    // header value. Capture it before streaming; it can be zero after consumption.
+    let expected_length = response.content_length();
+    if expected_length.is_some_and(|len| len > limit) {
+        return Err(RequestError::Abort(Failure::Malformed));
+    }
+    match copy_bounded(&mut response, output, limit, deadline) {
+        Ok(count) if expected_length.is_some_and(|len| len != count) => {
+            Err(RequestError::Retry(Failure::Offline, None))
+        }
+        Ok(_) => Ok(()),
+        Err(Failure::Offline) => Err(RequestError::Retry(Failure::Offline, None)),
+        Err(failure) => Err(RequestError::Abort(failure)),
+    }
+}
 impl Transport for GitHub {
     fn get(&mut self, url: &str, limit: u64, output: &mut dyn Sink) -> Result<()> {
         let initial = Url::parse(url).map_err(|_| Failure::Untrusted)?;
@@ -335,19 +357,7 @@ impl Transport for GitHub {
         for attempt in 0..3 {
             output.reset()?;
             let result = match self.request(&initial) {
-                Ok(mut response) => {
-                    if response.content_length().is_some_and(|len| len > limit) {
-                        return Err(Failure::Malformed);
-                    }
-                    match copy_bounded(&mut response, output, limit, self.deadline) {
-                        Ok(count) if response.content_length().is_some_and(|len| len != count) => {
-                            Err(RequestError::Retry(Failure::Offline, None))
-                        }
-                        Ok(_) => return Ok(()),
-                        Err(Failure::Offline) => Err(RequestError::Retry(Failure::Offline, None)),
-                        Err(failure) => Err(RequestError::Abort(failure)),
-                    }
-                }
+                Ok(response) => receive_response(response, output, limit, self.deadline),
                 Err(error) => Err(error),
             };
             match result {
@@ -531,6 +541,89 @@ mod tests {
             Err(Failure::Offline)
         );
         output.reset().unwrap();
+        assert!(output.is_empty());
+    }
+    #[test]
+    fn real_http_stream_preserves_original_length_and_rejects_truncation() {
+        use std::net::TcpListener;
+        fn response(bytes: &'static [u8]) -> reqwest::blocking::Response {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = std::thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                let mut request = Vec::new();
+                let mut buffer = [0u8; 1024];
+                while !request.ends_with(b"\r\n\r\n") {
+                    let count = stream.read(&mut buffer).unwrap();
+                    assert!(count > 0);
+                    request.extend_from_slice(&buffer[..count]);
+                    assert!(request.len() <= 4096);
+                }
+                stream.write_all(bytes).unwrap();
+            });
+            // Loopback HTTP is confined to this private test fixture. Production
+            // routing still rejects it and has no endpoint override.
+            let response = Client::builder()
+                .no_proxy()
+                .timeout(Duration::from_secs(2))
+                .build()
+                .unwrap()
+                .get(format!("http://{address}/fixture"))
+                .send()
+                .unwrap();
+            server.join().unwrap();
+            response
+        }
+        let mut output = Vec::new();
+        let complete =
+            response(b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: close\r\n\r\nabc");
+        assert_eq!(complete.content_length(), Some(3));
+        receive_response(
+            complete,
+            &mut output,
+            3,
+            Instant::now() + Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(output, b"abc");
+        output.reset().unwrap();
+        let chunked = response(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n3\r\nabc\r\n0\r\n\r\n");
+        assert_eq!(chunked.content_length(), None);
+        receive_response(
+            chunked,
+            &mut output,
+            3,
+            Instant::now() + Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(output, b"abc");
+        output.reset().unwrap();
+        let truncated =
+            response(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabc");
+        assert!(matches!(
+            receive_response(
+                truncated,
+                &mut output,
+                4,
+                Instant::now() + Duration::from_secs(2)
+            ),
+            Err(RequestError::Retry(Failure::Offline, None))
+        ));
+        output.reset().unwrap();
+        let oversized =
+            response(b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: close\r\n\r\nabc");
+        assert!(matches!(
+            receive_response(
+                oversized,
+                &mut output,
+                2,
+                Instant::now() + Duration::from_secs(2)
+            ),
+            Err(RequestError::Abort(Failure::Malformed))
+        ));
         assert!(output.is_empty());
     }
     struct Pages(Vec<Result<Vec<u8>>>);
