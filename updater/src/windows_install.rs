@@ -602,7 +602,11 @@ mod native {
             );
             resources("1.2.2").unwrap();
             assert!(!sde_coordination::root().join("transaction.json").exists());
-            let process=powershell().args(["-Command","Get-Process skyview-dev-setup -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"]).output().unwrap();
+            let process=Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe").args(["-NoProfile","-NonInteractive","-Command","if (Get-Process skyview-dev-setup -ErrorAction SilentlyContinue) { exit 1 }; exit 0"]).output().unwrap();
+            assert!(
+                process.status.success(),
+                "Installer launched GUI under SYSTEM"
+            );
             assert!(
                 process.stdout.is_empty(),
                 "Installer launched SDE under SYSTEM"
@@ -614,7 +618,7 @@ mod native {
         }
     }
 
-    pub(super) fn maintain() -> Result<()> {
+    pub(super) fn maintain() -> Result<i32> {
         system()?;
         trusted(Path::new(ROOT))?;
         let engine: serde_json::Value = serde_json::from_slice(&crate::read_bounded(
@@ -656,6 +660,7 @@ mod native {
             let mut github = GitHub::new().map_err(|_| "GitHub unavailable")?;
             let staging_root = host::store().map_err(|_| "Protected staging unavailable")?;
             let operation = sde_coordination::operation().map_err(|e| e.to_string())?;
+            prune_staging(&staging_root)?;
             report.recovery_available =
                 seed_recovery(&mut github, &staging_root, &installed.version).unwrap_or(false);
             let candidate =
@@ -720,11 +725,19 @@ mod native {
             "{}",
             serde_json::to_string(&report).map_err(|_| "Status encoding failed")?
         );
-        result
+        Ok(
+            if report.outcome == "deferred" || report.tool_exit == Some(75) {
+                75
+            } else if result.is_err() || report.tool_exit.is_some_and(|c| c != 0) {
+                1
+            } else {
+                0
+            },
+        )
     }
 }
 #[cfg(windows)]
-pub fn maintain_windows() -> crate::Result<()> {
+pub fn maintain_windows() -> crate::Result<i32> {
     native::maintain()
 }
 

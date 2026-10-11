@@ -254,7 +254,7 @@ pub(crate) mod windows {
     pub(super) fn validate(path: &Path) -> Result<()> {
         validate_acl(path, false)
     }
-    pub(super) fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
+    pub(crate) fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
         let info = std::fs::symlink_metadata(path).map_err(|_| Failure::Staging)?;
         if info.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
             || !(info.is_dir() || info.is_file())
@@ -552,7 +552,12 @@ pub(crate) mod windows {
     }
     pub(crate) fn install_location() -> Result<PathBuf> {
         let path = PathBuf::from(registry("InstallLocation")?.trim_matches('"'));
-        if !path.is_absolute() || !path.starts_with(r"C:\Program Files") {
+        if !path.is_absolute()
+            || !path.starts_with(r"C:\Program Files")
+            || path
+                .components()
+                .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
             return Err(Failure::InvalidInstalled);
         }
         for ancestor in path.ancestors() {
