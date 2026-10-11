@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+$Tools = $PSScriptRoot
 . (Join-Path $PSScriptRoot 'Coordination.ps1')
 try {
 Invoke-SkyviewCoordinated -Mutation -Action {
@@ -6,7 +7,6 @@ $ErrorActionPreference = 'Stop'
 
 $Skyview = 'C:\ProgramData\SkyviewRobotics'
 $Logs = Join-Path $Skyview 'Logs'
-$Tools = Split-Path -Parent $MyInvocation.MyCommand.Definition
 . (Join-Path $Tools 'ScheduledMaintenance.ps1')
 $ChocolateyLog = 'C:\ProgramData\chocolatey\logs\chocolatey.log'
 $ConfigStages = 10
