@@ -185,7 +185,16 @@ fn run(
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());
             let code = process::elevated(op.name(), &run_id, &mut emit)?;
             if code != 0 {
-                emit(format!("SKYVIEW_EVENT|error|system|System setup stopped (exit {code}). Review the last package error in Show details, then retry."));
+                if code == 75 {
+                    emit("SKYVIEW_EVENT|warning|deferred|Another SDE operation is running. Please retry when it finishes.".into());
+                } else if matches!(
+                    sde_coordination::status(),
+                    sde_coordination::Status::Interrupted
+                ) {
+                    emit("SKYVIEW_EVENT|error|system|System setup stopped. An interrupted operation needs mentor review before another change.".into());
+                } else {
+                    emit(format!("SKYVIEW_EVENT|error|system|System setup stopped (exit {code}). Review the last package error in Show details, then retry."));
+                }
                 return Ok(code);
             }
             #[cfg(windows)]

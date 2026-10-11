@@ -211,12 +211,12 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          test ! -e /var/lib/skyview-student-dev/version
+          test ! -e /var/lib/skyview-robotics/student-dev/version
           sudo apt-get install -y ./dist/Skyview-Dev-Setup-LinuxMint-amd64.deb
           test -r /var/lib/skyview-robotics-coordination/sessions.gate
           test -r /var/lib/skyview-robotics-coordination/operations.gate
           test "$(coordination/target/release/sde-coordination status)" = '"idle"'
-          test ! -e /var/lib/skyview-student-dev/version
+          test ! -e /var/lib/skyview-robotics/student-dev/version
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
