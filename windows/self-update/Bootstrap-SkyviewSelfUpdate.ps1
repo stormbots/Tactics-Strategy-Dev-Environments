@@ -30,6 +30,7 @@ function Write-AtomicReceipt([string]$Path,$Value) {
     if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; [IO.File]::Replace($temporary,$Path,$null) }
     else { [IO.File]::Move($temporary,$Path) }
 }
+try {
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Administrator installation required.' }
 $app = (Get-Item (Join-Path $PSScriptRoot '../../../skyview-dev-setup.exe')).FullName
@@ -92,4 +93,12 @@ Get-ChildItem -LiteralPath (Join-Path $root 'engines') -Directory | ForEach-Obje
         foreach ($name in @('sde-update-trust.exe','version.json')) { Remove-Item -LiteralPath (Join-Path $_.FullName $name) }
         [IO.Directory]::Delete($_.FullName)
     }
+}
+
+} catch {
+    # Packaging-only diagnostic: no signing credentials or package output here.
+    $diagnostic = Join-Path $PSScriptRoot 'bootstrap-error.log'
+    if (Test-Path -LiteralPath $diagnostic) { Assert-TrustedItem $diagnostic }
+    [IO.File]::WriteAllText($diagnostic, ($_.ToString() + [Environment]::NewLine + 'native64=' + [Environment]::Is64BitProcess))
+    throw
 }

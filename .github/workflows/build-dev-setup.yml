@@ -212,6 +212,7 @@ jobs:
             # Installer has finished. Invoke only the installed narrow bootstrap
             # on this disposable runner to surface NSIS's hidden hook diagnostic.
             Get-Content 'C:\Program Files\Skyview Dev Setup\sde-bootstrap.log' -ErrorAction SilentlyContinue
+            Get-Content 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\bootstrap-error.log' -ErrorAction SilentlyContinue
             $init = Start-Process 'C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe' -ArgumentList '--coordination-init' -Wait -PassThru
             Write-Output "Installed coordination init diagnostic exit=$($init.ExitCode)"
             & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
