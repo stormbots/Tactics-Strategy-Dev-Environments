@@ -254,7 +254,7 @@ mod windows {
     pub(super) fn validate(path: &Path) -> Result<()> {
         validate_acl(path, false)
     }
-    fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
+    pub(super) fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
         let info = std::fs::symlink_metadata(path).map_err(|_| Failure::Staging)?;
         if info.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
             || !(info.is_dir() || info.is_file())
@@ -507,6 +507,9 @@ mod windows {
         let mut current = PathBuf::new();
         for component in path.components() {
             current.push(component);
+            if !current.has_root() {
+                continue;
+            }
             if current.is_dir() {
                 let anchor =
                     current == Path::new(r"C:\") || current == Path::new(r"C:\Program Files");
@@ -598,6 +601,9 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn windows_private_acl_and_reparse_rejection() {
+        for anchor in [r"C:\", r"C:\Program Files", r"C:\ProgramData"] {
+            windows::validate_acl(Path::new(anchor), true).unwrap();
+        }
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(validate(dir.path()), Err(Failure::Staging));
         let private = dir.path().join("protected");
