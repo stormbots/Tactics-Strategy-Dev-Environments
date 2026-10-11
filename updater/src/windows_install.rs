@@ -234,8 +234,34 @@ mod native {
             return Ok(None);
         }
         trusted(path)?;
+        let run = std::env::current_exe()
+            .map_err(|_| "Missing maintenance snapshot")?
+            .parent()
+            .ok_or("Missing maintenance directory")?
+            .to_path_buf();
+        trusted(&run)?;
+        // Embedded supervisor acquires the operation gate before reading the
+        // applied baseline. Never load a mutable deployed coordination module
+        // before the lease, or mix scripts across a concurrent mentor Repair.
+        for (name, bytes) in [
+            (
+                "MaintenanceCoordination.ps1",
+                include_str!("../../windows/chocolatey/tools/Coordination.ps1"),
+            ),
+            (
+                "Invoke-AppliedMaintenance.ps1",
+                include_str!("../../windows/self-update/Invoke-AppliedMaintenance.ps1"),
+            ),
+        ] {
+            let mut file = host::exclusive(&run.join(name))
+                .map_err(|_| "Maintenance supervisor creation failed")?;
+            file.write_all(bytes.as_bytes())
+                .map_err(|_| "Maintenance supervisor write failed")?;
+            file.sync_all()
+                .map_err(|_| "Maintenance supervisor flush failed")?;
+        }
         let code = powershell()
-            .arg(path)
+            .arg(run.join("Invoke-AppliedMaintenance.ps1"))
             .status()
             .map_err(|_| "Tool maintenance could not start")?
             .code();

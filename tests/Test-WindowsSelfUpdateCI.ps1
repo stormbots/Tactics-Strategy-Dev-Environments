@@ -31,7 +31,24 @@ try {
     $bytes = [IO.File]::ReadAllBytes($baseline)
     $gui = [IO.File]::Open('C:\ProgramData\SkyviewRoboticsCoordination\sessions.gate','Open','Read','Read')
     try {
-        [IO.File]::WriteAllText($baseline, '# SDE_COORDINATION_V1' + [Environment]::NewLine + 'exit 0')
+        $action = @"
+# SDE_COORDINATION_V1
+if (`$PSScriptRoot -notmatch '\\SelfUpdate\\runs\\[0-9a-f-]{36}\\applied-baseline$') { throw 'Maintenance did not snapshot the applied generation.' }
+foreach (`$name in @('Coordination.ps1','Update-Node24.ps1','Node24.ps1')) {
+    if ((Get-FileHash (Join-Path `$PSScriptRoot `$name)).Hash -ne (Get-FileHash (Join-Path 'C:\ProgramData\SkyviewRobotics' `$name)).Hash) { throw 'Applied policy snapshot differs.' }
+}
+`$held = `$false
+try {
+    `$probe = [IO.File]::Open('C:\ProgramData\SkyviewRoboticsCoordination\operations.gate','Open','Read','Read')
+    `$probe.Dispose()
+} catch [IO.IOException] {
+    if ((`$_.Exception.HResult -band 0xffff) -ne 32) { throw }
+    `$held = `$true
+}
+if (-not `$held -or -not `$env:SKYVIEW_TRANSACTION_TOKEN) { throw 'Supervisor lost its operation lease or private transaction.' }
+exit 0
+"@
+        [IO.File]::WriteAllText($baseline, $action)
         & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\ProgramData\SkyviewRobotics\SelfUpdate\Invoke-SkyviewMaintenance.ps1'
         # Server 2022 is intentionally ineligible for production discovery. The
         # native installation test above injects only a test authentication key.

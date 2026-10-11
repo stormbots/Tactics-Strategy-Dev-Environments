@@ -40,7 +40,7 @@ try {
     Stop-Transcript | Out-Null
     # A crash leaves this private snapshot for mentor diagnostics. No deletion of
     # another invocation or installer/recovery material, even when work is busy.
-    foreach ($name in @('sde-update-trust.exe','version.json')) {
+    foreach ($name in @('sde-update-trust.exe','version.json','MaintenanceCoordination.ps1','Invoke-AppliedMaintenance.ps1')) {
         $path = Join-Path $run $name
         if (Test-Path $path) { Remove-Item -LiteralPath $path }
     }

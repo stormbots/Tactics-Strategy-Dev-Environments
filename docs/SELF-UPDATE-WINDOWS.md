@@ -20,6 +20,12 @@ returns 1. An app-only installation creates engine resources but neither registe
 nor starts tool maintenance. GUI baseline Install/Repair registers the existing
 task against the external host when present.
 
+An embedded supervisor acquires the shared operation lease before reading the
+applied scripts. It copies the updater, Node helper/policy and coordination module
+into the private invocation snapshot and holds its transaction through the child
+PowerShell process. Concurrent mentor Repair cannot mix script generations. These
+copies come from the applied baseline, not the newly bundled baseline proposal.
+
 The worker uses #37's fixed-repository discovery and protected staging. Only a
 newer compatible stable release, excluding GitHub drafts/prereleases and semantic
 prerelease versions, is eligible. Candidate signing does not approve promotion.
