@@ -61,3 +61,6 @@ __pycache__/
 installer/test-results/
 installer/playwright-report/
 installer/tsconfig.tsbuildinfo
+
+# Standalone update verifier build output
+/updater/target/
