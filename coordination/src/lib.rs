@@ -348,7 +348,7 @@ mod tests {
             #[cfg(unix)]
             if unsafe { libc::geteuid() } != 0 {
                 assert!(
-                    std::env::var_os("SDE_REQUIRE_COORDINATION").is_none(),
+                    std::env::var("SDE_REQUIRE_COORDINATION").as_deref() != Ok("1"),
                     "Root-owned coordination tests must run as root"
                 );
                 return None;
