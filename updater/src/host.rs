@@ -365,13 +365,17 @@ mod windows {
         let mut descriptor = ptr::null_mut();
         if unsafe {
             ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                wide("O:BAG:BAD:P(A;FA;;;SY)(A;FA;;;BA)").as_ptr(),
+                wide("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)").as_ptr(),
                 1,
                 &mut descriptor,
                 ptr::null_mut(),
             )
         } == 0
         {
+            #[cfg(test)]
+            eprintln!("Exclusive security descriptor failed: {}", unsafe {
+                GetLastError()
+            });
             return Err(Failure::Staging);
         }
         let attributes = SECURITY_ATTRIBUTES {
