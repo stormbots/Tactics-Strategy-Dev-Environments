@@ -309,7 +309,7 @@ mod windows {
                     return Err(Failure::Staging);
                 }
                 let header = unsafe { &*ace.cast::<ACE_HEADER>() };
-                if anchor && header.AceFlags & INHERIT_ONLY_ACE != 0 {
+                if anchor && u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
                     continue;
                 }
                 if header.AceType == 1 {

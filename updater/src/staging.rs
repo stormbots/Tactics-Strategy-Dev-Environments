@@ -291,7 +291,7 @@ mod tests {
         };
         for payload in [
             Err(Failure::Offline),
-            Ok(b"tampered installer".to_vec()),
+            Ok(b"tamperd installer".to_vec()),
             Ok(b"short".to_vec()),
         ] {
             let mut downloads = Downloads(VecDeque::from([
