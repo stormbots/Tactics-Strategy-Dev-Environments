@@ -35,7 +35,14 @@ for ($attempt = 1; $attempt -le 2; $attempt++) {
         $feedFailure = Get-Content 'C:\ProgramData\chocolatey\logs\chocolatey.log' -Tail 80 |
             Select-String -Pattern 'Failed to fetch.*(50[234]|Gateway Timeout)'
         if ($attempt -eq 2 -or $_.Exception.Message -ne 'Chocolatey returned exit code 1' -or -not $feedFailure) { throw }
-        Write-Host 'Retrying the real system backend once after a temporary Chocolatey feed gateway failure.'
+        if (Get-Process choco,msiexec -ErrorAction SilentlyContinue) { throw 'Package processes remain; fixture recovery is unsafe.' }
+        $journal = 'C:\ProgramData\SkyviewRoboticsCoordination\transaction.json'
+        if (Test-Path $journal) {
+            # This fixture observed the completed Chocolatey failure and contains
+            # no other actors. Clear only the SDE record, never package locks.
+            Remove-Item $journal -Force
+        }
+        Write-Host 'Retrying the real system backend once after a temporary Chocolatey feed gateway failure.' 
         Start-Sleep -Seconds 15
     }
 }
@@ -43,4 +50,7 @@ if (-not (Test-Path 'C:\ProgramData\SkyviewRobotics\Node24.ps1')) { throw 'Maint
 if (-not (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue)) { throw 'Weekly maintenance task was not registered.' }
 if (-not (Test-Path 'C:\Development')) { throw 'Development workspace was not created.' }
 & (Join-Path $PSScriptRoot 'Test-MaintenanceCI.ps1') -CheckInstalledTask
-Write-Host 'SKYVIEW_SYSTEM_SETUP_OK'
+$coordinator = Join-Path $PSScriptRoot '../coordination/target/release/sde-coordination.exe'
+$status = & $coordinator status | ConvertFrom-Json
+if ($status -ne 'idle') { throw "Provisioned maintenance is not safely coordinated: $status" }
+Write-Host 'SKYVIEW_SYSTEM_SETUP_OK' 

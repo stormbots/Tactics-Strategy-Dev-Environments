@@ -55,7 +55,9 @@ Linux gate files are root-owned `0444` in a `0755` directory. Windows allows
 Administrators/SYSTEM ownership and modification, with Users receiving read-only
 access. System ancestors are validated before native acquisition. Students can
 hold leases and defer maintenance, but cannot replace gates or author a privileged
-transaction record.
+transaction record. Explicit Windows baseline Repair also protects deployed
+maintenance scripts and their policy directory with administrator ownership and
+read-only student access.
 
 Application package post-install hooks run the narrow
 `skyview-dev-setup --coordination-init` entry point to create this storage. They do

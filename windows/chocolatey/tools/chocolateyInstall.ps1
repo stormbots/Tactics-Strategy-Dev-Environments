@@ -37,6 +37,13 @@ Write-Host 'Configuring Skyview Robotics Windows development workstation...'
 Invoke-ConfigStage 1 'Creating Skyview and development directories' {
     New-Item -ItemType Directory -Path $Skyview -Force | Out-Null
     New-Item -ItemType Directory -Path $Logs -Force | Out-Null
+    # Preserve baseline contents while restricting mutation of SYSTEM entry points
+    # and mentor-controlled policy to Administrators/SYSTEM.
+    foreach ($directory in @($Skyview, $Logs)) {
+        $security = New-Object Security.AccessControl.DirectorySecurity
+        $security.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)')
+        Set-Acl -LiteralPath $directory -AclObject $security
+    }
     if (-not (Test-Path 'C:\Development')) {
         New-Item -ItemType Directory -Path 'C:\Development' | Out-Null
         & icacls.exe 'C:\Development' /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null
@@ -65,6 +72,9 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         if ($file -ne 'repositories.csv' -or -not (Test-Path (Join-Path $Skyview $file))) {
             Copy-Item (Join-Path $Tools $file) (Join-Path $Skyview $file) -Force
         }
+        $security = New-Object Security.AccessControl.FileSecurity
+        $security.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
+        Set-Acl -LiteralPath (Join-Path $Skyview $file) -AclObject $security
     }
 }
 
