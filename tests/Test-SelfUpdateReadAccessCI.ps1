@@ -25,8 +25,16 @@ foreach ($name in @('policy.json','status.json')) {
 foreach ($name in @('active.json','installation.json','recovery.json')) {
     $path = Join-Path 'C:\ProgramData\SkyviewRobotics\SelfUpdate' $name
     $denied = $false
-    try { [void][IO.File]::ReadAllText($path) } catch [UnauthorizedAccessException] { $denied = $true }
-    if (-not $denied) { throw "Student could read private installation state: $name." }
+    try { [void][IO.File]::ReadAllText($path) }
+    catch [UnauthorizedAccessException] { $denied = $true }
+    catch [IO.FileNotFoundException] {
+        # Native failure coverage deliberately removes test-key recovery state.
+        # Missing recovery must still be protected against student creation.
+        if ($name -ne 'recovery.json') { throw }
+        try { [IO.File]::WriteAllText($path,'{}') }
+        catch [UnauthorizedAccessException] { $denied = $true }
+    }
+    if (-not $denied) { throw "Student could read or create private installation state: $name." }
 }
 Write-Output 'SDE_STANDARD_USER_STATUS_OK'
 exit 0
