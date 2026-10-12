@@ -40,6 +40,11 @@ SYSTEM. No security validation is disabled for test convenience.
 
 ## Native evidence
 
+Mint image downloads use upstream-listed mirrors with bounded connection,
+transfer and slow-transfer limits. The original pinned signing-key fingerprint
+and ISO checksum remain mandatory before extraction. These network limits do not
+terminate a native package-manager process or count a canceled CI run as evidence.
+
 Required Windows and Mint jobs build both the normal package and an unpublished
 newer package. The native test consumes a controlled release listing, downloads
 signed metadata and the **real** installer through the test transport, authenticates
