@@ -26,7 +26,7 @@ foreach ($name in @('active.json','installation.json','recovery.json')) {
     $path = Join-Path 'C:\ProgramData\SkyviewRobotics\SelfUpdate' $name
     $denied = $false
     try { [void][IO.File]::ReadAllText($path) } catch [UnauthorizedAccessException] { $denied = $true }
-    if (-not $denied) { throw 'Student could read private installation state.' }
+    if (-not $denied) { throw "Student could read private installation state: $name." }
 }
 Write-Output 'SDE_STANDARD_USER_STATUS_OK'
 exit 0
