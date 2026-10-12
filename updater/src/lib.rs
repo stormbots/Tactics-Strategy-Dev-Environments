@@ -2,7 +2,11 @@
 //! Discovery and protected staging never execute a package.
 pub mod discovery;
 pub mod host;
+#[cfg(target_os = "linux")]
+mod linux_install;
 pub mod staging;
+#[cfg(target_os = "linux")]
+pub use linux_install::maintain_linux;
 #[cfg(any(windows, test))]
 #[cfg_attr(not(windows), allow(dead_code))]
 mod windows_install;

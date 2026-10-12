@@ -27,6 +27,10 @@ pub fn installed() -> Result<Installed> {
     if !mint_supported(&os) {
         return Err(Failure::Unsupported);
     }
+    installed_linux_identity()
+}
+#[cfg(target_os = "linux")]
+pub(crate) fn installed_linux_identity() -> Result<Installed> {
     let mut command = std::process::Command::new("/usr/bin/dpkg-query");
     command
         .env_clear()
