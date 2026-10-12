@@ -153,6 +153,17 @@ If no provisioned schedule exists, mark this test not applicable until a separat
 mentor-authorized baseline provisioning action; do not count app-only installation
 as scheduled-maintenance success.
 
+## Later automatic pilot
+
+After accepting the exact manual UAT target, separately authorize stable promotion
+and resume only on a reserved representative Windows/Mint pilot still at 1.2.2.
+Use the rollout guide's open-SDE deferral test and closed-SDE automatic upgrade to
+accepted stable 1.2.3. This verifies the real discovery-to-installation path on
+school laptops without exposing an **unaccepted** stable release. Do not downgrade
+the manual UAT laptops, promote 1.2.2, or unpause the classroom fleet for this test.
+Record pilot findings before authorizing wider deployment. Promotion and resume
+remain pending; these instructions supply no authorization.
+
 ## Findings, acceptance and failure response
 
 Stop on unexpected version/policy, changed student data, validation failure or

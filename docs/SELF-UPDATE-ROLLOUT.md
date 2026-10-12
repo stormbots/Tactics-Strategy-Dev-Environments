@@ -99,7 +99,13 @@ Record explicit owner acceptance of the exact 1.2.3 target/source/assets on both
 systems in [ACCEPTANCE-SELF-UPDATE.md](ACCEPTANCE-SELF-UPDATE.md), with any accepted
 limitations. Prepare a small representative pilot (Windows and Mint, including
 ordinary student permissions/custom schedules), then report its results before
-migrating the remaining approximately 20 laptops. Keep production paused during
+migrating the remaining approximately 20 laptops. Reserve an additional
+representative Windows/Mint pilot at the manually authenticated **1.2.2** starting
+version (with separately approved compatible maintenance baseline) for the first
+real automatic 1.2.3 upgrade **after** owner acceptance and stable-promotion
+approval. Do not downgrade an already upgraded UAT laptop to create that test.
+The manual UAT laptops remain at 1.2.3; resuming them alone cannot demonstrate an
+automatic upgrade because equal versions are ignored. Keep production paused during
 manual migration and UAT. Preserve a list of OS, installed app/engine/baseline,
 policy, schedule and findings per laptop without personal data.
 
@@ -114,8 +120,11 @@ signing approval and this document do not supply that authorization.
 
 For future ordinary releases, bump all application identity/lock files together,
 leave development baseline policy explicit, provide versioned release notes, and
-use the existing protected release branch/tag pipeline. Complete both native
-builds/tests and trust checks; publish only a signed prerelease first. Obtain
+use the existing protected release branch/tag pipeline. The ordinary native integration
+fixtures currently use fixed starting/newer version identities; have Codex update
+those fixture expectations alongside a future application bump so its test target
+remains newer than its starting package. Never bypass failing native gates or
+reuse older-version evidence. Complete both native builds/tests and trust checks; publish only a signed prerelease first. Obtain
 owner acceptance/promotion authorization, then promote those same assets.
 Never re-sign or replace assets of an accepted stable release.
 
@@ -128,8 +137,13 @@ session is deferred, not forcibly closed. Lower/equal versions are ignored.
 
 Resume using the installed administrator `resume` command from the
 [mentor guide](SELF-UPDATE-MENTOR.md), per explicitly approved laptop. Confirm the
-policy and existing schedule, then use the documented immediate task/service
-trigger in an agreed maintenance window instead of waiting a week. That trigger
+policy and existing schedule. On the reserved 1.2.2 pilot, first trigger with SDE
+open: tools run independently, app installation must defer, and SDE must stay open.
+Close SDE normally, wait for all maintenance/package work to finish, and trigger
+again: the authenticated stable 1.2.3 should install silently and report Updated,
+matching app/engine versions, retained verification and preserved student state.
+Give Codex the sanitized evidence for review. Never resume other laptops to make
+this test pass. Use the documented immediate task/service trigger in an agreed maintenance window instead of waiting a week. That trigger
 also runs development-tool maintenance; inspect its independent result. After
 pilot acceptance, explicitly authorize any broader resume/migration batch.
 
