@@ -17,11 +17,11 @@ sde-update.json and sde-update.json.minisig. The protected workflow authenticate
 both installers before publication. Minisign authentication is separate from
 Windows Authenticode; no SmartScreen exemption is promised.
 
-Use [the owner UAT procedure](SELF-UPDATE-UAT.md). These packages support a real,
+Use [the owner UAT procedure](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/main/docs/SELF-UPDATE-UAT.md). These packages support a real,
 verified manual two-version upgrade while production remains paused. Production
 discovery ignores them because they are prereleases. Native CI separately tests
 the production installation components and deferral/failure contracts; it does
 not replace Windows 11, booted Mint, or school-network acceptance.
 
 Record findings with Codex. Acceptance and stable promotion remain pending your
-explicit instructions. See [migration and rollout](SELF-UPDATE-ROLLOUT.md).
+explicit instructions. See [migration and rollout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/main/docs/SELF-UPDATE-ROLLOUT.md).
