@@ -20,7 +20,7 @@ try {
     New-Item -ItemType Directory -Force (Split-Path $project) | Out-Null
     Set-Content $project 'student preservation sentinel'
     $versions = if ($UatPair) { @('1.2.2', '1.2.3') } else { @('1.2.0', '1.2.1') }
-    if ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.4' }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.4' }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
@@ -31,7 +31,7 @@ try {
             Set-Content $legacyBaseline '# legacy maintenance UAT sentinel'
         }
         $exe = Join-Path $Root "$version\Skyview-Dev-Setup-Windows-x64.exe"
-        $flags = if ($version -eq $versions[1]) { '/S /UPDATE' } else { '/S' }
+        $flags = if ($version -ne $versions[0]) { '/S /UPDATE' } else { '/S' }
         $process = Start-Process -FilePath $exe -ArgumentList $flags -PassThru
         if (-not $process.WaitForExit(300000)) { throw 'Installer exceeded five minutes; investigate runner, do not terminate production package transactions' }
         Write-Output "Installer $version flags=$flags exit=$($process.ExitCode)"
@@ -81,7 +81,8 @@ $action.Arguments += $pairFlag
 Register-ScheduledTask -TaskName $task -Action $action -User SYSTEM -RunLevel Highest -Force | Out-Null
 try {
     Start-ScheduledTask -TaskName $task
-    $deadline = (Get-Date).AddMinutes(11)
+    $minutes = if ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { 16 } else { 11 }
+    $deadline = (Get-Date).AddMinutes($minutes)
     while (-not (Test-Path $done) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
     if (Test-Path $result) { Get-Content $result }
     if (-not (Test-Path $done)) { throw 'SYSTEM probe timed out' }
