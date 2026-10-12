@@ -8,6 +8,8 @@ printf 'Native evidence: %s; kernel/container desktop UAT remains separate\n' "$
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 root=/opt/sde-fixtures
+# Export only test/native output, never fixture keys or protected staging files.
+trap 'if [[ -d /evidence && -f "$root/native-result.txt" ]]; then cp "$root/native-result.txt" /evidence/mint-native.txt; fi' EXIT
 install -d -m 0700 "$root/1.2.2/failure"
 cp /work/dist/Skyview-Dev-Setup-LinuxMint-amd64.deb "$root/old.deb"
 cp /work/installer/src-tauri/target/release/bundle/deb/*1.2.2*.deb "$root/1.2.2/Skyview-Dev-Setup-LinuxMint-amd64.deb"
@@ -54,3 +56,4 @@ chmod 0755 "$root/failure-build/DEBIAN/postinst"
 dpkg-deb --build "$root/failure-build" "$root/1.2.2/failure/Skyview-Dev-Setup-LinuxMint-amd64.deb"
 SDE_MINT_NATIVE_FIXTURE="$root/1.2.2/Skyview-Dev-Setup-LinuxMint-amd64.deb" "$root/native-tests" --exact linux_install::tests::signed_upgrade_on_native_mint --nocapture | tee "$root/native-result.txt"
 grep -q SDE_NATIVE_MINT_UPGRADE_OK "$root/native-result.txt"
+grep -q SDE_E2E_NATIVE_MINT_OK "$root/native-result.txt"

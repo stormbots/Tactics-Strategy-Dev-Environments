@@ -48,3 +48,5 @@ GitHub Actions tests the app and backends, builds native NSIS and DEB installers
 For administrator pause/resume controls and recovery, see the
 [mentor self-update guide](docs/SELF-UPDATE-MENTOR.md). SDE installation starts paused;
 existing development-tool maintenance remains independent.
+
+Self-update verification evidence and remaining school-laptop UAT: [SELF-UPDATE-EVIDENCE.md](docs/SELF-UPDATE-EVIDENCE.md).

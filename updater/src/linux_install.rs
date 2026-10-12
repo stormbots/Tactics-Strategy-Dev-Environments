@@ -633,58 +633,29 @@ mod tests {
     use super::*;
     use minisign::KeyPair;
     use std::{
-        collections::VecDeque,
-        io::{BufRead, BufReader, Cursor},
+        io::{BufRead, BufReader},
         process::Stdio,
     };
-    struct Downloads(VecDeque<Vec<u8>>);
-    impl discovery::Transport for Downloads {
-        fn get(
-            &mut self,
-            _: &str,
-            max: u64,
-            out: &mut dyn discovery::Sink,
-        ) -> discovery::Result<()> {
-            let bytes = self.0.pop_front().unwrap();
-            if bytes.len() as u64 > max {
-                return Err(discovery::Failure::Malformed);
-            }
-            out.write_all(&bytes)
-                .map_err(|_| discovery::Failure::Staging)
-        }
-    }
     fn fixture(source: &Path, version: &str, keys: &KeyPair) -> (std::path::PathBuf, Candidate) {
-        let build = source.parent().unwrap();
         let staging = host::store().unwrap();
-        let metadata = crate::create_manifest(build, &format!("v{version}")).unwrap();
-        let signature = minisign::sign(
-            Some(&keys.pk),
-            &keys.sk,
-            Cursor::new(&metadata),
-            Some("disposable CI test key"),
-            None,
-        )
-        .unwrap()
-        .to_string();
-        let package = std::fs::read(source).unwrap();
-        let c = Candidate {
-            tag: format!("v{version}"),
-            version: version.into(),
-            platform: "linux-amd64".into(),
-            installer: INSTALLER.into(),
-            installer_size: package.len() as u64,
-        };
-        let s = staging::stage_with(
-            &mut Downloads(VecDeque::from([metadata, signature.into_bytes(), package])),
-            &staging,
-            &c,
-            |b, s, t| {
-                crate::authenticate_with_key(b, s, t, &keys.pk)
-                    .map_err(|_| discovery::Failure::Untrusted)
-            },
-        )
-        .unwrap();
-        (staging.join(s.id), c)
+        let mut release = crate::e2e::Fixture::new(source.parent().unwrap(), version, keys);
+        let installed = host::installed().unwrap().version;
+        let candidate = release
+            .discover(&installed, "linux-amd64")
+            .unwrap()
+            .unwrap();
+        let operation = sde_coordination::operation().unwrap();
+        let staged = release.stage(&staging, &candidate).unwrap();
+        drop(operation);
+        assert_eq!(
+            release
+                .discover(&installed, "linux-amd64")
+                .unwrap()
+                .unwrap()
+                .version,
+            candidate.version
+        );
+        (staging.join(staged.id), candidate)
     }
     #[test]
     fn apt_contract_is_narrow_noninteractive_and_bounded() {
@@ -723,6 +694,14 @@ mod tests {
         let baseline = std::fs::read(baseline_path).unwrap();
         let student = Path::new("/home/sde-student/project.txt");
         let student_before = std::fs::read(student).unwrap();
+        let settings = Path::new("/home/sde-student/.config/Code/User/settings.json");
+        std::fs::create_dir_all(settings.parent().unwrap()).unwrap();
+        std::fs::write(
+            settings,
+            br#"{"editor.fontSize":17,"files.autoSave":"afterDelay"}"#,
+        )
+        .unwrap();
+        let settings_before = std::fs::read(settings).unwrap();
         let timer = std::fs::read("/etc/systemd/system/skyview-student-dev-update.timer").unwrap();
         let policy_before = std::fs::read(Path::new(ROOT).join("policy.json")).unwrap();
         set_linux_pause(false).unwrap();
@@ -735,6 +714,16 @@ mod tests {
             timer
         );
 
+        // Model a killed downloader's private partial transaction. Only known
+        // unretained files may be pruned under the operation gate.
+        let staging = host::store().unwrap();
+        let partial = staging.join(uuid::Uuid::new_v4().to_string());
+        host::create_private(&partial).unwrap();
+        std::fs::write(partial.join("sde-update.json"), b"partial").unwrap();
+        let operation = sde_coordination::operation().unwrap();
+        prune(&staging).unwrap();
+        drop(operation);
+        assert!(!partial.exists());
         let keys = KeyPair::generate_unencrypted_keypair().unwrap();
         let (directory, candidate) = fixture(source, "1.2.2", &keys);
         assert!(authenticate_staged(&directory, &candidate, crate::authenticate).is_err());
@@ -756,7 +745,7 @@ mod tests {
             schema_version: 1,
             phase: crate::observation::Phase::Tools,
             completed_at: None,
-            checked_at: 0,
+            checked_at: 100,
             application_version: "1.2.1".into(),
             maintenance_engine_version: "1.2.1".into(),
             applied_baseline_version: Some("1.2.1".into()),
@@ -789,6 +778,16 @@ mod tests {
         );
         assert_eq!(report.outcome, "deferred");
         drop(session);
+        let maintenance = sde_coordination::operation().unwrap();
+        assert!(
+            install_selected(&directory, &candidate, &mut report, |b, s, t| {
+                crate::authenticate_with_key(b, s, t, &keys.pk)
+            })
+            .is_err()
+        );
+        assert_eq!(report.outcome, "deferred");
+        assert_eq!(report.native_exit, None);
+        drop(maintenance);
         // A real other process owns a POSIX DPKG frontend lock. No package kill.
         let mut blocker=command("/usr/bin/python3").args(["-I","-c","import fcntl,sys; f=open('/var/lib/dpkg/lock-frontend','r+'); fcntl.lockf(f,fcntl.LOCK_EX); print('LOCKED',flush=True); sys.stdin.read()"] ).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
         let mut line = String::new();
@@ -811,9 +810,22 @@ mod tests {
         .unwrap();
         assert_eq!(report.outcome, "updated");
         assert_eq!(report.native_exit, Some(0));
+        report.completed_at = Some(101);
+        atomic(&Path::new(ROOT).join("status.json"), &report, true).unwrap();
+        let visible = crate::observation::inspect();
+        assert_eq!(visible.outcome, crate::observation::Outcome::Updated);
+        assert_eq!(visible.application_version.as_deref(), Some("1.2.2"));
+        assert_eq!(visible.candidate_version.as_deref(), Some("1.2.2"));
+        assert_eq!(visible.applied_baseline_version.as_deref(), Some("1.2.1"));
+        // Re-presenting the same/older candidate cannot start another installer.
+        report.native_exit = None;
+        install_selected(&directory, &candidate, &mut report, crate::authenticate).unwrap();
+        assert_eq!(report.outcome, "current");
+        assert_eq!(report.native_exit, None);
         resources("1.2.2").unwrap();
         assert_eq!(std::fs::read(baseline_path).unwrap(), baseline);
         assert_eq!(std::fs::read(student).unwrap(), student_before);
+        assert_eq!(std::fs::read(settings).unwrap(), settings_before);
         assert_eq!(
             std::fs::read("/etc/systemd/system/skyview-student-dev-update.timer").unwrap(),
             timer
@@ -892,6 +904,16 @@ mod tests {
             sde_coordination::Status::Interrupted
         ));
         assert!(sde_coordination::installation().is_err());
+        report.candidate_version = Some(c.version.clone());
+        report.completed_at = Some(102);
+        atomic(&Path::new(ROOT).join("status.json"), &report, true).unwrap();
+        let failed_status = crate::observation::inspect();
+        assert_eq!(failed_status.outcome, crate::observation::Outcome::Failed);
+        assert!(matches!(
+            failed_status.coordination,
+            sde_coordination::Status::Interrupted
+        ));
+        println!("SDE_E2E_NATIVE_MINT_OK");
         // No cleanup of a real partial DPKG transaction. Disposable container exits.
         std::fs::write(Path::new(ROOT).join("policy.json"), policy_before).unwrap();
         println!("SDE_NATIVE_MINT_UPGRADE_OK: pinned-key rejection, metadata/payload tamper, pause, GUI/package deferral, real APT upgrade, next engine, home/baseline/timer preservation, failed postinst blocks retry");
