@@ -24,7 +24,11 @@ try {
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
     $settingsBefore = Get-Content $settings -Raw
+    $legacyBaseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
     foreach ($version in $versions) {
+        if ($UatPair -and $version -eq $versions[1]) {
+            Set-Content $legacyBaseline '# legacy maintenance UAT sentinel'
+        }
         $exe = Join-Path $Root "$version\Skyview-Dev-Setup-Windows-x64.exe"
         $flags = if ($version -eq $versions[1]) { '/S /UPDATE' } else { '/S' }
         $process = Start-Process -FilePath $exe -ArgumentList $flags -PassThru
@@ -47,7 +51,14 @@ try {
             $policy = Get-Content (Join-Path $rootPolicy 'policy.json') -Raw | ConvertFrom-Json
             $active = Get-Content (Join-Path $rootPolicy 'active.json') -Raw | ConvertFrom-Json
             if ($policy.paused -ne $true -or $active.version -ne $version) { throw 'Pause or active engine mismatch' }
-            if (Test-Path 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1') { throw 'Unexpected applied baseline' }
+            if ($version -eq $versions[0]) {
+                if (Test-Path $legacyBaseline) { throw 'Unexpected applied baseline' }
+            } else {
+                if ((Get-Content $legacyBaseline -Raw).Trim() -ne '# legacy maintenance UAT sentinel') { throw 'Legacy baseline changed' }
+                $worker = 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe'
+                $coordination = & $worker coordination-status | ConvertFrom-Json
+                if ($LASTEXITCODE -ne 0 -or $coordination -ne 'needs_repair') { throw 'Legacy installation must require explicit Repair' }
+            }
             if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Unexpected tool schedule' }
         }
         Write-Output 'PASS: version, resources, no provisioning, no GUI launch, student marker'

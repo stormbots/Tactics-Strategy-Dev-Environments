@@ -77,6 +77,18 @@ worker='/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust'
 Stop if either exits nonzero. Repeat the installation command from the v1.2.3
 folder. Check `dpkg-query -W skyview-dev-setup` and About show 1.2.3.
 
+## Legacy maintenance prerequisite
+
+An app upgrade preserves an older uncoordinated deployed baseline. With SDE
+closed, coordination can therefore show **Needs repair** rather than idle; its old
+schedule is not silently changed to the new launcher. This is expected and blocks
+automatic installation. Follow the separately authorized mentor baseline Repair
+in [the migration guide](SELF-UPDATE-ROLLOUT.md) before testing continued maintenance
+through the new host. Record before/after tool versions and schedule settings:
+Repair is a real baseline action and can change tools/default schedules. Do not
+mark the maintenance/deferral tests passed while this prerequisite is unresolved.
+An app-only machine with no deployed baseline needs no compatibility migration.
+
 ## Checklist and expected results
 
 | Owner check | Expected result / boundary |

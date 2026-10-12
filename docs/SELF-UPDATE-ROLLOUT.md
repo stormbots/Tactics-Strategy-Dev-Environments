@@ -27,7 +27,10 @@ key is needed on student laptops or exported in candidate artifacts.
    identity files are changed in disposable build checkouts; dependencies and
    applied development baselines stay unchanged. Native pair tests install the
    actual packages, verify versions/engine/pause and saved files, and check that
-   app-only installation creates no baseline or schedule. PR runs perform these
+   first app-only installation creates no baseline or schedule. Before the second
+   version, a legacy maintenance sentinel is installed; the upgrade must preserve
+   it and report `needs_repair`, proving that migration cannot silently bypass
+   compatibility or apply a baseline. PR runs perform these
    builds/tests without signing secrets or publishing releases.
 4. Inspect the run/source/diff and native results. The owner approves the pending
    **sde-release-signing** environment in GitHub Actions. Codex must not approve
@@ -65,10 +68,27 @@ bootstrap. A mentor installs the owner-approved authenticated native candidate
 once per representative laptop, without clicking GUI Install/Repair/Update.
 Windows uses per-machine `/S /UPDATE`; Mint uses the configured APT local-package
 installation. This initializes protected coordination/policy and the new engine.
-It preserves applied baseline scripts and custom task/timer settings. Existing
+It preserves applied baseline scripts and custom task/timer settings. Already coordinated
 provisioned schedules are routed to the protected launcher; app-only installations
-create no tool schedule. Verify this behavior on the actual legacy configuration,
+create no tool schedule. An older deployed script without `SDE_COORDINATION_V1`
+is preserved and reports `needs_repair`: its old schedule is not silently migrated.
+Automatic installation remains blocked. Verify this on the actual legacy configuration,
 including disabled/customized schedules, before extending migration to the fleet.
+
+For an incompatible legacy baseline, record the existing schedule, disable it
+without changing its triggers, and wait for all its native/package work to finish.
+Only after explicit mentor authorization perform the GUI **Repair** baseline action
+from the trusted installed candidate. Repair can install/update development tools
+and deployed scripts; it is a separate baseline change, not part of the silent
+app upgrade. Save/compare student state and validate its results. Check the new
+coordination modules and maintenance entry point, protected launcher, original
+schedule settings and desired enabled state before restoring the schedule.
+Repair may restore standard schedule defaults; retain/reapply approved custom
+settings rather than claiming it preserves them automatically. Do not paste a
+coordination marker into an old script, copy a current baseline over it, delete
+intent, or resume to bypass this migration. Test this mentor Repair on the pilot,
+then obtain authorization for the remaining legacy laptops. See
+[the coordination migration contract](SELF-UPDATE-COORDINATION.md).
 
 If no baseline/schedule exists, provisioning is a separate mentor decision and
 may change tools; application migration does not authorize it. The older applied
