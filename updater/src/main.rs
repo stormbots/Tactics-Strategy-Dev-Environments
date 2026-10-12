@@ -13,6 +13,25 @@ fn run() -> Result<(), String> {
     if args.as_slice() == ["maintain-windows"] {
         std::process::exit(sde_update_trust::maintain_windows()?);
     }
+    if args.len() == 1 && matches!(args[0].as_str(), "pause" | "resume") {
+        #[cfg(target_os = "linux")]
+        sde_update_trust::set_linux_pause(args[0] == "pause")?;
+        #[cfg(windows)]
+        sde_update_trust::set_windows_pause(args[0] == "pause")?;
+        println!("SDE installation policy saved. Tool maintenance remains enabled. An installer already running is allowed to finish.");
+        return Ok(());
+    }
+    if args.as_slice() == ["self-update-status"] {
+        println!(
+            "{}",
+            serde_json::to_string(&sde_update_trust::observation::inspect())
+                .map_err(|_| "Status encoding failed")?
+        );
+        return Ok(());
+    }
+    if args.as_slice() == ["verify-recovery"] {
+        return sde_update_trust::observation::verify_recovery();
+    }
     if args.as_slice() == ["coordination-status"] {
         println!(
             "{}",
@@ -34,7 +53,7 @@ fn run() -> Result<(), String> {
     }
     if args.len() != 3 {
         return Err(
-            "Usage: sde-update-trust <check|stage> OR <create|sign|verify> <release-directory> <vMAJOR.MINOR.PATCH>"
+            "Usage: sde-update-trust <pause|resume|self-update-status|verify-recovery|coordination-status|check|stage> OR <create|sign|verify> <release-directory> <vMAJOR.MINOR.PATCH>"
                 .into(),
         );
     }

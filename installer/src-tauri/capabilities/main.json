@@ -8,6 +8,7 @@
     "core:event:allow-unlisten",
     "allow-inspect-system",
     "allow-inspect-schedule",
+    "allow-inspect-self-update",
     "allow-run-operation",
     "allow-open-destination"
   ]

@@ -92,3 +92,6 @@ try {
     # Removing the fixture task does not kill its running worker or packages.
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
 }
+
+& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Test-SelfUpdateReadAccessCI.ps1')
+if ($LASTEXITCODE -ne 0) { throw 'Student self-update read-only access failed.' }

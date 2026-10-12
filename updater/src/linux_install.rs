@@ -235,6 +235,8 @@ fn receipt_id<'a>(value: &'a serde_json::Value, field: &str) -> Result<&'a str> 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Report {
+    phase: crate::observation::Phase,
+    completed_at: Option<u64>,
     schema_version: u32,
     checked_at: u64,
     application_version: String,
@@ -263,6 +265,7 @@ fn install_selected(
     report: &mut Report,
     authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
 ) -> Result<()> {
+    report.phase = crate::observation::Phase::Verification;
     let lease = sde_coordination::installation().map_err(|e| coordination_error(report, e))?;
     if paused()? {
         report.outcome = "paused".into();
@@ -277,6 +280,7 @@ fn install_selected(
         report.outcome = "current".into();
         return Ok(());
     }
+    report.outcome = "failed".into();
     let manifest = authenticate_staged(directory, candidate, authenticate)?;
     deb_identity(directory, &candidate.version)?;
     if package_busy()? {
@@ -284,6 +288,7 @@ fn install_selected(
         report.detail = "Package manager is busy; retry on the next scheduled run".into();
         return Ok(());
     }
+    report.phase = crate::observation::Phase::Packagehealth;
     let audit = command("/usr/bin/dpkg")
         .arg("--audit")
         .output()
@@ -302,6 +307,7 @@ fn install_selected(
         report.outcome = "paused".into();
         return Ok(());
     }
+    report.phase = crate::observation::Phase::Installer;
     report.outcome = "failed".into();
     // Wait for actual completion; never kill APT/DPKG, remove locks or force reboot.
     let status = apt_command(directory)
@@ -321,6 +327,7 @@ fn install_selected(
             "APT returned {code}; mentor review required before retry"
         ));
     }
+    report.phase = crate::observation::Phase::Postcheck;
     resources(&candidate.version)?;
     if Path::new(ROOT).join("recovery.json").exists() {
         atomic(
@@ -503,11 +510,15 @@ pub fn maintain_linux() -> Result<i32> {
         .filter(|s| crate::release_version(&format!("v{s}")).is_ok());
     let mut report = Report {
         schema_version: 1,
+        phase: crate::observation::Phase::Tools,
+        completed_at: None,
         checked_at: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|_| "Clock unavailable")?
             .as_secs(),
-        application_version: String::new(),
+        application_version: host::installed_linux_identity()
+            .map(|i| i.version)
+            .unwrap_or_default(),
         maintenance_engine_version: engine["version"]
             .as_str()
             .ok_or("Missing engine version")?
@@ -540,9 +551,11 @@ pub fn maintain_linux() -> Result<i32> {
                     .into(),
             );
         }
+        report.phase = crate::observation::Phase::Identity;
         let installed =
             host::installed().map_err(|e| format!("Installed identity unavailable: {e:?}"))?;
         report.application_version = installed.version.clone();
+        report.phase = crate::observation::Phase::Policy;
         if paused()? {
             report.outcome = "paused".into();
             return Ok(());
@@ -554,6 +567,7 @@ pub fn maintain_linux() -> Result<i32> {
         prune(&root)?;
         report.recovery_available =
             recovery(&mut github, &root, &installed.version).unwrap_or(false);
+        report.phase = crate::observation::Phase::Discovery;
         let candidate = discovery::discover_with(&mut github, &installed.version, "linux-amd64")
             .map_err(|e| format!("Release check unavailable: {e:?}"))?;
         let Some(candidate) = candidate else {
@@ -561,6 +575,7 @@ pub fn maintain_linux() -> Result<i32> {
             return Ok(());
         };
         report.candidate_version = Some(candidate.version.clone());
+        report.phase = crate::observation::Phase::Download;
         let id = stage(&mut github, &root, &candidate)?;
         drop(operation);
         let current = host::installed().map_err(|_| "Installed identity changed")?;
@@ -576,6 +591,10 @@ pub fn maintain_linux() -> Result<i32> {
     if let Err(ref e) = result {
         report.detail = e.clone();
     }
+    report.completed_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|t| t.as_secs());
     atomic(&Path::new(ROOT).join("status.json"), &report, true)?;
     println!(
         "{}",
@@ -589,6 +608,23 @@ pub fn maintain_linux() -> Result<i32> {
         } else {
             0
         },
+    )
+}
+
+/// Fixed administrator policy command; no scheduler, tools or journal mutation.
+pub fn set_linux_pause(paused: bool) -> Result<()> {
+    if unsafe { libc::geteuid() } != 0 {
+        return Err("Run pause/resume as an administrator using sudo".into());
+    }
+    // Require an installed, trusted policy rather than initialize arbitrary state.
+    let _ = self::paused()?;
+    atomic(
+        &Path::new(ROOT).join("policy.json"),
+        &crate::observation::Policy {
+            schema_version: 1,
+            paused,
+        },
+        true,
     )
 }
 
@@ -689,6 +725,16 @@ mod tests {
         let student_before = std::fs::read(student).unwrap();
         let timer = std::fs::read("/etc/systemd/system/skyview-student-dev-update.timer").unwrap();
         let policy_before = std::fs::read(Path::new(ROOT).join("policy.json")).unwrap();
+        set_linux_pause(false).unwrap();
+        assert_eq!(crate::observation::inspect().paused, Some(false));
+        set_linux_pause(true).unwrap();
+        assert_eq!(crate::observation::inspect().paused, Some(true));
+        assert_eq!(std::fs::read(baseline_path).unwrap(), baseline);
+        assert_eq!(
+            std::fs::read("/etc/systemd/system/skyview-student-dev-update.timer").unwrap(),
+            timer
+        );
+
         let keys = KeyPair::generate_unencrypted_keypair().unwrap();
         let (directory, candidate) = fixture(source, "1.2.2", &keys);
         assert!(authenticate_staged(&directory, &candidate, crate::authenticate).is_err());
@@ -708,6 +754,8 @@ mod tests {
         std::fs::write(directory.join(INSTALLER), payload).unwrap();
         let mut report = Report {
             schema_version: 1,
+            phase: crate::observation::Phase::Tools,
+            completed_at: None,
             checked_at: 0,
             application_version: "1.2.1".into(),
             maintenance_engine_version: "1.2.1".into(),
@@ -778,12 +826,7 @@ mod tests {
             .success());
         let old_engine = read_receipt("previous-engine.json").unwrap();
         assert_eq!(old_engine["version"], "1.2.1");
-        atomic(
-            &Path::new(ROOT).join("policy.json"),
-            &serde_json::json!({"schemaVersion":1,"paused":true}),
-            false,
-        )
-        .unwrap();
+        set_linux_pause(true).unwrap();
         let next = command("/usr/bin/python3")
             .args(["-I", "/usr/local/libexec/skyview-self-update.py"])
             .status()
@@ -794,6 +837,33 @@ mod tests {
         assert_eq!(status["toolExit"], 0);
         assert_eq!(status["outcome"], "paused");
         assert_eq!(status["appliedBaselineVersion"], "1.2.1");
+        let visible = crate::observation::inspect();
+        assert_eq!(visible.paused, Some(true));
+        assert_eq!(visible.outcome, crate::observation::Outcome::Paused);
+        assert_eq!(visible.tool_exit, Some(0));
+        assert!(visible.completed_at.unwrap() >= visible.checked_at.unwrap());
+        // Real standard user can read public status/policy but cannot alter policy.
+        let worker = "/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust";
+        let read = command("/usr/sbin/runuser")
+            .args(["-u", "nobody", "--", worker, "self-update-status"])
+            .output()
+            .unwrap();
+        assert!(read.status.success());
+        let public: serde_json::Value = serde_json::from_slice(&read.stdout).unwrap();
+        assert_eq!(public["paused"], true);
+        assert_eq!(public["outcome"], "paused");
+        assert_eq!(public["toolExit"], 0);
+        let denied = command("/usr/sbin/runuser")
+            .args(["-u", "nobody", "--", worker, "resume"])
+            .status()
+            .unwrap();
+        assert!(!denied.success());
+        assert!(paused().unwrap());
+        assert!(
+            crate::observation::verify_recovery().is_err(),
+            "Production must reject test-key recovery assets"
+        );
+
         assert!(std::fs::read_to_string(
             "/etc/systemd/system/skyview-student-dev-update.service.d/sde-self-update.conf"
         )

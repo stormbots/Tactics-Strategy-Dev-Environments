@@ -121,3 +121,7 @@ retain representative booted Mint laptops, real timers/missed runs, school netwo
 conditions, full student profiles, live GUI deferral, approved stable-release
 selection and mentor pause/interruption/recovery acceptance. Codex owns engineering
 and these automated/native checks; the owner performs UAT only.
+
+Mentor pause/resume, status interpretation and platform recovery are documented
+in [SELF-UPDATE-MENTOR.md](SELF-UPDATE-MENTOR.md). Only non-secret `policy.json`
+and sanitized `status.json` are readable by students; other receipts remain private.

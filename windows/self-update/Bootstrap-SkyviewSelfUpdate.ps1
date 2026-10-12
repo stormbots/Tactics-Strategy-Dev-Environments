@@ -65,6 +65,12 @@ if (-not (Test-Path (Join-Path $root 'policy.json'))) {
     # Production rollout needs owner UAT and #41 pause/recovery controls first.
     Write-AtomicReceipt (Join-Path $root 'policy.json') @{schemaVersion=1;paused=$true}
 }
+# Publish only the non-secret pause boolean with read-only student access.
+$policyPath = Join-Path $root 'policy.json'
+Assert-TrustedItem $policyPath
+$policyAcl = New-Object Security.AccessControl.FileSecurity
+$policyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
+Set-Acl -LiteralPath $policyPath -AclObject $policyAcl
 $active = Join-Path $root 'active.json'
 if (Test-Path $active) {
     Assert-TrustedItem $active

@@ -12,6 +12,26 @@ import { inspect, operate, inspectSchedule, open } from "./bridge";
 vi.mock("./bridge", () => ({
   native: false,
   appVersion: "1.2.0",
+  inspectSelfUpdate: vi.fn(async () => ({
+    paused: true,
+    policyChangedAt: null,
+    outcome: "unavailable",
+    phase: "unknown",
+    checkedAt: null,
+    completedAt: null,
+    applicationVersion: null,
+    candidateVersion: null,
+    maintenanceEngineVersion: null,
+    appliedBaselineVersion: null,
+    toolExit: null,
+    nativeExit: null,
+    rebootRequired: false,
+    recoveryAvailable: false,
+    logReference: null,
+    logFolder: "/protected/logs",
+    coordination: "busy",
+    action: "No completed attempt recorded.",
+  })),
   inspectSchedule: vi.fn(async () => ({
     status: "enabled",
     active: true,
@@ -148,6 +168,7 @@ it("reads and refreshes Schedule, displays never-run history, and recovers from 
   await screen.findByRole("heading", { name: "Ready" });
   fireEvent.click(screen.getByRole("button", { name: "Schedule" }));
   await screen.findByText("Test timer");
+  await screen.findByText(/Paused by administrator/);
   expect(screen.getByRole("heading", { name: "Maintenance schedule" })).toBe(
     document.activeElement,
   );

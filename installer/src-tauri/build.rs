@@ -3,6 +3,7 @@ fn main() {
         tauri_build::AppManifest::new().commands(&[
             "inspect_system",
             "inspect_schedule",
+            "inspect_self_update",
             "run_operation",
             "open_destination",
         ]),
