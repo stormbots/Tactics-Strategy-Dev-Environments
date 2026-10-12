@@ -5,4 +5,4 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/skyview-student-dev-update
+ExecStart=/usr/bin/python3 -I /usr/local/libexec/skyview-self-update.py

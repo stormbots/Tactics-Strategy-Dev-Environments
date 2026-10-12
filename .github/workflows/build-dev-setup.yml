@@ -165,6 +165,12 @@ jobs:
           cargo build --release --locked --manifest-path updater/Cargo.toml
           if ($LASTEXITCODE -ne 0) { throw 'Maintenance worker build failed.' }
           Copy-Item updater/target/release/sde-update-trust.exe windows/self-update/sde-update-trust.exe
+      - name: Bundle external Linux maintenance worker
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cargo build --release --locked --manifest-path updater/Cargo.toml
+          install -m 0755 updater/target/release/sde-update-trust linux/self-update/sde-update-trust
       - name: Build native installer
         run: npm run tauri build -- --bundles ${{ matrix.bundle }}
         working-directory: installer
@@ -279,6 +285,22 @@ jobs:
           test -r /var/lib/skyview-robotics-coordination/operations.gate
           test "$(coordination/target/release/sde-coordination status)" = '"idle"'
           test ! -e /var/lib/skyview-robotics/student-dev/version
+      - name: Required signed upgrade on Linux Mint 22.3
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '{"version":"1.2.2"}\n' > "$RUNNER_TEMP/sde-mint-fixture.json"
+          npm --prefix installer run tauri build -- --config "$RUNNER_TEMP/sde-mint-fixture.json" --bundles deb
+          cargo test --locked --manifest-path updater/Cargo.toml --no-run --message-format json > "$RUNNER_TEMP/sde-mint-tests.jsonl"
+          python3 - "$RUNNER_TEMP/sde-mint-tests.jsonl" <<'PYCODE'
+          import json, shutil, sys
+          binaries = [v['executable'] for line in open(sys.argv[1]) if (v := json.loads(line)).get('reason') == 'compiler-artifact' and v.get('profile', {}).get('test') and 'lib' in v.get('target', {}).get('kind', []) and v.get('executable')]
+          assert len(binaries) == 1
+          shutil.copyfile(binaries[0], 'updater/target/debug/sde-native-mint-tests')
+          PYCODE
+          # Same Mint image used by linuxmint/github-actions, pinned by digest.
+          docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --entrypoint /bin/bash linuxmintd/mint22.3-amd64@sha256:304bbf7ec2a61252962c5210467d231a141661490e8962f52fd4df7688370369 /work/tests/Test-LinuxSelfUpdateCI.sh
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}

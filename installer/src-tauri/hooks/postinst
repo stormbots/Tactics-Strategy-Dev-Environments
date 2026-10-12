@@ -2,4 +2,5 @@
 set -eu
 if [ "$1" = configure ]; then
   /usr/bin/skyview-dev-setup --coordination-init
+  /usr/bin/python3 -I "/usr/lib/Skyview Dev Setup/backend/linux/self-update/bootstrap.py"
 fi

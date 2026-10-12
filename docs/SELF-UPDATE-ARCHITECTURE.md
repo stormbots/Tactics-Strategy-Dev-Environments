@@ -326,3 +326,5 @@ features. Do not close their acceptance gates based on build success alone.
 - #11 stays notification-only; #8 shares interruption state; #10 shares maintenance
   notices; #33 owns baseline application. These integrations are not circular
   requirements to finish unrelated UI before implementing the engine.
+
+Linux installation and native evidence: [SELF-UPDATE-LINUX.md](SELF-UPDATE-LINUX.md).

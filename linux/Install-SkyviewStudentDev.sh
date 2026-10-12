@@ -172,6 +172,9 @@ event progress 78 "Configuring weekly maintenance"
 log "Installing weekly maintenance timer..."
 sudo install -m 0644 "$SCRIPT_DIR/systemd/skyview-student-dev-update.service" /etc/systemd/system/skyview-student-dev-update.service
 sudo install -m 0644 "$SCRIPT_DIR/systemd/skyview-student-dev-update.timer" /etc/systemd/system/skyview-student-dev-update.timer
+if [[ ! -f /usr/local/libexec/skyview-self-update.py ]]; then
+  printf '[Unit]\nDescription=Skyview Robotics student development environment maintenance\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nExecStart=/usr/local/sbin/skyview-student-dev-update\n' | sudo tee /etc/systemd/system/skyview-student-dev-update.service >/dev/null
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable --now skyview-student-dev-update.timer
 

@@ -70,3 +70,5 @@ installer/tsconfig.tsbuildinfo
 
 # Bundled native maintenance worker (built before packaging)
 /windows/self-update/sde-update-trust.exe
+
+/linux/self-update/sde-update-trust
