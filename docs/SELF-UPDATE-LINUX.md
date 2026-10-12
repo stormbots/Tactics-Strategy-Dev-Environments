@@ -97,8 +97,10 @@ launcher retains eight completed logs plus active/crashed invocation logs.
 
 ## Verification and remaining owner UAT
 
-Required CI uses the digest-pinned Mint 22.3 image used by
-[Linux Mint's own build workflow](https://github.com/linuxmint/github-actions/blob/master/.github/workflows/do-builds.yml).
+Required CI extracts the actual Mint 22.3 XFCE userland from the official ISO.
+It verifies Mint's signed checksum list using the public ISO signing key with
+fingerprint `27DEB15644C6B3CF3BD7D291300F846BA25BAE09` and checks a pinned ISO SHA256
+before extraction, following [Mint's verification guide](https://linuxmint-installation-guide.readthedocs.io/en/latest/verify.html).
 It checks `/etc/os-release` and exercises the production Mint eligibility gate;
 it never relabels Ubuntu as Mint. On that actual Mint userland it installs the
 real 1.2.1 DEB, then invokes the same protected installation function as root to

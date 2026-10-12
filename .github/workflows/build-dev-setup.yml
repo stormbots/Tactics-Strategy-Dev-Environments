@@ -299,8 +299,8 @@ jobs:
           assert len(binaries) == 1
           shutil.copyfile(binaries[0], 'updater/target/debug/sde-native-mint-tests')
           PYCODE
-          # Same Mint image used by linuxmint/github-actions, pinned by digest.
-          docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --entrypoint /bin/bash linuxmintd/mint22.3-amd64@sha256:304bbf7ec2a61252962c5210467d231a141661490e8962f52fd4df7688370369 /work/tests/Test-LinuxSelfUpdateCI.sh
+          bash tests/Prepare-MintNativeCI.sh
+          docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --entrypoint /bin/bash sde-mint22.3-native /work/tests/Test-LinuxSelfUpdateCI.sh
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}

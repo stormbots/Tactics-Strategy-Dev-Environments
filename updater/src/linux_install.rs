@@ -28,6 +28,16 @@ fn trusted(path: &Path) -> Result<()> {
     }
     Ok(())
 }
+fn trusted_file(path: &Path) -> Result<()> {
+    trusted(path)?;
+    if !std::fs::symlink_metadata(path)
+        .map_err(|_| "Missing maintenance file")?
+        .is_file()
+    {
+        return Err("Expected regular maintenance file".into());
+    }
+    Ok(())
+}
 fn command(program: &str) -> Command {
     let mut command = Command::new(program);
     command
@@ -89,7 +99,7 @@ fn authenticate_staged(
         INSTALLER,
         "verified.json",
     ] {
-        trusted(&directory.join(name))?;
+        trusted_file(&directory.join(name))?;
     }
     let bytes = crate::read_bounded(&directory.join("sde-update.json"), crate::MAX_METADATA)?;
     let signature = String::from_utf8(crate::read_bounded(
@@ -177,7 +187,7 @@ fn resources(version: &str) -> Result<()> {
         "/usr/bin/skyview-dev-setup",
         "/usr/local/libexec/skyview-self-update.py",
     ] {
-        trusted(Path::new(path))?;
+        trusted_file(Path::new(path))?;
     }
     for name in [
         "Update-SkyviewStudentDev.sh",
@@ -185,7 +195,7 @@ fn resources(version: &str) -> Result<()> {
         "self-update/bootstrap.py",
         "self-update/sde-update-trust",
     ] {
-        trusted(&Path::new(BUNDLE).join(name))?;
+        trusted_file(&Path::new(BUNDLE).join(name))?;
     }
     let active = read_receipt("active.json")?;
     if active["schemaVersion"] != 1 || active["version"] != version {
@@ -476,6 +486,13 @@ pub fn maintain_linux() -> Result<i32> {
         4096,
     )?)
     .map_err(|_| "Invalid worker receipt")?;
+    if engine["schemaVersion"] != 1
+        || engine["version"]
+            .as_str()
+            .is_none_or(|v| crate::release_version(&format!("v{v}")).is_err())
+    {
+        return Err("Invalid engine identity receipt".into());
+    }
     let baseline = Path::new("/var/lib/skyview-robotics/student-dev/version");
     let baseline_version = trusted(baseline)
         .ok()

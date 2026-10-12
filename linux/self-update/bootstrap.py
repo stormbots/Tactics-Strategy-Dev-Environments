@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-import shutil
+import re
 import stat
 import subprocess
 import sys
@@ -33,6 +33,13 @@ def directory(path, mode=0o700):
         pass
     trusted(path)
     path.chmod(mode)
+    # Persist the new directory entry before a receipt can select its engine.
+    for item in (path, path.parent):
+        fd = os.open(item, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
 
 def atomic(path, value, mode=0o600):
@@ -63,7 +70,7 @@ def main():
     os.umask(0o077)
     trusted(BUNDLE)
     version = subprocess.check_output(['/usr/bin/dpkg-query', '-W', '-f=${Version}', 'skyview-dev-setup'], env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'}, text=True)
-    if not __import__('re').fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
+    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
         raise RuntimeError('Invalid installed version')
     directory(ROOT.parent, 0o755)
     directory(ROOT, 0o755)
