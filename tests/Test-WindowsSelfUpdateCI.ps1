@@ -56,7 +56,19 @@ exit 0
         if ($status.maintenanceEngineVersion -ne '1.2.2' -or $status.toolExit -ne 0 -or $status.outcome -ne 'unavailable' -or $status.detail -notlike '*Unsupported*') { throw 'Next invocation did not use the new engine and independent tool outcome.' }
     } finally { $gui.Dispose(); [IO.File]::WriteAllBytes($baseline,$bytes) }
     Set-Content (Join-Path $root 'done') 'PASS' 
-} catch { Write-Output $_; Set-Content (Join-Path $root 'done') 'FAIL'; exit 1 }
+} catch {
+    Write-Output $_
+    foreach ($path in @('C:\Program Files\Skyview Dev Setup\sde-bootstrap.log','C:\Program Files\Skyview Dev Setup\backend\windows\self-update\bootstrap-error.log')) {
+        if (Test-Path -LiteralPath $path) {
+            Write-Output "Native hook diagnostic: $path"
+            Write-Output (Get-Item -LiteralPath $path).LastWriteTimeUtc
+            Get-Content -LiteralPath $path
+        }
+    }
+    Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Skyview Dev Setup' -ErrorAction SilentlyContinue | Select-Object DisplayVersion,InstallLocation | ConvertTo-Json -Compress
+    Set-Content (Join-Path $root 'done') 'FAIL'
+    exit 1
+}
 finally { Stop-Transcript | Out-Null }
 '@ | Set-Content -LiteralPath $worker -Encoding UTF8
 $taskName = 'SDE disposable signed SYSTEM upgrade'

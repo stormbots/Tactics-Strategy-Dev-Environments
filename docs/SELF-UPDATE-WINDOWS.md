@@ -38,6 +38,10 @@ pinned Minisign verification and the payload hash/length check, then writes dura
 installation intent before running the protected NSIS asset with **`/S /UPDATE`**.
 No destination override, passive UI, relaunch flag, forced GUI closure or reboot
 is requested. The worker waits without killing a long-running installer.
+Child processes use the established sanitized Windows backend environment,
+including SYSTEMDRIVE, native modules and fixed SYSTEM profile folders needed by
+Windows known-folder APIs. They inherit no student profile or executable/module
+search paths.
 
 Exit **0** requires matching machine registration/executable version, required
 bundled files, and an active engine receipt whose verifier bytes match the newly

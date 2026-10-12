@@ -186,30 +186,46 @@ mod native {
         }
         Ok(())
     }
-    fn powershell() -> Command {
-        let mut command =
-            Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+    fn system_environment(command: &mut Command) {
+        // Match the established Windows backend contract. SYSTEMDRIVE and
+        // system profile folders are required by Windows known-folder APIs;
+        // inherit no student profile, PATH, proxy or PowerShell module paths.
         command
             .env_clear()
             .env("SystemRoot", r"C:\Windows")
             .env("WINDIR", r"C:\Windows")
+            .env("SYSTEMDRIVE", "C:")
+            .env("ComSpec", r"C:\Windows\System32\cmd.exe")
             .env("ProgramData", r"C:\ProgramData")
             .env("ALLUSERSPROFILE", r"C:\ProgramData")
             .env("ProgramFiles", r"C:\Program Files")
             .env("ProgramFiles(x86)", r"C:\Program Files (x86)")
+            .env("ProgramW6432", r"C:\Program Files")
+            .env("ChocolateyInstall", r"C:\ProgramData\chocolatey")
+            .env("USERPROFILE", r"C:\Windows\System32\config\systemprofile")
+            .env("APPDATA", r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
+            .env("LOCALAPPDATA", r"C:\Windows\System32\config\systemprofile\AppData\Local")
+            .env("PSModulePath", r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules")
+            .env("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+            .env("PROCESSOR_ARCHITECTURE", "AMD64")
             .env("TEMP", r"C:\Windows\Temp")
             .env("TMP", r"C:\Windows\Temp")
             .env(
                 "PATH",
-                r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin",
-            )
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-            ]);
+                r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd",
+            );
+    }
+    fn powershell() -> Command {
+        let mut command =
+            Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+        system_environment(&mut command);
+        command.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+        ]);
         command
     }
     fn baseline_version() -> Option<String> {
@@ -424,15 +440,8 @@ mod native {
         }
         // env is fixed; no relaunch, destination override, UI or reboot switches.
         let mut command = Command::new(directory.join(INSTALLER));
-        command
-            .env_clear()
-            .env("SystemRoot", r"C:\Windows")
-            .env("WINDIR", r"C:\Windows")
-            .env("TEMP", r"C:\Windows\Temp")
-            .env("TMP", r"C:\Windows\Temp")
-            .env("PATH", r"C:\Windows\System32;C:\Windows")
-            .current_dir(directory)
-            .args(["/S", "/UPDATE"]);
+        system_environment(&mut command);
+        command.current_dir(directory).args(["/S", "/UPDATE"]);
         // Wait indefinitely; never kill an installer to enforce a timeout. A
         // supervisor crash keeps the private coordination intent and blocks retry.
         let status = command
