@@ -867,10 +867,14 @@ mod native {
             std::fs::remove_file(Path::new(ROOT).join("recovery.json")).unwrap();
             // A signed synthetic executable that exits unsuccessfully must
             // leave durable intent and block a second attempt. Never kill a
-            // package process: this fixture is only the Rust test executable.
+            // package process: this isolated fixture always exits with code 23.
             let failed = staging.join(uuid::Uuid::new_v4().to_string());
             host::create_private(&failed).unwrap();
-            std::fs::copy(std::env::current_exe().unwrap(), failed.join(INSTALLER)).unwrap();
+            std::fs::copy(
+                fixture.join("sde-synthetic-failure.exe"),
+                failed.join(INSTALLER),
+            )
+            .unwrap();
             std::fs::write(
                 failed.join("Skyview-Dev-Setup-LinuxMint-amd64.deb"),
                 b"fixture",
@@ -912,7 +916,7 @@ mod native {
                     .map_err(|_| "Invalid installation".into())
             )
             .is_err());
-            assert!(report.native_exit.is_some_and(|code| code != 0));
+            assert_eq!(report.native_exit, Some(23));
             assert_eq!(report.outcome, "failed");
             assert!(matches!(
                 sde_coordination::status(),

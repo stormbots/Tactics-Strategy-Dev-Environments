@@ -7,6 +7,7 @@ $acl = New-Object Security.AccessControl.DirectorySecurity
 $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
 [IO.Directory]::CreateDirectory($root,$acl) | Out-Null
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'Skyview-Dev-Setup-Windows-x64.exe') -Destination $root
+Copy-Item -LiteralPath (Join-Path $FixtureRoot 'sde-synthetic-failure.exe') -Destination $root
 Copy-Item -LiteralPath $TestExecutable -Destination (Join-Path $root 'native-tests.exe')
 # Preserve a customized disabled task through the packaging hook.
 $maintenanceTask = 'Skyview Robotics - Dev Tool Updates'

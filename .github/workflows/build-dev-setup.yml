@@ -259,6 +259,10 @@ jobs:
           $package = @(Get-ChildItem installer/src-tauri/target/release/bundle/nsis/*1.2.2*.exe)
           if ($package.Count -ne 1) { throw 'Expected one newer fixture installer.' }
           Copy-Item $package[0].FullName (Join-Path $fixture 'Skyview-Dev-Setup-Windows-x64.exe')
+          $failureSource = Join-Path $env:RUNNER_TEMP 'sde-synthetic-failure.rs'
+          'fn main() { std::process::exit(23); }' | Set-Content $failureSource -Encoding utf8
+          rustc $failureSource -o (Join-Path $fixture 'sde-synthetic-failure.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic failure fixture build failed.' }
           cargo test --locked --manifest-path updater/Cargo.toml --no-run --message-format json | Set-Content (Join-Path $env:RUNNER_TEMP 'sde-test-build.jsonl')
           if ($LASTEXITCODE -ne 0) { throw 'Native test binary build failed.' }
           $binaries = @(Get-Content (Join-Path $env:RUNNER_TEMP 'sde-test-build.jsonl') | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { $_.reason -eq 'compiler-artifact' -and $_.profile.test -and $_.target.kind -contains 'lib' -and $_.executable })
