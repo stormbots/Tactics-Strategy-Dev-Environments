@@ -156,8 +156,9 @@ mod native {
                 paused,
             },
         )?;
-        host::windows::publish_readonly(&path)
-            .map_err(|_| "Policy saved but read-only publication failed; mentor review required")
+        host::windows::publish_readonly(&path).map_err(|_| {
+            "Policy saved but read-only publication failed; mentor review required".to_string()
+        })
     }
     fn policy() -> Result<bool> {
         let root = Path::new(ROOT);
