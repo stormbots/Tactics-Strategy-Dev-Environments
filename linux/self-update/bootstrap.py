@@ -92,7 +92,7 @@ def main():
     trusted(LAUNCHER)
     # Separate hooks preserve the installed schema-1 launcher's compatibility.
     trusted(BUNDLE / 'history.py')
-    atomic(HISTORY_HOOK, (BUNDLE / 'history.py').read_bytes(), 0o755)
+    atomic(HISTORY_HOOK, (BUNDLE / 'history.py').read_bytes(), 0o700)
     policy = ROOT / 'policy.json'
     if not policy.exists():
         receipt(policy, dict(schemaVersion=1, paused=True))

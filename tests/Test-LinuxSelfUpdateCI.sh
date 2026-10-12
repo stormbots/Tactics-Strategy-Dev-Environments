@@ -59,6 +59,7 @@ grep -q SDE_NATIVE_MINT_UPGRADE_OK "$root/native-result.txt"
 grep -q SDE_E2E_NATIVE_MINT_OK "$root/native-result.txt"
 history=/usr/local/libexec/skyview-maintenance-history.py
 dropin=/etc/systemd/system/skyview-student-dev-update.service.d/sde-self-update.conf
-[[ -f "$history" && ! -L "$history" && "$(stat -c '%U:%a' "$history")" == root:755 ]]
+[[ -f "$history" && ! -L "$history" && "$(stat -c '%U:%a' "$history")" == root:700 ]]
 grep -Fxq 'ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py start' "$dropin"
 grep -Fxq 'ExecStopPost=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py finish' "$dropin"
+printf 'SDE_MINT_HISTORY_HOOKS_OK: root-only hook and protected service registration\n'
