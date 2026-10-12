@@ -716,23 +716,6 @@ mod native {
     mod tests {
         use super::*;
         use minisign::KeyPair;
-        use std::{collections::VecDeque, io::Cursor};
-        struct Downloads(VecDeque<Vec<u8>>);
-        impl discovery::Transport for Downloads {
-            fn get(
-                &mut self,
-                _: &str,
-                max: u64,
-                out: &mut dyn discovery::Sink,
-            ) -> discovery::Result<()> {
-                let bytes = self.0.pop_front().unwrap();
-                if bytes.len() as u64 > max {
-                    return Err(discovery::Failure::Malformed);
-                }
-                out.write_all(&bytes)
-                    .map_err(|_| discovery::Failure::Staging)
-            }
-        }
         #[test]
         fn signed_upgrade_under_system() {
             let Some(fixture) = std::env::var_os("SDE_NATIVE_UPGRADE_FIXTURE") else {
@@ -761,46 +744,45 @@ mod native {
             .unwrap();
             let marker = Path::new(r"C:\Development\sde-self-update-preservation.txt");
             std::fs::write(marker, b"student project sentinel").unwrap();
+            let settings = Path::new(r"C:\Development\.vscode\settings.json");
+            std::fs::create_dir_all(settings.parent().unwrap()).unwrap();
+            std::fs::write(
+                settings,
+                br#"{"editor.fontSize":17,"files.autoSave":"afterDelay"}"#,
+            )
+            .unwrap();
+            let settings_before = std::fs::read(settings).unwrap();
             let source = fixture.join("Skyview-Dev-Setup-Windows-x64.exe");
-            let package = std::fs::read(&source).unwrap();
+            assert!(source.is_file());
             std::fs::write(
                 fixture.join("Skyview-Dev-Setup-LinuxMint-amd64.deb"),
                 b"test-only Linux placeholder",
             )
             .unwrap();
-            let metadata = crate::create_manifest(fixture, "v1.2.2").unwrap();
             let keys = KeyPair::generate_unencrypted_keypair().unwrap();
-            let signature = minisign::sign(
-                Some(&keys.pk),
-                &keys.sk,
-                Cursor::new(&metadata),
-                Some("disposable test key"),
-                None,
-            )
-            .unwrap()
-            .to_string();
-            let candidate = Candidate {
-                tag: "v1.2.2".into(),
-                version: "1.2.2".into(),
-                platform: "windows-x86_64".into(),
-                installer: INSTALLER.into(),
-                installer_size: package.len() as u64,
-            };
             let staging = host::store().unwrap();
-            let staged = staging::stage_with(
-                &mut Downloads(VecDeque::from([
-                    metadata.clone(),
-                    signature.clone().into_bytes(),
-                    package,
-                ])),
-                &staging,
-                &candidate,
-                |b, s, t| {
-                    crate::authenticate_with_key(b, s, t, &keys.pk)
-                        .map_err(|_| discovery::Failure::Untrusted)
-                },
-            )
-            .unwrap();
+            let partial = staging.join(uuid::Uuid::new_v4().to_string());
+            host::create_private(&partial).unwrap();
+            std::fs::write(partial.join("sde-update.json"), b"partial").unwrap();
+            let operation = sde_coordination::operation().unwrap();
+            prune_staging(&staging).unwrap();
+            assert!(!partial.exists());
+            let mut release = crate::e2e::Fixture::new(fixture, "1.2.2", &keys);
+            let metadata = release.assets["sde-update.json"].clone();
+            let candidate = release
+                .discover(&installed.version, "windows-x86_64")
+                .unwrap()
+                .unwrap();
+            let staged = release.stage(&staging, &candidate).unwrap();
+            drop(operation);
+            assert_eq!(
+                release
+                    .discover(&installed.version, "windows-x86_64")
+                    .unwrap()
+                    .unwrap()
+                    .version,
+                candidate.version
+            );
             let directory = staging.join(staged.id);
             // Marker forgery is insufficient; production's pinned key rejects
             // this test key. Then verify tampered metadata and payload rejection.
@@ -822,7 +804,7 @@ mod native {
                 schema_version: 1,
                 phase: crate::observation::Phase::Tools,
                 completed_at: None,
-                checked_at: 0,
+                checked_at: 100,
                 application_version: installed.version,
                 maintenance_engine_version: "1.2.1".into(),
                 applied_baseline: "preserved",
@@ -880,6 +862,20 @@ mod native {
             .is_err());
             assert_eq!(report.outcome, "deferred");
             drop(session);
+            let maintenance = sde_coordination::operation().unwrap();
+            assert!(install_selected(
+                &directory,
+                &candidate,
+                &mut report,
+                |b, s, t| crate::authenticate_with_key(b, s, t, &keys.pk),
+                || host::windows::installed_identity()
+                    .map(|i| i.version)
+                    .map_err(|_| "Invalid installation".into())
+            )
+            .is_err());
+            assert_eq!(report.outcome, "deferred");
+            assert_eq!(report.native_exit, None);
+            drop(maintenance);
             install_selected(
                 &directory,
                 &candidate,
@@ -895,10 +891,34 @@ mod native {
             assert_eq!(report.outcome, "updated");
             assert_eq!(report.native_exit, Some(0));
             assert_eq!(std::fs::read(marker).unwrap(), b"student project sentinel");
+            assert_eq!(std::fs::read(settings).unwrap(), settings_before);
             assert_eq!(
                 std::fs::read(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1").unwrap(),
                 baseline
             );
+            report.completed_at = Some(101);
+            atomic_json(&Path::new(ROOT).join("status.json"), &report).unwrap();
+            host::windows::publish_readonly(&Path::new(ROOT).join("status.json")).unwrap();
+            let visible = crate::observation::inspect();
+            assert_eq!(visible.outcome, crate::observation::Outcome::Updated);
+            assert_eq!(visible.application_version.as_deref(), Some("1.2.2"));
+            assert_eq!(visible.candidate_version.as_deref(), Some("1.2.2"));
+            assert_eq!(visible.applied_baseline_version.as_deref(), Some("1.2.1"));
+            report.native_exit = None;
+            install_selected(
+                &directory,
+                &candidate,
+                &mut report,
+                crate::authenticate,
+                || {
+                    host::windows::installed_identity()
+                        .map(|i| i.version)
+                        .map_err(|_| "Invalid installation".into())
+                },
+            )
+            .unwrap();
+            assert_eq!(report.outcome, "current");
+            assert_eq!(report.native_exit, None);
             resources("1.2.2").unwrap();
             assert!(!sde_coordination::root().join("transaction.json").exists());
             let process=Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe").args(["-NoProfile","-NonInteractive","-Command","if (Get-Process skyview-dev-setup -ErrorAction SilentlyContinue) { exit 1 }; exit 0"]).output().unwrap();
@@ -921,39 +941,31 @@ mod native {
             // A signed synthetic executable that exits unsuccessfully must
             // leave durable intent and block a second attempt. Never kill a
             // package process: this isolated fixture always exits with code 23.
-            let failed = staging.join(uuid::Uuid::new_v4().to_string());
-            host::create_private(&failed).unwrap();
+            let failure_build = fixture.join("failure");
+            host::create_private(&failure_build).unwrap();
             std::fs::copy(
                 fixture.join("sde-synthetic-failure.exe"),
-                failed.join(INSTALLER),
+                failure_build.join(INSTALLER),
             )
             .unwrap();
             std::fs::write(
-                failed.join("Skyview-Dev-Setup-LinuxMint-amd64.deb"),
+                failure_build.join("Skyview-Dev-Setup-LinuxMint-amd64.deb"),
                 b"fixture",
             )
             .unwrap();
-            let metadata = crate::create_manifest(&failed, "v1.2.3").unwrap();
-            std::fs::remove_file(failed.join("Skyview-Dev-Setup-LinuxMint-amd64.deb")).unwrap();
-            let signature = minisign::sign(
-                Some(&keys.pk),
-                &keys.sk,
-                Cursor::new(&metadata),
-                Some("synthetic failing executable"),
-                None,
-            )
-            .unwrap()
-            .to_string();
-            std::fs::write(failed.join("sde-update.json"), metadata).unwrap();
-            std::fs::write(failed.join("sde-update.json.minisig"), signature).unwrap();
-            std::fs::write(failed.join("verified.json"), b"{}").unwrap();
-            let failing_candidate = Candidate {
-                tag: "v1.2.3".into(),
-                version: "1.2.3".into(),
-                platform: "windows-x86_64".into(),
-                installer: INSTALLER.into(),
-                installer_size: 0,
-            };
+            let mut failure_release = crate::e2e::Fixture::new(&failure_build, "1.2.3", &keys);
+            let failing_candidate = failure_release
+                .discover("1.2.2", "windows-x86_64")
+                .unwrap()
+                .unwrap();
+            let operation = sde_coordination::operation().unwrap();
+            let failed = staging.join(
+                failure_release
+                    .stage(&staging, &failing_candidate)
+                    .unwrap()
+                    .id,
+            );
+            drop(operation);
             atomic_json(
                 &Path::new(ROOT).join("policy.json"),
                 &serde_json::json!({"schemaVersion":1,"paused":false}),
@@ -976,6 +988,17 @@ mod native {
                 sde_coordination::Status::Interrupted
             ));
             assert!(sde_coordination::installation().is_err());
+            report.candidate_version = Some(failing_candidate.version.clone());
+            report.completed_at = Some(102);
+            atomic_json(&Path::new(ROOT).join("status.json"), &report).unwrap();
+            host::windows::publish_readonly(&Path::new(ROOT).join("status.json")).unwrap();
+            let failed_status = crate::observation::inspect();
+            assert_eq!(failed_status.outcome, crate::observation::Outcome::Failed);
+            assert!(matches!(
+                failed_status.coordination,
+                sde_coordination::Status::Interrupted
+            ));
+            println!("SDE_E2E_NATIVE_WINDOWS_OK");
             // Explicit cleanup of a completed synthetic fixture, under its
             // operation gate. No native package state or package lock is changed.
             use std::os::windows::fs::OpenOptionsExt;

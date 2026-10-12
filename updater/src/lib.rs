@@ -1,6 +1,8 @@
 //! Authenticated release contract shared by discovery and native installers.
 //! Discovery and protected staging never execute a package.
 pub mod discovery;
+#[cfg(test)]
+mod e2e;
 pub mod host;
 #[cfg(target_os = "linux")]
 mod linux_install;

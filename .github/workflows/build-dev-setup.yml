@@ -82,11 +82,11 @@ jobs:
         env:
           SDE_REQUIRE_MINISIGN_INTEROP: ${{ runner.os == 'Linux' && '1' || '' }}
         run: cargo test --locked --manifest-path updater/Cargo.toml
-      - name: Root-owned staging and cleanup contracts
+      - name: Root-owned discovery, staging and cleanup contracts
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          sudo env "PATH=$PATH" "CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}" "RUSTUP_HOME=${RUSTUP_HOME:-$HOME/.rustup}" SDE_REQUIRE_PROTECTED_STAGING=1 cargo test --locked --manifest-path updater/Cargo.toml staging::tests -- --nocapture
+          sudo env "PATH=$PATH" "CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}" "RUSTUP_HOME=${RUSTUP_HOME:-$HOME/.rustup}" SDE_REQUIRE_PROTECTED_STAGING=1 cargo test --locked --manifest-path updater/Cargo.toml --lib -- --nocapture
       - name: Verifier formatting and static analysis
         run: |
           cargo fmt --manifest-path updater/Cargo.toml --check
@@ -312,7 +312,22 @@ jobs:
           shutil.copyfile(binaries[0], 'updater/target/debug/sde-native-mint-tests')
           PYCODE
           bash tests/Prepare-MintNativeCI.sh
-          docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --entrypoint /bin/bash sde-mint22.3-native /work/tests/Test-LinuxSelfUpdateCI.sh
+          mkdir -p "$RUNNER_TEMP/sde-evidence"
+          docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --mount "type=bind,src=$RUNNER_TEMP/sde-evidence,dst=/evidence" --entrypoint /bin/bash sde-mint22.3-native /work/tests/Test-LinuxSelfUpdateCI.sh
+      - name: Retain Windows native verification evidence
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-update-evidence-Windows
+          path: C:\ProgramData\SdeNativeSelfUpdateTest\native-upgrade.txt
+          if-no-files-found: warn
+      - name: Retain Mint native verification evidence
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-update-evidence-Mint
+          path: ${{ runner.temp }}/sde-evidence/mint-native.txt
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
