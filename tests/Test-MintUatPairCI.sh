@@ -13,7 +13,11 @@ install -d "$student/.config/Code/User"
 printf 'student project sentinel\n' > "$student/project.txt"
 printf '{"editor.fontSize":17}\n' > "$student/.config/Code/User/settings.json"
 legacy=/usr/local/sbin/skyview-student-dev-update
-for version in 1.2.2 1.2.3; do
+versions=(1.2.2 1.2.3)
+if [[ -f /work/uat/1.2.4/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions+=(1.2.4)
+fi
+for version in "${versions[@]}"; do
   if [[ "$version" = 1.2.3 ]]; then
     printf '# legacy maintenance UAT sentinel\n' > "$legacy"
     chmod 0755 "$legacy"

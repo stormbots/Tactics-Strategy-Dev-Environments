@@ -82,6 +82,15 @@ Do not interpret absence of a fresh receipt as successful installation.
 
 ## Immediate failure checks
 
+On Linux, Schedule also reads a protected, non-secret service-attempt receipt
+when systemd no longer retains execution timestamps. New attempts clear previous
+success before the launcher starts; completion records include startup failures.
+An incomplete receipt remains Unavailable after an interruption. A newer service
+invocation or timer trigger prevents an older receipt from concealing missing
+results. Existing history is not fabricated during an app upgrade: run the
+provisioned maintenance service to establish the first receipt. See the
+[1.2.4 focused UAT procedure](SELF-UPDATE-UAT-1.2.4.md).
+
 1. Pause SDE installation using the administrator command. Preserve the tool
    schedule unless its own package work requires a mentor-controlled maintenance
    window. Check Schedule for the independent tool result and current coordination.

@@ -20,6 +20,7 @@ try {
     New-Item -ItemType Directory -Force (Split-Path $project) | Out-Null
     Set-Content $project 'student preservation sentinel'
     $versions = if ($UatPair) { @('1.2.2', '1.2.3') } else { @('1.2.0', '1.2.1') }
+    if ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.4' }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'

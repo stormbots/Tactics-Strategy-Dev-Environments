@@ -12,6 +12,7 @@ import uuid
 ROOT = Path('/var/lib/skyview-robotics/self-update')
 BUNDLE = Path('/usr/lib/Skyview Dev Setup/backend/linux/self-update')
 LAUNCHER = Path('/usr/local/libexec/skyview-self-update.py')
+HISTORY_HOOK = Path('/usr/local/libexec/skyview-maintenance-history.py')
 DROPIN = Path('/etc/systemd/system/skyview-student-dev-update.service.d/sde-self-update.conf')
 
 
@@ -89,6 +90,9 @@ def main():
         trusted(BUNDLE / 'launcher.py')
         atomic(LAUNCHER, (BUNDLE / 'launcher.py').read_bytes(), 0o755)
     trusted(LAUNCHER)
+    # Separate hooks preserve the installed schema-1 launcher's compatibility.
+    trusted(BUNDLE / 'history.py')
+    atomic(HISTORY_HOOK, (BUNDLE / 'history.py').read_bytes(), 0o755)
     policy = ROOT / 'policy.json'
     if not policy.exists():
         receipt(policy, dict(schemaVersion=1, paused=True))
@@ -111,7 +115,7 @@ def main():
         trusted(unit)
         if '# SDE_COORDINATION_V1' in baseline.read_text():
             directory(DROPIN.parent, 0o755)
-            atomic(DROPIN, b'[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /usr/local/libexec/skyview-self-update.py\n', 0o644)
+            atomic(DROPIN, b'[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /usr/local/libexec/skyview-self-update.py\nExecStartPre=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py start\nExecStopPost=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py finish\n', 0o644)
             if Path('/run/systemd/system').is_dir():
                 subprocess.run(['/usr/bin/systemctl', 'daemon-reload'], check=True, env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'})
     keep = {generation}

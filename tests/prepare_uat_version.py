@@ -5,12 +5,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSIONS = ("1.2.2", "1.2.3")
+VERSIONS = ("1.2.2", "1.2.3", "1.2.4")
 
 
 def prepare(root, version):
     if version not in VERSIONS:
-        raise ValueError("Only the fixed UAT pair is supported")
+        raise ValueError("Only the fixed UAT candidates are supported")
     for relative in ("installer/package.json", "installer/package-lock.json",
                      "installer/src-tauri/tauri.conf.json"):
         path = root / relative

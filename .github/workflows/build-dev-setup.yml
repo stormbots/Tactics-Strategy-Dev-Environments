@@ -33,6 +33,8 @@ jobs:
           python3 tests/backend_contracts.py
           python3 -m unittest discover -s tests -p 'test_metadata.py'
           python3 -m unittest discover -s tests -p 'test_linux_runtime.py'
+          python3 -m unittest discover -s tests -p 'test_schedule.py'
+          sudo env SDE_REQUIRE_SCHEDULE_SYSTEMD=1 python3 -m unittest discover -s tests -p 'test_schedule.py'
           cd linux
           sha256sum --check SHA256SUMS
       - name: Validate Actions definitions
