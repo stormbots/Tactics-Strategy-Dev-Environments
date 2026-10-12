@@ -7,6 +7,9 @@ on:
       - 'tests/test_uat_version.py'
       - 'tests/Probe-NativeUpgrade.ps1'
       - 'tests/Test-MintUatPairCI.sh'
+      - 'linux/self-update/**'
+      - 'linux/lib/schedule.py'
+      - 'tests/test_schedule.py'
   workflow_dispatch:
     inputs:
       correction:
