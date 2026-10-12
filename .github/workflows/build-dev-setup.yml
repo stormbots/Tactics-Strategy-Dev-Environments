@@ -228,6 +228,11 @@ jobs:
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
           $policy = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -Raw | ConvertFrom-Json
           if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
+          # Exercise replacement of existing receipts before long provisioning.
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
+          if ($LASTEXITCODE -ne 0) { throw 'Repeated bootstrap receipt activation failed.' }
+          if (Test-Path $baseline) { throw 'Repeated bootstrap applied a maintenance baseline.' }
+          if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Repeated bootstrap registered tool maintenance.' }
           $env:SDE_APPONLY_IDENTITY_FIXTURE = 'true'
           try {
             # Public fixture permissions only; no environment/credentials.

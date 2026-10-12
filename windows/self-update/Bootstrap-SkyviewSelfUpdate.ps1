@@ -30,7 +30,9 @@ function Write-AtomicReceipt([string]$Path,$Value) {
     $bytes = [Text.Encoding]::UTF8.GetBytes(($Value | ConvertTo-Json -Compress))
     $file = New-Object IO.FileStream($temporary,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None,4096,[IO.FileOptions]::WriteThrough)
     try { $file.Write($bytes,0,$bytes.Length); $file.Flush($true) } finally { $file.Dispose() }
-    if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; [IO.File]::Replace($temporary,$Path,$null) }
+    # Windows PowerShell 5.1 converts $null to an empty string for .NET string
+    # parameters. Replace needs a genuine null backup filename, not an empty path.
+    if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; [IO.File]::Replace($temporary,$Path,[NullString]::Value) }
     else { [IO.File]::Move($temporary,$Path) }
 }
 try {
