@@ -90,7 +90,7 @@ jobs:
           else
             install -m 0755 updater/target/release/sde-update-trust linux/self-update/sde-update-trust
           fi
-      - name: Build two fixed candidate versions without changing the tool baseline
+      - name: Build fixed candidate versions without changing the tool baseline
         shell: bash
         env:
           BUNDLE: ${{ matrix.bundle }}
@@ -175,7 +175,7 @@ jobs:
           merge-multiple: true
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
       - run: cargo build --release --locked --manifest-path updater/Cargo.toml
-      - name: Create both manifests and enforce package identities
+      - name: Create candidate manifests and enforce package identities
         run: |
           set -euo pipefail
           for version in $CANDIDATE_VERSIONS; do
@@ -185,7 +185,7 @@ jobs:
             updater/target/release/sde-update-trust create "uat/$version" "v$version"
             (cd "uat/$version"; sha256sum Skyview-Dev-Setup-Windows-x64.exe Skyview-Dev-Setup-LinuxMint-amd64.deb > SHA256SUMS.txt)
           done
-      - name: Sign and authenticate both complete candidates
+      - name: Sign and authenticate complete candidates
         env:
           SDE_UPDATE_SIGNING_KEY: ${{ secrets.SDE_UPDATE_SIGNING_KEY }}
           SDE_UPDATE_SIGNING_PASSWORD: ${{ secrets.SDE_UPDATE_SIGNING_PASSWORD }}

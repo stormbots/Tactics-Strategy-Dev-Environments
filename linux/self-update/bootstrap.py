@@ -106,8 +106,9 @@ def main():
         previous = json.loads(active.read_text())
         receipt(ROOT / 'previous-engine.json', previous)
     receipt(active, dict(schemaVersion=1, version=version, generation=generation))
-    # A fixed drop-in changes only ExecStart. Timer enablement, schedules and all
-    # unrelated service settings are preserved. App-only installs create no unit.
+    # A fixed drop-in selects the launcher and records its service attempts.
+    # Timer settings and unrelated service settings are preserved; app-only
+    # installs create no unit. Hooks do not execute tools or launch installers.
     baseline = Path('/usr/local/sbin/skyview-student-dev-update')
     unit = DROPIN.parent.parent / 'skyview-student-dev-update.service'
     if baseline.exists() and unit.exists():
