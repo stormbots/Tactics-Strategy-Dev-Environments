@@ -9,10 +9,11 @@ import {
 import {
   appVersion,
   inspectSchedule,
+  inspectSelfUpdate,
   native,
   type Destination,
 } from "./bridge";
-import type { Schedule } from "./model";
+import type { Schedule, SelfUpdate } from "./model";
 
 export function localTime(
   value: string | null,
@@ -46,6 +47,8 @@ export function SchedulePage({
 }: {
   openTarget: (target: Destination) => void;
 }) {
+  const [selfUpdate, setSelfUpdate] = useState<SelfUpdate | null>(null);
+  const [selfUpdateError, setSelfUpdateError] = useState("");
   const [data, setData] = useState<Schedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,6 +58,18 @@ export function SchedulePage({
     const id = ++request.current;
     setLoading(true);
     setError("");
+    setSelfUpdate(null);
+    setSelfUpdateError("");
+    const update = inspectSelfUpdate()
+      .then((value) => {
+        if (id === request.current) setSelfUpdate(value);
+      })
+      .catch(() => {
+        if (id === request.current)
+          setSelfUpdateError(
+            "SDE update status unavailable. Refresh or ask a mentor to inspect protected logs.",
+          );
+      });
     try {
       const result = await inspectSchedule();
       if (id === request.current) {
@@ -67,6 +82,7 @@ export function SchedulePage({
         setError(String(e));
       }
     } finally {
+      await update;
       if (id === request.current) setLoading(false);
     }
   }
@@ -121,6 +137,9 @@ export function SchedulePage({
           )
         )}
       </div>
+      {!loading && (
+        <SelfUpdatePanel data={selfUpdate} error={selfUpdateError} />
+      )}
       {!loading && data && (
         <>
           {data.note && <p className="notice">{data.note}</p>}
@@ -185,9 +204,10 @@ export function SchedulePage({
               updates.
             </p>
             <p>
-              Maintenance does not update this setup app or configure your Git
-              identity. User editor extensions are refreshed when you run
-              Install, Repair, or Update in this app.
+              Scheduled maintenance can also update SDE when a mentor enables
+              SDE installation. It does not configure your Git identity. User
+              editor extensions are refreshed when you run Install, Repair, or
+              Update in this app.
             </p>
           </div>
           <div className="maintenance-logs">
@@ -212,6 +232,150 @@ export function SchedulePage({
         </>
       )}
     </section>
+  );
+}
+const updateResults: Record<SelfUpdate["outcome"], string> = {
+  current: "Current at last check",
+  paused: "Paused at last attempt",
+  deferred: "Deferred",
+  unavailable: "Unavailable",
+  failed: "Failed",
+  updated: "Successfully updated",
+};
+const coordinationLabels: Record<SelfUpdate["coordination"], string> = {
+  idle: "Idle",
+  busy: "SDE or maintenance is active",
+  interrupted: "Interrupted operation — mentor recovery required",
+  unavailable: "Coordination information unavailable",
+  untrusted: "Untrusted coordination state — mentor review required",
+  needs_repair: "Maintenance baseline needs mentor repair",
+};
+function receiptTime(value: number | null): string {
+  const date = value === null ? null : new Date(value * 1000);
+  return date === null || Number.isNaN(date.getTime())
+    ? "Unavailable"
+    : localTime(date.toISOString());
+}
+export function SelfUpdatePanel({
+  data,
+  error,
+}: {
+  data: SelfUpdate | null;
+  error: string;
+}) {
+  return (
+    <div className="maintenance-scope" aria-labelledby="self-update-heading">
+      <h2 id="self-update-heading">SDE application updates</h2>
+      <p>
+        These results describe SDE itself. Development-tool maintenance and its
+        schedule have separate results.
+      </p>
+      {error && <p role="status">{error}</p>}
+      {data && (
+        <>
+          <p className="notice" role="status">
+            Installation setting:{" "}
+            {data.paused === null
+              ? "Unavailable — ask a mentor"
+              : data.paused
+                ? "Paused by administrator"
+                : "Enabled by administrator"}
+            . Pausing SDE installation leaves development-tool maintenance
+            enabled. An installer already running is allowed to finish.
+          </p>
+          <dl className="information-grid">
+            <div>
+              <dt>App version in this window</dt>
+              <dd>{appVersion}</dd>
+            </div>
+            <div>
+              <dt>Last observed installed app version</dt>
+              <dd>{data.applicationVersion ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Candidate app version</dt>
+              <dd>{data.candidateVersion ?? "None recorded"}</dd>
+            </div>
+            <div>
+              <dt>Last SDE update outcome</dt>
+              <dd>{updateResults[data.outcome]}</dd>
+            </div>
+            <div>
+              <dt>Check started</dt>
+              <dd>{receiptTime(data.checkedAt)}</dd>
+            </div>
+            <div>
+              <dt>Attempt completed</dt>
+              <dd>{receiptTime(data.completedAt)}</dd>
+            </div>
+            <div>
+              <dt>Pause setting last changed</dt>
+              <dd>{receiptTime(data.policyChangedAt)}</dd>
+            </div>
+            <div>
+              <dt>Current coordination</dt>
+              <dd>{coordinationLabels[data.coordination]}</dd>
+            </div>
+            <div>
+              <dt>Tool phase result</dt>
+              <dd>
+                {data.toolExit === null
+                  ? "No result recorded"
+                  : data.toolExit === 0
+                    ? "Succeeded"
+                    : data.toolExit === 75
+                      ? "Deferred"
+                      : `Failed (exit ${data.toolExit})`}
+              </dd>
+            </div>
+            <div>
+              <dt>Native installer result</dt>
+              <dd>
+                {data.nativeExit === null
+                  ? "No result recorded"
+                  : `Exit ${data.nativeExit}${data.rebootRequired ? " — reboot indicated; mentor review required" : ""}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Maintenance engine version</dt>
+              <dd>{data.maintenanceEngineVersion ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Applied tool baseline version</dt>
+              <dd>{data.appliedBaselineVersion ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Signed recovery installer</dt>
+              <dd>
+                {data.recoveryAvailable
+                  ? "Retained at this attempt; mentor must reverify before use"
+                  : "Not confirmed — reduced recovery capability"}
+              </dd>
+            </div>
+          </dl>
+          {["interrupted", "untrusted", "needs_repair"].includes(
+            data.coordination,
+          ) && (
+            <p className="notice">
+              Keep SDE installation paused and ask a mentor to assess recovery
+              before retrying. A previous successful result does not resolve the
+              current coordination problem.
+            </p>
+          )}
+          <p>{data.action}</p>
+          <p className="log-path">
+            Protected mentor logs: {data.logFolder}
+            {data.logReference ? ` · ${data.logReference}` : ""}
+          </p>
+          <p className="muted">
+            Pause and resume require an administrator terminal. Follow the
+            project's mentor recovery guide; this page is read-only. Status
+            describes the last completed attempt and can be stale after an
+            interruption.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 export function AboutPage({

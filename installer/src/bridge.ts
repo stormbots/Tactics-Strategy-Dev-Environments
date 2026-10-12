@@ -147,3 +147,29 @@ export async function inspectSchedule(): Promise<Schedule> {
 export async function open(destination: Destination) {
   if (native) await invoke("open_destination", { destination });
 }
+
+export async function inspectSelfUpdate(): Promise<
+  import("./model").SelfUpdate
+> {
+  if (native) return invoke("inspect_self_update");
+  return {
+    paused: true,
+    policyChangedAt: null,
+    outcome: "unavailable",
+    phase: "unknown",
+    checkedAt: null,
+    completedAt: null,
+    applicationVersion: null,
+    candidateVersion: null,
+    maintenanceEngineVersion: null,
+    appliedBaselineVersion: null,
+    toolExit: null,
+    nativeExit: null,
+    rebootRequired: false,
+    recoveryAvailable: false,
+    logReference: null,
+    logFolder: "Preview — no workstation logs",
+    coordination: "unavailable",
+    action: "Preview mode cannot read workstation SDE update history.",
+  };
+}

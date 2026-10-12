@@ -234,9 +234,21 @@ jobs:
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
           $policy = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -Raw | ConvertFrom-Json
           if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
+          # Model a legacy readable selector. Repeated bootstrap must harden
+          # existing destination ACLs as well as create new private receipts.
+          $selector = 'C:\ProgramData\SkyviewRobotics\SelfUpdate\active.json'
+          $legacyAcl = New-Object Security.AccessControl.FileSecurity
+          $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
+          Set-Acl -LiteralPath $selector -AclObject $legacyAcl
           # Exercise replacement of existing receipts before long provisioning.
           & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
           if ($LASTEXITCODE -ne 0) { throw 'Repeated bootstrap receipt activation failed.' }
+          foreach ($name in @('active.json','previous-engine.json')) {
+            $acl = Get-Acl -LiteralPath (Join-Path 'C:\ProgramData\SkyviewRobotics\SelfUpdate' $name)
+            foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+              if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Value -eq 'S-1-5-32-545') { throw 'Private engine receipt inherited student read access.' }
+            }
+          }
           if (Test-Path $baseline) { throw 'Repeated bootstrap applied a maintenance baseline.' }
           if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Repeated bootstrap registered tool maintenance.' }
           $env:SDE_APPONLY_IDENTITY_FIXTURE = 'true'

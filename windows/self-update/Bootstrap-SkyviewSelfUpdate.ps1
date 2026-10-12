@@ -28,7 +28,13 @@ function New-ProtectedDirectory([string]$Path,[switch]$Readable) {
 function Write-AtomicReceipt([string]$Path,$Value) {
     $temporary = Join-Path (Split-Path $Path -Parent) ([guid]::NewGuid().ToString() + '.tmp')
     $bytes = [Text.Encoding]::UTF8.GetBytes(($Value | ConvertTo-Json -Compress))
-    $file = New-Object IO.FileStream($temporary,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None,4096,[IO.FileOptions]::WriteThrough)
+    # The traversable status directory permits read inheritance. Receipt files
+    # must instead be born private. Replace preserves destination security, so
+    # also migrate any older readable destination before atomic replacement.
+    $privateAcl = New-Object Security.AccessControl.FileSecurity
+    $privateAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)')
+    if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; Set-Acl -LiteralPath $Path -AclObject $privateAcl }
+    $file = New-Object IO.FileStream($temporary,[IO.FileMode]::CreateNew,[Security.AccessControl.FileSystemRights]::Write,[IO.FileShare]::None,4096,[IO.FileOptions]::WriteThrough,$privateAcl)
     try { $file.Write($bytes,0,$bytes.Length); $file.Flush($true) } finally { $file.Dispose() }
     # Windows PowerShell 5.1 converts $null to an empty string for .NET string
     # parameters. Replace needs a genuine null backup filename, not an empty path.
@@ -65,6 +71,12 @@ if (-not (Test-Path (Join-Path $root 'policy.json'))) {
     # Production rollout needs owner UAT and #41 pause/recovery controls first.
     Write-AtomicReceipt (Join-Path $root 'policy.json') @{schemaVersion=1;paused=$true}
 }
+# Publish only the non-secret pause boolean with read-only student access.
+$policyPath = Join-Path $root 'policy.json'
+Assert-TrustedItem $policyPath
+$policyAcl = New-Object Security.AccessControl.FileSecurity
+$policyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
+Set-Acl -LiteralPath $policyPath -AclObject $policyAcl
 $active = Join-Path $root 'active.json'
 if (Test-Path $active) {
     Assert-TrustedItem $active

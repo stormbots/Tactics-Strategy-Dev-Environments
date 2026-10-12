@@ -18,7 +18,8 @@ export type Schedule = {
   frequency: string;
   nextRun: string | null;
   lastRun: string | null;
-  lastResult: "success" | "failure" | "never" | "running" | "deferred" | "unavailable";
+  lastResult:
+    "success" | "failure" | "never" | "running" | "deferred" | "unavailable";
   resultDetail: string;
   catchUp: boolean | null;
   logFolder: string;
@@ -299,3 +300,42 @@ export function reducer(s: State, a: Action): State {
   }
   return next;
 }
+
+/** Application updates are independent of tool maintenance and scheduler results. */
+export type SelfUpdate = {
+  paused: boolean | null;
+  policyChangedAt: number | null;
+  outcome:
+    "current" | "paused" | "deferred" | "unavailable" | "failed" | "updated";
+  phase:
+    | "tools"
+    | "identity"
+    | "policy"
+    | "discovery"
+    | "download"
+    | "verification"
+    | "packagehealth"
+    | "installer"
+    | "postcheck"
+    | "unknown";
+  checkedAt: number | null;
+  completedAt: number | null;
+  applicationVersion: string | null;
+  candidateVersion: string | null;
+  maintenanceEngineVersion: string | null;
+  appliedBaselineVersion: string | null;
+  toolExit: number | null;
+  nativeExit: number | null;
+  rebootRequired: boolean;
+  recoveryAvailable: boolean;
+  logReference: string | null;
+  logFolder: string;
+  action: string;
+  coordination:
+    | "idle"
+    | "busy"
+    | "interrupted"
+    | "unavailable"
+    | "untrusted"
+    | "needs_repair";
+};

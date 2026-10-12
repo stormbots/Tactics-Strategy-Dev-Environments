@@ -4,9 +4,10 @@ pub mod discovery;
 pub mod host;
 #[cfg(target_os = "linux")]
 mod linux_install;
+pub mod observation;
 pub mod staging;
 #[cfg(target_os = "linux")]
-pub use linux_install::maintain_linux;
+pub use linux_install::{maintain_linux, set_linux_pause};
 #[cfg(any(windows, test))]
 #[cfg_attr(not(windows), allow(dead_code))]
 mod windows_install;
@@ -20,7 +21,7 @@ use std::{
     path::Path,
 };
 #[cfg(windows)]
-pub use windows_install::maintain_windows;
+pub use windows_install::{maintain_windows, set_windows_pause};
 
 pub const REPOSITORY: &str = "stormbots/Tactics-Strategy-Dev-Environments";
 pub const MAX_METADATA: u64 = 65536;

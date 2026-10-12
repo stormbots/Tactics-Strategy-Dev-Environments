@@ -87,6 +87,8 @@ mod native {
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct Report {
+        phase: crate::observation::Phase,
+        completed_at: Option<u64>,
         schema_version: u32,
         checked_at: u64,
         application_version: String,
@@ -142,6 +144,19 @@ mod native {
         }
         Ok(())
     }
+    pub(super) fn set_pause(paused: bool) -> Result<()> {
+        host::windows::administrator()
+            .map_err(|_| "Run pause/resume from an elevated administrator terminal")?;
+        let _ = policy()?;
+        let path = Path::new(ROOT).join("policy.json");
+        atomic_json(
+            &path,
+            &crate::observation::Policy {
+                schema_version: 1,
+                paused,
+            },
+        )
+    }
     fn policy() -> Result<bool> {
         let root = Path::new(ROOT);
         trusted(root)?;
@@ -166,6 +181,12 @@ mod native {
             .map_err(|_| "State write failed")?;
         file.sync_all().map_err(|_| "State flush failed")?;
         drop(file);
+        // Publish read access before the atomic policy switch. A failed ACL
+        // change must not leave a resumed policy after a failed command.
+        if path == Path::new(ROOT).join("policy.json") {
+            host::windows::publish_readonly(&temp)
+                .map_err(|_| "Policy permissions could not be published".to_string())?;
+        }
         use std::os::windows::ffi::OsStrExt;
         let wide = |p: &Path| {
             p.as_os_str()
@@ -406,6 +427,7 @@ mod native {
         authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
         identity: impl Fn() -> Result<String>,
     ) -> Result<()> {
+        report.phase = crate::observation::Phase::Verification;
         let lease = sde_coordination::installation().map_err(|e| {
             report.outcome = coordination_outcome(e).into();
             format!("Installation deferred or requires repair: {e}")
@@ -421,6 +443,7 @@ mod native {
             report.outcome = "current".into();
             return Ok(());
         }
+        report.outcome = "failed".into();
         let manifest = authenticate_staged(directory, candidate, authenticate)?;
         let asset = &manifest.metadata().platforms["windows-x86_64"];
         report.outcome = "failed".into();
@@ -438,6 +461,7 @@ mod native {
             report.outcome = "paused".into();
             return Ok(());
         }
+        report.phase = crate::observation::Phase::Installer;
         // env is fixed; no relaunch, destination override, UI or reboot switches.
         let mut command = Command::new(directory.join(INSTALLER));
         system_environment(&mut command);
@@ -459,6 +483,7 @@ mod native {
                 "Native installer returned {code}; mentor review required"
             ));
         }
+        report.phase = crate::observation::Phase::Postcheck;
         if identity()? != candidate.version {
             return Err("Post-install version mismatch; mentor review required".into());
         }
@@ -565,11 +590,15 @@ mod native {
         .map_err(|_| "Worker receipt invalid")?;
         let mut report = Report {
             schema_version: 1,
+            phase: crate::observation::Phase::Tools,
+            completed_at: None,
             checked_at: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_err(|_| "Clock unavailable")?
                 .as_secs(),
-            application_version: String::new(),
+            application_version: host::windows::installed_identity()
+                .map(|i| i.version)
+                .unwrap_or_default(),
             maintenance_engine_version: engine["version"]
                 .as_str()
                 .ok_or("Worker version missing")?
@@ -593,9 +622,11 @@ mod native {
         };
         let result = (|| {
             report.tool_exit = tool_maintenance()?;
+            report.phase = crate::observation::Phase::Identity;
             let installed =
                 host::installed().map_err(|e| format!("Installed identity unavailable: {e:?}"))?;
             report.application_version = installed.version.clone();
+            report.phase = crate::observation::Phase::Policy;
             if policy()? {
                 report.outcome = "paused".into();
                 return Ok(());
@@ -609,6 +640,7 @@ mod native {
             prune_staging(&staging_root)?;
             report.recovery_available =
                 seed_recovery(&mut github, &staging_root, &installed.version).unwrap_or(false);
+            report.phase = crate::observation::Phase::Discovery;
             let candidate =
                 discovery::discover_with(&mut github, &installed.version, "windows-x86_64")
                     .map_err(|e| format!("Release check unavailable: {e:?}"))?;
@@ -617,6 +649,7 @@ mod native {
                 return Ok(());
             };
             report.candidate_version = Some(candidate.version.clone());
+            report.phase = crate::observation::Phase::Download;
             let id = stage_candidate(&mut github, &staging_root, &candidate)?;
             drop(operation);
             // Recheck official draft/prerelease status after downloading. A stable-
@@ -649,6 +682,10 @@ mod native {
         if let Err(ref e) = result {
             report.detail = e.clone();
         }
+        report.completed_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .ok()
+            .map(|t| t.as_secs());
         atomic_json(&Path::new(ROOT).join("status.json"), &report)?;
         // Set only the sanitized status readable by students, never private state.
         let acl_script = Path::new(ROOT).join("Publish-SkyviewStatus.ps1");
@@ -708,6 +745,15 @@ mod native {
             let baseline =
                 std::fs::read(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1").unwrap();
             let policy_before = std::fs::read(Path::new(ROOT).join("policy.json")).unwrap();
+            set_pause(false).unwrap();
+            assert_eq!(crate::observation::inspect().paused, Some(false));
+            set_pause(true).unwrap();
+            assert_eq!(crate::observation::inspect().paused, Some(true));
+            assert_eq!(
+                std::fs::read(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1").unwrap(),
+                baseline
+            );
+
             atomic_json(
                 &Path::new(ROOT).join("policy.json"),
                 &serde_json::json!({"schemaVersion":1,"paused":false}),
@@ -774,6 +820,8 @@ mod native {
             std::fs::write(directory.join(INSTALLER), original_payload).unwrap();
             let mut report = Report {
                 schema_version: 1,
+                phase: crate::observation::Phase::Tools,
+                completed_at: None,
                 checked_at: 0,
                 application_version: installed.version,
                 maintenance_engine_version: "1.2.1".into(),
@@ -862,7 +910,12 @@ mod native {
                 process.stdout.is_empty(),
                 "Installer launched SDE under SYSTEM"
             );
-            std::fs::write(Path::new(ROOT).join("policy.json"), &policy_before).unwrap();
+            set_pause(
+                serde_json::from_slice::<Policy>(&policy_before)
+                    .unwrap()
+                    .paused,
+            )
+            .unwrap();
             // Test receipts must never survive as production pinned-key evidence.
             std::fs::remove_file(Path::new(ROOT).join("recovery.json")).unwrap();
             // A signed synthetic executable that exits unsuccessfully must
@@ -933,7 +986,12 @@ mod native {
                 .unwrap();
             std::fs::remove_file(sde_coordination::root().join("transaction.json")).unwrap();
             drop(guard);
-            std::fs::write(Path::new(ROOT).join("policy.json"), &policy_before).unwrap();
+            set_pause(
+                serde_json::from_slice::<Policy>(&policy_before)
+                    .unwrap()
+                    .paused,
+            )
+            .unwrap();
             println!("SDE_SIGNED_SYSTEM_UPGRADE_OK: identity, trust rejection, session deferral, native upgrade, engine activation, baseline/student preservation, no GUI/reboot");
         }
     }
@@ -941,6 +999,11 @@ mod native {
 #[cfg(windows)]
 pub fn maintain_windows() -> crate::Result<i32> {
     native::maintain()
+}
+
+#[cfg(windows)]
+pub fn set_windows_pause(paused: bool) -> crate::Result<()> {
+    native::set_pause(paused)
 }
 
 #[cfg(test)]

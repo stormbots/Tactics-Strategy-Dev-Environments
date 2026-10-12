@@ -361,6 +361,55 @@ pub(crate) mod windows {
         }
         Ok(())
     }
+    pub(crate) fn administrator() -> Result<()> {
+        let admin = sid(WinBuiltinAdministratorsSid)?;
+        let mut member = 0;
+        if unsafe {
+            CheckTokenMembership(
+                ptr::null_mut(),
+                admin.as_ptr().cast_mut().cast(),
+                &mut member,
+            )
+        } == 0
+            || member == 0
+        {
+            return Err(Failure::Staging);
+        }
+        Ok(())
+    }
+    pub(crate) fn publish_readonly(path: &Path) -> Result<()> {
+        validate(path)?;
+        let sddl = wide("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)");
+        let mut descriptor = ptr::null_mut();
+        if unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                sddl.as_ptr(),
+                1,
+                &mut descriptor,
+                ptr::null_mut(),
+            )
+        } == 0
+        {
+            return Err(Failure::Staging);
+        }
+        let ok = unsafe {
+            SetFileSecurityW(
+                wide(path).as_ptr(),
+                OWNER_SECURITY_INFORMATION
+                    | GROUP_SECURITY_INFORMATION
+                    | DACL_SECURITY_INFORMATION
+                    | PROTECTED_DACL_SECURITY_INFORMATION,
+                descriptor,
+            )
+        };
+        unsafe {
+            LocalFree(descriptor);
+        }
+        if ok == 0 {
+            return Err(Failure::Staging);
+        }
+        validate(path)
+    }
     pub(super) fn create_private(path: &Path) -> Result<()> {
         let sddl = wide("O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)");
         let mut descriptor = ptr::null_mut();

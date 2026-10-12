@@ -93,6 +93,8 @@ def main():
     if not policy.exists():
         receipt(policy, dict(schemaVersion=1, paused=True))
     trusted(policy)
+    # Only the non-secret administrator pause boolean is student-readable.
+    policy.chmod(0o644)
     previous = None
     active = ROOT / 'active.json'
     if active.exists():

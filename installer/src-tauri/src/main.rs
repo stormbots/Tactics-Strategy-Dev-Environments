@@ -284,6 +284,12 @@ enum Destination {
     Skyview,
 }
 #[tauri::command]
+async fn inspect_self_update() -> Result<sde_update_trust::observation::Status, String> {
+    tauri::async_runtime::spawn_blocking(sde_update_trust::observation::inspect)
+        .await
+        .map_err(|_| "SDE update status could not be read. Please refresh.".to_string())
+}
+#[tauri::command]
 async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
     let root = backend(&app)?;
     tauri::async_runtime::spawn_blocking(move || schedule::inspect(&root))
@@ -390,6 +396,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             inspect_system,
             inspect_schedule,
+            inspect_self_update,
             run_operation,
             open_destination
         ])

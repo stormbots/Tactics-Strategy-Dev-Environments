@@ -151,3 +151,7 @@ administrator-approved migration, custom schedules/runtime policy and real
 student profiles, missed weekly runs/offline recovery, live GUI deferral, actual
 approved stable release selection, reboot-required/interrupted package recovery,
 and mentor pause/recovery controls. Full rollback is not promised.
+
+Mentor pause/resume, status interpretation and platform recovery are documented
+in [SELF-UPDATE-MENTOR.md](SELF-UPDATE-MENTOR.md). Only non-secret `policy.json`
+and sanitized `status.json` are readable by students; other receipts remain private.
