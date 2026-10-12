@@ -1,0 +1,231 @@
+name: Prepare signed self-update UAT pair
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/prepare-self-update-uat.yml'
+      - 'tests/prepare_uat_version.py'
+      - 'tests/test_uat_version.py'
+      - 'tests/Probe-NativeUpgrade.ps1'
+      - 'tests/Test-MintUatPairCI.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: self-update-uat-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require reviewed main source for signing dispatch
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/release/v1.2.uat
+          main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          test "$main" = "$GITHUB_SHA"
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests -p 'test_uat_version.py'
+
+  build-pair:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            bundle: nsis
+            asset: Skyview-Dev-Setup-Windows-x64.exe
+          - os: ubuntu-24.04
+            bundle: deb
+            asset: Skyview-Dev-Setup-LinuxMint-amd64.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            installer/src-tauri -> target
+            updater -> target
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf shellcheck
+      - name: Package Windows backend
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco pack windows/chocolatey/skyview-student-dev.nuspec --outputdirectory windows
+          if ($LASTEXITCODE -ne 0) { throw 'Backend packaging failed.' }
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $errors = Invoke-ScriptAnalyzer -Path tests/Probe-NativeUpgrade.ps1 -Severity Error
+          if ($errors) { $errors | Format-Table; throw 'Probe analysis failed.' }
+      - run: npm ci
+        working-directory: installer
+      - name: Build pinned worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release --locked --manifest-path updater/Cargo.toml
+          if [[ "$RUNNER_OS" = Windows ]]; then
+            cp updater/target/release/sde-update-trust.exe windows/self-update/sde-update-trust.exe
+          else
+            install -m 0755 updater/target/release/sde-update-trust linux/self-update/sde-update-trust
+          fi
+      - name: Build two fixed candidate versions without changing the tool baseline
+        shell: bash
+        env:
+          BUNDLE: ${{ matrix.bundle }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          set -euo pipefail
+          for version in 1.2.2 1.2.3; do
+            python3 tests/prepare_uat_version.py "$version"
+            python3 tests/release_identity.py "v$version"
+            npm --prefix installer run tauri build -- --bundles "$BUNDLE"
+            mapfile -t packages < <(find "installer/src-tauri/target/release/bundle/$BUNDLE" -maxdepth 1 -type f -name "*$version*.$([[ "$BUNDLE" = nsis ]] && echo exe || echo deb)")
+            test "${#packages[@]}" = 1
+            mkdir -p "uat/$version"
+            cp "${packages[0]}" "uat/$version/$ASSET"
+          done
+      - name: Verify Windows package identity and actual SYSTEM upgrade
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($version in @('1.2.2','1.2.3')) {
+            $actual = (Get-Item "uat/$version/Skyview-Dev-Setup-Windows-x64.exe").VersionInfo.ProductVersion
+            if ($actual -ne $version) { throw 'Candidate installer identity mismatch.' }
+          }
+          ./tests/Probe-NativeUpgrade.ps1 -InstallerRoot uat -UatPair
+          if (-not (Select-String -Path uat/windows.txt -Pattern SDE_UAT_PAIR_WINDOWS_OK)) { throw 'Pair did not execute.' }
+      - name: Verify actual Mint root upgrade
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shellcheck --severity=warning tests/Test-MintUatPairCI.sh
+          bash tests/Prepare-MintNativeCI.sh
+          docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --entrypoint /bin/bash sde-mint22.3-native /work/tests/Test-MintUatPairCI.sh | tee uat/mint.txt
+          grep -q SDE_UAT_PAIR_MINT_OK uat/mint.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uat-pair-${{ runner.os }}
+          path: uat/
+          if-no-files-found: error
+      - name: Retain available evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uat-pair-failure-${{ runner.os }}
+          path: |
+            uat/windows.txt
+            uat/mint.txt
+          if-no-files-found: warn
+
+  sign-publish:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [source, build-pair]
+    runs-on: ubuntu-24.04
+    environment: sde-release-signing
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Require successful full repository/native checks on this exact main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/release/v1.2.uat
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-dev-setup.yml/runs?head_sha=$GITHUB_SHA&status=success&event=push" > "$RUNNER_TEMP/runs.json"
+          python3 - "$RUNNER_TEMP/runs.json" <<'PY'
+          import json, sys
+          runs = json.load(open(sys.argv[1]))['workflow_runs']
+          assert any(r['head_branch'] == 'main' for r in runs), 'Successful main verification required'
+          PY
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: uat-pair-*
+          path: uat
+          merge-multiple: true
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+      - run: cargo build --release --locked --manifest-path updater/Cargo.toml
+      - name: Create both manifests and enforce package identities
+        run: |
+          set -euo pipefail
+          for version in 1.2.2 1.2.3; do
+            test "$(dpkg-deb -f "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" Package)" = skyview-dev-setup
+            test "$(dpkg-deb -f "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" Architecture)" = amd64
+            test "$(dpkg-deb -f "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" Version)" = "$version"
+            updater/target/release/sde-update-trust create "uat/$version" "v$version"
+            (cd "uat/$version"; sha256sum Skyview-Dev-Setup-Windows-x64.exe Skyview-Dev-Setup-LinuxMint-amd64.deb > SHA256SUMS.txt)
+          done
+      - name: Sign and authenticate both complete candidates
+        env:
+          SDE_UPDATE_SIGNING_KEY: ${{ secrets.SDE_UPDATE_SIGNING_KEY }}
+          SDE_UPDATE_SIGNING_PASSWORD: ${{ secrets.SDE_UPDATE_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for version in 1.2.2 1.2.3; do
+            updater/target/release/sde-update-trust sign "uat/$version" "v$version"
+            updater/target/release/sde-update-trust verify "uat/$version" "v$version"
+          done
+      - name: Publish immutable prereleases only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Existing releases/tags are never edited or reused. Retry needs owner assessment.
+          for version in 1.2.2 1.2.3; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v$version" --jq length)" = 0
+          done
+          for version in 1.2.2 1.2.3; do
+            gh release create "v$version" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "SDE $version — self-update UAT candidate" --notes-file docs/SELF-UPDATE-UAT-CANDIDATES.md \
+              "uat/$version/Skyview-Dev-Setup-Windows-x64.exe" "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" \
+              "uat/$version/SHA256SUMS.txt" "uat/$version/sde-update.json" "uat/$version/sde-update.json.minisig"
+          done
+      - name: Download and authenticate published prerelease assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for version in 1.2.2 1.2.3; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" --jq '.object.sha')" = "$GITHUB_SHA"
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$version" > "$RUNNER_TEMP/release.json"
+            python3 - "$RUNNER_TEMP/release.json" "$version" <<'PY'
+          import json, sys
+          release = json.load(open(sys.argv[1]))
+          assert release['tag_name'] == 'v' + sys.argv[2]
+          assert release['prerelease'] is True and release['draft'] is False
+          expected = {'Skyview-Dev-Setup-Windows-x64.exe', 'Skyview-Dev-Setup-LinuxMint-amd64.deb',
+                      'SHA256SUMS.txt', 'sde-update.json', 'sde-update.json.minisig'}
+          names = [a['name'] for a in release['assets']]
+          assert len(names) == 5 and set(names) == expected
+          PY
+            folder="$RUNNER_TEMP/published-$version"
+            mkdir "$folder"
+            gh release download "v$version" --repo "$GITHUB_REPOSITORY" --dir "$folder"
+            updater/target/release/sde-update-trust verify "$folder" "v$version"
+            (cd "$folder"; sha256sum --check SHA256SUMS.txt)
+            {
+              echo "Verified prerelease v$version; source $GITHUB_SHA"
+              echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$version"
+              (cd "$folder"; sha256sum sde-update.json Skyview-Dev-Setup-Windows-x64.exe Skyview-Dev-Setup-LinuxMint-amd64.deb)
+            } >> "$GITHUB_STEP_SUMMARY"
+          done

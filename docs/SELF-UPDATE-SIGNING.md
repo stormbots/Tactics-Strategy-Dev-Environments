@@ -101,9 +101,10 @@ restored and used to sign and verify a disposable message before GitHub secrets
 were provisioned. Only the public key enters the repository. GitHub does not
 provide a readable recovery copy of Actions secrets.
 
-**Owner follow-up:** copy `release.key` and `release.pub` to offline encrypted
-storage under your control, and place the passphrase in your password manager
-separately. The local recovery copy is durable across Codex sessions but cannot
+**Owner confirmation (2026-10-12):** the encrypted release key and its
+passphrase are backed up separately under owner control; the passphrase is in
+Bitwarden. A USB drive is not required. Keep an encrypted key recovery copy
+separate from its password-manager passphrase; repeat confirmation after rotation. The local recovery copy is durable across Codex sessions but cannot
 survive loss of this computer by itself. Do not paste either secret into chat or
 upload the backup to an issue/PR. Keep the protected local copy until you have
 verified the off-device backup. Use the included `BACKUP-README.txt`.

@@ -50,3 +50,5 @@ For administrator pause/resume controls and recovery, see the
 existing development-tool maintenance remains independent.
 
 Self-update verification evidence and remaining school-laptop UAT: [SELF-UPDATE-EVIDENCE.md](docs/SELF-UPDATE-EVIDENCE.md).
+
+Owner UAT, signed prerelease preparation and one-time migration: [SELF-UPDATE-UAT.md](docs/SELF-UPDATE-UAT.md), [SELF-UPDATE-ROLLOUT.md](docs/SELF-UPDATE-ROLLOUT.md), and [pending acceptance](docs/ACCEPTANCE-SELF-UPDATE.md).
