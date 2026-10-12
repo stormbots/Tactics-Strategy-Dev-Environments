@@ -67,7 +67,10 @@ The page shows check-start/completion and policy-change times in local time,
 observed installed/candidate app versions, native exit code, independent tool
 phase result, engine version and applied tool-baseline version. The app version
 in the open window may differ from a newly installed version until reopened.
-It is not a tool baseline version or scheduler execution result. No new release
+It is not a tool baseline version or scheduler execution result. The recovery
+availability flag means a signed installer was retained at that attempt; when
+no upgrade occurred it can refer to the current version, not an older version.
+Use `verify-recovery` to establish the exact current/previous retained versions. No new release
 notifications are supplied here; #11 owns those. #10 owns broader Overview
 maintenance notices. A successful app update must never conceal failed tools.
 

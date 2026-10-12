@@ -345,7 +345,7 @@ export function SelfUpdatePanel({
               <dd>{data.appliedBaselineVersion ?? "Unavailable"}</dd>
             </div>
             <div>
-              <dt>Previous signed installer</dt>
+              <dt>Signed recovery installer</dt>
               <dd>
                 {data.recoveryAvailable
                   ? "Retained at this attempt; mentor must reverify before use"
