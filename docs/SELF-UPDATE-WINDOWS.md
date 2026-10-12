@@ -128,6 +128,11 @@ An early native check validates the real installed registry/PE identity before
 provisioning. Windows permission tests distinguish inherit-only rules (which grant
 no access to their current object) from effective inherited student-write grants
 on child files, which remain rejected.
+Windows' inherited TrustedInstaller control is accepted only on canonical
+Program Files directories and platform anchors. Executable files and private
+payload/state objects retain administrator/SYSTEM ownership and write rules; the
+native permission regression verifies servicing control is rejected on a private
+staging directory.
 
 The next-run fixture executes the actual fixed launcher and packaged production
 worker with a deterministic no-package tool script, restoring the applied script
