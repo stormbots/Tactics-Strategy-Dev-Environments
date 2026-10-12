@@ -380,6 +380,9 @@ pub(crate) fn discover_with(
     installed: &str,
     platform: &str,
 ) -> Result<Option<Candidate>> {
+    select(&list_with(transport)?, installed, platform)
+}
+pub(crate) fn list_with(transport: &mut impl Transport) -> Result<Vec<Release>> {
     let mut releases = Vec::new();
     for page in 1..=MAX_PAGES {
         let mut bytes = Vec::new();
@@ -391,7 +394,7 @@ pub(crate) fn discover_with(
         let complete = batch.len() < PAGE_SIZE;
         releases.extend(batch);
         if complete {
-            return select(&releases, installed, platform);
+            return Ok(releases);
         }
     }
     Err(Failure::Incomplete)

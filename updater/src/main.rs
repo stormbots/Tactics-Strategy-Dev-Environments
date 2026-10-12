@@ -5,6 +5,10 @@ use sde_update_trust::{
 use std::path::Path;
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    #[cfg(windows)]
+    if args.as_slice() == ["maintain-windows"] {
+        std::process::exit(sde_update_trust::maintain_windows()?);
+    }
     if args.as_slice() == ["coordination-status"] {
         println!(
             "{}",

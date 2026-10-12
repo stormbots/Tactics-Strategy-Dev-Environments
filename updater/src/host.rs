@@ -204,7 +204,7 @@ pub(crate) fn store() -> Result<PathBuf> {
     }
 }
 #[cfg(windows)]
-mod windows {
+pub(crate) mod windows {
     use super::*;
     use std::{
         ffi::c_void,
@@ -254,7 +254,7 @@ mod windows {
     pub(super) fn validate(path: &Path) -> Result<()> {
         validate_acl(path, false)
     }
-    pub(super) fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
+    pub(crate) fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
         let info = std::fs::symlink_metadata(path).map_err(|_| Failure::Staging)?;
         if info.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
             || !(info.is_dir() || info.is_file())
@@ -280,23 +280,39 @@ mod windows {
         if status != ERROR_SUCCESS {
             return Err(Failure::Staging);
         }
-        let result = check_acl(owner, acl, anchor);
+        // Windows inherits TrustedInstaller control onto Program Files
+        // directories. This does not relax user-write checks or private stores.
+        let installed_directory = info.is_dir()
+            && path.is_absolute()
+            && path.starts_with(r"C:\Program Files")
+            && !path
+                .components()
+                .any(|c| matches!(c, std::path::Component::ParentDir));
+        let result = check_acl(owner, acl, anchor, anchor || installed_directory);
         unsafe {
             LocalFree(descriptor);
         }
         result
     }
-    fn check_acl(owner: PSID, acl: *mut ACL, anchor: bool) -> Result<()> {
+    fn check_acl(owner: PSID, acl: *mut ACL, anchor: bool, allow_servicing: bool) -> Result<()> {
         let system = sid(WinLocalSystemSid)?;
         let admins = sid(WinBuiltinAdministratorsSid)?;
-        // The servicing identity is allowed only at Windows system anchors.
+        // Servicing is limited to platform anchors and installed directories;
+        // executable files and private state keep administrator/SYSTEM rules.
         let servicing =
             sid_from_string("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464")?;
         let trusted_here = |value: PSID| {
             trusted(value, &system, &admins)
-                || (anchor && unsafe { EqualSid(value, servicing.as_ptr() as PSID) != 0 })
+                || (allow_servicing
+                    && !value.is_null()
+                    && unsafe { EqualSid(value, servicing.as_ptr() as PSID) != 0 })
         };
         if !trusted_here(owner) || acl.is_null() {
+            #[cfg(test)]
+            eprintln!(
+                "ACL ownership rejected: anchor={anchor}, servicing={}",
+                unsafe { !owner.is_null() && EqualSid(owner, servicing.as_ptr() as PSID) != 0 }
+            );
             return Err(Failure::Staging);
         }
         let write = (if anchor {
@@ -315,18 +331,27 @@ mod windows {
                 return Err(Failure::Staging);
             }
             let header = unsafe { &*ace.cast::<ACE_HEADER>() };
-            if anchor && u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
+            // Inherit-only entries grant no access to this object. Check each
+            // descendant separately so effective student-write grants fail.
+            if u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0 {
                 continue;
             }
             if header.AceType == 1 {
                 continue;
             } // Deny ACEs cannot grant write access.
             if header.AceType != 0 {
+                #[cfg(test)]
+                eprintln!("ACL ACE type rejected: {}", header.AceType);
                 return Err(Failure::Staging);
             }
             let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
             let trustee = ptr::addr_of!(allow.SidStart) as PSID;
             if allow.Mask & write != 0 && !trusted_here(trustee) {
+                #[cfg(test)]
+                eprintln!(
+                    "ACL write ACE rejected: mask={:#x}, flags={:#x}",
+                    allow.Mask, header.AceFlags
+                );
                 return Err(Failure::Staging);
             }
         }
@@ -438,7 +463,7 @@ mod windows {
             eprintln!("Exclusive GetSecurityInfo failed: {security_status}");
             return Err(Failure::Staging);
         }
-        let result = check_acl(owner, acl, false);
+        let result = check_acl(owner, acl, false, false);
         #[cfg(test)]
         if result.is_err() {
             eprintln!("Exclusive file ACL check failed");
@@ -500,6 +525,10 @@ mod windows {
         String::from_utf16(&buffer[..len - 1]).map_err(|_| Failure::InvalidInstalled)
     }
     pub(super) fn installed() -> Result<Installed> {
+        supported()?;
+        installed_identity()
+    }
+    fn supported() -> Result<()> {
         if std::env::consts::ARCH != "x86_64" {
             return Err(Failure::Unsupported);
         }
@@ -544,30 +573,43 @@ mod windows {
         {
             return Err(Failure::Unsupported);
         }
-        let registered = version(&registry("DisplayVersion")?)?;
-        let location = registry("InstallLocation")?;
-        let location = location.trim_matches('"');
-        let path = PathBuf::from(location);
+        Ok(())
+    }
+    pub(crate) fn install_location() -> Result<PathBuf> {
+        let path = PathBuf::from(registry("InstallLocation")?.trim_matches('"'));
         if !path.is_absolute()
             || !path.starts_with(r"C:\Program Files")
-            || registry("MainBinaryName")? != "skyview-dev-setup.exe"
+            || path
+                .components()
+                .any(|c| matches!(c, std::path::Component::ParentDir))
         {
             return Err(Failure::InvalidInstalled);
         }
-        let mut current = PathBuf::new();
-        for component in path.components() {
-            current.push(component);
-            if !current.has_root() {
-                continue;
-            }
-            if current.is_dir() {
-                let anchor =
-                    current == Path::new(r"C:\") || current == Path::new(r"C:\Program Files");
-                validate_acl(&current, anchor).map_err(|_| Failure::InvalidInstalled)?;
-            }
+        for ancestor in path.ancestors() {
+            validate_acl(
+                ancestor,
+                ancestor == Path::new(r"C:\") || ancestor == Path::new(r"C:\Program Files"),
+            )
+            .map_err(|_| {
+                #[cfg(test)]
+                eprintln!("Installed ancestor ACL rejected: {}", ancestor.display());
+                Failure::InvalidInstalled
+            })?;
+        }
+        Ok(path)
+    }
+    pub(crate) fn installed_identity() -> Result<Installed> {
+        let registered = version(&registry("DisplayVersion")?)?;
+        let path = install_location()?;
+        if registry("MainBinaryName")? != "skyview-dev-setup.exe" {
+            return Err(Failure::InvalidInstalled);
         }
         let binary = path.join("skyview-dev-setup.exe");
-        validate(&binary).map_err(|_| Failure::InvalidInstalled)?;
+        validate(&binary).map_err(|_| {
+            #[cfg(test)]
+            eprintln!("Installed executable ACL rejected: {}", binary.display());
+            Failure::InvalidInstalled
+        })?;
         let binary = wide(&binary);
         let mut handle = 0;
         let size = unsafe { GetFileVersionInfoSizeW(binary.as_ptr(), &mut handle) };
@@ -604,6 +646,8 @@ mod windows {
             fixed.dwProductVersionLS >> 16
         );
         if actual != registered {
+            #[cfg(test)]
+            eprintln!("Installed PE version {actual} differs from registry {registered}");
             return Err(Failure::InvalidInstalled);
         }
         Ok(Installed {
@@ -650,6 +694,14 @@ mod tests {
     }
     #[cfg(windows)]
     #[test]
+    fn installed_native_fixture_identity() {
+        if std::env::var_os("SDE_APPONLY_IDENTITY_FIXTURE").is_none() {
+            return;
+        }
+        assert_eq!(windows::installed_identity().unwrap().version, "1.2.1");
+    }
+    #[cfg(windows)]
+    #[test]
     fn windows_private_acl_and_reparse_rejection() {
         for anchor in [r"C:\", r"C:\Program Files", r"C:\ProgramData"] {
             windows::validate_acl(Path::new(anchor), true).unwrap();
@@ -662,6 +714,30 @@ mod tests {
         let file = exclusive(&private.join("installer")).unwrap();
         file.sync_all().unwrap();
         assert!(exclusive(&private.join("installer")).is_err());
+        drop(file);
+        // Inherit-only rights cannot write the parent, but effective inherited
+        // rights on a child must be rejected. Exercise actual Windows ACLs.
+        let status = std::process::Command::new(r"C:\Windows\System32\icacls.exe")
+            .arg(&private)
+            .args(["/grant", "*S-1-5-32-545:(OI)(CI)(IO)(F)"])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        validate(&private).unwrap();
+        let unsafe_child = private.join("inherited-student-write");
+        std::fs::write(&unsafe_child, b"fixture").unwrap();
+        assert_eq!(validate(&unsafe_child), Err(Failure::Staging));
+        // Servicing control must not be accepted on private payload/state roots.
+        let status = std::process::Command::new(r"C:\Windows\System32\icacls.exe")
+            .arg(&private)
+            .args([
+                "/grant",
+                "*S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464:(F)",
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        assert_eq!(validate(&private), Err(Failure::Staging));
         // Junctions are available without Developer Mode or symlink privilege.
         let junction = dir.path().join("junction");
         let status = std::process::Command::new(r"C:\Windows\System32\cmd.exe")

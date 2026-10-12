@@ -1,0 +1,957 @@
+//! External SYSTEM worker. Production has no key, repository, installer-path or
+//! OS-policy override. Test authentication is injected only by Rust unit tests.
+use crate::{discovery::Candidate, AuthenticatedManifest};
+use std::path::Path;
+
+const INSTALLER: &str = "Skyview-Dev-Setup-Windows-x64.exe";
+#[cfg(windows)]
+const ROOT: &str = r"C:\ProgramData\SkyviewRobotics\SelfUpdate";
+
+fn authenticate_staged(
+    directory: &Path,
+    candidate: &Candidate,
+    authenticate: impl FnOnce(&[u8], &str, &str) -> crate::Result<AuthenticatedManifest>,
+) -> crate::Result<AuthenticatedManifest> {
+    if candidate.platform != "windows-x86_64" || candidate.installer != INSTALLER {
+        return Err("Invalid Windows candidate".into());
+    }
+    crate::host::validate(directory).map_err(|_| "Untrusted staged directory")?;
+    for name in [
+        "sde-update.json",
+        "sde-update.json.minisig",
+        INSTALLER,
+        "verified.json",
+    ] {
+        crate::host::validate(&directory.join(name)).map_err(|_| "Untrusted staged file")?;
+    }
+    let bytes = crate::read_bounded(&directory.join("sde-update.json"), crate::MAX_METADATA)?;
+    let signature = String::from_utf8(crate::read_bounded(
+        &directory.join("sde-update.json.minisig"),
+        8192,
+    )?)
+    .map_err(|_| "Invalid signature encoding")?;
+    // The marker is not an execution authorization. Repeat pinned-key and hash
+    // verification under the installation gates, immediately before execution.
+    let manifest = authenticate(&bytes, &signature, &candidate.tag)?;
+    if manifest.metadata().version != candidate.version {
+        return Err("Candidate identity changed".into());
+    }
+    crate::verify_installer(&manifest, "windows-x86_64", &directory.join(INSTALLER))?;
+    Ok(manifest)
+}
+
+fn coordination_outcome(error: sde_coordination::Error) -> &'static str {
+    match error {
+        sde_coordination::Error::Busy => "deferred",
+        sde_coordination::Error::Interrupted | sde_coordination::Error::NeedsRepair => "failed",
+        _ => "unavailable",
+    }
+}
+#[derive(Debug, PartialEq, Eq)]
+enum NativeOutcome {
+    Success,
+    RebootRequired,
+    Failed,
+}
+fn native_outcome(code: i32) -> NativeOutcome {
+    // NSIS evidence establishes zero. MSI's 3010 is NOT assumed to mean NSIS
+    // success: record it as reboot-required, retain intent, and require review.
+    match code {
+        0 => NativeOutcome::Success,
+        3010 => NativeOutcome::RebootRequired,
+        _ => NativeOutcome::Failed,
+    }
+}
+
+#[cfg(windows)]
+mod native {
+    use super::*;
+    use crate::{
+        discovery::{self, GitHub},
+        host, staging,
+    };
+    use serde::{Deserialize, Serialize};
+    use std::{
+        io::Write,
+        process::Command,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+    use windows_sys::Win32::{Foundation::*, Security::*, System::Threading::*};
+    type Result<T> = crate::Result<T>;
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct Policy {
+        schema_version: u32,
+        paused: bool,
+    }
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Report {
+        schema_version: u32,
+        checked_at: u64,
+        application_version: String,
+        maintenance_engine_version: String,
+        applied_baseline: &'static str,
+        applied_baseline_version: Option<String>,
+        tool_exit: Option<i32>,
+        outcome: String,
+        detail: String,
+        candidate_version: Option<String>,
+        native_exit: Option<i32>,
+        reboot_required: bool,
+        recovery_available: bool,
+        log_reference: Option<String>,
+    }
+    fn trusted(path: &Path) -> Result<()> {
+        for ancestor in path.ancestors() {
+            host::windows::validate_acl(
+                ancestor,
+                ancestor == Path::new(r"C:\")
+                    || ancestor == Path::new(r"C:\ProgramData")
+                    || ancestor == Path::new(r"C:\Program Files"),
+            )
+            .map_err(|_| "Untrusted maintenance path")?;
+        }
+        Ok(())
+    }
+    pub(super) fn system() -> Result<()> {
+        let mut token = std::ptr::null_mut();
+        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+            return Err("SYSTEM maintenance identity is required".into());
+        }
+        let mut buffer = [0u64; 128];
+        let mut length = 0;
+        let ok = unsafe {
+            GetTokenInformation(
+                token,
+                TokenUser,
+                buffer.as_mut_ptr().cast(),
+                std::mem::size_of_val(&buffer) as u32,
+                &mut length,
+            )
+        };
+        unsafe {
+            CloseHandle(token);
+        }
+        if ok == 0 {
+            return Err("Cannot validate maintenance identity".into());
+        }
+        let user = unsafe { &*buffer.as_ptr().cast::<TOKEN_USER>() };
+        if unsafe { IsWellKnownSid(user.User.Sid, WinLocalSystemSid) } == 0 {
+            return Err("SYSTEM maintenance identity is required".into());
+        }
+        Ok(())
+    }
+    fn policy() -> Result<bool> {
+        let root = Path::new(ROOT);
+        trusted(root)?;
+        let path = root.join("policy.json");
+        trusted(&path)?;
+        let p: Policy = serde_json::from_slice(&crate::read_bounded(&path, 4096)?)
+            .map_err(|_| "Invalid self-update policy; mentor review required")?;
+        if p.schema_version != 1 {
+            return Err("Unsupported self-update policy".into());
+        }
+        Ok(p.paused)
+    }
+    fn atomic_json(path: &Path, value: &impl Serialize) -> Result<()> {
+        let parent = path.parent().ok_or("Invalid state path")?;
+        trusted(parent)?;
+        if path.exists() {
+            trusted(path)?;
+        }
+        let temp = parent.join(format!("{}.tmp", uuid::Uuid::new_v4()));
+        let mut file = host::exclusive(&temp).map_err(|_| "State creation failed")?;
+        file.write_all(&serde_json::to_vec(value).map_err(|_| "State encoding failed")?)
+            .map_err(|_| "State write failed")?;
+        file.sync_all().map_err(|_| "State flush failed")?;
+        drop(file);
+        use std::os::windows::ffi::OsStrExt;
+        let wide = |p: &Path| {
+            p.as_os_str()
+                .encode_wide()
+                .chain(Some(0))
+                .collect::<Vec<_>>()
+        };
+        if unsafe {
+            windows_sys::Win32::Storage::FileSystem::MoveFileExW(
+                wide(&temp).as_ptr(),
+                wide(path).as_ptr(),
+                windows_sys::Win32::Storage::FileSystem::MOVEFILE_REPLACE_EXISTING
+                    | windows_sys::Win32::Storage::FileSystem::MOVEFILE_WRITE_THROUGH,
+            )
+        } == 0
+        {
+            return Err("State publication failed".into());
+        }
+        Ok(())
+    }
+    fn system_environment(command: &mut Command) {
+        // Match the established Windows backend contract. SYSTEMDRIVE and
+        // system profile folders are required by Windows known-folder APIs;
+        // inherit no student profile, PATH, proxy or PowerShell module paths.
+        command
+            .env_clear()
+            .env("SystemRoot", r"C:\Windows")
+            .env("WINDIR", r"C:\Windows")
+            .env("SYSTEMDRIVE", "C:")
+            .env("ComSpec", r"C:\Windows\System32\cmd.exe")
+            .env("ProgramData", r"C:\ProgramData")
+            .env("ALLUSERSPROFILE", r"C:\ProgramData")
+            .env("ProgramFiles", r"C:\Program Files")
+            .env("ProgramFiles(x86)", r"C:\Program Files (x86)")
+            .env("ProgramW6432", r"C:\Program Files")
+            .env("ChocolateyInstall", r"C:\ProgramData\chocolatey")
+            .env("USERPROFILE", r"C:\Windows\System32\config\systemprofile")
+            .env("APPDATA", r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
+            .env("LOCALAPPDATA", r"C:\Windows\System32\config\systemprofile\AppData\Local")
+            .env("PSModulePath", r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules")
+            .env("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+            .env("PROCESSOR_ARCHITECTURE", "AMD64")
+            .env("TEMP", r"C:\Windows\Temp")
+            .env("TMP", r"C:\Windows\Temp")
+            .env(
+                "PATH",
+                r"C:\Windows\System32;C:\Windows;C:\ProgramData\chocolatey\bin;C:\Program Files\Git\cmd",
+            );
+    }
+    fn powershell() -> Command {
+        let mut command =
+            Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+        system_environment(&mut command);
+        command.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+        ]);
+        command
+    }
+    fn baseline_version() -> Option<String> {
+        // This package is installed only by explicit baseline actions. App/engine
+        // versions never stand in for the currently applied Chocolatey baseline.
+        let path = Path::new(
+            r"C:\ProgramData\chocolatey\lib\skyview-student-dev\skyview-student-dev.nuspec",
+        );
+        trusted(path).ok()?;
+        let bytes = crate::read_bounded(path, 65536).ok()?;
+        let text = String::from_utf8(bytes).ok()?;
+        let value = text.split_once("<version>")?.1.split_once("</version>")?.0;
+        let version = semver::Version::parse(value).ok()?;
+        if version.to_string() != value {
+            return None;
+        }
+        Some(value.into())
+    }
+    fn tool_maintenance() -> Result<Option<i32>> {
+        let path = Path::new(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1");
+        if !path.exists() {
+            return Ok(None);
+        }
+        trusted(path)?;
+        let run = std::env::current_exe()
+            .map_err(|_| "Missing maintenance snapshot")?
+            .parent()
+            .ok_or("Missing maintenance directory")?
+            .to_path_buf();
+        trusted(&run)?;
+        // Embedded supervisor acquires the operation gate before reading the
+        // applied baseline. Never load a mutable deployed coordination module
+        // before the lease, or mix scripts across a concurrent mentor Repair.
+        for (name, bytes) in [
+            (
+                "MaintenanceCoordination.ps1",
+                include_str!("../../windows/chocolatey/tools/Coordination.ps1"),
+            ),
+            (
+                "Invoke-AppliedMaintenance.ps1",
+                include_str!("../../windows/self-update/Invoke-AppliedMaintenance.ps1"),
+            ),
+        ] {
+            let mut file = host::exclusive(&run.join(name))
+                .map_err(|_| "Maintenance supervisor creation failed")?;
+            file.write_all(bytes.as_bytes())
+                .map_err(|_| "Maintenance supervisor write failed")?;
+            file.sync_all()
+                .map_err(|_| "Maintenance supervisor flush failed")?;
+        }
+        let code = powershell()
+            .arg(run.join("Invoke-AppliedMaintenance.ps1"))
+            .status()
+            .map_err(|_| "Tool maintenance could not start")?
+            .code();
+        Ok(code)
+    }
+    fn resources(expected: &str) -> Result<()> {
+        if host::windows::installed_identity()
+            .map_err(|_| "Installed identity check failed")?
+            .version
+            != expected
+        {
+            return Err("Installed version does not match authenticated release".into());
+        }
+        let app =
+            host::windows::install_location().map_err(|_| "Invalid machine installation path")?;
+        for name in [
+            "backend/windows/chocolatey/tools/Update-SkyviewTools.ps1",
+            "backend/windows/chocolatey/tools/Coordination.ps1",
+            "backend/windows/self-update/Bootstrap-SkyviewSelfUpdate.ps1",
+            "backend/windows/self-update/sde-update-trust.exe",
+        ] {
+            let file = app.join(name);
+            trusted(&file)?;
+            if !file.is_file() {
+                return Err("Installed maintenance resource missing".into());
+            }
+        }
+        trusted(&Path::new(ROOT).join("active.json"))?;
+        let receipt: serde_json::Value = serde_json::from_slice(&crate::read_bounded(
+            &Path::new(ROOT).join("active.json"),
+            4096,
+        )?)
+        .map_err(|_| "Invalid engine receipt")?;
+        if receipt["schemaVersion"] != 1 || receipt["version"] != expected {
+            return Err("Engine activation does not match installed application".into());
+        }
+        let generation = receipt["generation"]
+            .as_str()
+            .ok_or("Missing engine generation")?;
+        if uuid::Uuid::parse_str(generation)
+            .map(|id| id.to_string() != generation)
+            .unwrap_or(true)
+        {
+            return Err("Invalid engine generation".into());
+        }
+        let engine = Path::new(ROOT).join("engines").join(generation);
+        for name in ["sde-update-trust.exe", "version.json"] {
+            trusted(&engine.join(name))?;
+        }
+        let generation_receipt: serde_json::Value =
+            serde_json::from_slice(&crate::read_bounded(&engine.join("version.json"), 4096)?)
+                .map_err(|_| "Invalid engine version receipt")?;
+        if generation_receipt["schemaVersion"] != 1 || generation_receipt["version"] != expected {
+            return Err("Engine snapshot version mismatch".into());
+        }
+        // Require the activated verifier to equal the newly installed bundle.
+        if crate::hash_file(&engine.join("sde-update-trust.exe"))?
+            != crate::hash_file(&app.join("backend/windows/self-update/sde-update-trust.exe"))?
+        {
+            return Err("Activated engine differs from authenticated application".into());
+        }
+        Ok(())
+    }
+    fn stage_candidate(github: &mut GitHub, root: &Path, candidate: &Candidate) -> Result<String> {
+        staging::stage_with(github, root, candidate, |b, s, t| {
+            crate::authenticate(b, s, t).map_err(|_| discovery::Failure::Untrusted)
+        })
+        .map(|s| s.id)
+        .map_err(|e| format!("Authenticated staging failed: {e:?}"))
+    }
+    fn seed_recovery(github: &mut GitHub, root: &Path, installed: &str) -> Result<bool> {
+        let receipt_path = Path::new(ROOT).join("recovery.json");
+        if receipt_path.exists() {
+            trusted(&receipt_path)?;
+            let receipt: serde_json::Value =
+                serde_json::from_slice(&crate::read_bounded(&receipt_path, 4096)?)
+                    .map_err(|_| "Invalid recovery receipt")?;
+            if receipt["schemaVersion"] != 1 {
+                return Err("Unsupported recovery receipt".into());
+            }
+            if receipt["version"] == installed {
+                let id = receipt["transaction"]
+                    .as_str()
+                    .ok_or("Invalid recovery transaction")?;
+                if uuid::Uuid::parse_str(id)
+                    .map(|u| u.to_string() != id)
+                    .unwrap_or(true)
+                {
+                    return Err("Invalid recovery transaction".into());
+                }
+                let candidate = Candidate {
+                    tag: format!("v{installed}"),
+                    version: installed.into(),
+                    platform: "windows-x86_64".into(),
+                    installer: INSTALLER.into(),
+                    installer_size: 0,
+                };
+                authenticate_staged(&root.join(id), &candidate, crate::authenticate)?;
+                return Ok(true);
+            }
+        }
+        // Exact installed release, never an unverified archived installer or an
+        // installer for another baseline. Pre-updater releases may lack evidence.
+        let releases = discovery::list_with(github).map_err(|_| "Recovery release unavailable")?;
+        let matching: Vec<_> = releases
+            .into_iter()
+            .filter(|r| r.tag_name == format!("v{installed}") && !r.draft && !r.prerelease)
+            .collect();
+        if matching.len() != 1 {
+            return Ok(false);
+        }
+        let candidate = discovery::select(&matching, "0.0.0", "windows-x86_64")
+            .map_err(|_| "Installed release lacks signed recovery assets")?
+            .ok_or("Recovery release missing")?;
+        let id = stage_candidate(github, root, &candidate)?;
+        atomic_json(
+            &receipt_path,
+            &serde_json::json!({"schemaVersion":1,"version":installed,"transaction":id}),
+        )?;
+        Ok(true)
+    }
+    fn install_selected(
+        directory: &Path,
+        candidate: &Candidate,
+        report: &mut Report,
+        authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
+        identity: impl Fn() -> Result<String>,
+    ) -> Result<()> {
+        let lease = sde_coordination::installation().map_err(|e| {
+            report.outcome = coordination_outcome(e).into();
+            format!("Installation deferred or requires repair: {e}")
+        })?;
+        if policy()? {
+            report.outcome = "paused".into();
+            return Ok(());
+        }
+        let before = identity()?;
+        if semver::Version::parse(&candidate.version).map_err(|_| "Invalid candidate")?
+            <= semver::Version::parse(&before).map_err(|_| "Invalid installed version")?
+        {
+            report.outcome = "current".into();
+            return Ok(());
+        }
+        let manifest = authenticate_staged(directory, candidate, authenticate)?;
+        let asset = &manifest.metadata().platforms["windows-x86_64"];
+        report.outcome = "failed".into();
+        let journal = lease.begin_transaction().map_err(|e| e.to_string())?;
+        atomic_json(
+            &Path::new(ROOT).join("installation.json"),
+            &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":candidate.version,"sha256":asset.sha256,"transaction":directory.file_name().and_then(|s|s.to_str()),"startedAt":report.checked_at}),
+        )?;
+        if policy()? {
+            atomic_json(
+                &Path::new(ROOT).join("installation.json"),
+                &serde_json::json!({"schemaVersion":1,"stage":"paused","candidateVersion":candidate.version}),
+            )?;
+            journal.complete().map_err(|e| e.to_string())?;
+            report.outcome = "paused".into();
+            return Ok(());
+        }
+        // env is fixed; no relaunch, destination override, UI or reboot switches.
+        let mut command = Command::new(directory.join(INSTALLER));
+        system_environment(&mut command);
+        command.current_dir(directory).args(["/S", "/UPDATE"]);
+        // Wait indefinitely; never kill an installer to enforce a timeout. A
+        // supervisor crash keeps the private coordination intent and blocks retry.
+        let status = command
+            .status()
+            .map_err(|_| "Native installer completion unknown; mentor review required")?;
+        let code = status.code().ok_or("Native installer completion unknown")?;
+        report.native_exit = Some(code);
+        report.reboot_required = code == 3010;
+        atomic_json(
+            &Path::new(ROOT).join("installation.json"),
+            &serde_json::json!({"schemaVersion":1,"stage":"postcheck","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code,"transaction":directory.file_name().and_then(|s|s.to_str())}),
+        )?;
+        if native_outcome(code) != NativeOutcome::Success {
+            return Err(format!(
+                "Native installer returned {code}; mentor review required"
+            ));
+        }
+        if identity()? != candidate.version {
+            return Err("Post-install version mismatch; mentor review required".into());
+        }
+        resources(&candidate.version)?;
+        let recovery = Path::new(ROOT).join("recovery.json");
+        if recovery.exists() {
+            let previous: serde_json::Value =
+                serde_json::from_slice(&crate::read_bounded(&recovery, 4096)?)
+                    .map_err(|_| "Recovery state invalid")?;
+            atomic_json(&Path::new(ROOT).join("previous-recovery.json"), &previous)?;
+        }
+        atomic_json(
+            &recovery,
+            &serde_json::json!({"schemaVersion":1,"version":candidate.version,"transaction":directory.file_name().and_then(|s|s.to_str())}),
+        )?;
+        atomic_json(
+            &Path::new(ROOT).join("installation.json"),
+            &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code}),
+        )?;
+        journal.complete().map_err(|e| e.to_string())?;
+        report.application_version = candidate.version.clone();
+        report.outcome = "updated".into();
+        if !report.recovery_available {
+            report.detail =
+                "Verified previous-version installer unavailable; reduced recovery capability"
+                    .into();
+        }
+        Ok(())
+    }
+    fn prune_staging(root: &Path) -> Result<()> {
+        let mut keep = Vec::new();
+        for name in ["recovery.json", "previous-recovery.json"] {
+            let receipt = Path::new(ROOT).join(name);
+            if receipt.exists() {
+                trusted(&receipt)?;
+                let record: serde_json::Value =
+                    serde_json::from_slice(&crate::read_bounded(&receipt, 4096)?)
+                        .map_err(|_| "Invalid recovery receipt")?;
+                if record["schemaVersion"] != 1 {
+                    return Err("Unsupported recovery receipt".into());
+                }
+                let id = record["transaction"]
+                    .as_str()
+                    .ok_or("Invalid recovery transaction")?;
+                if uuid::Uuid::parse_str(id)
+                    .map(|u| u.to_string() != id)
+                    .unwrap_or(true)
+                {
+                    return Err("Invalid recovery transaction".into());
+                }
+                keep.push(id.to_string());
+            }
+        }
+        for entry in std::fs::read_dir(root).map_err(|_| "Staging enumeration failed")? {
+            let entry = entry.map_err(|_| "Staging enumeration failed")?;
+            let id = entry
+                .file_name()
+                .to_str()
+                .ok_or("Invalid staging directory")?
+                .to_string();
+            if uuid::Uuid::parse_str(&id)
+                .map(|u| u.to_string() != id)
+                .unwrap_or(true)
+            {
+                return Err("Unknown staging state; mentor review required".into());
+            }
+            if keep.contains(&id) {
+                continue;
+            }
+            let path = entry.path();
+            trusted(&path)?;
+            let files = std::fs::read_dir(&path).map_err(|_| "Staging cleanup failed")?;
+            for file in files {
+                let file = file.map_err(|_| "Staging cleanup failed")?;
+                let name = file.file_name();
+                if ![
+                    "sde-update.json",
+                    "sde-update.json.minisig",
+                    INSTALLER,
+                    "verified.json",
+                ]
+                .iter()
+                .any(|n| name == *n)
+                {
+                    return Err("Unknown staging file; mentor review required".into());
+                }
+                trusted(&file.path())?;
+                std::fs::remove_file(file.path()).map_err(|_| "Staging cleanup failed")?;
+            }
+            std::fs::remove_dir(path).map_err(|_| "Staging cleanup failed")?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn maintain() -> Result<i32> {
+        system()?;
+        trusted(Path::new(ROOT))?;
+        let engine: serde_json::Value = serde_json::from_slice(&crate::read_bounded(
+            &std::env::current_exe()
+                .map_err(|_| "Worker path missing")?
+                .with_file_name("version.json"),
+            4096,
+        )?)
+        .map_err(|_| "Worker receipt invalid")?;
+        let mut report = Report {
+            schema_version: 1,
+            checked_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| "Clock unavailable")?
+                .as_secs(),
+            application_version: String::new(),
+            maintenance_engine_version: engine["version"]
+                .as_str()
+                .ok_or("Worker version missing")?
+                .into(),
+            applied_baseline: "preserved deployed tool-maintenance generation",
+            applied_baseline_version: baseline_version(),
+            tool_exit: None,
+            outcome: "unavailable".into(),
+            detail: String::new(),
+            candidate_version: None,
+            native_exit: None,
+            reboot_required: false,
+            recovery_available: false,
+            log_reference: std::env::current_exe().ok().and_then(|p| {
+                p.parent()
+                    .and_then(|d| d.file_name())
+                    .and_then(|n| n.to_str())
+                    .and_then(|n| uuid::Uuid::parse_str(n).ok())
+                    .map(|id| format!("logs/{id}.log"))
+            }),
+        };
+        let result = (|| {
+            report.tool_exit = tool_maintenance()?;
+            let installed =
+                host::installed().map_err(|e| format!("Installed identity unavailable: {e:?}"))?;
+            report.application_version = installed.version.clone();
+            if policy()? {
+                report.outcome = "paused".into();
+                return Ok(());
+            }
+            let mut github = GitHub::new().map_err(|_| "GitHub unavailable")?;
+            let staging_root = host::store().map_err(|_| "Protected staging unavailable")?;
+            let operation = sde_coordination::operation().map_err(|e| {
+                report.outcome = coordination_outcome(e).into();
+                e.to_string()
+            })?;
+            prune_staging(&staging_root)?;
+            report.recovery_available =
+                seed_recovery(&mut github, &staging_root, &installed.version).unwrap_or(false);
+            let candidate =
+                discovery::discover_with(&mut github, &installed.version, "windows-x86_64")
+                    .map_err(|e| format!("Release check unavailable: {e:?}"))?;
+            let Some(candidate) = candidate else {
+                report.outcome = "current".into();
+                return Ok(());
+            };
+            report.candidate_version = Some(candidate.version.clone());
+            let id = stage_candidate(&mut github, &staging_root, &candidate)?;
+            drop(operation);
+            // Recheck official draft/prerelease status after downloading. A stable-
+            // intent signature alone cannot authorize a candidate's promotion.
+            let eligible = discovery::discover_with(
+                &mut github,
+                &host::installed()
+                    .map_err(|_| "Installed identity changed")?
+                    .version,
+                "windows-x86_64",
+            )
+            .map_err(|_| "Release eligibility recheck unavailable")?;
+            if eligible.as_ref().map(|c| (&c.tag, &c.version))
+                != Some((&candidate.tag, &candidate.version))
+            {
+                return Err("Release eligibility changed; installation deferred".into());
+            }
+            install_selected(
+                &staging_root.join(id),
+                &candidate,
+                &mut report,
+                crate::authenticate,
+                || {
+                    host::installed()
+                        .map(|i| i.version)
+                        .map_err(|_| "Installed identity unavailable".into())
+                },
+            )
+        })();
+        if let Err(ref e) = result {
+            report.detail = e.clone();
+        }
+        atomic_json(&Path::new(ROOT).join("status.json"), &report)?;
+        // Set only the sanitized status readable by students, never private state.
+        let acl_script = Path::new(ROOT).join("Publish-SkyviewStatus.ps1");
+        trusted(&acl_script)?;
+        if !powershell()
+            .arg(acl_script)
+            .status()
+            .map_err(|_| "Status publication failed")?
+            .success()
+        {
+            return Err("Status permissions failed".into());
+        }
+        println!(
+            "{}",
+            serde_json::to_string(&report).map_err(|_| "Status encoding failed")?
+        );
+        Ok(
+            if report.outcome == "deferred" || report.tool_exit == Some(75) {
+                75
+            } else if result.is_err() || report.tool_exit.is_some_and(|c| c != 0) {
+                1
+            } else {
+                0
+            },
+        )
+    }
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use minisign::KeyPair;
+        use std::{collections::VecDeque, io::Cursor};
+        struct Downloads(VecDeque<Vec<u8>>);
+        impl discovery::Transport for Downloads {
+            fn get(
+                &mut self,
+                _: &str,
+                max: u64,
+                out: &mut dyn discovery::Sink,
+            ) -> discovery::Result<()> {
+                let bytes = self.0.pop_front().unwrap();
+                if bytes.len() as u64 > max {
+                    return Err(discovery::Failure::Malformed);
+                }
+                out.write_all(&bytes)
+                    .map_err(|_| discovery::Failure::Staging)
+            }
+        }
+        #[test]
+        fn signed_upgrade_under_system() {
+            let Some(fixture) = std::env::var_os("SDE_NATIVE_UPGRADE_FIXTURE") else {
+                return;
+            };
+            system().unwrap();
+            let fixture = Path::new(&fixture);
+            let installed = host::windows::installed_identity().unwrap();
+            assert_eq!(installed.version, "1.2.1");
+            let baseline =
+                std::fs::read(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1").unwrap();
+            let policy_before = std::fs::read(Path::new(ROOT).join("policy.json")).unwrap();
+            atomic_json(
+                &Path::new(ROOT).join("policy.json"),
+                &serde_json::json!({"schemaVersion":1,"paused":false}),
+            )
+            .unwrap();
+            let marker = Path::new(r"C:\Development\sde-self-update-preservation.txt");
+            std::fs::write(marker, b"student project sentinel").unwrap();
+            let source = fixture.join("Skyview-Dev-Setup-Windows-x64.exe");
+            let package = std::fs::read(&source).unwrap();
+            std::fs::write(
+                fixture.join("Skyview-Dev-Setup-LinuxMint-amd64.deb"),
+                b"test-only Linux placeholder",
+            )
+            .unwrap();
+            let metadata = crate::create_manifest(fixture, "v1.2.2").unwrap();
+            let keys = KeyPair::generate_unencrypted_keypair().unwrap();
+            let signature = minisign::sign(
+                Some(&keys.pk),
+                &keys.sk,
+                Cursor::new(&metadata),
+                Some("disposable test key"),
+                None,
+            )
+            .unwrap()
+            .to_string();
+            let candidate = Candidate {
+                tag: "v1.2.2".into(),
+                version: "1.2.2".into(),
+                platform: "windows-x86_64".into(),
+                installer: INSTALLER.into(),
+                installer_size: package.len() as u64,
+            };
+            let staging = host::store().unwrap();
+            let staged = staging::stage_with(
+                &mut Downloads(VecDeque::from([
+                    metadata.clone(),
+                    signature.clone().into_bytes(),
+                    package,
+                ])),
+                &staging,
+                &candidate,
+                |b, s, t| {
+                    crate::authenticate_with_key(b, s, t, &keys.pk)
+                        .map_err(|_| discovery::Failure::Untrusted)
+                },
+            )
+            .unwrap();
+            let directory = staging.join(staged.id);
+            // Marker forgery is insufficient; production's pinned key rejects
+            // this test key. Then verify tampered metadata and payload rejection.
+            assert!(authenticate_staged(&directory, &candidate, crate::authenticate).is_err());
+            std::fs::write(directory.join("sde-update.json"), b"tampered").unwrap();
+            assert!(authenticate_staged(&directory, &candidate, |b, s, t| {
+                crate::authenticate_with_key(b, s, t, &keys.pk)
+            })
+            .is_err());
+            std::fs::write(directory.join("sde-update.json"), &metadata).unwrap();
+            let original_payload = std::fs::read(directory.join(INSTALLER)).unwrap();
+            std::fs::write(directory.join(INSTALLER), b"modified executable").unwrap();
+            assert!(authenticate_staged(&directory, &candidate, |b, s, t| {
+                crate::authenticate_with_key(b, s, t, &keys.pk)
+            })
+            .is_err());
+            std::fs::write(directory.join(INSTALLER), original_payload).unwrap();
+            let mut report = Report {
+                schema_version: 1,
+                checked_at: 0,
+                application_version: installed.version,
+                maintenance_engine_version: "1.2.1".into(),
+                applied_baseline: "preserved",
+                applied_baseline_version: Some("1.2.1".into()),
+                tool_exit: Some(0),
+                outcome: "unavailable".into(),
+                detail: String::new(),
+                candidate_version: Some(candidate.version.clone()),
+                native_exit: None,
+                reboot_required: false,
+                recovery_available: false,
+                log_reference: None,
+            };
+            atomic_json(
+                &Path::new(ROOT).join("policy.json"),
+                &serde_json::json!({"schemaVersion":1,"paused":true}),
+            )
+            .unwrap();
+            install_selected(
+                &directory,
+                &candidate,
+                &mut report,
+                |b, s, t| crate::authenticate_with_key(b, s, t, &keys.pk),
+                || {
+                    host::windows::installed_identity()
+                        .map(|i| i.version)
+                        .map_err(|_| "Invalid installation".into())
+                },
+            )
+            .unwrap();
+            assert_eq!(report.outcome, "paused");
+            assert_eq!(report.native_exit, None);
+            assert_eq!(
+                host::windows::installed_identity().unwrap().version,
+                "1.2.1"
+            );
+            assert!(!sde_coordination::root().join("transaction.json").exists());
+            atomic_json(
+                &Path::new(ROOT).join("policy.json"),
+                &serde_json::json!({"schemaVersion":1,"paused":false}),
+            )
+            .unwrap();
+            // A real independent GUI-style session must defer replacement and
+            // failed acquisition must release the operation gate.
+            let session = sde_coordination::session().unwrap();
+            assert!(install_selected(
+                &directory,
+                &candidate,
+                &mut report,
+                |b, s, t| crate::authenticate_with_key(b, s, t, &keys.pk),
+                || host::windows::installed_identity()
+                    .map(|i| i.version)
+                    .map_err(|_| "Invalid installation".into())
+            )
+            .is_err());
+            assert_eq!(report.outcome, "deferred");
+            drop(session);
+            install_selected(
+                &directory,
+                &candidate,
+                &mut report,
+                |b, s, t| crate::authenticate_with_key(b, s, t, &keys.pk),
+                || {
+                    host::windows::installed_identity()
+                        .map(|i| i.version)
+                        .map_err(|_| "Invalid installation".into())
+                },
+            )
+            .unwrap();
+            assert_eq!(report.outcome, "updated");
+            assert_eq!(report.native_exit, Some(0));
+            assert_eq!(std::fs::read(marker).unwrap(), b"student project sentinel");
+            assert_eq!(
+                std::fs::read(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1").unwrap(),
+                baseline
+            );
+            resources("1.2.2").unwrap();
+            assert!(!sde_coordination::root().join("transaction.json").exists());
+            let process=Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe").args(["-NoProfile","-NonInteractive","-Command","if (Get-Process skyview-dev-setup -ErrorAction SilentlyContinue) { exit 1 }; exit 0"]).output().unwrap();
+            assert!(
+                process.status.success(),
+                "Installer launched GUI under SYSTEM"
+            );
+            assert!(
+                process.stdout.is_empty(),
+                "Installer launched SDE under SYSTEM"
+            );
+            std::fs::write(Path::new(ROOT).join("policy.json"), &policy_before).unwrap();
+            // Test receipts must never survive as production pinned-key evidence.
+            std::fs::remove_file(Path::new(ROOT).join("recovery.json")).unwrap();
+            // A signed synthetic executable that exits unsuccessfully must
+            // leave durable intent and block a second attempt. Never kill a
+            // package process: this isolated fixture always exits with code 23.
+            let failed = staging.join(uuid::Uuid::new_v4().to_string());
+            host::create_private(&failed).unwrap();
+            std::fs::copy(
+                fixture.join("sde-synthetic-failure.exe"),
+                failed.join(INSTALLER),
+            )
+            .unwrap();
+            std::fs::write(
+                failed.join("Skyview-Dev-Setup-LinuxMint-amd64.deb"),
+                b"fixture",
+            )
+            .unwrap();
+            let metadata = crate::create_manifest(&failed, "v1.2.3").unwrap();
+            std::fs::remove_file(failed.join("Skyview-Dev-Setup-LinuxMint-amd64.deb")).unwrap();
+            let signature = minisign::sign(
+                Some(&keys.pk),
+                &keys.sk,
+                Cursor::new(&metadata),
+                Some("synthetic failing executable"),
+                None,
+            )
+            .unwrap()
+            .to_string();
+            std::fs::write(failed.join("sde-update.json"), metadata).unwrap();
+            std::fs::write(failed.join("sde-update.json.minisig"), signature).unwrap();
+            std::fs::write(failed.join("verified.json"), b"{}").unwrap();
+            let failing_candidate = Candidate {
+                tag: "v1.2.3".into(),
+                version: "1.2.3".into(),
+                platform: "windows-x86_64".into(),
+                installer: INSTALLER.into(),
+                installer_size: 0,
+            };
+            atomic_json(
+                &Path::new(ROOT).join("policy.json"),
+                &serde_json::json!({"schemaVersion":1,"paused":false}),
+            )
+            .unwrap();
+            assert!(install_selected(
+                &failed,
+                &failing_candidate,
+                &mut report,
+                |b, s, t| crate::authenticate_with_key(b, s, t, &keys.pk),
+                || host::windows::installed_identity()
+                    .map(|i| i.version)
+                    .map_err(|_| "Invalid installation".into())
+            )
+            .is_err());
+            assert_eq!(report.native_exit, Some(23));
+            assert_eq!(report.outcome, "failed");
+            assert!(matches!(
+                sde_coordination::status(),
+                sde_coordination::Status::Interrupted
+            ));
+            assert!(sde_coordination::installation().is_err());
+            // Explicit cleanup of a completed synthetic fixture, under its
+            // operation gate. No native package state or package lock is changed.
+            use std::os::windows::fs::OpenOptionsExt;
+            let guard = std::fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(sde_coordination::root().join("operations.gate"))
+                .unwrap();
+            std::fs::remove_file(sde_coordination::root().join("transaction.json")).unwrap();
+            drop(guard);
+            std::fs::write(Path::new(ROOT).join("policy.json"), &policy_before).unwrap();
+            println!("SDE_SIGNED_SYSTEM_UPGRADE_OK: identity, trust rejection, session deferral, native upgrade, engine activation, baseline/student preservation, no GUI/reboot");
+        }
+    }
+}
+#[cfg(windows)]
+pub fn maintain_windows() -> crate::Result<i32> {
+    native::maintain()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn nsis_exit_contract_never_assumes_msi_success() {
+        assert_eq!(native_outcome(0), NativeOutcome::Success);
+        assert_eq!(native_outcome(3010), NativeOutcome::RebootRequired);
+        for code in [1, 2, 75, 1603, 1641, -1] {
+            assert_eq!(native_outcome(code), NativeOutcome::Failed);
+        }
+    }
+}

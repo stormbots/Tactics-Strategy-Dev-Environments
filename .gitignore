@@ -67,3 +67,6 @@ installer/tsconfig.tsbuildinfo
 
 # Cross-process coordination build output
 /coordination/target/
+
+# Bundled native maintenance worker (built before packaging)
+/windows/self-update/sde-update-trust.exe

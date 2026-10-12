@@ -3,6 +3,9 @@
 pub mod discovery;
 pub mod host;
 pub mod staging;
+#[cfg(any(windows, test))]
+#[cfg_attr(not(windows), allow(dead_code))]
+mod windows_install;
 use minisign::{PublicKey, SignatureBox};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -12,6 +15,8 @@ use std::{
     io::{Cursor, Read},
     path::Path,
 };
+#[cfg(windows)]
+pub use windows_install::maintain_windows;
 
 pub const REPOSITORY: &str = "stormbots/Tactics-Strategy-Dev-Environments";
 pub const MAX_METADATA: u64 = 65536;

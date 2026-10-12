@@ -122,7 +122,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: installer/src-tauri -> target
+          workspaces: |
+            installer/src-tauri -> target
+            updater -> target
+          cache-on-failure: true
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -155,9 +158,13 @@ jobs:
           ./tests/Test-MaintenanceCI.ps1
       - run: npm ci
         working-directory: installer
-      - name: Rust tests
-        run: cargo test --locked -- --nocapture
-        working-directory: installer/src-tauri
+      - name: Bundle external Windows maintenance worker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cargo build --release --locked --manifest-path updater/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Maintenance worker build failed.' }
+          Copy-Item updater/target/release/sde-update-trust.exe windows/self-update/sde-update-trust.exe
       - name: Build native installer
         run: npm run tauri build -- --bundles ${{ matrix.bundle }}
         working-directory: installer
@@ -197,16 +204,71 @@ jobs:
         shell: pwsh
         run: |
           $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
-          $before = (Get-FileHash $baseline -Algorithm SHA256).Hash
+          if (Test-Path $baseline) { throw 'Expected an app-only bootstrap fixture.' }
+          if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Unexpected existing baseline maintenance task.' }
           $installer = (Resolve-Path 'dist/Skyview-Dev-Setup-Windows-x64.exe').Path
           $process = Start-Process $installer -ArgumentList '/S','/UPDATE' -Wait -PassThru
-          if ($process.ExitCode -notin @(0,3010)) { throw "Application bootstrap failed: $($process.ExitCode)" }
-          if ((Get-FileHash $baseline -Algorithm SHA256).Hash -ne $before) { throw 'Application installation changed the applied maintenance baseline.' }
+          if ($process.ExitCode -notin @(0,3010)) {
+            # Installer has finished. Invoke only the installed narrow bootstrap
+            # on this disposable runner to surface NSIS's hidden hook diagnostic.
+            Get-Content 'C:\Program Files\Skyview Dev Setup\sde-bootstrap.log' -ErrorAction SilentlyContinue
+            Get-Content 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\bootstrap-error.log' -ErrorAction SilentlyContinue
+            $init = Start-Process 'C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe' -ArgumentList '--coordination-init' -Wait -PassThru
+            Write-Output "Installed coordination init diagnostic exit=$($init.ExitCode)"
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
+            Write-Output "Installed 64-bit bootstrap diagnostic exit=$LASTEXITCODE"
+            throw "Application bootstrap failed: $($process.ExitCode)"
+          }
+          if (Test-Path $baseline) { throw 'App-only installation applied a maintenance baseline.' }
+          if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'App-only installation scheduled tool maintenance.' }
           $status = & ./coordination/target/release/sde-coordination.exe status | ConvertFrom-Json
           if ($status -ne 'idle') { throw "Application bootstrap left unsafe coordination: $status" }
           $key = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Skyview Dev Setup'
           $expected = (Get-Content installer/src-tauri/tauri.conf.json | ConvertFrom-Json).version
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
+          $policy = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -Raw | ConvertFrom-Json
+          if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
+          # Exercise replacement of existing receipts before long provisioning.
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\Bootstrap-SkyviewSelfUpdate.ps1'
+          if ($LASTEXITCODE -ne 0) { throw 'Repeated bootstrap receipt activation failed.' }
+          if (Test-Path $baseline) { throw 'Repeated bootstrap applied a maintenance baseline.' }
+          if (Get-ScheduledTask -TaskName 'Skyview Robotics - Dev Tool Updates' -ErrorAction SilentlyContinue) { throw 'Repeated bootstrap registered tool maintenance.' }
+          $env:SDE_APPONLY_IDENTITY_FIXTURE = 'true'
+          try {
+            # Public fixture permissions only; no environment/credentials.
+            foreach ($path in @('C:\Program Files\Skyview Dev Setup','C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe')) {
+              Write-Output "Installed permission diagnostic: $path"
+              Write-Output (Get-Acl -LiteralPath $path).Sddl
+            }
+            cargo test --locked --manifest-path updater/Cargo.toml --lib host::tests::installed_native_fixture_identity -- --exact --nocapture
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native identity failed before provisioning.' }
+          } finally { Remove-Item Env:SDE_APPONLY_IDENTITY_FIXTURE }
+      - name: Rust tests
+        run: cargo test --locked -- --nocapture
+        working-directory: installer/src-tauri
+      - name: Build unpublished newer Windows fixture and verify signed SYSTEM upgrade
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $override = Join-Path $env:RUNNER_TEMP 'sde-native-fixture.json'
+          '{"version":"1.2.2"}' | Set-Content $override -Encoding utf8
+          npm --prefix installer run tauri build -- --config $override --bundles nsis
+          if ($LASTEXITCODE -ne 0) { throw 'Newer native fixture build failed.' }
+          $fixture = Join-Path $env:RUNNER_TEMP 'sde-newer-fixture'
+          New-Item -ItemType Directory $fixture | Out-Null
+          $package = @(Get-ChildItem installer/src-tauri/target/release/bundle/nsis/*1.2.2*.exe)
+          if ($package.Count -ne 1) { throw 'Expected one newer fixture installer.' }
+          Copy-Item $package[0].FullName (Join-Path $fixture 'Skyview-Dev-Setup-Windows-x64.exe')
+          $failureSource = Join-Path $env:RUNNER_TEMP 'sde-synthetic-failure.rs'
+          'fn main() { std::process::exit(23); }' | Set-Content $failureSource -Encoding utf8
+          rustc $failureSource -o (Join-Path $fixture 'sde-synthetic-failure.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic failure fixture build failed.' }
+          cargo test --locked --manifest-path updater/Cargo.toml --no-run --message-format json | Set-Content (Join-Path $env:RUNNER_TEMP 'sde-test-build.jsonl')
+          if ($LASTEXITCODE -ne 0) { throw 'Native test binary build failed.' }
+          $binaries = @(Get-Content (Join-Path $env:RUNNER_TEMP 'sde-test-build.jsonl') | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { $_.reason -eq 'compiler-artifact' -and $_.profile.test -and $_.target.kind -contains 'lib' -and $_.executable })
+          if ($binaries.Count -ne 1) { throw 'Expected one native updater test binary.' }
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/Test-WindowsSelfUpdateCI.ps1 -FixtureRoot $fixture -TestExecutable $binaries[0].executable
+          if ($LASTEXITCODE -ne 0) { throw 'Required signed SYSTEM upgrade failed.' }
       - name: Verify Linux application bootstrap without applying a baseline
         if: runner.os == 'Linux'
         shell: bash
