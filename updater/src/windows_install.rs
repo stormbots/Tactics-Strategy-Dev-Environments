@@ -155,10 +155,7 @@ mod native {
                 schema_version: 1,
                 paused,
             },
-        )?;
-        host::windows::publish_readonly(&path).map_err(|_| {
-            "Policy saved but read-only publication failed; mentor review required".to_string()
-        })
+        )
     }
     fn policy() -> Result<bool> {
         let root = Path::new(ROOT);
@@ -184,6 +181,12 @@ mod native {
             .map_err(|_| "State write failed")?;
         file.sync_all().map_err(|_| "State flush failed")?;
         drop(file);
+        // Publish read access before the atomic policy switch. A failed ACL
+        // change must not leave a resumed policy after a failed command.
+        if path == Path::new(ROOT).join("policy.json") {
+            host::windows::publish_readonly(&temp)
+                .map_err(|_| "Policy permissions could not be published".to_string())?;
+        }
         use std::os::windows::ffi::OsStrExt;
         let wide = |p: &Path| {
             p.as_os_str()
