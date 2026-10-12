@@ -7,6 +7,8 @@ import stat
 import subprocess
 import sys
 
+# Private invocation snapshots contain only known files; no import cache state.
+sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('sde_coordination', HERE / 'coordination.py')
 coord = importlib.util.module_from_spec(spec)
@@ -27,7 +29,7 @@ def main():
         raise coord.CoordinationError('Root maintenance required')
     if sys.argv[1:] == []:
         # Child inherits real held descriptors, never a boolean bypass flag.
-        return coord.run('system', ['/usr/bin/python3', '-I', str(HERE / 'applied.py'), '--leased'])
+        return coord.run('system', ['/usr/bin/python3', '-I', '-B', str(HERE / 'applied.py'), '--leased'])
     if sys.argv[1:] != ['--leased']:
         raise coord.CoordinationError('Invalid maintenance invocation')
     coord.check()

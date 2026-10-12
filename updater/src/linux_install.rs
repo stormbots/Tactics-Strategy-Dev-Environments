@@ -468,6 +468,7 @@ fn tool_maintenance() -> Result<Option<i32>> {
     }
     command("/usr/bin/python3")
         .arg("-I")
+        .arg("-B")
         .arg(run.join("applied.py"))
         .status()
         .map(|s| Some(s.code().unwrap_or(1)))
