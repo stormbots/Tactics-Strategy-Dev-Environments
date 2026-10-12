@@ -200,3 +200,32 @@ jobs:
               "uat/$version/Skyview-Dev-Setup-Windows-x64.exe" "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" \
               "uat/$version/SHA256SUMS.txt" "uat/$version/sde-update.json" "uat/$version/sde-update.json.minisig"
           done
+      - name: Download and authenticate published prerelease assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for version in 1.2.2 1.2.3; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" --jq '.object.sha')" = "$GITHUB_SHA"
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$version" > "$RUNNER_TEMP/release.json"
+            python3 - "$RUNNER_TEMP/release.json" "$version" <<'PY'
+          import json, sys
+          release = json.load(open(sys.argv[1]))
+          assert release['tag_name'] == 'v' + sys.argv[2]
+          assert release['prerelease'] is True and release['draft'] is False
+          expected = {'Skyview-Dev-Setup-Windows-x64.exe', 'Skyview-Dev-Setup-LinuxMint-amd64.deb',
+                      'SHA256SUMS.txt', 'sde-update.json', 'sde-update.json.minisig'}
+          names = [a['name'] for a in release['assets']]
+          assert len(names) == 5 and set(names) == expected
+          PY
+            folder="$RUNNER_TEMP/published-$version"
+            mkdir "$folder"
+            gh release download "v$version" --repo "$GITHUB_REPOSITORY" --dir "$folder"
+            updater/target/release/sde-update-trust verify "$folder" "v$version"
+            (cd "$folder"; sha256sum --check SHA256SUMS.txt)
+            {
+              echo "Verified prerelease v$version; source $GITHUB_SHA"
+              echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$version"
+              (cd "$folder"; sha256sum sde-update.json Skyview-Dev-Setup-Windows-x64.exe Skyview-Dev-Setup-LinuxMint-amd64.deb)
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
