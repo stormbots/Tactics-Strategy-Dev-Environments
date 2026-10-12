@@ -7,7 +7,15 @@ on:
       - 'tests/test_uat_version.py'
       - 'tests/Probe-NativeUpgrade.ps1'
       - 'tests/Test-MintUatPairCI.sh'
+      - 'linux/self-update/**'
+      - 'linux/lib/schedule.py'
+      - 'tests/test_schedule.py'
   workflow_dispatch:
+    inputs:
+      correction:
+        description: Build and publish only the new 1.2.4 correction; retain 1.2.2/1.2.3 as unpublished upgrade fixtures
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,6 +41,8 @@ jobs:
 
   build-pair:
     needs: source
+    env:
+      BUILD_VERSIONS: ${{ (inputs.correction || github.event_name == 'pull_request') && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
     strategy:
       fail-fast: false
       matrix:
@@ -83,14 +93,14 @@ jobs:
           else
             install -m 0755 updater/target/release/sde-update-trust linux/self-update/sde-update-trust
           fi
-      - name: Build two fixed candidate versions without changing the tool baseline
+      - name: Build fixed candidate versions without changing the tool baseline
         shell: bash
         env:
           BUNDLE: ${{ matrix.bundle }}
           ASSET: ${{ matrix.asset }}
         run: |
           set -euo pipefail
-          for version in 1.2.2 1.2.3; do
+          for version in $BUILD_VERSIONS; do
             python3 tests/prepare_uat_version.py "$version"
             python3 tests/release_identity.py "v$version"
             npm --prefix installer run tauri build -- --bundles "$BUNDLE"
@@ -103,7 +113,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          foreach ($version in @('1.2.2','1.2.3')) {
+          foreach ($version in ($env:BUILD_VERSIONS -split ' ')) {
             $actual = (Get-Item "uat/$version/Skyview-Dev-Setup-Windows-x64.exe").VersionInfo.ProductVersion
             if ($actual -ne $version) { throw 'Candidate installer identity mismatch.' }
           }
@@ -138,6 +148,9 @@ jobs:
     needs: [source, build-pair]
     runs-on: ubuntu-24.04
     environment: sde-release-signing
+    env:
+      CANDIDATE_VERSIONS: ${{ inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
+      CANDIDATE_NOTES: ${{ inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
     permissions:
       contents: write
       actions: read
@@ -165,23 +178,23 @@ jobs:
           merge-multiple: true
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
       - run: cargo build --release --locked --manifest-path updater/Cargo.toml
-      - name: Create both manifests and enforce package identities
+      - name: Create candidate manifests and enforce package identities
         run: |
           set -euo pipefail
-          for version in 1.2.2 1.2.3; do
+          for version in $CANDIDATE_VERSIONS; do
             test "$(dpkg-deb -f "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" Package)" = skyview-dev-setup
             test "$(dpkg-deb -f "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" Architecture)" = amd64
             test "$(dpkg-deb -f "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" Version)" = "$version"
             updater/target/release/sde-update-trust create "uat/$version" "v$version"
             (cd "uat/$version"; sha256sum Skyview-Dev-Setup-Windows-x64.exe Skyview-Dev-Setup-LinuxMint-amd64.deb > SHA256SUMS.txt)
           done
-      - name: Sign and authenticate both complete candidates
+      - name: Sign and authenticate complete candidates
         env:
           SDE_UPDATE_SIGNING_KEY: ${{ secrets.SDE_UPDATE_SIGNING_KEY }}
           SDE_UPDATE_SIGNING_PASSWORD: ${{ secrets.SDE_UPDATE_SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
-          for version in 1.2.2 1.2.3; do
+          for version in $CANDIDATE_VERSIONS; do
             updater/target/release/sde-update-trust sign "uat/$version" "v$version"
             updater/target/release/sde-update-trust verify "uat/$version" "v$version"
           done
@@ -191,12 +204,12 @@ jobs:
         run: |
           set -euo pipefail
           # Existing releases/tags are never edited or reused. Retry needs owner assessment.
-          for version in 1.2.2 1.2.3; do
+          for version in $CANDIDATE_VERSIONS; do
             test "$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v$version" --jq length)" = 0
           done
-          for version in 1.2.2 1.2.3; do
+          for version in $CANDIDATE_VERSIONS; do
             gh release create "v$version" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
-              --title "SDE $version — self-update UAT candidate" --notes-file docs/SELF-UPDATE-UAT-CANDIDATES.md \
+              --title "SDE $version — self-update UAT candidate" --notes-file "$CANDIDATE_NOTES" \
               "uat/$version/Skyview-Dev-Setup-Windows-x64.exe" "uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" \
               "uat/$version/SHA256SUMS.txt" "uat/$version/sde-update.json" "uat/$version/sde-update.json.minisig"
           done
@@ -205,7 +218,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for version in 1.2.2 1.2.3; do
+          for version in $CANDIDATE_VERSIONS; do
             test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" --jq '.object.sha')" = "$GITHUB_SHA"
             gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$version" > "$RUNNER_TEMP/release.json"
             python3 - "$RUNNER_TEMP/release.json" "$version" <<'PY'
