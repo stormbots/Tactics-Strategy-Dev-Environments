@@ -9,6 +9,7 @@ $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'Skyview-Dev-Setup-Windows-x64.exe') -Destination $root
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'sde-synthetic-failure.exe') -Destination $root
 Copy-Item -LiteralPath $TestExecutable -Destination (Join-Path $root 'native-tests.exe')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../dist/Skyview-Dev-Setup-Windows-x64.exe') -Destination (Join-Path $root 'legacy-parent-installer.exe')
 # Preserve a customized disabled task through the packaging hook.
 $maintenanceTask = 'Skyview Robotics - Dev Tool Updates'
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At 4:35am
@@ -22,9 +23,27 @@ $root = 'C:\ProgramData\SdeNativeSelfUpdateTest'
 Start-Transcript -Path (Join-Path $root 'native-upgrade.txt') -Force
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'Expected SYSTEM.' }
+    # Model the observed legacy parent ACL before the real signed installer.
+    # Existing baseline files remain protected; only the parent gains Users Write.
+    $parent = 'C:\ProgramData\SkyviewRobotics'
+    $legacyAcl = New-Object Security.AccessControl.DirectorySecurity
+    $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;DCLCRPCR;;;BU)')
+    $baselineBefore = [IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))
+    Set-Acl -LiteralPath $parent -AclObject $legacyAcl
+    # The automatic worker must continue to reject an untrusted parent. Model
+    # mentor/elevated native application installation first; this packaging hook
+    # must migrate permissions before the signed unattended worker can run.
+    $migration = Start-Process (Join-Path $root 'legacy-parent-installer.exe') -ArgumentList '/S','/UPDATE' -Wait -PassThru
+    if ($migration.ExitCode -ne 0) { throw 'SYSTEM application installation did not migrate legacy parent permissions.' }
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Native signed upgrade test failed.' }
+    $parentAcl = Get-Acl -LiteralPath $parent
+    foreach ($rule in $parentAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Value -eq 'S-1-5-32-545' -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write)) { throw 'Signed installer did not migrate legacy parent writes.' }
+    }
+    if ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))) -ne [Convert]::ToBase64String($baselineBefore)) { throw 'Permission migration changed the tool baseline.' }
+    Write-Output 'SDE_NATIVE_LEGACY_ACL_OK'
     # Verify the NEXT invocation uses the committed 1.2.2 engine. Tool work is
     # replaced only in this disposable fixture by a deterministic no-package
     # action, then restored. The worker is the real packaged production binary.

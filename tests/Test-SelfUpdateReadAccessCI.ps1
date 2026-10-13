@@ -16,6 +16,18 @@ foreach ($verb in @('pause','resume')) {
     $deniedProcess = Start-Process -FilePath $worker -ArgumentList $verb -Wait -PassThru -WindowStyle Hidden
     if ($deniedProcess.ExitCode -eq 0) { throw 'Student changed pause policy.' }
 }
+$parent = 'C:\ProgramData\SkyviewRobotics'
+$denied = $false
+$probePath = Join-Path $parent ('student-write-probe-' + [guid]::NewGuid().ToString('N'))
+try { [IO.File]::WriteAllText($probePath,'unsafe') }
+catch [UnauthorizedAccessException] { $denied = $true }
+if (-not $denied) { throw 'Student could create maintenance-parent files.' }
+$denied = $false
+try {
+    $handle = [IO.File]::Open((Join-Path $parent 'Update-SkyviewTools.ps1'),[IO.FileMode]::Open,[IO.FileAccess]::Write)
+    $handle.Dispose()
+} catch [UnauthorizedAccessException] { $denied = $true }
+if (-not $denied) { throw 'Student could open the applied baseline for writing.' }
 foreach ($name in @('policy.json','status.json')) {
     $path = Join-Path 'C:\ProgramData\SkyviewRobotics\SelfUpdate' $name
     $denied = $false
