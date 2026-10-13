@@ -16,7 +16,7 @@ $source = Join-Path $PSScriptRoot '../windows/self-update/Bootstrap-SkyviewSelfU
 $tokens = $null; $errors = $null
 $ast = [Management.Automation.Language.Parser]::ParseFile($source,[ref]$tokens,[ref]$errors)
 if ($errors.Count) { throw 'Bootstrap parse failed.' }
-foreach ($name in @('Assert-TrustedItem','Protect-LegacyMaintenanceParent')) {
+foreach ($name in @('Assert-TrustedItem','Open-LegacyDirectoryGuard','Protect-LegacyMaintenanceParent')) {
     $node = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name },$true)
     if (-not $node) { throw 'Expected production migration function missing.' }
     Invoke-Expression ($node.Extent.Text.Replace('C:\ProgramData\SkyviewRobotics',$fixture))
@@ -31,6 +31,13 @@ Set-Acl -LiteralPath $file -AclObject $fileAcl
 $bytes = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
 try {
     Set-FixtureAcl $fixture $legacy
+    $guard = Open-LegacyDirectoryGuard $fixture
+    try {
+        $probe = [SdeLegacyDirectoryNative]::CreateFile($fixture,2,7,[IntPtr]::Zero,3,0x02000000,[IntPtr]::Zero)
+        $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        try { if (-not $probe.IsInvalid -or $errorCode -ne 32) { throw 'Directory guard did not block concurrent write-data handles.' } }
+        finally { $probe.Dispose() }
+    } finally { $guard.Dispose() }
     $childBefore = (Get-Acl -LiteralPath $file).Sddl
     Protect-LegacyMaintenanceParent
     Assert-TrustedItem $fixture

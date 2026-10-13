@@ -15,11 +15,32 @@ function Assert-TrustedItem([string]$Path) {
         if ($rule.AccessControlType -eq 'Allow' -and -not ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and ($rule.FileSystemRights -band $write) -and $rule.IdentityReference.Value -notin @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')) { throw 'Untrusted maintenance writers.' }
     }
 }
+function Open-LegacyDirectoryGuard([string]$Path) {
+    if (-not ('SdeLegacyDirectoryNative' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+public static class SdeLegacyDirectoryNative {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    public static extern SafeFileHandle CreateFile(string path, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+}
+'@
+    }
+    # Pin the directory itself, including a reparse point if one is present.
+    # Deny concurrent write-data/reparse and delete/rename handles. WRITE_DAC
+    # remains usable by Set-Acl; no user bytes or scripts are executed here.
+    $handle = [SdeLegacyDirectoryNative]::CreateFile($Path,0x20000,1,[IntPtr]::Zero,3,0x02200000,[IntPtr]::Zero)
+    if ($handle.IsInvalid) { $handle.Dispose(); throw 'Legacy maintenance parent requires mentor review: cannot pin directory.' }
+    return $handle
+}
 function Protect-LegacyMaintenanceParent {
     # Only the known legacy Users Write grant (including container inheritance) is migratable.
     # Never recursively harden writable children: that would bless their bytes.
     $path = 'C:\ProgramData\SkyviewRobotics'
     if (-not (Test-Path -LiteralPath $path)) { return }
+    $guard = Open-LegacyDirectoryGuard $path
+    try {
     $item = Get-Item -LiteralPath $path -Force
     if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Legacy maintenance parent requires mentor review: link or non-directory.' }
     try { Assert-TrustedItem $path; return } catch { }
@@ -66,6 +87,7 @@ function Protect-LegacyMaintenanceParent {
             if ($child.PSIsContainer) { $pending.Push($child.FullName) }
         }
     }
+    } finally { $guard.Dispose() }
 }
 function New-ProtectedDirectory([string]$Path,[switch]$Readable) {
     if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; return }
