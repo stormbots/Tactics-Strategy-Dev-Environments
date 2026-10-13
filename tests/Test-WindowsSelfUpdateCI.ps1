@@ -9,6 +9,7 @@ $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'Skyview-Dev-Setup-Windows-x64.exe') -Destination $root
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'sde-synthetic-failure.exe') -Destination $root
 Copy-Item -LiteralPath $TestExecutable -Destination (Join-Path $root 'native-tests.exe')
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../dist/Skyview-Dev-Setup-Windows-x64.exe') -Destination (Join-Path $root 'legacy-parent-installer.exe')
 # Preserve a customized disabled task through the packaging hook.
 $maintenanceTask = 'Skyview Robotics - Dev Tool Updates'
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At 4:35am
@@ -29,6 +30,11 @@ try {
     $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;DCLCRPCR;;;BU)')
     $baselineBefore = [IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))
     Set-Acl -LiteralPath $parent -AclObject $legacyAcl
+    # The automatic worker must continue to reject an untrusted parent. Model
+    # mentor/elevated native application installation first; this packaging hook
+    # must migrate permissions before the signed unattended worker can run.
+    $migration = Start-Process (Join-Path $root 'legacy-parent-installer.exe') -ArgumentList '/S','/UPDATE' -Wait -PassThru
+    if ($migration.ExitCode -ne 0) { throw 'SYSTEM application installation did not migrate legacy parent permissions.' }
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Native signed upgrade test failed.' }
