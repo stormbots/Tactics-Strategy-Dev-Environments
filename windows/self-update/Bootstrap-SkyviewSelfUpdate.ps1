@@ -16,7 +16,7 @@ function Assert-TrustedItem([string]$Path) {
     }
 }
 function Protect-LegacyMaintenanceParent {
-    # Only the known legacy, this-folder-only Users Write grant is migratable.
+    # Only the known legacy Users Write grant (including container inheritance) is migratable.
     # Never recursively harden writable children: that would bless their bytes.
     $path = 'C:\ProgramData\SkyviewRobotics'
     if (-not (Test-Path -LiteralPath $path)) { return }
@@ -31,7 +31,7 @@ function Protect-LegacyMaintenanceParent {
         if ($rule.AccessControlType -ne 'Allow' -or -not ($rule.FileSystemRights -band $write) -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)) { continue }
         if ($rule.IdentityReference.Value -in @('S-1-5-18','S-1-5-32-544')) { continue }
         if ($rule.IdentityReference.Value -ne 'S-1-5-32-545' -or
-            $rule.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]::None -or
+            $rule.InheritanceFlags -notin @([Security.AccessControl.InheritanceFlags]::None,[Security.AccessControl.InheritanceFlags]::ContainerInherit) -or
             ($rule.FileSystemRights -band $write) -ne [Security.AccessControl.FileSystemRights]::Write) {
             throw 'Legacy maintenance parent requires mentor review: unexpected write grant.'
         }

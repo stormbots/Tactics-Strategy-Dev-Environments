@@ -4,7 +4,7 @@ if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Disposable CI runner required.' }
 $fixture = Join-Path 'C:\ProgramData' ('SdeLegacyAcl-' + [guid]::NewGuid().ToString('N'))
 $private = 'O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'
 $normal = $private + '(A;;FRFX;;;BU)'
-$legacy = $normal + '(A;;0x116;;;BU)(A;OICIIO;GA;;;CO)'
+$legacy = 'O:BAG:S-1-5-21-3812769269-3066576306-1311471169-513D:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;DCLCRPCR;;;BU)'
 function Set-FixtureAcl([string]$Path,[string]$Sddl) {
     $acl = New-Object Security.AccessControl.DirectorySecurity
     $acl.SetSecurityDescriptorSddlForm($Sddl)

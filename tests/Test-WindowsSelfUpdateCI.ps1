@@ -26,7 +26,7 @@ try {
     # Existing baseline files remain protected; only the parent gains Users Write.
     $parent = 'C:\ProgramData\SkyviewRobotics'
     $legacyAcl = New-Object Security.AccessControl.DirectorySecurity
-    $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;;FRFX;;;BU)(A;;0x116;;;BU)(A;OICIIO;GA;;;CO)')
+    $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:S-1-5-21-3812769269-3066576306-1311471169-513D:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;DCLCRPCR;;;BU)')
     $baselineBefore = [IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))
     Set-Acl -LiteralPath $parent -AclObject $legacyAcl
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root

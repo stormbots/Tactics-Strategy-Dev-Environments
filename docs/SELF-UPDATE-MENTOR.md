@@ -231,15 +231,16 @@ approval. No production policy, secret or release is changed by this issue.
 ### Legacy Windows parent permissions
 
 Application bootstrap can migrate the legacy `C:\ProgramData\SkyviewRobotics`
-parent when its sole untrusted write grant is BUILTIN Users' this-folder-only
-Write permission and all existing descendants already pass protection checks.
+parent when its sole untrusted write grant is BUILTIN Users' legacy Write
+permission (including the reported container-inherited grant) and all existing
+descendants already pass protection checks before permissions change.
 It removes that grant without changing baseline bytes, creating a schedule,
 starting maintenance, changing pause policy or recursively trusting content.
 Student read access on the parent applies only to that folder, preserving
 private child permissions. The real signed SYSTEM upgrade CI exercises this
 case and preserves the disabled customized task.
 
-Broader grants, inheritable student writes, unexpected owners, writable children
+Broader grants, file-inherited student writes, unexpected owners, writable children
 and reparse points require mentor review. Do not recursively remove writes and
 then assume existing scripts are trustworthy. Review or reinstall suspect
 maintenance content from the approved distribution before retrying. No signing
