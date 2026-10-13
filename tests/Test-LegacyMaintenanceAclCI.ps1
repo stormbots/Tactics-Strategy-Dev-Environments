@@ -35,7 +35,7 @@ try {
     try {
         $probe = [SdeLegacyDirectoryNative]::CreateFile($fixture,2,7,[IntPtr]::Zero,3,0x02000000,[IntPtr]::Zero)
         $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        try { if (-not $probe.IsInvalid -or $errorCode -ne 32) { throw 'Directory guard did not block concurrent write-data handles.' } }
+        try { if (-not $probe.IsInvalid -or $errorCode -ne 32) { throw "Directory guard did not block concurrent write-data handles: invalid=$($probe.IsInvalid), error=$errorCode." } }
         finally { $probe.Dispose() }
     } finally { $guard.Dispose() }
     $childBefore = (Get-Acl -LiteralPath $file).Sddl

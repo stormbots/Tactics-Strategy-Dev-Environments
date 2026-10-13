@@ -28,9 +28,11 @@ public static class SdeLegacyDirectoryNative {
 '@
     }
     # Pin the directory itself, including a reparse point if one is present.
+    # Include FILE_LIST_DIRECTORY so Windows registers sharing restrictions;
+    # a metadata-only READ_CONTROL handle does not participate in share checks.
     # Deny concurrent write-data/reparse and delete/rename handles. WRITE_DAC
     # remains usable by Set-Acl; no user bytes or scripts are executed here.
-    $handle = [SdeLegacyDirectoryNative]::CreateFile($Path,0x20000,1,[IntPtr]::Zero,3,0x02200000,[IntPtr]::Zero)
+    $handle = [SdeLegacyDirectoryNative]::CreateFile($Path,0x20001,1,[IntPtr]::Zero,3,0x02200000,[IntPtr]::Zero)
     if ($handle.IsInvalid) { $handle.Dispose(); throw 'Legacy maintenance parent requires mentor review: cannot pin directory.' }
     return $handle
 }
