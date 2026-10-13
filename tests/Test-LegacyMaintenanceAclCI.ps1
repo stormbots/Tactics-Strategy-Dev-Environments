@@ -38,7 +38,7 @@ try {
     $after = (Get-Acl -LiteralPath $fixture).Sddl
     Protect-LegacyMaintenanceParent
     if ((Get-Acl -LiteralPath $fixture).Sddl -ne $after) { throw 'Migration is not idempotent.' }
-    foreach ($unsafe in @(($normal + '(A;;0x1301bf;;;BU)'), ($normal + '(A;OICI;0x116;;;BU)'), ($normal + '(A;;0x116;;;WD)'))) {
+    foreach ($unsafe in @(($normal + '(A;;0x1301bf;;;BU)'), ($normal + '(A;OICI;0x116;;;BU)'), ($normal + '(A;;0x116;;;WD)'), ($legacy + '(D;;FR;;;BU)'))) {
         Set-FixtureAcl $fixture $unsafe
         $before = (Get-Acl -LiteralPath $fixture).Sddl
         $rejected = $false

@@ -28,7 +28,8 @@ function Protect-LegacyMaintenanceParent {
     $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
     $legacy = $false
     foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
-        if ($rule.AccessControlType -ne 'Allow' -or -not ($rule.FileSystemRights -band $write) -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)) { continue }
+        if ($rule.AccessControlType -ne 'Allow') { throw 'Legacy maintenance parent requires mentor review: unexpected deny grant.' }
+        if (-not ($rule.FileSystemRights -band $write) -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)) { continue }
         if ($rule.IdentityReference.Value -in @('S-1-5-18','S-1-5-32-544')) { continue }
         if ($rule.IdentityReference.Value -ne 'S-1-5-32-545' -or
             $rule.InheritanceFlags -notin @([Security.AccessControl.InheritanceFlags]::None,[Security.AccessControl.InheritanceFlags]::ContainerInherit) -or
