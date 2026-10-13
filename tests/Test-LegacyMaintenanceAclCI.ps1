@@ -31,10 +31,11 @@ Set-Acl -LiteralPath $file -AclObject $fileAcl
 $bytes = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file))
 try {
     Set-FixtureAcl $fixture $legacy
+    $childBefore = (Get-Acl -LiteralPath $file).Sddl
     Protect-LegacyMaintenanceParent
     Assert-TrustedItem $fixture
     if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($file)) -ne $bytes) { throw 'Migration changed baseline bytes.' }
-    if ((Get-Acl -LiteralPath $file).Sddl -ne $fileAcl.Sddl) { throw 'Migration changed private child permissions.' }
+    if ((Get-Acl -LiteralPath $file).Sddl -ne $childBefore) { throw 'Migration changed private child permissions.' }
     $after = (Get-Acl -LiteralPath $fixture).Sddl
     Protect-LegacyMaintenanceParent
     if ((Get-Acl -LiteralPath $fixture).Sddl -ne $after) { throw 'Migration is not idempotent.' }
