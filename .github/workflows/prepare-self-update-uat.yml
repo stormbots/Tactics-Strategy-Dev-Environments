@@ -12,6 +12,10 @@ on:
       - 'tests/test_schedule.py'
   workflow_dispatch:
     inputs:
+      migration:
+        description: Publish only the new 1.2.5 permission-migration candidate; earlier versions are unpublished upgrade fixtures
+        type: boolean
+        default: false
       correction:
         description: Build and publish only the new 1.2.4 correction; retain 1.2.2/1.2.3 as unpublished upgrade fixtures
         type: boolean
@@ -31,8 +35,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
+          MIGRATION: ${{ inputs.migration }}
+          CORRECTION: ${{ inputs.correction }}
         run: |
           set -euo pipefail
+          test "$MIGRATION:$CORRECTION" != true:true
           test "$GITHUB_REF" = refs/heads/release/v1.2.uat
           main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$main" = "$GITHUB_SHA"
@@ -42,7 +49,7 @@ jobs:
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: ${{ (inputs.correction || github.event_name == 'pull_request') && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
+      BUILD_VERSIONS: ${{ (inputs.migration || github.event_name == 'pull_request') && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
     strategy:
       fail-fast: false
       matrix:
@@ -149,8 +156,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     env:
-      CANDIDATE_VERSIONS: ${{ inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
-      CANDIDATE_NOTES: ${{ inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
+      CANDIDATE_VERSIONS: ${{ inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
+      CANDIDATE_NOTES: ${{ inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
     permissions:
       contents: write
       actions: read
