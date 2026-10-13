@@ -15,6 +15,57 @@ function Assert-TrustedItem([string]$Path) {
         if ($rule.AccessControlType -eq 'Allow' -and -not ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and ($rule.FileSystemRights -band $write) -and $rule.IdentityReference.Value -notin @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')) { throw 'Untrusted maintenance writers.' }
     }
 }
+function Protect-LegacyMaintenanceParent {
+    # Only the known legacy, this-folder-only Users Write grant is migratable.
+    # Never recursively harden writable children: that would bless their bytes.
+    $path = 'C:\ProgramData\SkyviewRobotics'
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    $item = Get-Item -LiteralPath $path -Force
+    if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Legacy maintenance parent requires mentor review: link or non-directory.' }
+    try { Assert-TrustedItem $path; return } catch { }
+    $acl = Get-Acl -LiteralPath $path
+    if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin @('S-1-5-18','S-1-5-32-544')) { throw 'Legacy maintenance parent requires mentor review: owner.' }
+    $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+    $legacy = $false
+    foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -ne 'Allow' -or -not ($rule.FileSystemRights -band $write) -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)) { continue }
+        if ($rule.IdentityReference.Value -in @('S-1-5-18','S-1-5-32-544')) { continue }
+        if ($rule.IdentityReference.Value -ne 'S-1-5-32-545' -or
+            $rule.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]::None -or
+            ($rule.FileSystemRights -band $write) -ne [Security.AccessControl.FileSystemRights]::Write) {
+            throw 'Legacy maintenance parent requires mentor review: unexpected write grant.'
+        }
+        $legacy = $true
+    }
+    if (-not $legacy) { Assert-TrustedItem $path; return }
+    # Existing children must already be protected before the parent is changed.
+    # Users Write permits creation, but lacks delete/replace/ACL rights on these
+    # protected entries. New user-owned entries are rejected by the second scan.
+    $pending = New-Object 'Collections.Generic.Stack[string]'
+    $pending.Push($path)
+    $count = 0
+    while ($pending.Count) {
+        foreach ($child in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
+            if (++$count -gt 10000) { throw 'Legacy maintenance tree requires mentor review: too many entries.' }
+            Assert-TrustedItem $child.FullName
+            if ($child.PSIsContainer) { $pending.Push($child.FullName) }
+        }
+    }
+    $protected = New-Object Security.AccessControl.DirectorySecurity
+    # Student read access applies only to this folder; preserve child privacy.
+    $protected.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;;FRFX;;;BU)')
+    Set-Acl -LiteralPath $path -AclObject $protected
+    Assert-TrustedItem $path
+    $pending.Push($path)
+    $count = 0
+    while ($pending.Count) {
+        foreach ($child in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
+            if (++$count -gt 10000) { throw 'Legacy maintenance tree requires mentor review: too many entries.' }
+            Assert-TrustedItem $child.FullName
+            if ($child.PSIsContainer) { $pending.Push($child.FullName) }
+        }
+    }
+}
 function New-ProtectedDirectory([string]$Path,[switch]$Readable) {
     if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; return }
     # Create with private security atomically, without a writable inheritance gap.
@@ -51,6 +102,8 @@ foreach ($path in @($install,$app,$PSScriptRoot,(Join-Path $PSScriptRoot 'sde-up
 $version = (Get-Item $app).VersionInfo.ProductVersion
 if ($version -match '^\d+\.\d+\.\d+\.0$') { $version = $version.Substring(0,$version.Length-2) }
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid application version.' }
+# Migrate only the known legacy parent grant; never trust writable descendants.
+Protect-LegacyMaintenanceParent
 # Parent directories must already be machine-protected or freshly created here.
 New-ProtectedDirectory 'C:\ProgramData\SkyviewRobotics' -Readable
 New-ProtectedDirectory $root -Readable

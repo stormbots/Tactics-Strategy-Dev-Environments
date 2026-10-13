@@ -22,9 +22,22 @@ $root = 'C:\ProgramData\SdeNativeSelfUpdateTest'
 Start-Transcript -Path (Join-Path $root 'native-upgrade.txt') -Force
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'Expected SYSTEM.' }
+    # Model the observed legacy parent ACL before the real signed installer.
+    # Existing baseline files remain protected; only the parent gains Users Write.
+    $parent = 'C:\ProgramData\SkyviewRobotics'
+    $legacyAcl = New-Object Security.AccessControl.DirectorySecurity
+    $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;;FRFX;;;BU)(A;;0x116;;;BU)(A;OICIIO;GA;;;CO)')
+    $baselineBefore = [IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))
+    Set-Acl -LiteralPath $parent -AclObject $legacyAcl
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Native signed upgrade test failed.' }
+    $parentAcl = Get-Acl -LiteralPath $parent
+    foreach ($rule in $parentAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Value -eq 'S-1-5-32-545' -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write)) { throw 'Signed installer did not migrate legacy parent writes.' }
+    }
+    if ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))) -ne [Convert]::ToBase64String($baselineBefore)) { throw 'Permission migration changed the tool baseline.' }
+    Write-Output 'SDE_NATIVE_LEGACY_ACL_OK'
     # Verify the NEXT invocation uses the committed 1.2.2 engine. Tool work is
     # replaced only in this disposable fixture by a deterministic no-package
     # action, then restored. The worker is the real packaged production binary.

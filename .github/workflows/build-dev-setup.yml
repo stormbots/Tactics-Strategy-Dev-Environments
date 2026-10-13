@@ -159,6 +159,8 @@ jobs:
           ./tests/Test-BackendContracts.ps1
           ./tests/Test-MetadataContracts.ps1
           ./tests/Test-MaintenanceCI.ps1
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-LegacyMaintenanceAclCI.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Legacy maintenance permission regressions failed.' }
       - run: npm ci
         working-directory: installer
       - name: Bundle external Windows maintenance worker

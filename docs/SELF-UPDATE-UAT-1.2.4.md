@@ -58,3 +58,20 @@ reviewed-main workflow with its `correction` option; it signs and publishes only
 new 1.2.4 assets, using earlier versions solely as unpublished CI fixtures.
 Signing requires the existing human environment approval. Stable promotion and
 application-policy resume require separate explicit owner instructions.
+
+## Completed focused owner UAT — October 12, 2026
+
+The owner accepted the focused correction on both previously known-good PCs.
+Mint 22.3 and Windows 11 x64 upgraded from 1.2.3 to 1.2.4 with native exit 0,
+paused application policy, and unchanged project/editor settings. Both then ran
+protected maintenance successfully: tool exit 0, app outcome paused, engine
+1.2.4, tool baseline 1.2.1, and idle coordination after completion. Both Schedule
+pages showed Enabled / Succeeded and the latest run. Mint retained its latest
+success through timer disable/enable and a reboot. The timer remained enabled;
+Windows' task remained ready with result 0 and its weekly schedule preserved.
+
+This accepts the Linux history correction and Windows preservation checks. It
+does not accept automatic application installation, signed recovery or school
+student/network rollout. 1.2.4 remains a prerelease. The Windows test PC's legacy
+parent permissions had been manually hardened before these tests, so it does
+not establish automatic legacy ACL migration coverage.

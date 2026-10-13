@@ -227,3 +227,20 @@ Mint ISO userland in a container proves package execution, not a booted desktop
 with a live timer; Windows Server native CI is not Windows 11 UAT. #42 expands
 integration; #43 retains the owner's school-laptop UAT and release-promotion
 approval. No production policy, secret or release is changed by this issue.
+
+### Legacy Windows parent permissions
+
+Application bootstrap can migrate the legacy `C:\ProgramData\SkyviewRobotics`
+parent when its sole untrusted write grant is BUILTIN Users' this-folder-only
+Write permission and all existing descendants already pass protection checks.
+It removes that grant without changing baseline bytes, creating a schedule,
+starting maintenance, changing pause policy or recursively trusting content.
+Student read access on the parent applies only to that folder, preserving
+private child permissions. The real signed SYSTEM upgrade CI exercises this
+case and preserves the disabled customized task.
+
+Broader grants, inheritable student writes, unexpected owners, writable children
+and reparse points require mentor review. Do not recursively remove writes and
+then assume existing scripts are trustworthy. Review or reinstall suspect
+maintenance content from the approved distribution before retrying. No signing
+key is required for the folder-permission check.
