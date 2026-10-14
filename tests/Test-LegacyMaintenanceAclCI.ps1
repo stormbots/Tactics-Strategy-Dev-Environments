@@ -7,7 +7,8 @@ $normal = $private + '(A;;FRFX;;;BU)'
 $legacy = 'O:BAG:BAD:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;DCLCRPCR;;;BU)'
 function Set-FixtureAcl([string]$Path,[string]$Sddl) {
     $acl = New-Object Security.AccessControl.DirectorySecurity
-    $acl.SetSecurityDescriptorSddlForm($Sddl)
+    try { $acl.SetSecurityDescriptorSddlForm($Sddl) }
+    catch { throw "Invalid fixture SDDL: $Sddl; $_" }
     Set-Acl -LiteralPath $Path -AclObject $acl
 }
 # Load the actual production functions without executing the packaging entry
@@ -173,7 +174,7 @@ try {
     New-Item -ItemType Junction -Path $log -Target $env:WINDIR | Out-Null
     try { Assert-LogsRejection } finally { [IO.Directory]::Delete($log) }
     Reset-LegacyLogs
-    foreach ($unsafe in @($normal + '(A;;FW;;;BU)', $normal + '(A;CI;0x1301bf;;;BU)', $normal + '(A;OICI;FW;;;BU)')) {
+    foreach ($unsafe in @(($normal + '(A;;FW;;;BU)'), ($normal + '(A;CI;0x1301bf;;;BU)'), ($normal + '(A;OICI;FW;;;BU)'))) {
         Set-FixtureAcl $logs $unsafe
         Assert-LogsRejection
     }
