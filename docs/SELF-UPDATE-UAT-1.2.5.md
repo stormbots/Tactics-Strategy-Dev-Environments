@@ -213,7 +213,7 @@ pass this checklist.
 | Passing source CI | [run 38586204871](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38586204871); Windows Server 2022 evidence, not Windows 11 acceptance |
 | Existing CI artifact | [Windows artifact 11907130742](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38586204871/artifacts/11907130742); development fixture, not an approved workstation candidate |
 | CI artifact archive SHA-256 | `4bdf792117ea46a8b06a777b9654744efa1f71f409a80996ec955de110a11415` (GitHub-reported archive digest; **not the installer hash**) |
-| New immutable candidate version / source commit | **PENDING**; record the new version and full build SHA. It must contain the reviewed migration; list and review any differences from `7281331`, including version/packaging changes |
+| New immutable candidate version / source commit | **Prepared target: v1.2.6; not yet built/signed**. Full build SHA **PENDING**. It must contain the reviewed migration; list and review any differences from `7281331`, including version/packaging changes |
 | Protected candidate build run / immutable asset URL | **PENDING**; retain build provenance and signature verification evidence |
 | Candidate Windows installer SHA-256 | **PENDING — required before testing**; record the 64 hexadecimal digits for the actual `.exe`, not its download ZIP |
 | Signed manifest / signature verification | **PENDING**; verify the complete candidate asset set with the installed pinned worker using the established [owner UAT procedure](SELF-UPDATE-UAT.md) |
@@ -228,6 +228,15 @@ locally and compare with the recorded signed manifest:
 ```powershell
 Get-FileHash -Algorithm SHA256 -LiteralPath '.\Skyview-Dev-Setup-Windows-x64.exe'
 ```
+
+The prepared [v1.2.6 recipe](RELEASE-NOTES-1.2.6.md) adds only candidate identity
+support, a mutually exclusive `logs_migration` dispatch option, native pair
+coverage through 1.2.6 and these documentation changes beyond the reviewed
+migration. Signing requires the reviewed merged main commit, successful full
+main CI, successful Windows SYSTEM/Mint candidate tests and human approval in
+`sde-release-signing`. Do not dispatch from the unmerged PR or bypass these
+guards. Record the verified published installer hash emitted by the workflow's
+final download/authentication step, then confirm it locally before testing.
 
 #### Before the first attempt — capture without changing permissions
 
