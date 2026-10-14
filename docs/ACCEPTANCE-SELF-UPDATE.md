@@ -87,3 +87,20 @@ and paused-policy checks remain pending. Per-PC pinned verification is required.
 Keep application updates and broader rollout paused, #59 open, and all existing
 owner acceptance, school-network, automatic-install/recovery and stable-promotion
 gates intact. The historical v1.2.5 manual-remediation pass is unchanged.
+
+## Affected Windows 11 v1.2.6 owner result (2026-10-14)
+
+**PASS — Successful installation without manual remediation (owner-reported).**
+The owner explicitly confirmed an affected laptop with the failing legacy Logs
+permissions installed v1.2.6 on the first attempt without manual ACL correction.
+Subsequent GUI development-tool Update reached completion with zero failed
+validation checks, retained Node 24.x pinning/Python 3.14.x and reported preserved
+editor settings. Pending-reboot and Chocolatey dependency warnings remain in the
+[chronological evidence record](SELF-UPDATE-UAT-1.2.5.md#affected-windows-11-owner-retest--october-14-2026).
+
+This is an owner-reported installation pass and interactive Update/validation
+result, not completed candidate acceptance. Per-PC artifact authentication,
+log/baseline/data/ACL/schedule preservation, app/engine identity, actual paused
+policy, scheduled execution and post-reboot evidence remain pending. Keep #59
+open and broader rollout/application updates paused; prior acceptance history and
+all other release gates remain unchanged.

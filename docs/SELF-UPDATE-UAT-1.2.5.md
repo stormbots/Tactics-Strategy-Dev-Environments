@@ -371,3 +371,81 @@ authorizes deployment. Passing this checklist alone does not authorize student
 fleet unattended installation, automatic-update rollout, stable promotion,
 closing #59 or closing other Windows 11 acceptance gates. No merge, release
 publication or policy change is performed by preparing this checklist.
+
+## Affected Windows 11 owner retest — October 14, 2026
+
+**PASS — Successful installation without manual remediation (owner-reported).**
+The owner reported that SDE v1.2.6 installed successfully and explicitly confirmed
+this was an affected laptop still carrying the failing legacy Logs permissions,
+on the first attempt, without manual ACL correction. This is a new result,
+distinct from the historical v1.2.5 pass after manual remediation. The PC
+identifier, Windows build, native installer exit code, per-PC pinned verification
+and downloaded installer hash were not supplied. The expected candidate is the
+immutable v1.2.6/source/hash recorded above; the report does not independently
+establish the exact bytes used on this PC.
+
+### Subsequent GUI Update and validation evidence
+
+After installation, the owner ran **Update in SDE** and supplied `Pasted text.txt`
+(25,106 bytes; SHA-256
+`37f61338ba8232e2ef331d11f3d2237a65a3c3c2aa0d94d1a687d15d4a6fe766`).
+The attachment records development-tool updates and subsequent environment
+validation, not automatic SDE application installation or a SYSTEM scheduled run.
+GUI Update is a separate tool-changing action after the application installation;
+its results must not be used to infer pre/post installer preservation.
+
+The output reaches:
+
+```text
+SKYVIEW_EVENT|summary|0|Validation completed with 0 failed checks
+SKYVIEW_EVENT|progress|100|Development environment ready
+```
+
+**PASS — GUI development-tool Update reached completion and its reported
+validation checks passed, with warnings.** No overall helper/native exit code
+was included in the supplied output. Node.js remained 24.21.0, with the
+`nodejs-lts` pin restored; Python remained in the python314 family at 3.14.8.
+VSCodium, Firefox, PowerShell Core and 7-Zip upgrades reported success.
+Other package checks reported current versions. All listed tools, required editor
+extensions, development folder and configured Windows/Git settings passed
+validation. The output reports existing editor settings were preserved.
+Git identity and GitHub authentication were optional/unconfigured, and no
+repositories were configured, so repository checkout/work preservation was not
+exercised by this Update run.
+
+Warnings and limitations retained from the attachment:
+
+- Chocolatey repeatedly reported a pending reboot, including before package
+  updates began. Its configuration allowed updates to continue. Reboot completion
+  and post-reboot validation have not been reported.
+- Updates for VSCodium, Firefox, PowerShell Core and 7-Zip emitted
+  `Unable to find the parent package 'skyview-student-dev'.` and NuGet dependency
+  constraint warnings referencing `skyview-student-dev 1.2.1`. The corresponding
+  upgrades subsequently succeeded; this is a package-metadata diagnostic finding,
+  not evidence that the Logs migration or installation failed. Investigate package
+  metadata if persistent; no package deletion/reinstall or new issue is authorized
+  by this record.
+- VSCodium emitted DEP0169 `url.parse()` deprecation warnings, and Firefox warned
+  about an uninstall registry-key lookup. Neither prevented reported completion.
+- `PASS Weekly maintenance enabled` checks task presence/readability and enabled
+  state only. It does not check an actual scheduled invocation, exact trigger,
+  SYSTEM principal, action migration or unchanged task XML.
+- Tool records show `updateCheck=notChecked` after this run. Their
+  `updateAvailable=false` values are not an independent fresh update-availability
+  check or application-update policy evidence.
+
+### Remaining acceptance gates
+
+Installation without manual remediation is confirmed by the owner, and the
+interactive GUI Update/validation result is recorded. Log bytes/private ACLs,
+parent/Logs post-install ACLs, applied baseline bytes/version, student data and
+schedule preservation still need their own evidence. The dependency warning's
+v1.2.1 reference does not prove baseline preservation. Actual application/engine
+identity, paused-policy state/preservation, student read-only access, scheduled
+maintenance execution and post-reboot validation also remain pending.
+
+This report supports the #59 migration fix on one affected PC; it does not fully
+pass the preservation checklist or establish fleet acceptance. Keep #59 open,
+application updates and broader rollout paused, and existing release/automatic
+installation/recovery/school-network acceptance gates intact. No stable promotion,
+additional-PC installation or issue closure is inferred from this result.
