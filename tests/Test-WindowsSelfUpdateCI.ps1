@@ -10,33 +10,15 @@ Copy-Item -LiteralPath (Join-Path $FixtureRoot 'Skyview-Dev-Setup-Windows-x64.ex
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'sde-synthetic-failure.exe') -Destination $root
 Copy-Item -LiteralPath $TestExecutable -Destination (Join-Path $root 'native-tests.exe')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../dist/Skyview-Dev-Setup-Windows-x64.exe') -Destination (Join-Path $root 'legacy-parent-installer.exe')
-# The earlier workflow step deliberately establishes an app-only machine. Seed
-# a deterministic applied baseline here, not real development-tool provisioning.
-# These scripts/records exist only on this disposable native runner.
-$parent = 'C:\ProgramData\SkyviewRobotics'
-if (Test-Path (Join-Path $parent 'Update-SkyviewTools.ps1')) { throw 'Expected app-only fixture before native baseline setup.' }
-$fileAcl = New-Object Security.AccessControl.FileSecurity
-$fileAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
-foreach ($name in @('Coordination.ps1','Update-Node24.ps1','Node24.ps1')) {
-    $target = Join-Path $parent $name
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../windows/chocolatey/tools/$name") -Destination $target
-    Set-Acl -LiteralPath $target -AclObject $fileAcl
-}
-$baseline = Join-Path $parent 'Update-SkyviewTools.ps1'
-[IO.File]::WriteAllText($baseline,"# SDE_COORDINATION_V1`r`n# Disposable no-package baseline sentinel`r`nexit 0`r`n")
-Set-Acl -LiteralPath $baseline -AclObject $fileAcl
-$logsAcl = New-Object Security.AccessControl.DirectorySecurity
-$logsAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)')
-[IO.Directory]::CreateDirectory((Join-Path $parent 'Logs'),$logsAcl) | Out-Null
-$record = 'C:\ProgramData\chocolatey\lib\skyview-student-dev'
-[IO.Directory]::CreateDirectory($record,$acl) | Out-Null
-[IO.File]::WriteAllText((Join-Path $record 'skyview-student-dev.nuspec'),'<package><metadata><version>1.2.1</version></metadata></package>')
-New-Item -ItemType Directory -Path 'C:\Development' -Force | Out-Null
+# The preceding real Node migration test runs system baseline provisioning.
+# Preserve that actual baseline/package record; do not substitute synthetic
+# scripts or infer app-only state from the earlier installer bootstrap check.
+$baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
+if (-not (Test-Path -LiteralPath $baseline)) { throw 'Expected the real provisioned baseline before SYSTEM upgrade testing.' }
 # Preserve a customized disabled task through the packaging hook.
 $maintenanceTask = 'Skyview Robotics - Dev Tool Updates'
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At 4:35am
-$baselineAction = New-ScheduledTaskAction -Execute 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$baseline`""
-Register-ScheduledTask -TaskName $maintenanceTask -Action $baselineAction -Trigger $trigger -User SYSTEM -RunLevel Highest | Out-Null
+Set-ScheduledTask -TaskName $maintenanceTask -Trigger $trigger | Out-Null
 Disable-ScheduledTask -TaskName $maintenanceTask | Out-Null
 $before = [xml](Export-ScheduledTask -TaskName $maintenanceTask)
 $worker = Join-Path $root 'worker.ps1' 
