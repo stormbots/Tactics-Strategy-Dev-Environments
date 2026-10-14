@@ -546,3 +546,41 @@ time/result and installed-worker/Schedule status. Expected evidence includes
 engine 1.2.6, independent tool outcome, baseline identity and paused app outcome.
 Do not terminate work, resume policy, alter the schedule or synthesize history.
 Other preservation, reboot and deployment gates remain open.
+
+### Completed controlled SYSTEM maintenance run — October 14, 2026
+
+**PASS — existing SYSTEM maintenance task completed using engine v1.2.6,
+reported baseline v1.2.1 and independent tool exit 0, with application updates
+remaining paused.** The owner supplied fresh task and installed-worker output
+after the controlled invocation. Task state is Ready, LastTaskResult is 0,
+LastRunTime is October 14, 2026, 15:46:38 in the workstation's displayed local
+time, and NextRunTime remains October 18, 2026, 03:00. Earlier inspection
+established the protected launcher and SYSTEM/Highest principal. This proves a
+controlled invocation of the provisioned task, not a natural weekly firing.
+
+The installed worker reports:
+
+```json
+{"paused":true,"policyChangedAt":1791981810,"outcome":"paused","phase":"policy","checkedAt":1792018003,"completedAt":1792018042,"applicationVersion":"1.2.6","candidateVersion":null,"maintenanceEngineVersion":"1.2.6","appliedBaselineVersion":"1.2.1","toolExit":0,"nativeExit":null,"rebootRequired":false,"recoveryAvailable":false,"logReference":"logs/f375cf06-faad-4aec-98aa-5e52fdbea161.log","coordination":"idle"}
+```
+
+Fresh completed history now reports matching application/engine identities and
+the older applied development baseline, resolving the earlier unavailable
+observations for this run. The reported pause-change timestamp is unchanged from
+the preceding installed-worker inspection; policy byte/ACL preservation across
+installation still requires its own comparison. `outcome=paused`, `phase=policy`
+is the expected application result, separate from `toolExit=0`. No native SDE
+installer ran in this attempt (`nativeExit=null`), and no automatic installation
+or signed recovery pass is claimed. `recoveryAvailable=false` remains the known
+reduced recovery capability after manual bootstrap. This worker result's
+`rebootRequired=false` does not by itself clear the earlier Chocolatey/Windows
+pending-reboot condition; no post-reboot confirmation was supplied.
+
+Retain the referenced protected log under
+`C:\ProgramData\SkyviewRobotics\SelfUpdate\logs` for diagnostics. Baseline version
+identity, successful controlled maintenance and paused application behavior pass;
+baseline/log bytes and private ACL preservation, per-PC downloaded-asset
+authentication, student data/settings comparison, pre/post schedule comparison,
+actual weekly firing, post-reboot and other acceptance conditions remain open.
+Keep #59 open, application updates and broader rollout paused. This result
+authorizes no stable promotion, automatic-update pilot or fleet acceptance.

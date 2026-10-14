@@ -128,3 +128,12 @@ reports `paused=true`, `coordination=idle`. Those observations pass; attempt
 history/engine/baseline/tool/native results remain unavailable and do not establish
 a completed invocation. The controlled existing-task run and remaining
 preservation/reboot checks are still pending.
+
+The subsequent **controlled existing SYSTEM task invocation passed**: task Ready,
+result 0, fresh worker history with app/engine 1.2.6, reported applied baseline
+1.2.1, `toolExit=0`, paused application outcome and idle coordination. No native
+application installer ran; signed recovery remains unconfirmed. This supersedes
+the unavailable-history observation for the new completed run without erasing
+it. It does not prove a natural weekly firing, pre/post preservation or reboot
+completion. Remaining checks, #59 and rollout/promotion gates stay open; see the
+chronological completed-maintenance entry for exact evidence and log reference.
