@@ -24,17 +24,41 @@ Start-Transcript -Path (Join-Path $root 'native-upgrade.txt') -Force
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'Expected SYSTEM.' }
     # Model the observed legacy parent ACL before the real signed installer.
-    # Existing baseline files remain protected; only the parent gains Users Write.
+    # Existing file bytes remain protected. Reproduce the October 14 inherited
+    # CI Write on Logs as well as the parent; no manual ACL repair is performed.
     $parent = 'C:\ProgramData\SkyviewRobotics'
     $legacyAcl = New-Object Security.AccessControl.DirectorySecurity
     $legacyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:AI(A;OICIID;FA;;;SY)(A;OICIID;FA;;;BA)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;DCLCRPCR;;;BU)')
     $baselineBefore = [IO.File]::ReadAllBytes((Join-Path $parent 'Update-SkyviewTools.ps1'))
     Set-Acl -LiteralPath $parent -AclObject $legacyAcl
+    $logs = Join-Path $parent 'Logs'
+    $logsAcl = New-Object Security.AccessControl.DirectorySecurity
+    $logsAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:AI')
+    Set-Acl -LiteralPath $logs -AclObject $logsAcl
+    $legacyLog = Join-Path $logs 'AutoUpdate-20261014-051807.log'
+    [IO.File]::WriteAllText($legacyLog,'Preserved legacy log fixture, not authenticated status.')
+    $legacyLogAcl = New-Object Security.AccessControl.FileSecurity
+    $legacyLogAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)')
+    Set-Acl -LiteralPath $legacyLog -AclObject $legacyLogAcl
+    $logBefore = [Convert]::ToBase64String([IO.File]::ReadAllBytes($legacyLog))
+    $logAclBefore = (Get-Acl -LiteralPath $legacyLog).Sddl
+    $policy = Join-Path $parent 'SelfUpdate\policy.json'
+    $policyBefore = [Convert]::ToBase64String([IO.File]::ReadAllBytes($policy))
+    $writers = @((Get-Acl -LiteralPath $logs).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object {
+        $_.IdentityReference.Value -eq 'S-1-5-32-545' -and $_.IsInherited -and ($_.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write)
+    })
+    if ($writers.Count -ne 1 -or $writers[0].InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]::ContainerInherit) { throw 'Native installer fixture did not reproduce inherited Logs write.' }
     # The automatic worker must continue to reject an untrusted parent. Model
     # mentor/elevated native application installation first; this packaging hook
     # must migrate permissions before the signed unattended worker can run.
     $migration = Start-Process (Join-Path $root 'legacy-parent-installer.exe') -ArgumentList '/S','/UPDATE' -Wait -PassThru
     if ($migration.ExitCode -ne 0) { throw 'SYSTEM application installation did not migrate legacy parent permissions.' }
+    foreach ($rule in (Get-Acl -LiteralPath $logs).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Value -eq 'S-1-5-32-545' -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write)) { throw 'Native installer left student write access on Logs.' }
+    }
+    if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($legacyLog)) -ne $logBefore -or (Get-Acl -LiteralPath $legacyLog).Sddl -ne $logAclBefore) { throw 'Native installer changed legacy log evidence/private permissions.' }
+    if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($policy)) -ne $policyBefore) { throw 'Native migration changed application-update policy.' }
+    Write-Output 'SDE_NATIVE_LEGACY_LOGS_ACL_OK'
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Native signed upgrade test failed.' }

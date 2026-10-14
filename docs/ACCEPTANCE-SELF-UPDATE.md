@@ -20,9 +20,9 @@ assets. No signing secrets were exported.
 | Candidate source commit / protected workflow run | `c186e75925e40101e7e36c3d7dfb845e562a017d` ([PR #52](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/52)); [successful protected candidate run](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38266099258); [successful full main CI](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38265778561) |
 | Published signed v1.2.2 / v1.2.3 URLs and manifest hashes | [v1.2.2](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.2) and [v1.2.3](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.3); both unaccepted prereleases, hashes below |
 | Candidate Windows SYSTEM / actual Mint root pair CI | Passed on the candidate source above in run `38266099258`; both Windows installer exits 0; actual `SDE_UAT_PAIR_WINDOWS_OK` and `SDE_UAT_PAIR_MINT_OK` markers recorded. Versions, paused policy/engine, preserved sample files/settings and legacy baseline checked |
-| Windows 11 owner tests and school network | Pending |
+| Windows 11 owner tests and school network | v1.2.5 installation passed on 2026-10-14 after manual remediation; remaining Windows 11 tests and school network pending; [detailed record](SELF-UPDATE-UAT-1.2.5.md#windows-11-installation-uat--october-14-2026) |
 | Booted Mint owner tests and school network | Pending |
-| Findings and retests | Pending |
+| Findings and retests | v1.2.5 inherited Logs write grant rejected; targeted administrator ACL correction followed by successful installer retest on 2026-10-14; [diagnosis and follow-up](SELF-UPDATE-UAT-1.2.5.md#deployment-finding-and-engineering-follow-up). Other pending conditions remain open |
 | Owner acceptance wording / date / exact target | Pending |
 | Explicit stable-promotion authorization / date | Pending |
 | Representative pilot results / per-laptop resume | Pending |
@@ -50,3 +50,21 @@ owner laptop acceptance. Latest stable remains historical v1.2.1.
 | 1.2.3 | sde-update.json | `2272e0dbca6f2354d4aab6a25c47ef709dc46869a8d88787cd34eeb32e8483d1` |
 | 1.2.3 | Skyview-Dev-Setup-Windows-x64.exe | `8e86072ad942e320fc9ee180109446003e9724a1749a38334c2df8e939e455a3` |
 | 1.2.3 | Skyview-Dev-Setup-LinuxMint-amd64.deb | `303f820d79da391eac7fc9e72d0a9c26319e50339e98acb2bb44dd5fb7f78716` |
+
+## Windows 11 v1.2.5 installation result (2026-10-14)
+
+**PASS — Successful installation with manual remediation required.** The owner
+confirmed successful installation on Windows 11 x64 with development-tool
+baseline v1.2.1 after the first attempt failed protected maintenance bootstrap.
+The [version-specific UAT record](SELF-UPDATE-UAT-1.2.5.md#windows-11-installation-uat--october-14-2026)
+preserves the supplied diagnostics, inherited Users write grant on Logs,
+targeted ACL correction, retained log and successful retest.
+
+This is an installation-only pass after administrator intervention, not a clean
+unattended pass or overall owner acceptance. Subsequent application validation,
+scheduled-maintenance verification and automatic-update policy verification
+have not been reported. All other pending acceptance conditions remain open.
+No unattended student-fleet installation, automatic application-update rollout,
+stable promotion or closure of outstanding Windows 11 acceptance tests is
+authorized. Keep application updates paused. Prior version-specific acceptance
+and published verification evidence remain unchanged.

@@ -36,12 +36,41 @@ public static class SdeLegacyDirectoryNative {
     if ($handle.IsInvalid) { $handle.Dispose(); throw 'Legacy maintenance parent requires mentor review: cannot pin directory.' }
     return $handle
 }
+function Open-LegacyLogGuard([string]$Path) {
+    # Pin the actual file, not a link target, and exclude existing/concurrent
+    # writers and rename/delete handles before checking its owner and ACL.
+    $handle = [SdeLegacyDirectoryNative]::CreateFile($Path,0x20001,1,[IntPtr]::Zero,3,0x00200000,[IntPtr]::Zero)
+    if ($handle.IsInvalid) { $handle.Dispose(); throw "Legacy maintenance log requires mentor review: cannot pin $Path." }
+    return $handle
+}
+function Assert-LegacyLogsDirectory([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force
+    if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Legacy Logs requires mentor review: link or non-directory.' }
+    $acl = Get-Acl -LiteralPath $Path
+    if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin @('S-1-5-18','S-1-5-32-544')) { throw 'Legacy Logs requires mentor review: owner.' }
+    $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+    $legacy = $false
+    foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        if ($rule.AccessControlType -ne 'Allow') { throw 'Legacy Logs requires mentor review: unexpected deny grant.' }
+        if (-not ($rule.FileSystemRights -band $write) -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)) { continue }
+        if ($rule.IdentityReference.Value -in @('S-1-5-18','S-1-5-32-544')) { continue }
+        if ($rule.IdentityReference.Value -ne 'S-1-5-32-545' -or -not $rule.IsInherited -or
+            $rule.InheritanceFlags -ne [Security.AccessControl.InheritanceFlags]::ContainerInherit -or
+            ($rule.FileSystemRights -band $write) -ne [Security.AccessControl.FileSystemRights]::Write) {
+            throw "Legacy Logs requires mentor review: unexpected writer $($rule.IdentityReference.Value), rights $($rule.FileSystemRights)."
+        }
+        $legacy = $true
+    }
+    if (-not $legacy) { throw 'Legacy Logs requires mentor review: unrecognized permissions.' }
+}
 function Protect-LegacyMaintenanceParent {
     # Only the known legacy Users Write grant (including container inheritance) is migratable.
-    # Never recursively harden writable children: that would bless their bytes.
+    # The sole child exception is the fixed Logs directory with inherited CI
+    # Write and already protected, flat AutoUpdate logs. Never bless writable bytes.
     $path = 'C:\ProgramData\SkyviewRobotics'
     if (-not (Test-Path -LiteralPath $path)) { return }
     $guard = Open-LegacyDirectoryGuard $path
+    $childGuards = New-Object 'Collections.Generic.List[IDisposable]'
     try {
     $item = Get-Item -LiteralPath $path -Force
     if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Legacy maintenance parent requires mentor review: link or non-directory.' }
@@ -62,17 +91,57 @@ function Protect-LegacyMaintenanceParent {
         $legacy = $true
     }
     if (-not $legacy) { Assert-TrustedItem $path; return }
-    # Existing children must already be protected before the parent is changed.
+    # Existing file bytes must already be protected before any ACL is changed.
     # Users Write permits creation, but lacks delete/replace/ACL rights on these
     # protected entries. New user-owned entries are rejected by the second scan.
     $pending = New-Object 'Collections.Generic.Stack[string]'
     $pending.Push($path)
     $count = 0
+    $legacyLogs = $null
+    $legacyLogNames = @()
     while ($pending.Count) {
         foreach ($child in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
             if (++$count -gt 10000) { throw 'Legacy maintenance tree requires mentor review: too many entries.' }
+            if ($child.FullName -eq (Join-Path $path 'Logs')) {
+                $childGuards.Add((Open-LegacyDirectoryGuard $child.FullName))
+                # Already protected Logs retains the original general scan and
+                # its private child permissions. Only the reported failing ACL
+                # enters the narrower diagnostic-log migration below.
+                $trustedLogs = $true
+                try { Assert-TrustedItem $child.FullName } catch { $trustedLogs = $false }
+                if (-not $trustedLogs) {
+                    Assert-LegacyLogsDirectory $child.FullName
+                    $legacyLogs = $child.FullName
+                    foreach ($log in Get-ChildItem -LiteralPath $legacyLogs -Force) {
+                        if (++$count -gt 10000) { throw 'Legacy maintenance tree requires mentor review: too many entries.' }
+                        $childGuards.Add((Open-LegacyLogGuard $log.FullName))
+                        if ($log.PSIsContainer -or $log.Name -notmatch '^AutoUpdate-[0-9]{8}-[0-9]{6}\.log$') { throw 'Legacy Logs requires mentor review: unexpected entry.' }
+                        Assert-TrustedItem $log.FullName
+                        $legacyLogNames += $log.Name
+                    }
+                    continue
+                }
+            }
             Assert-TrustedItem $child.FullName
             if ($child.PSIsContainer) { $pending.Push($child.FullName) }
+        }
+    }
+    if ($legacyLogs) {
+        # Harden only this directory, matching provisioning. Files already pass
+        # trust checks; preserve their bytes and existing protected/private ACLs.
+        # Old log contents remain diagnostic evidence, never authenticated status.
+        $logsAcl = New-Object Security.AccessControl.DirectorySecurity
+        $logsAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)')
+        Set-Acl -LiteralPath $legacyLogs -AclObject $logsAcl
+        Assert-TrustedItem $legacyLogs
+        # Creation was possible before the directory ACL was committed. All
+        # inventoried files remain pinned; reject additions before hardening
+        # the parent. The now-protected Logs no longer accepts student entries.
+        $currentLogs = @(Get-ChildItem -LiteralPath $legacyLogs -Force)
+        if ($currentLogs.Count -ne $legacyLogNames.Count) { throw 'Legacy Logs requires mentor review: entries changed during migration.' }
+        foreach ($log in $currentLogs) {
+            if ($log.Name -notin $legacyLogNames) { throw 'Legacy Logs requires mentor review: entries changed during migration.' }
+            Assert-TrustedItem $log.FullName
         }
     }
     $protected = New-Object Security.AccessControl.DirectorySecurity
@@ -89,7 +158,10 @@ function Protect-LegacyMaintenanceParent {
             if ($child.PSIsContainer) { $pending.Push($child.FullName) }
         }
     }
-    } finally { $guard.Dispose() }
+    } finally {
+        foreach ($childGuard in $childGuards) { $childGuard.Dispose() }
+        $guard.Dispose()
+    }
 }
 function New-ProtectedDirectory([string]$Path,[switch]$Readable) {
     if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; return }

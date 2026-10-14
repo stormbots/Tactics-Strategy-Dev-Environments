@@ -232,15 +232,40 @@ approval. No production policy, secret or release is changed by this issue.
 
 Application bootstrap can migrate the legacy `C:\ProgramData\SkyviewRobotics`
 parent when its sole untrusted write grant is BUILTIN Users' legacy Write
-permission (including the reported container-inherited grant) and all existing
-descendants already pass protection checks before permissions change.
+permission (including the reported container-inherited grant). Existing file
+bytes must already pass protection checks before permissions change.
 It removes that grant without changing baseline bytes, creating a schedule,
 starting maintenance, changing pause policy or recursively trusting content.
 Student read access on the parent applies only to that folder, preserving
 private child permissions. The real signed SYSTEM upgrade CI exercises this
 case and preserves the disabled customized task.
 
-Broader grants, file-inherited student writes, unexpected owners, writable children
+The #59 source change extends that contract narrowly to the fixed immediate
+`Logs` child with the inherited BUILTIN Users container-only Write grant. This
+extension is not present in the published v1.2.5 installer. The directory must
+have a trusted SYSTEM/Administrators owner and no broader or explicit untrusted
+write/deny grants. It may be empty or contain only flat regular files named
+`AutoUpdate-YYYYMMDD-HHMMSS.log`; every existing file must already have a trusted
+owner and no untrusted effective write permission. Writable log bytes are not
+accepted or authenticated by changing their ACLs.
+
+During this migration the installer pins Logs and each inventoried file against
+write/rename/delete handles, checks the whole existing tree before mutation,
+applies the provisioning ACL to Logs only, and checks for added entries before
+protecting the parent. It rechecks the tree before returning. A busy log or an
+unsafe/unexpected entry fails closed; retry only after the real writer completes
+or after mentor diagnosis. No files are deleted, no maintenance is launched and
+no baseline provisioning or policy resume is performed. Existing protected file
+ACLs and log bytes are preserved. A retry after Logs protection but before parent
+protection uses the existing protected-descendant migration path.
+
+Preserved legacy logs remain diagnostic evidence, not authenticated maintenance
+history. Schedule results come from Task Scheduler; self-update status comes
+from separate protected receipts. The installer does not read or execute these
+old log contents. Acceptance of a new candidate still requires native Windows
+verification and owner retest on affected Windows 11 PCs.
+
+Broader grants, file-inherited student writes, unexpected owners, other writable children
 and reparse points require mentor review. Do not recursively remove writes and
 then assume existing scripts are trustworthy. Review or reinstall suspect
 maintenance content from the approved distribution before retrying. No signing
