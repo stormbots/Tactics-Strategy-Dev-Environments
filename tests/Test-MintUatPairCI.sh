@@ -20,6 +20,9 @@ fi
 if [[ -f /work/uat/1.2.5/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
   versions+=(1.2.5)
 fi
+if [[ -f /work/uat/1.2.6/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions+=(1.2.6)
+fi
 for version in "${versions[@]}"; do
   if [[ "$version" = 1.2.3 ]]; then
     printf '# legacy maintenance UAT sentinel\n' > "$legacy"

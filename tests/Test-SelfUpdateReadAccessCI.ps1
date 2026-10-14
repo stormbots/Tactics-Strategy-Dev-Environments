@@ -17,11 +17,20 @@ foreach ($verb in @('pause','resume')) {
     if ($deniedProcess.ExitCode -eq 0) { throw 'Student changed pause policy.' }
 }
 $parent = 'C:\ProgramData\SkyviewRobotics'
+foreach ($directory in @($parent,(Join-Path $parent 'Logs'))) {
+    $denied = $false
+    $probePath = Join-Path $directory ('student-write-probe-' + [guid]::NewGuid().ToString('N'))
+    try { [IO.File]::WriteAllText($probePath,'unsafe') }
+    catch [UnauthorizedAccessException] { $denied = $true }
+    if (-not $denied) { throw 'Student could create maintenance-parent or Logs files.' }
+}
+$legacyLog = Join-Path $parent 'Logs\AutoUpdate-20261014-051807.log'
 $denied = $false
-$probePath = Join-Path $parent ('student-write-probe-' + [guid]::NewGuid().ToString('N'))
-try { [IO.File]::WriteAllText($probePath,'unsafe') }
-catch [UnauthorizedAccessException] { $denied = $true }
-if (-not $denied) { throw 'Student could create maintenance-parent files.' }
+try {
+    $handle = [IO.File]::Open($legacyLog,[IO.FileMode]::Open,[IO.FileAccess]::Write)
+    $handle.Dispose()
+} catch [UnauthorizedAccessException] { $denied = $true }
+if (-not $denied) { throw 'Student could open migrated legacy evidence for writing.' }
 $denied = $false
 try {
     $handle = [IO.File]::Open((Join-Path $parent 'Update-SkyviewTools.ps1'),[IO.FileMode]::Open,[IO.FileAccess]::Write)
