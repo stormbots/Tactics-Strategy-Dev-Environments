@@ -124,6 +124,30 @@ try {
             }
         }
     } finally { $logGuard.Dispose(); $guard.Dispose() }
+    # Exercise the production commit boundary: introduce an extra entry after
+    # the inventory, or fail after Logs hardening. Use a cmdlet shim solely for
+    # deterministic fault injection; production code and native pinning are real.
+    $script:injectLogsAddition = $true
+    function Set-Acl {
+        param([string]$LiteralPath,$AclObject)
+        if ($LiteralPath -eq $logs -and $script:injectLogsAddition) {
+            $script:injectLogsAddition = $false
+            $extraLog = Join-Path $logs 'AutoUpdate-20261014-051809.log'
+            [IO.File]::WriteAllText($extraLog,'Concurrent addition must not be silently accepted.')
+            Microsoft.PowerShell.Security\Set-Acl -LiteralPath $extraLog -AclObject $fileAcl
+        }
+        Microsoft.PowerShell.Security\Set-Acl -LiteralPath $LiteralPath -AclObject $AclObject
+    }
+    $parentBefore = (Get-Acl -LiteralPath $fixture).Sddl
+    $rejected = $false
+    try { Protect-LegacyMaintenanceParent } catch { $rejected = $_.ToString() -like '*entries changed during migration*' }
+    Remove-Item Function:\Set-Acl
+    if (-not $rejected -or (Get-Acl -LiteralPath $fixture).Sddl -ne $parentBefore) { throw 'Concurrent Logs addition was accepted or parent committed before validation.' }
+    # The directory was protected before detecting the added entry. Retrying
+    # revalidates both already protected files instead of fabricating success.
+    Protect-LegacyMaintenanceParent
+    Assert-TrustedItem $fixture
+    Reset-LegacyLogs
     # An already open writer blocks migration before either directory changes.
     $writer = [IO.File]::Open($log,'Open','Write','ReadWrite')
     try { Assert-LogsRejection } finally { $writer.Dispose() }
@@ -137,6 +161,10 @@ try {
     Reset-LegacyLogs
     Rename-Item -LiteralPath $log -NewName 'policy.json'
     Assert-LogsRejection
+    Reset-LegacyLogs
+    $alias = Join-Path $fixture 'log-alias'
+    New-Item -ItemType HardLink -Path $alias -Target $log | Out-Null
+    try { Assert-LogsRejection } finally { Remove-Item -LiteralPath $alias }
     Reset-LegacyLogs
     New-Item -ItemType Directory -Path (Join-Path $logs 'nested') | Out-Null
     Assert-LogsRejection

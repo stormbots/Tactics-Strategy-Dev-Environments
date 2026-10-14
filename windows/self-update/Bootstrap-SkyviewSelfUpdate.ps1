@@ -21,9 +21,16 @@ function Open-LegacyDirectoryGuard([string]$Path) {
 using System;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
+[StructLayout(LayoutKind.Sequential)]
+public struct SdeLegacyFileInfo {
+    public uint Attributes, CreationLow, CreationHigh, AccessLow, AccessHigh,
+        WriteLow, WriteHigh, VolumeSerial, SizeHigh, SizeLow, Links, IndexHigh, IndexLow;
+}
 public static class SdeLegacyDirectoryNative {
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     public static extern SafeFileHandle CreateFile(string path, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool GetFileInformationByHandle(SafeFileHandle handle, out SdeLegacyFileInfo info);
 }
 '@
     }
@@ -41,6 +48,12 @@ function Open-LegacyLogGuard([string]$Path) {
     # writers and rename/delete handles before checking its owner and ACL.
     $handle = [SdeLegacyDirectoryNative]::CreateFile($Path,0x20001,1,[IntPtr]::Zero,3,0x00200000,[IntPtr]::Zero)
     if ($handle.IsInvalid) { $handle.Dispose(); throw "Legacy maintenance log requires mentor review: cannot pin $Path." }
+    $info = New-Object SdeLegacyFileInfo
+    if (-not [SdeLegacyDirectoryNative]::GetFileInformationByHandle($handle,[ref]$info) -or
+        ($info.Attributes -band 0x410) -or $info.Links -ne 1) {
+        $handle.Dispose()
+        throw 'Legacy Logs requires mentor review: expected an unlinked regular file.'
+    }
     return $handle
 }
 function Assert-LegacyLogsDirectory([string]$Path) {

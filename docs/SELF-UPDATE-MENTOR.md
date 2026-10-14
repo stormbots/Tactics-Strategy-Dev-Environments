@@ -245,7 +245,7 @@ The #59 source change extends that contract narrowly to the fixed immediate
 extension is not present in the published v1.2.5 installer. The directory must
 have a trusted SYSTEM/Administrators owner and no broader or explicit untrusted
 write/deny grants. It may be empty or contain only flat regular files named
-`AutoUpdate-YYYYMMDD-HHMMSS.log`; every existing file must already have a trusted
+`AutoUpdate-YYYYMMDD-HHMMSS.log`, with a single hard link; every existing file must already have a trusted
 owner and no untrusted effective write permission. Writable log bytes are not
 accepted or authenticated by changing their ACLs.
 
