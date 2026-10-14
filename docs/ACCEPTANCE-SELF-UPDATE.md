@@ -104,3 +104,10 @@ log/baseline/data/ACL/schedule preservation, app/engine identity, actual paused
 policy, scheduled execution and post-reboot evidence remain pending. Keep #59
 open and broader rollout/application updates paused; prior acceptance history and
 all other release gates remain unchanged.
+
+The owner subsequently supplied standalone GUI Validate output: **PASS**, with
+31 passing checks, 2 optional/unconfigured informational checks and zero failures.
+Reported tool versions match the preceding Update output. Reboot completion was
+not explicitly confirmed; paused application-update policy, app/engine identity,
+preservation and actual scheduled execution still require separate evidence.
+See the chronological standalone Validate entry in the same UAT record.

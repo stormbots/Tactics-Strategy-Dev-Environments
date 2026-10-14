@@ -449,3 +449,27 @@ pass the preservation checklist or establish fleet acceptance. Keep #59 open,
 application updates and broader rollout paused, and existing release/automatic
 installation/recovery/school-network acceptance gates intact. No stable promotion,
 additional-PC installation or issue closure is inferred from this result.
+
+### Subsequent standalone Validate output — October 14, 2026
+
+**PASS — Standalone development-environment validation.** The owner supplied a
+second `Pasted text.txt` containing the GUI Validate output (5,629 bytes; SHA-256
+`bb9baaa63544da61067285a8dc60f540b073e5585973cd22080f248ae883d1a3`).
+It records 31 PASS validation events, 2 optional INFO events, no FAIL events,
+`Validation completed with 0 failed checks` and `Development environment ready`.
+Reported installed tool versions match the preceding Update output, including
+Node.js 24.21.0, Python 3.14.8 and PowerShell 7.6.7. Required tools, editor
+extensions, settings presence, development folder, Git defaults and configured
+Windows settings pass. Git identity and GitHub authentication remain optional
+and unconfigured. `Weekly maintenance enabled` again confirms enabled/readable
+task state, not a scheduled execution or schedule-preservation comparison.
+
+No package upgrade output or pending-reboot/dependency warning appears in this
+Validate-only attachment; those Chocolatey conditions were not checked by this
+operation. Reboot completion was not explicitly reported, so this is not yet a
+confirmed post-reboot result and does not establish that prior warnings cleared.
+Tool records still use `updateCheck=notChecked`. Native/helper exit, app/engine
+identity, actual paused application-update policy and the outstanding
+preservation/scheduled-execution checks remain unverified by this attachment.
+Broader rollout remains paused; the historical installation and Update evidence
+above remain unchanged.
