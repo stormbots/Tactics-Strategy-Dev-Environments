@@ -516,3 +516,33 @@ Do not resume application updates, use Repair to manufacture a result, alter
 task settings, delete receipts or infer that old log bytes were preserved from
 this page. Other preservation, post-reboot and acceptance gates remain pending;
 #59 stays open and broader rollout remains paused.
+
+### Administrator task/worker inspection — October 14, 2026
+
+The owner's read-only inspection confirms the existing task executes
+`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` with
+`-NoProfile -NonInteractive -ExecutionPolicy Bypass -File`
+`C:\ProgramData\SkyviewRobotics\SelfUpdate\Invoke-SkyviewMaintenance.ps1`.
+Principal is SYSTEM, RunLevel Highest. **PASS — observed task routes to the
+protected maintenance host under the required principal.** Pre/post trigger,
+settings or task ACL preservation is not established by this inspection.
+
+The trusted installed `sde-update-trust.exe self-update-status` reports
+`paused=true`, `coordination=idle`, `outcome=unavailable`, `phase=unknown` and
+`policyChangedAt=1791981810`. Attempt times, observed application/engine/baseline,
+tool/native exits and log reference remain null; `recoveryAvailable=false`.
+**PASS — installed-worker observation of paused policy and idle coordination.**
+Unavailable history remains unclassified (absent, unreadable or invalid); no
+completed task invocation is claimed. False/default reboot and recovery fields
+in this unavailable status do not clear the earlier pending-reboot warning or
+prove recovery material was checked.
+
+The next maintenance acceptance step is one controlled invocation of this
+existing enabled SYSTEM task, with SDE closed normally and other work idle,
+following the [immediate UAT procedure](SELF-UPDATE-UAT.md#immediate-checks-and-maintenance-no-weekly-wait).
+It really runs development-tool maintenance while application updates remain
+paused. Wait for native/package work to finish, then capture the fresh task run
+time/result and installed-worker/Schedule status. Expected evidence includes
+engine 1.2.6, independent tool outcome, baseline identity and paused app outcome.
+Do not terminate work, resume policy, alter the schedule or synthesize history.
+Other preservation, reboot and deployment gates remain open.

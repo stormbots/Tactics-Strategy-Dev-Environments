@@ -121,3 +121,10 @@ recovery remain unavailable/unrecorded. Missing history after manual bootstrap
 is allowed, but requires distinguishing absent history from unreadable/invalid
 state. See the chronological Schedule observation for displayed local times,
 limits and next inspection. Broader rollout and the remaining gates stay paused.
+
+Administrator read-only inspection subsequently confirms the task action targets
+the protected SelfUpdate launcher under SYSTEM/Highest, and the installed worker
+reports `paused=true`, `coordination=idle`. Those observations pass; attempt
+history/engine/baseline/tool/native results remain unavailable and do not establish
+a completed invocation. The controlled existing-task run and remaining
+preservation/reboot checks are still pending.
