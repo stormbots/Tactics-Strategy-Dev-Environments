@@ -473,3 +473,46 @@ identity, actual paused application-update policy and the outstanding
 preservation/scheduled-execution checks remain unverified by this attachment.
 Broader rollout remains paused; the historical installation and Update evidence
 above remain unchanged.
+
+### Schedule page observation — October 14, 2026
+
+The owner supplied the Schedule page text after the installation/Update/Validate
+reports. **PASS — open application reports v1.2.6 and current application-update
+installation setting is paused by administrator.** The UI lists pause-setting
+change time as October 14, 2026, 05:43 in the workstation's displayed local time.
+This confirms the observed paused setting, not byte-for-byte policy preservation
+or a completed automatic-update attempt.
+
+The page reports `\\Skyview Robotics - Dev Tool Updates` enabled, every week on
+Sunday at 03:00 local time, with missed-run catch-up enabled. Displayed last run:
+October 14, 2026, 05:18; last Scheduler result: Succeeded (`0x00000000`). Displayed
+next run: October 18, 2026, 03:00. These are workstation-local displayed times;
+no UTC conversion or execution guarantee is inferred. Pre-install task XML and
+run chronology were not supplied, so neither unchanged schedule nor a successful
+post-v1.2.6 SYSTEM maintenance invocation is established by this historical result.
+
+The observed installed application, candidate, attempt outcome/times, maintenance
+engine, applied baseline, tool/native results and signed recovery are unavailable
+or unrecorded. Coordination is `SDE or maintenance is active`, which is expected
+while SDE is open and does not itself prove maintenance is executing.
+
+Missing attempt history is allowed after a manual bootstrap: the installer
+activates an engine but does not fabricate a maintenance attempt or recovery
+receipt. See [manual-install expectations](SELF-UPDATE-UAT.md#immediate-checks-and-maintenance-no-weekly-wait).
+This display is consistent with missing history, but also covers unreadable or
+invalid history; distinguish these by checking the trusted task action, installed
+worker status and protected logs. It does not reverse the owner-reported install
+pass, prove engine/baseline absence or establish successful automatic installation.
+Unconfirmed signed recovery after manual bootstrap remains a known reduced
+recovery capability, not proof that signed-candidate verification failed.
+
+Next inspection: close SDE normally, read the existing task action/SYSTEM
+principal and active engine receipt/status from an administrator terminal.
+Before any immediate maintenance test, verify the task targets the protected
+maintenance host and that other package/maintenance work is idle. An authorized
+existing SYSTEM task invocation keeps application policy paused but also runs
+development-tool maintenance; capture its fresh independent results and logs.
+Do not resume application updates, use Repair to manufacture a result, alter
+task settings, delete receipts or infer that old log bytes were preserved from
+this page. Other preservation, post-reboot and acceptance gates remain pending;
+#59 stays open and broader rollout remains paused.

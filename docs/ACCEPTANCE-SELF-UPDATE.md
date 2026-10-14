@@ -111,3 +111,13 @@ Reported tool versions match the preceding Update output. Reboot completion was
 not explicitly confirmed; paused application-update policy, app/engine identity,
 preservation and actual scheduled execution still require separate evidence.
 See the chronological standalone Validate entry in the same UAT record.
+
+The subsequent Schedule page confirms **open app v1.2.6 and application-update
+installation paused by administrator**. The weekly Sunday 03:00 task is enabled
+and shows historical Scheduler success (`0x00000000`); pre/post preservation and
+successful execution with the new engine are not established. Attempt history,
+observed installed identity, engine/baseline, tool/native results and signed
+recovery remain unavailable/unrecorded. Missing history after manual bootstrap
+is allowed, but requires distinguishing absent history from unreadable/invalid
+state. See the chronological Schedule observation for displayed local times,
+limits and next inspection. Broader rollout and the remaining gates stay paused.
