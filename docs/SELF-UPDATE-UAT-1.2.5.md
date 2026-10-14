@@ -213,13 +213,13 @@ pass this checklist.
 | Passing source CI | [run 38586204871](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38586204871); Windows Server 2022 evidence, not Windows 11 acceptance |
 | Existing CI artifact | [Windows artifact 11907130742](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38586204871/artifacts/11907130742); development fixture, not an approved workstation candidate |
 | CI artifact archive SHA-256 | `4bdf792117ea46a8b06a777b9654744efa1f71f409a80996ec955de110a11415` (GitHub-reported archive digest; **not the installer hash**) |
-| New immutable candidate version / source commit | **Prepared target: v1.2.6; not yet built/signed**. Full build SHA **PENDING**. It must contain the reviewed migration; list and review any differences from `7281331`, including version/packaging changes |
-| Protected candidate build run / immutable asset URL | **PENDING**; retain build provenance and signature verification evidence |
-| Candidate Windows installer SHA-256 | **PENDING — required before testing**; record the 64 hexadecimal digits for the actual `.exe`, not its download ZIP |
-| Signed manifest / signature verification | **PENDING**; verify the complete candidate asset set with the installed pinned worker using the established [owner UAT procedure](SELF-UPDATE-UAT.md) |
+| New immutable candidate version / source commit | **v1.2.6 signed prerelease**, `741f681c0444a8d44d9430a107c80f2fed95b68e` (merged PR #60); migration source unchanged from reviewed `7281331`, with documented candidate recipe/identity and UAT documentation changes |
+| Protected candidate build run / immutable asset URL | [run 38608215787](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787), [v1.2.6 prerelease](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6); all source, Windows/Mint build-pair and sign-publish jobs passed |
+| Candidate Windows installer SHA-256 | `15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690`; actual `.exe`, 4,095,109 bytes; independently downloaded and hash-checked |
+| Signed manifest / signature verification | Protected signing and post-publication pinned-key verification passed; manifest SHA-256 `746b517cffd6c68b2cd24a05fb2f4104c7dca8a48f716eb69efc4cd3eec2ff30`. Repeat full-set verification with the installed pinned worker on each test PC using the [owner UAT procedure](SELF-UPDATE-UAT.md) |
 
-No new signed candidate or installer hash is established by this record. Do not
-substitute the published v1.2.5 assets, reuse their tag with changed bytes, install
+The new signed candidate and installer hash were verified on October 14, 2026.
+Affected-PC acceptance is still NOT RUN. Do not substitute the published v1.2.5 assets, reuse their tag with changed bytes, install
 the CI development fixture on school workstations, or treat an archive digest as
 release authentication. Candidate preparation/publication retains its separate
 authorization gate. After obtaining the approved candidate, verify its installer
@@ -237,6 +237,44 @@ main CI, successful Windows SYSTEM/Mint candidate tests and human approval in
 `sde-release-signing`. Do not dispatch from the unmerged PR or bypass these
 guards. Record the verified published installer hash emitted by the workflow's
 final download/authentication step, then confirm it locally before testing.
+
+#### Signed candidate verification — October 14, 2026
+
+[Protected run 38608215787](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787)
+used `release/v1.2.uat` at `741f681c0444a8d44d9430a107c80f2fed95b68e`,
+with `logs_migration=true`, `migration=false`, `correction=false`. Exact-main
+[CI 38600886692](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38600886692)
+passed before signing. Windows SYSTEM and actual Mint candidate tests passed
+through 1.2.6 (`SDE_UAT_PAIR_WINDOWS_OK`, `SDE_UAT_PAIR_MINT_OK`); the Windows
+1.2.6 native installer exited 0. These are CI results, not affected-PC owner UAT.
+
+The protected `sign-publish` job completed signing, pinned-key authentication,
+immutable prerelease publication and download/authentication of all five
+published assets. Tag v1.2.6 points to the exact source above; the release is
+nondraft and remains a prerelease. Existing v1.2.5 assets were not replaced.
+The signed manifest's stable-intent channel does not override GitHub prerelease
+exclusion or authorize automatic installation.
+
+Codex independently downloaded all five assets. Both installer hashes matched
+`SHA256SUMS.txt`, signed-manifest entries and GitHub asset digests; their sizes
+matched the manifest. Manifest/signature/checksum hashes also matched GitHub
+digests. Pinned-key verification evidence here is from the protected workflow;
+the local executor lacked the Rust toolchain to independently rerun the source
+verifier. Each PC must still authenticate its complete downloaded folder using
+the trusted installed worker before installation.
+
+| Published asset | SHA-256 |
+| --- | --- |
+| Skyview-Dev-Setup-Windows-x64.exe | `15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690` |
+| Skyview-Dev-Setup-LinuxMint-amd64.deb | `d5018f5ccb8523a011cde88c30ff971c498188308b251978b457a0db5dc9778e` |
+| sde-update.json | `746b517cffd6c68b2cd24a05fb2f4104c7dca8a48f716eb69efc4cd3eec2ff30` |
+| sde-update.json.minisig | `28965ff6dd31ec09debe50d27a419ae0e4f6b286cd5768ce26f0a0ab8405daeb` |
+| SHA256SUMS.txt | `2a179acb7c75df797813722d2c807ecd2c68e19017e369b50abf5ddf499e6894` |
+
+**Disposition: signed-candidate preparation/CI verification complete; affected-PC
+Windows 11 installation, preservation, application, scheduled-maintenance and
+paused-policy results remain pending.** Keep #59 open and broader rollout paused.
+No stable promotion, automatic-update rollout or owner acceptance is inferred.
 
 #### Before the first attempt — capture without changing permissions
 

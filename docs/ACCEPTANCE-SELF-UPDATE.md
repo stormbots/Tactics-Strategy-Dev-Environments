@@ -68,3 +68,22 @@ No unattended student-fleet installation, automatic application-update rollout,
 stable promotion or closure of outstanding Windows 11 acceptance tests is
 authorized. Keep application updates paused. Prior version-specific acceptance
 and published verification evidence remain unchanged.
+
+## v1.2.6 candidate verification (2026-10-14; owner UAT pending)
+
+The [immutable signed v1.2.6 prerelease](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6)
+contains the #59 Logs migration from merged PR #60, source
+`741f681c0444a8d44d9430a107c80f2fed95b68e`. Exact-main CI and protected
+[candidate run 38608215787](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787)
+passed, including Windows SYSTEM/Mint version-chain checks and signed published
+asset authentication. Independent downloaded hashes matched the published
+checksums, manifest entries and GitHub digests. Windows installer SHA-256:
+`15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690`.
+
+See the [candidate identity, verification evidence and affected-PC checklist](SELF-UPDATE-UAT-1.2.5.md#affected-pc-windows-11-checklist-for-reviewed-commit-7281331).
+This completes candidate preparation only. Affected Windows 11 first-attempt
+installation without manual remediation, preservation, application, maintenance
+and paused-policy checks remain pending. Per-PC pinned verification is required.
+Keep application updates and broader rollout paused, #59 open, and all existing
+owner acceptance, school-network, automatic-install/recovery and stable-promotion
+gates intact. The historical v1.2.5 manual-remediation pass is unchanged.
