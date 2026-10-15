@@ -62,6 +62,9 @@ command errors merely ending in “not found” remain Needs attention.
    correction adds regression tests and a targeted desktop/mobile/guidance rerun.
    Check the final PR head's CI rather than treating older green checks as current.
 
+Controlled setup/restoration commands and their limits are documented in
+[Native UAT fixtures](UI-NATIVE-UAT-FIXTURES.md). Native execution remains pending.
+
 ## Record before testing
 
 | Field | Windows | Linux Mint |

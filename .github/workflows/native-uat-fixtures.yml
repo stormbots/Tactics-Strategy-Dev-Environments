@@ -1,0 +1,68 @@
+name: Native UAT fixture helpers
+on:
+  push:
+    branches: ['qa/native-uat-fixtures']
+    paths:
+      - '.github/workflows/native-uat-fixtures.yml'
+      - 'tests/native_uat_fixtures.py'
+      - 'tests/test_native_uat_fixtures.py'
+      - 'tests/verify_native_uat_cli.py'
+      - 'tests/Prepare-MintNativeCI.sh'
+permissions:
+  contents: read
+jobs:
+  windows-fixtures:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit and filesystem regression checks
+        run: python -m unittest discover -s tests -p test_native_uat_fixtures.py -v
+      - name: Actual Windows fixture CLI and ACL verification
+        shell: pwsh
+        run: |
+          $lab = Join-Path $env:RUNNER_TEMP 'sde-fixture-home'
+          New-Item -ItemType Directory -Path $lab | Out-Null
+          $env:HOME = $lab
+          $env:USERPROFILE = $lab
+          $env:SDE_FIXTURE_HOME = $lab
+          $env:SDE_FIXTURE_CI = 'true'
+          $env:SDE_FIXTURE_EVIDENCE = Join-Path $env:GITHUB_WORKSPACE 'evidence/windows.json'
+          python tests/verify_native_uat_cli.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows fixture smoke failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-fixture-Windows
+          path: evidence/windows.json
+          if-no-files-found: error
+  mint-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare authenticated Mint userland
+        run: bash tests/Prepare-MintNativeCI.sh
+      - name: Actual Mint CLI as a dedicated non-root account
+        run: |
+          mkdir evidence
+          chmod 0777 evidence
+          docker run --rm --user 0 \
+            --mount "type=bind,src=$PWD,dst=/work,readonly" \
+            --mount "type=bind,src=$PWD/evidence,dst=/evidence" \
+            --entrypoint /bin/bash sde-mint22.3-native -euc '
+              command -v python3
+              command -v git
+              useradd --create-home --shell /bin/bash sde-fixture
+              mkdir -p /etc/skyview-robotics/student-dev
+              chown sde-fixture:sde-fixture /etc/skyview-robotics/student-dev
+              runuser -u sde-fixture -- env HOME=/home/sde-fixture GITHUB_ACTIONS=true SDE_FIXTURE_CI=true SDE_FIXTURE_HOME=/home/sde-fixture SDE_FIXTURE_EVIDENCE=/evidence/mint.json python3 /work/tests/verify_native_uat_cli.py
+              runuser -u sde-fixture -- env HOME=/home/sde-fixture PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s /work/tests -p test_native_uat_fixtures.py -v
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-fixture-Mint
+          path: evidence/mint.json
+          if-no-files-found: error
