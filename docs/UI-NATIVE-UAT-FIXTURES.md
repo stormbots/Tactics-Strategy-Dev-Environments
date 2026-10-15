@@ -139,8 +139,9 @@ remain deferred; no such changes accompany these fixture helpers.
 
 ## Fixture-only CI
 
-`.github/workflows/native-uat-fixtures.yml` runs on pushes to the dedicated
-`qa/native-uat-fixtures` branch. Windows uses the real runner filesystem and .NET
+`.github/workflows/native-uat-fixtures.yml` runs on relevant pull requests and
+pushes to the dedicated `qa/native-uat-fixtures` branch. Workflow lint runs alongside
+the Windows/Mint jobs. Windows uses the real runner filesystem and .NET
 ACL implementation. Mint uses the existing signed-ISO extraction procedure,
 then runs the helper as a non-root test account in that genuine Mint userland.
 The CLI smoke test substitutes no platform identity or target paths: it enrolls,
@@ -151,7 +152,19 @@ This differs from the local unit suite, which substitutes platform/target paths.
 CI does not install SDE, run a native application Validate report, exercise a
 desktop/screen reader, or run Repair. Those acceptance checks remain pending.
 
-No PR is opened while application builds are deferred: the existing unfiltered
-PR workflow would build SDE. The isolated branch’s push triggers only fixture
-verification. Success artifacts contain unit output and a small JSON evidence
+The application workflow now starts with a tested scope classifier. A PR whose
+changes are entirely in the explicit fixture/support path set skips the existing
+`checks`, `native`, and `update-trust` jobs. Mixed or unknown changes retain all
+application checks. Workflow integration itself is permitted only when parsed
+application/release jobs and triggers are unchanged after removing the scope job
+and its three exact gate conditions. Shared Mint image preparation changes still
+require application checks. Git diffs use the merge base, include all names, and
+treat renames as old/new paths. Push/manual/tag events retain full application CI;
+merging to main can therefore build SDE and is a separate step while builds are
+deferred. No release/signing behavior was changed.
+
+`python3 -m unittest discover -s tests -p test_ci_scope.py -v` verifies this policy.
+The lightweight `scope` job and the three fixture workflow jobs must pass before
+considering this PR ready; application jobs shown as skipped are expected for
+fixture-only PRs. Success artifacts contain unit output and a small JSON evidence
 record, never the private ledger/configuration backup.

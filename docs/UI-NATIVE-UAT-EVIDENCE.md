@@ -108,7 +108,9 @@ accepts #4/#5/#6 nor closes their issues. Unknown/runtime failures, genuine tool
 updates, scheduler changes and full Repair are outside this smoke test.
 
 Application versions, tags, signing, releases and update policy remain unchanged.
-Only fixture-specific CI ran, triggered by the isolated branch push; no application
-build workflow was dispatched. No PR was opened because the current unfiltered
-PR workflow would trigger application builds. The helper changes and evidence
-remain on the reviewable test branch, with main unchanged.
+The recorded native run above was fixture-specific CI on the isolated branch;
+no application build workflow was dispatched. Subsequent PR integration adds a
+lightweight scope classifier and gated application jobs, with policy tests. See
+[fixture CI scope](UI-NATIVE-UAT-FIXTURES.md#fixture-only-ci). PR scope/native/lint
+results must be recorded separately from the earlier source run above. Main and
+release state remain unchanged until separately authorized.

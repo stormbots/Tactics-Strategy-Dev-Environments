@@ -13,7 +13,28 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  scope:
+    runs-on: ubuntu-24.04
+    outputs:
+      application_required: ${{ steps.scope.outputs.application_required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install CI scope parser
+        run: python3 -m pip install 'PyYAML==6.0.2'
+      - name: Verify CI scope policy
+        run: python3 -m unittest discover -s tests -p test_ci_scope.py -v
+      - name: Classify application versus fixture-only changes
+        id: scope
+        env:
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 tests/ci_scope.py
   checks:
+    needs: scope
+    if: needs.scope.outputs.application_required == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +73,8 @@ jobs:
           path: installer/test-results/
           if-no-files-found: error
   update-trust:
+    needs: scope
+    if: needs.scope.outputs.application_required == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -104,6 +127,8 @@ jobs:
             updater/target/release/sde-update-trust.exe
           if-no-files-found: error
   native:
+    needs: scope
+    if: needs.scope.outputs.application_required == 'true'
     strategy:
       fail-fast: false
       matrix:

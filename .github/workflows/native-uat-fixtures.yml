@@ -9,9 +9,28 @@ on:
       - 'tests/verify_native_uat_cli.py'
       - 'tests/run_native_uat_tests.py'
       - 'tests/Prepare-MintNativeCI.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/native-uat-fixtures.yml'
+      - '.github/workflows/build-dev-setup.yml'
+      - 'tests/native_uat_fixtures.py'
+      - 'tests/test_native_uat_fixtures.py'
+      - 'tests/verify_native_uat_cli.py'
+      - 'tests/run_native_uat_tests.py'
+      - 'tests/ci_scope.py'
+      - 'tests/test_ci_scope.py'
+      - 'tests/Prepare-MintNativeCI.sh'
 permissions:
   contents: read
 jobs:
+  workflow-checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fixture and application workflow definitions
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color .github/workflows/build-dev-setup.yml .github/workflows/native-uat-fixtures.yml
   windows-fixtures:
     runs-on: windows-2022
     timeout-minutes: 15
