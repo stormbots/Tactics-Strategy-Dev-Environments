@@ -334,3 +334,23 @@ it("blocks guidance actions while an operation is streaming checks", async () =>
   fireEvent.click(review);
   expect(vi.mocked(operate)).toHaveBeenCalledTimes(1);
 });
+
+it("keeps command diagnostics ending in not found on the mentor path", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 1,
+    success: false,
+    lines: [
+      "SKYVIEW_EVENT|validation|FAIL|Node.js: expected runtime family or usable command; detected version not found",
+      "SKYVIEW_EVENT|summary|1|Failed",
+    ],
+    log_path: "test.log",
+    platform: { label: "Windows 11", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "Needs attention" });
+  fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
+  expect(
+    screen.getByText("A required command or runtime could not be verified"),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Review Repair/ })).toBeNull();
+});

@@ -261,3 +261,29 @@ it("does not describe runtime or command failures as missing installations", () 
     ]),
   ).toBe("Needs attention");
 });
+
+it.each([
+  "Git: expected runtime family or usable command; detected version not found",
+  "Node.js: unexpected package metadata not found",
+  "Python: unexpected module: not installed",
+])("does not infer a missing tool from a diagnostic suffix: %s", (message) => {
+  expect(environmentStatus([{ status: "FAIL", message }])).toBe(
+    "Needs attention",
+  );
+  expect(
+    environmentStatus([
+      { status: "PASS", message: "Firefox: 158.0" },
+      { status: "FAIL", message },
+    ]),
+  ).toBe("Needs attention");
+});
+
+it.each([
+  "Git: not installed",
+  "Python 3.14 not found",
+  "Google Chrome not found",
+])("recognizes complete missing-tool messages: %s", (message) => {
+  expect(environmentStatus([{ status: "FAIL", message }])).toBe(
+    "Not installed",
+  );
+});

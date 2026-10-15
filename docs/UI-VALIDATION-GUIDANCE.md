@@ -32,11 +32,12 @@ policy or the operating-system schedule.
 
 Overview summaries no longer label every failure as needing Repair. Runtime and
 unknown failures use Needs attention; missing-tool states require explicit
-missing-tool diagnostics. The generic failure result points to validation guidance.
+missing-tool diagnostics. Embedded diagnostic suffixes such as version not found
+do not imply that a tool is absent. The generic failure result points to validation guidance.
 
 ## QA evidence
 
-- Production TypeScript/Vite build and all 96 unit/model tests passed.
+- Production TypeScript/Vite build and all 103 unit/model tests passed.
 - The 42-check browser suite passed: the existing theme/zoom/accessibility tests
   plus four guidance scenarios covering both themes at 1040px and at 640px/150%.
 - Fixture tests cover representative actual Windows/Mint messages, known manual

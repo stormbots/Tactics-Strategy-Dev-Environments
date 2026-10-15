@@ -167,10 +167,15 @@ export function checksFrom(lines: string[]): Check[] {
 export function environmentStatus(checks: Check[], updates = false) {
   const managed = checks.filter((c) => toolForCheck(c));
   const installed = managed.filter((c) => c.status === "PASS").length;
-  const missing = managed.filter(
-    (c) =>
-      c.status === "FAIL" && /(?:: not installed| not found)$/.test(c.message),
-  ).length;
+  const missing = managed.filter((c) => {
+    const tool = toolForCheck(c);
+    if (c.status !== "FAIL" || !tool || tool === "Python venv") return false;
+    const messages = [`${tool}: not installed`, `${tool} not found`];
+    if (tool === "Python")
+      messages.push("Python 3.14: not installed", "Python 3.14 not found");
+    if (tool === "Chrome") messages.push("Google Chrome not found");
+    return messages.includes(c.message);
+  }).length;
   const failed = checks.some((c) => c.status === "FAIL");
   if (!checks.length) return "Not checked";
   if (managed.length > 0 && missing === managed.length && failed)
