@@ -66,6 +66,10 @@ export function ZoomButtons({
         aria-label="Decrease zoom"
         data-appearance-key="decrease"
         disabled={position === 0}
+        onKeyDown={(event) => {
+          if (event.repeat && (event.key === "Enter" || event.key === " "))
+            event.preventDefault();
+        }}
         onClick={(event) => step(-1, event.currentTarget)}
       >
         −
@@ -79,6 +83,10 @@ export function ZoomButtons({
         aria-label="Increase zoom"
         data-appearance-key="increase"
         disabled={position === zoomLevels.length - 1}
+        onKeyDown={(event) => {
+          if (event.repeat && (event.key === "Enter" || event.key === " "))
+            event.preventDefault();
+        }}
         onClick={(event) => step(1, event.currentTarget)}
       >
         +

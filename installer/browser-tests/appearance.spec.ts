@@ -328,3 +328,24 @@ test("selected theme retains a distinct keyboard focus ring in forced colors", a
   await expect(system).toHaveCSS("outline-offset", "4px");
   await expect(system).toHaveCSS("outline-width", "3px");
 });
+
+test("holding a zoom key cannot reverse direction after focus moves at a limit", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await page.goto("/");
+  await chooseZoom(page, 3);
+  await page.getByRole("button", { name: "Increase zoom" }).focus();
+  await page.keyboard.down("Enter");
+  await expect(page.locator(".zoom-value:visible")).toHaveText("150%");
+  await page.keyboard.down("Enter");
+  await expect(page.locator(".zoom-value:visible")).toHaveText("150%");
+  await page.keyboard.up("Enter");
+  await chooseZoom(page, 1);
+  await page.getByRole("button", { name: "Decrease zoom" }).focus();
+  await page.keyboard.down("Enter");
+  await expect(page.locator(".zoom-value:visible")).toHaveText("90%");
+  await page.keyboard.down("Enter");
+  await expect(page.locator(".zoom-value:visible")).toHaveText("90%");
+  await page.keyboard.up("Enter");
+});

@@ -18,7 +18,8 @@ buttons. #4 and #5 remain open for native acceptance.
   It closes on toggle, Escape, outside pointer activation, page navigation, or
   transition to wide layout. Keyboard opening focuses the first theme button;
   Escape restores trigger focus. At either zoom limit, focus moves to the enabled
-  opposite zoom button instead of falling back to the document. Tab is not trapped. Resizing transfers focus
+  opposite zoom button instead of falling back to the document. Held-key
+  auto-repeat is suppressed so that focus transfer cannot reverse zoom direction. Tab is not trapped. Resizing transfers focus
   between equivalent inline controls and the compact trigger.
 - One mounted owner holds both preferences across panel dismissal and layout
   transitions, including when local storage cannot be written.
@@ -45,7 +46,7 @@ WCAG AA axe scans, contrast tokens, preference persistence/live OS theme changes
 keyboard operation, popover focus/dismissal, layout transitions, blocked storage,
 a short viewport, and preservation of active validation/provisioning logs.
 
-Final review checks: 103 unit/model/component tests and all 69 browser checks
+Final review checks: 103 unit/model/component tests and all 70 browser checks
 passed. The review follow-up covers zoom-limit focus, live resizing to a very
 short viewport, hovered-tooltip dismissal, and restoring tooltips on renewed
 focus/hover, and distinct keyboard focus on selected controls in forced colors.
