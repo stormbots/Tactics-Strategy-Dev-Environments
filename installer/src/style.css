@@ -1036,3 +1036,31 @@ progress::-moz-progress-bar {
     appearance: auto;
   }
 }
+
+.validation-guidance > strong {
+  display: block;
+  font-size: 13px;
+}
+.validation-guidance p {
+  margin: 7px 0;
+}
+.validation-guidance .secondary {
+  margin: 4px 0;
+}
+.check-diagnostics {
+  margin-top: 10px;
+}
+.check-diagnostics summary {
+  cursor: pointer;
+  padding: 6px 0;
+  min-height: 32px;
+}
+.check-diagnostics p {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.validation-card td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}

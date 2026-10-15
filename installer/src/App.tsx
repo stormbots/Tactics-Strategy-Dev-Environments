@@ -41,6 +41,8 @@ import {
   operate,
   type Destination,
 } from "./bridge";
+import { ValidationCheck } from "./ValidationCheck";
+import { operationScope } from "./validationGuidance";
 import { ZoomControl } from "./ZoomControl";
 import { ThemeControl } from "./ThemeControl";
 import { AboutPage, SchedulePage } from "./DetailsPages";
@@ -77,6 +79,8 @@ const modes: Record<
     icon: RefreshCw,
   },
 };
+const checkPriority = { FAIL: 0, WARNING: 1, PASS: 2, INFO: 3 };
+
 function StatusIcon({ status }: { status: Check["status"] }) {
   const Icon =
     status === "PASS"
@@ -219,6 +223,14 @@ export default function App() {
     } catch (e) {
       dispatch({ type: "error", message: String(e) });
     }
+  }
+  function reviewOperation(operation: "repair" | "update") {
+    if (busy) return;
+    setMode(operation);
+    setPage("overview");
+    setNotice(
+      `${operationScope[operation]} Review the operation below and choose whether to start it.`,
+    );
   }
   async function openTarget(target: Destination) {
     try {
@@ -606,6 +618,10 @@ export default function App() {
               Git identity and GitHub sign-in are optional. They do not cause
               validation to fail.
             </p>
+            <p className="muted">
+              Review buttons select an operation without starting it.{" "}
+              {operationScope.repair} {operationScope.update}
+            </p>
             <table>
               <caption className="sr-only">
                 Development environment checks and results
@@ -617,17 +633,34 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {s.checks.map((c, i) => (
-                  <tr key={i}>
-                    <td>{c.message}</td>
-                    <td>
-                      <span className={`check-badge ${c.status.toLowerCase()}`}>
-                        <StatusIcon status={c.status} />
-                        {c.status === "INFO" ? "INFORMATION" : c.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {[...s.checks]
+                  .sort(
+                    (a, b) => checkPriority[a.status] - checkPriority[b.status],
+                  )
+                  .map((c, i) => (
+                    <tr key={`${c.status}:${c.message}:${i}`}>
+                      <td>
+                        <ValidationCheck
+                          check={c}
+                          record={s.tools.find(
+                            (r) => r.tool === toolForCheck(c),
+                          )}
+                          supported={s.platform.supported}
+                          busy={busy}
+                          onReview={reviewOperation}
+                          onSchedule={() => setPage("schedule")}
+                        />
+                      </td>
+                      <td>
+                        <span
+                          className={`check-badge ${c.status.toLowerCase()}`}
+                        >
+                          <StatusIcon status={c.status} />
+                          {c.status === "INFO" ? "INFORMATION" : c.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
             {!s.checks.length && <p>Run validation to see your results.</p>}

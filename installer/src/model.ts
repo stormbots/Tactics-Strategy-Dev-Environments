@@ -98,7 +98,9 @@ export function toolForCheck(c: Check): string | undefined {
   );
 }
 export function toolStatus(c: Check, r?: ToolRecord): string {
-  if (c.status !== "PASS") return "Missing / needs repair";
+  if (c.status === "FAIL") return "Needs attention · see validation";
+  if (c.status === "WARNING") return "Warning · see validation";
+  if (c.status === "INFO") return "Information · see validation";
   if (r?.updateAvailable)
     return `Update available · ${r.installedVersion} → ${r.availableVersion}`;
   return `Ready · ${r?.installedVersion || "Version unavailable"}`;
@@ -165,11 +167,21 @@ export function checksFrom(lines: string[]): Check[] {
 export function environmentStatus(checks: Check[], updates = false) {
   const managed = checks.filter((c) => toolForCheck(c));
   const installed = managed.filter((c) => c.status === "PASS").length;
+  const missing = managed.filter((c) => {
+    const tool = toolForCheck(c);
+    if (c.status !== "FAIL" || !tool || tool === "Python venv") return false;
+    const messages = [`${tool}: not installed`, `${tool} not found`];
+    if (tool === "Python")
+      messages.push("Python 3.14: not installed", "Python 3.14 not found");
+    if (tool === "Chrome") messages.push("Google Chrome not found");
+    return messages.includes(c.message);
+  }).length;
   const failed = checks.some((c) => c.status === "FAIL");
   if (!checks.length) return "Not checked";
-  if (!installed && failed) return "Not installed";
-  if (failed && installed < managed.length) return "Partially installed";
-  if (failed) return "Needs repair";
+  if (managed.length > 0 && missing === managed.length && failed)
+    return "Not installed";
+  if (failed && installed > 0 && missing > 0) return "Partially installed";
+  if (failed) return "Needs attention";
   return updates ? "Updates available" : "Ready";
 }
 export type State = {
@@ -268,7 +280,7 @@ export function reducer(s: State, a: Action): State {
       error: valid
         ? ""
         : errors.at(-1)?.message ||
-          "Some checks need attention. Review the validation results and use Repair to restore missing components.",
+          "Some checks need attention. Review the validation results for recommended next steps and ask a mentor about unrecognized failures.",
       updates:
         toolsFrom(a.report.lines).some((t) => t.updateAvailable) ||
         a.report.lines.some((l) => parseEvent(l)?.kind === "update"),
