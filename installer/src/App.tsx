@@ -347,28 +347,6 @@ export default function App() {
           <>
             {s.stage !== "running" && (
               <>
-                <section className="hero" aria-labelledby="hero-heading">
-                  <div>
-                    <span className="hero-label">SKYVIEW ROBOTICS</span>
-                    <h2 id="hero-heading">
-                      Your tools.
-                      <br />
-                      One place.
-                    </h2>
-                    <p>
-                      Everything you need for student web and
-                      <br className="desktop-break" /> application development,
-                      set up together.
-                    </p>
-                    <span className="hero-footer">
-                      <ShieldCheck size={16} />
-                      Built for the Bureau of Tactics &amp; Strategy
-                    </span>
-                  </div>
-                  <div className="hero-logo">
-                    <img src="/skyview-logo.png" alt="" />
-                  </div>
-                </section>
                 <section
                   className="status-card"
                   aria-label="Workstation status"
