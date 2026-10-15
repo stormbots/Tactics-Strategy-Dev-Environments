@@ -128,10 +128,11 @@ installation passed owner UAT. PR #68 added candidate support for that version.
 The older recommendation to allocate 1.2.8 is superseded. Published installers do
 not include PR #69's subsequent compact appearance controls.
 
-Release preparation, version allocation/changes, build dispatch, signing and
-publication remain deferred. Once separately authorized, changed binaries need a
-fresh version and one reviewed source containing PR #69, consistent package
-identities, exact-source CI and authenticated assets. Never replace v1.2.8 assets.
+The owner subsequently authorized v1.2.9 testing-prerelease preparation, builds,
+protected signing and publication. Human signing approval remains required. Use
+one reviewed source containing PR #69, consistent package identities, exact-source
+CI and authenticated assets. Never replace v1.2.8 assets. Stable promotion, rollout
+and policy resume remain deferred. See the [v1.2.9 handoff](UI-UAT-1.2.9.md).
 The development-tool baseline remains separate. Native desktop scenarios and
 acceptance gates are in the [consolidated plan](UI-MILESTONE-UAT.md); helper CI
 success does not accept installed-app UI behavior or authorize full Repair.

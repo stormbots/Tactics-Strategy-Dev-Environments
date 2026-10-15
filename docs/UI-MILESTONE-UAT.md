@@ -19,11 +19,13 @@ v1.2.8 installers do not contain PR #69 and cannot accept these refinements.**
 Their installation pass is retained historical evidence, not a complete UI pass.
 The Overview question is “Are you ready to build?”; readiness comes from its card.
 
-**Release preparation remains deferred.** No version allocation/change, application
-build dispatch, signing, tag, publication, stable promotion, policy resume or rollout
-is authorized by this audit. A later authorized candidate must contain PR #69 and
-use a fresh version; never replace published v1.2.8 binaries. The existing
-[v1.2.8 guide](UI-UAT-1.2.8.md) applies only to that older candidate.
+**Testing-build deferral lifted by the owner on 2026-10-15.** Preparation, CI,
+protected signing and prerelease publication of v1.2.9 are authorized. Stable
+promotion, fleet rollout and application-update policy resume remain deferred.
+A signing run still requires the repository's human environment approval.
+Published v1.2.8 assets remain immutable; [its guide](UI-UAT-1.2.8.md) is historical.
+The [v1.2.9 handoff](UI-UAT-1.2.9.md) becomes actionable only after Codex confirms
+publication and installer authentication. Authorization is not evidence of either.
 
 Windows 11/WebView2 desktop acceptance is pending a suitable candidate. Mint
 Cinnamon 22.x/WebKitGTK desktop acceptance is blocked by desktop availability.
@@ -74,7 +76,7 @@ regression check, not a reason to waive a discovered defect.
   Before any later candidate handoff, Codex rechecks the exact candidate source,
   authentication, package identities and known limitations. Development-identity
   1.2.1 CI packages are not upgrade candidates for the owner's installed v1.2.8.
-- Only after separate build authorization does Codex supply a versioned,
+- With testing-build authorization granted, Codex must supply a versioned,
   authenticated candidate and precise installation instructions. Until then,
   preparation is documentary and native execution of the refinements is pending.
 
@@ -270,8 +272,8 @@ plan.
 
 After plan review, Codex keeps the acceptance record current and investigates any
 newly reported defects. No owner execution is requested while the authenticated
-candidate containing PR #69 is unavailable. Build authorization remains a separate
-later decision.
+v1.2.9 candidate containing PR #69 is unavailable. Signing approval and
+authentication must finish before installation instructions become actionable.
 
 Before closure, Codex links exact candidate/source/authentication evidence and
 per-platform results, fixes reproducible defects and reruns relevant QA. The
