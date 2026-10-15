@@ -29,7 +29,7 @@ Download all five assets together and authenticate with the installed pinned
 verifier before installation. SHA256SUMS alone is not signature authentication.
 Minisign authentication does not imply Windows Authenticode/SmartScreen approval.
 
-See [v1.2.8 installation and UAT](UI-UAT-1.2.8.md) and
-[the consolidated milestone checklist](UI-MILESTONE-UAT.md). Keep #4/#5/#6 open
+See [v1.2.8 installation and UAT](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/main/docs/UI-UAT-1.2.8.md) and
+[the consolidated milestone checklist](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/main/docs/UI-MILESTONE-UAT.md). Keep #4/#5/#6 open
 until their native acceptance is recorded. Publication of this prerelease does
 not authorize stable promotion or fleet rollout.
