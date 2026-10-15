@@ -7,6 +7,7 @@ on:
       - 'tests/native_uat_fixtures.py'
       - 'tests/test_native_uat_fixtures.py'
       - 'tests/verify_native_uat_cli.py'
+      - 'tests/run_native_uat_tests.py'
       - 'tests/Prepare-MintNativeCI.sh'
 permissions:
   contents: read
@@ -20,7 +21,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Unit and filesystem regression checks
-        run: python -m unittest discover -s tests -p test_native_uat_fixtures.py -v
+        run: python tests/run_native_uat_tests.py
       - name: Actual Windows fixture CLI and ACL verification
         shell: pwsh
         run: |
@@ -34,9 +35,10 @@ jobs:
           python tests/verify_native_uat_cli.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows fixture smoke failed' }
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: native-fixture-Windows
-          path: evidence/windows.json
+          path: evidence/
           if-no-files-found: error
   mint-fixtures:
     runs-on: ubuntu-24.04
