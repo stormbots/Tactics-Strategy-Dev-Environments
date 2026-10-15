@@ -24,6 +24,8 @@ buttons. #4 and #5 remain open for native acceptance.
   transitions, including when local storage cannot be written.
 - Selected themes use a thicker border as well as a filled background. Native
   buttons expose names/pressed states; the trigger exposes expanded/controls.
+  In forced colors, the selected inset marker and outer keyboard-focus ring
+  remain distinct.
   Theme tooltips appear on hover/focus and can be dismissed with Escape. Only
   one set of controls is exposed. One polite live region reports the zoom value.
 - At very narrow logical widths, labels stack above their button group inside
@@ -43,10 +45,11 @@ WCAG AA axe scans, contrast tokens, preference persistence/live OS theme changes
 keyboard operation, popover focus/dismissal, layout transitions, blocked storage,
 a short viewport, and preservation of active validation/provisioning logs.
 
-Final review checks: 103 unit/model/component tests and all 68 browser checks
+Final review checks: 103 unit/model/component tests and all 69 browser checks
 passed. The review follow-up covers zoom-limit focus, live resizing to a very
 short viewport, hovered-tooltip dismissal, and restoring tooltips on renewed
-focus/hover. TypeScript/Vite frontend compilation and formatting passed. Browser verification used Debian Chromium
+focus/hover, and distinct keyboard focus on selected controls in forced colors.
+TypeScript/Vite frontend compilation and formatting passed. Browser verification used Debian Chromium
 154.0.8037.57 with a temporary executable override; CI uses Playwright's installed
 Chromium with the standard repository configuration. Native desktop UAT is pending.
 

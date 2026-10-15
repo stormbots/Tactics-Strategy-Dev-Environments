@@ -313,3 +313,18 @@ test("Escape outside the appearance controls does not suppress the next focus to
       .locator(".appearance-tooltip"),
   ).toBeVisible();
 });
+
+test("selected theme retains a distinct keyboard focus ring in forced colors", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 820 });
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.goto("/");
+  const system = page.getByRole("button", { name: "System", exact: true });
+  await expect(system).toHaveAttribute("aria-pressed", "true");
+  await expect(system).toHaveCSS("outline-offset", "-4px");
+  await page.keyboard.press("Tab");
+  await system.focus();
+  await expect(system).toHaveCSS("outline-offset", "4px");
+  await expect(system).toHaveCSS("outline-width", "3px");
+});

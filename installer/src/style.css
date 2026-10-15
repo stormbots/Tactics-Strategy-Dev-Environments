@@ -1052,6 +1052,10 @@ progress::-moz-progress-bar {
     outline: 2px solid Highlight;
     outline-offset: -4px;
   }
+  .appearance-button:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 4px;
+  }
 }
 
 .validation-guidance > strong {
