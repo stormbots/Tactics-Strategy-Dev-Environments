@@ -30,7 +30,7 @@ returns observations; the owner is not expected to write scripts or break tools.
   the same local account.
 - For application UAT, a separately authorized, correctly versioned test build.
   Helper-only automation does not need an SDE build. Current development
-  bundles are not upgrade instructions for the owner's installed v1.2.7.
+  bundles are not upgrade instructions for the owner's installed v1.2.8.
 - For application UAT, a completed healthy native Validate report. Save its log and the app/source,
   baseline, schedule and pause-policy record from the consolidated plan.
 - Python 3, Git, and a new private state-directory path outside Development.

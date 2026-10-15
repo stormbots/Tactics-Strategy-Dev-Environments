@@ -127,6 +127,9 @@ language; Codex will interpret logs and maintain the acceptance record.
 
 Check Overview, Validation, Schedule and About at every cell below. Use a typical
 1040×820 window and the 640×600 minimum; allow normal vertical scrolling.
+Record a separate copy of this matrix for each platform/window size, noting OS
+scale and results on all four pages. On the clean first-launch profile, verify
+100% is selected before changing it.
 
 | Theme | 90% | 100% | 115% | 130% | 150% |
 | --- | --- | --- | --- | --- | --- |
@@ -246,14 +249,14 @@ Pass based on another platform's result.
 
 | Section | Windows result / evidence | Mint result / evidence |
 | --- | --- | --- |
-| Overview / banner / default operation | Pending | Pending |
-| Theme, live OS changes, persistence | Pending | Pending |
+| Overview / banner / default operation | Pending new candidate | Blocked: no desktop |
+| Theme, live OS changes, persistence | Pending new candidate | Blocked: no desktop |
 | All page/theme/zoom/window combinations | Pending new candidate | Blocked: no desktop |
 | Compact panel, transitions, tooltips and zoom limits | Pending new candidate | Blocked: no desktop |
-| Keyboard, focus, names, announcements, reduced motion | Pending | Pending |
-| Preserved selections and native operations | Pending | Pending |
-| Failure/manual/update/mentor/fallback guidance | Pending | Pending |
-| Schedule, pause policy and baseline retention | Pending | Pending |
+| Keyboard, focus, names, announcements, reduced motion | Pending new candidate | Blocked: no desktop |
+| Preserved selections and native operations | Pending candidate; tool operation blocked without disposable desktop | Blocked: no desktop |
+| Failure/manual/update/mentor/fallback guidance | Controlled cases blocked without disposable desktop; other cases Not run | Blocked: no desktop |
+| Schedule, pause policy and baseline retention | Pending new candidate | Blocked: no desktop |
 
 Codex reviews the evidence, fixes reproducible defects, reruns relevant QA, and
 supplies a fresh test build only when authorized. Do not overwrite published
@@ -265,9 +268,10 @@ plan.
 
 ## Next phase and closure checklist
 
-Codex next reviews this audit/plan and resolves any documentation gaps. No owner
-execution is requested while the authenticated candidate containing PR #69 is
-unavailable. Build authorization remains a separate later decision.
+After plan review, Codex keeps the acceptance record current and investigates any
+newly reported defects. No owner execution is requested while the authenticated
+candidate containing PR #69 is unavailable. Build authorization remains a separate
+later decision.
 
 Before closure, Codex links exact candidate/source/authentication evidence and
 per-platform results, fixes reproducible defects and reruns relevant QA. The
