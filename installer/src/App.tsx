@@ -41,6 +41,7 @@ import {
   operate,
   type Destination,
 } from "./bridge";
+import { ZoomControl } from "./ZoomControl";
 import { ThemeControl } from "./ThemeControl";
 import { AboutPage, SchedulePage } from "./DetailsPages";
 const modes: Record<
@@ -293,6 +294,7 @@ export default function App() {
       <main id="main" tabIndex={-1}>
         <div className="appearance-toolbar">
           <ThemeControl />
+          <ZoomControl />
         </div>
         {!native && (
           <div className="preview-banner">
