@@ -2,6 +2,15 @@
 
 ## Current gates
 
+Current stable/latest is **v1.2.6**, promoted from the already signed candidate
+without changing its tag or assets. The owner authorized stable promotion only;
+no automatic-update pilot or fleet resume is authorized. See the
+[current release record](ACCEPTANCE-SELF-UPDATE.md) and
+[v1.2.6 release notes](RELEASE-NOTES-1.2.6.md). The original fixed-pair preparation
+and reserved-PC procedures below retain their historical version identities;
+do not rerun publication for existing tags or downgrade PCs to recreate them.
+Choose an actually available older-version pilot only under separate approval.
+
 The self-update implementation and #42 native integration have merged. The
 historical stable v1.2.1 release is unchanged and predates that implementation.
 Do not replace its assets, treat its old acceptance as new acceptance, or resume

@@ -1,32 +1,46 @@
-# SDE 1.2.6 — inherited Logs permission migration UAT candidate
+# SDE 1.2.6 — Windows legacy Logs migration
 
-This candidate adds the narrow Windows installer migration reviewed in PR #60
-at `72813311d62615f3870d40e758824808f214dce7`. An elevated installation can
-correct the recognized inherited container-only Users Write grant on the fixed
-Logs directory without manual ACL repair, provided every existing log already
-passes the original owner/write trust checks. Writable files, links, unexpected
-entries/owners/grants and busy writers remain rejected. Existing logs remain
-diagnostic evidence, never authenticated status.
+SDE 1.2.6 is the current stable/latest release for Windows 11 x64 and Linux Mint
+Cinnamon 22.x amd64. The owner declared testing complete and authorized promotion
+of the existing signed candidate. Its tag and five release assets are unchanged;
+no rebuild or re-signing was performed for stable promotion.
 
-Application and maintenance-engine identity is 1.2.6; the development-tool
-baseline remains v1.2.1. The installation preserves existing protected log bytes
-and private ACLs, baseline, schedule settings and application-update policy.
-An eligible existing schedule action moves to the protected maintenance host;
-installation does not provision tools or start maintenance.
+The Windows installer now corrects the recognized inherited container-only Users
+Write grant on the fixed Logs directory without a separate manual ACL repair.
+Every existing log must already pass the original owner/write trust checks.
+Writable files, links, unexpected entries/owners/grants and busy writers remain
+rejected. Existing logs remain diagnostic evidence, never authenticated status.
 
-Build using **Prepare signed self-update UAT pair**, `logs_migration=true`, on
-`release/v1.2.uat` at the reviewed merged main commit. Earlier versions built by
-this recipe are unpublished upgrade fixtures, not replacements for old assets.
-The production pinned-key Minisign manifest authenticates both native installers;
-this is separate from Windows Authenticode signing. The protected environment
-requires human approval. Publish only the new immutable v1.2.6 prerelease with
-`latest=false`; existing releases/tags/assets remain unchanged.
+Application and maintenance-engine identity is **1.2.6**; the development-tool
+baseline remains **1.2.1**. The migration preserves protected log bytes/private
+ACLs, baseline, existing schedule settings and application-update policy. An
+eligible existing task action moves to the protected maintenance host.
+Application installation does not provision tools or start maintenance.
 
-Affected-PC Windows 11 acceptance is **pending**. Use the commit-bound checklist
-in [SELF-UPDATE-UAT-1.2.5.md](SELF-UPDATE-UAT-1.2.5.md#affected-pc-windows-11-checklist-for-reviewed-commit-7281331)
-and record the actual candidate source/build run and installer SHA-256 before
-testing. Require first-attempt installation without manual remediation and
-separate preservation, application, scheduled-maintenance and paused-policy
-results. Keep broader rollout and application updates paused. Candidate signing
-or publication does not approve stable promotion, fleet deployment, automatic
-updates or closure of outstanding acceptance conditions.
+The owner confirmed first-attempt installation without ACL remediation on an
+affected Windows 11 laptop. GUI Update/Validate passed, and a controlled SYSTEM
+maintenance invocation reported app/engine 1.2.6, baseline 1.2.1, tool exit 0 and
+paused application installation. Native Windows/Mint checks and protected signing
+and published-asset authentication also passed. Detailed results and evidence
+limitations remain in the [acceptance record](ACCEPTANCE-SELF-UPDATE.md).
+
+Download [the existing v1.2.6 assets](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6)
+and authenticate the complete folder with the installed pinned verifier before
+mentor-led installation. Minisign authentication is separate from Windows
+Authenticode signing. Windows installer SHA-256:
+
+```text
+15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690
+```
+
+Source/tag: `741f681c0444a8d44d9430a107c80f2fed95b68e`; protected
+[candidate build/signing run](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787).
+The fixed `logs_migration=true` recipe built application identities in disposable
+checkouts; older versions were unpublished fixtures. Do not rebuild or replace
+these published assets from the unchanged development build identity.
+
+Stable promotion does not resume any laptop policy. Keep application updates
+paused until a separately approved automatic-update/recovery pilot and rollout.
+Manual installation does not synthesize automatic-update history or signed
+recovery; the existing maintenance task records fresh results when invoked.
+Follow the [mentor controls and recovery guide](SELF-UPDATE-MENTOR.md).

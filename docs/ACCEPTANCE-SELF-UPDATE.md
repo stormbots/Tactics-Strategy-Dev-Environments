@@ -1,5 +1,13 @@
 # Self-update acceptance record (#43)
 
+**Current release: v1.2.6 stable/latest, verified October 14, 2026.** The owner
+declared testing complete and explicitly authorized stable promotion only. The
+exact source, unchanged asset hashes, reported Windows results and evidence
+limitations are recorded chronologically below. No automatic-update pilot,
+classroom resume or issue closure is authorized; laptop policies remain paused.
+
+## Historical initial candidate checkpoint (October 12, 2026)
+
 **Owner UAT: Pending. Stable promotion: Not authorized. Classroom resume: Not authorized.**
 
 On 2026-10-12 the owner confirmed the encrypted release key and Bitwarden

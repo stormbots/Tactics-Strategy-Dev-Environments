@@ -1,13 +1,13 @@
 # Skyview Robotics Student Development Environment
 
 Graphical setup and workstation management for the **Bureau of Tactics & Strategy**.
-Version **1.2.1** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
+Stable release **1.2.6** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
 
-Stable version **1.2.1** adds version-aware updates, a read-only **Schedule** page, and **About**, and corrects a Linux installation/update failure. The project owner accepted all release checklist items on **2026-10-08**. See the [acceptance record](docs/ACCEPTANCE-1.2.1.md) and [release notes](docs/RELEASE-NOTES-1.2.1.md).
+Version **1.2.6** safely migrates the recognized legacy Windows Logs permissions without manual ACL repair. It retains the protected self-update engine and separate development-tool baseline **1.2.1**. The owner declared testing complete and authorized stable promotion only. See the [release notes](docs/RELEASE-NOTES-1.2.6.md) and [release/acceptance record](docs/ACCEPTANCE-SELF-UPDATE.md). Automatic-update pilots and fleet resume remain separate decisions; keep laptop application updates paused.
 
 ## Install with the app
 
-[Download your installer from the 1.2.1 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.1).
+[Download your installer from the 1.2.6 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6).
 
 **Windows:** open `Skyview-Dev-Setup-Windows-x64.exe`, approve installation, then launch **Skyview Dev Setup**.
 
@@ -15,7 +15,9 @@ Stable version **1.2.1** adds version-aware updates, a read-only **Schedule** pa
 
 In the app, click **Install Development Environment**, approve the system's administrator prompt, and keep the window open until validation finishes. No terminal commands, folder preparation, or manual validation are required.
 
-Version **1.2.1** is [accepted on both platforms](docs/ACCEPTANCE-1.2.1.md) by the project owner's sign-off. The supplied Mint 22.3 logs confirm 35 passed checks after installation and in a separate validation run; automated checks and both native builds also passed. Stable promotion retains the tested installers and their checksums. Windows installers ship unsigned by project decision. Keep operating-system protections enabled.
+For an existing managed workstation, follow the [mentor migration and pinned-verification procedure](docs/SELF-UPDATE-ROLLOUT.md) before installing the new app; application installation preserves the applied tool baseline and does not authorize tool Repair or policy resume. Authenticate the complete release asset folder with the installed pinned verifier. Minisign release authentication is separate from Windows Authenticode; Windows installers remain unsigned by project decision. Keep operating-system protections enabled.
+
+The earlier **1.2.1** [both-platform acceptance](docs/ACCEPTANCE-1.2.1.md), including Mint 22.3 validation, remains historical evidence for that version. Published tags/assets are retained unchanged.
 
 ## Manage a workstation
 
@@ -51,4 +53,4 @@ existing development-tool maintenance remains independent.
 
 Self-update verification evidence and remaining school-laptop UAT: [SELF-UPDATE-EVIDENCE.md](docs/SELF-UPDATE-EVIDENCE.md).
 
-Owner UAT, signed prerelease preparation and one-time migration: [SELF-UPDATE-UAT.md](docs/SELF-UPDATE-UAT.md), [SELF-UPDATE-ROLLOUT.md](docs/SELF-UPDATE-ROLLOUT.md), and [pending acceptance](docs/ACCEPTANCE-SELF-UPDATE.md).
+Owner UAT, signed candidate preparation and one-time migration: [SELF-UPDATE-UAT.md](docs/SELF-UPDATE-UAT.md), [SELF-UPDATE-ROLLOUT.md](docs/SELF-UPDATE-ROLLOUT.md), and [release/acceptance status](docs/ACCEPTANCE-SELF-UPDATE.md).
