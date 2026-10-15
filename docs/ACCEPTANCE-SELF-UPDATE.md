@@ -188,3 +188,26 @@ action. Owner UI handoff: edit the existing v1.2.6 release, clear prerelease and
 select latest, retaining the tag and all five assets. Codex must verify the live
 flags, exact source tag and unchanged hashes afterward. Keep laptop policies
 paused and retain separate automatic-update/recovery pilot gates.
+
+## v1.2.6 stable promotion verified — October 14, 2026
+
+After the owner saved the existing release, Codex verified live GitHub metadata:
+
+- [v1.2.6](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6)
+  is nondraft and **stable** (`prerelease=false`).
+- The latest-release endpoint resolves to this same v1.2.6 release (ID 413021724).
+- Tag v1.2.6 still targets `741f681c0444a8d44d9430a107c80f2fed95b68e`.
+- Exactly five assets remain. Every GitHub-reported SHA-256 matches the signed
+  candidate record and prior independently downloaded bytes: both installers,
+  signed manifest, detached signature and checksums file are unchanged.
+
+Windows installer SHA-256 remains
+`15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690`.
+Full asset hashes remain in the version-specific UAT record.
+
+**Disposition: authorized stable/latest promotion complete and verified.** This
+supersedes the earlier blocked/pending promotion state, preserving that history.
+No rebuild, re-sign, retag or asset replacement occurred. No laptop policy was
+changed and no automatic-update pilot, fleet resume or issue closure was
+authorized. Keep laptop application updates paused pending separately approved
+pilot/rollout work; earlier evidence limitations remain recorded.
