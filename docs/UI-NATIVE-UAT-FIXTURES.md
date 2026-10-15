@@ -123,19 +123,18 @@ Apply the full theme/zoom/accessibility matrix from the consolidated plan.
 
 ## Deferred versioned test-build recommendation
 
-Recommend numeric application identity **1.2.8**, published as a testing prerelease
-only if separately authorized. Read-only GitHub inspection on 2026-10-15 found no
-`v1.2.8` tag; recheck before allocating it. Do not reuse v1.2.7 or use a suffixed
-identity that the current canonical numeric-tag validator rejects.
+Updated 2026-10-15: v1.2.8 has been published as a testing prerelease; its Windows
+installation passed owner UAT. PR #68 added candidate support for that version.
+The older recommendation to allocate 1.2.8 is superseded. Published installers do
+not include PR #69's subsequent compact appearance controls.
 
-The current candidate helper and tests support only 1.2.2–1.2.7; supporting 1.2.8
-requires a later reviewed change. Both native packages must use one reviewed
-source commit and consistent npm/Tauri/Cargo/lock identities, leaving development
-tool baseline/dependency identities unchanged. Require exact-source CI, package
-identity verification, authenticated artifacts and explicit installation
-instructions before handing builds to the owner. Any changed published candidate
-needs a new version. Build dispatch, signing, publication and stable promotion
-remain deferred; no such changes accompany these fixture helpers.
+Release preparation, version allocation/changes, build dispatch, signing and
+publication remain deferred. Once separately authorized, changed binaries need a
+fresh version and one reviewed source containing PR #69, consistent package
+identities, exact-source CI and authenticated assets. Never replace v1.2.8 assets.
+The development-tool baseline remains separate. Native desktop scenarios and
+acceptance gates are in the [consolidated plan](UI-MILESTONE-UAT.md); helper CI
+success does not accept installed-app UI behavior or authorize full Repair.
 
 ## Fixture-only CI
 
