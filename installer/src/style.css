@@ -170,57 +170,6 @@ main {
   color: #4c5e73;
   max-width: 230px;
 }
-.hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-radius: 10px;
-  background: #172b4d;
-  color: #fff;
-  padding: 29px 34px;
-  overflow: hidden;
-  gap: 20px;
-}
-.hero-label {
-  font-size: 9px;
-  letter-spacing: 2px;
-  font-weight: 600;
-  color: #cbd7e5;
-}
-.hero h2 {
-  font-size: 32px;
-  letter-spacing: -0.8px;
-  line-height: 1.15;
-  margin: 10px 0 12px;
-}
-.hero p {
-  font-size: 12px;
-  color: #d6dfeb;
-  line-height: 1.6;
-}
-.hero-footer {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 22px;
-  font-size: 10px;
-  color: #d6dfeb;
-}
-.hero-logo {
-  width: 190px;
-  height: 190px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background: #d8e0e7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hero-logo img {
-  width: 175px;
-  height: 175px;
-  object-fit: contain;
-}
 .status-card {
   display: flex;
   align-items: center;
@@ -744,17 +693,6 @@ progress::-moz-progress-bar {
     padding-left: 55px;
     padding-right: 55px;
   }
-  .hero {
-    padding: 35px 40px;
-  }
-  .hero-logo {
-    width: 205px;
-    height: 205px;
-  }
-  .hero-logo img {
-    width: 190px;
-    height: 190px;
-  }
 }
 @media (max-width: 900px) {
   .sidebar {
@@ -777,20 +715,6 @@ progress::-moz-progress-bar {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
-  }
-  .hero {
-    padding: 25px;
-  }
-  .hero-logo {
-    width: 140px;
-    height: 140px;
-  }
-  .hero-logo img {
-    width: 130px;
-    height: 130px;
-  }
-  .hero h2 {
-    font-size: 28px;
   }
   .status-card {
     flex-direction: column;
@@ -840,30 +764,6 @@ progress::-moz-progress-bar {
     margin: 0;
     width: 100%;
     padding: 24px 18px;
-  }
-  .hero {
-    padding: 24px 20px;
-    gap: 10px;
-  }
-  .hero-logo {
-    width: 105px;
-    height: 105px;
-  }
-  .hero-logo img {
-    width: 100px;
-    height: 100px;
-  }
-  .hero p {
-    font-size: 11px;
-  }
-  .hero-footer {
-    font-size: 9px;
-  }
-  .hero h2 {
-    font-size: 26px;
-  }
-  .desktop-break {
-    display: none;
   }
   .mode-tabs {
     flex-wrap: wrap;
