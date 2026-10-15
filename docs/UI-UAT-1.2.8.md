@@ -1,5 +1,11 @@
 # v1.2.8 testing prerelease: installation and owner UAT
 
+**Historical candidate scope:** v1.2.8 was published/authenticated and the owner
+confirmed successful Windows 11 installation. Its oversized controls/slider led
+to PR #69, which is absent from these installers. Use the updated
+[consolidated plan](UI-MILESTONE-UAT.md) for the merged refinements; they require a
+later authorized candidate. Release preparation is currently deferred.
+
 This guide becomes actionable only after Codex confirms the protected workflow
 has published and authenticated all five v1.2.8 assets. Until then, do not install
 unsigned Actions artifacts or an unpublished 1.2.7 fixture. The owner performs UAT;

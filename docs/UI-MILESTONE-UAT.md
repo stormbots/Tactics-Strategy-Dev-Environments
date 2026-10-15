@@ -1,72 +1,88 @@
 # Accessibility and UI Usability: audit and native UAT
 
-## Current acceptance state
+## Current acceptance state — audited 2026-10-15
 
-The milestone remains open. Themes (#4 / PR #64), zoom (#5 / PR #65), and
-validation guidance (#6 / PR #66) provide the planned implementation. Merge and
-CI results are engineering evidence, not native acceptance. Issues #4, #5, and
-#6 stay open until their required platform UAT is recorded.
+GitHub milestone **Accessibility and UI Usability** contains four issues: #57
+closed; #4, #5 and #6 open. Keep those three open until native acceptance and any
+explicitly accepted limitations are recorded. Implementation is merged, not yet
+accepted on the target desktops.
 
-The owner confirmed the banner removal (#57, closed) on the Windows v1.2.7
-installation. The combined milestone build still needs native regression checks.
-The Overview question is now “Are you ready to build?”; the status card supplies
-the actual readiness result.
+Themes (#4 / PR #64), zoom (#5 / PR #65), and validation guidance (#6 / PR #66)
+are implemented. PR #69 refines theme/zoom size and responsive placement. Audited
+merged source: `3af352d8d9cba3d77c7d8e216522c3add0673144`; reviewed PR #69 head:
+`cae15dbb22ea83defc37d05e1aa78a6b01073969`.
 
-The owner authorized v1.2.8 testing-prerelease preparation on 2026-10-15,
-including application builds and protected signing/publication. Stable promotion,
-fleet rollout and policy resume remain deferred. Native acceptance remains pending.
-See [v1.2.8 installation and UAT](UI-UAT-1.2.8.md) once Codex confirms the signed
-assets are ready.
+The owner confirmed banner removal on Windows v1.2.7 and successful Windows 11
+installation of v1.2.8. The v1.2.8 visual review identified oversized appearance
+controls and an unstable slider; PR #69 addresses that feedback. **Published
+v1.2.8 installers do not contain PR #69 and cannot accept these refinements.**
+Their installation pass is retained historical evidence, not a complete UI pass.
+The Overview question is “Are you ready to build?”; readiness comes from its card.
+
+**Release preparation remains deferred.** No version allocation/change, application
+build dispatch, signing, tag, publication, stable promotion, policy resume or rollout
+is authorized by this audit. A later authorized candidate must contain PR #69 and
+use a fresh version; never replace published v1.2.8 binaries. The existing
+[v1.2.8 guide](UI-UAT-1.2.8.md) applies only to that older candidate.
+
+Windows 11/WebView2 desktop acceptance is pending a suitable candidate. Mint
+Cinnamon 22.x/WebKitGTK desktop acceptance is blocked by desktop availability.
+The owner has no disposable VMs; do not ask them to supply VMs merely to repeat
+CI. Real destructive/Repair scenarios remain blocked without a disposable desktop
+and reliable full-environment restoration.
 
 ## Requirement audit
 
-| Requirement | Implementation / evidence | Remaining acceptance |
+| Issue / requirement | Merged implementation and engineering evidence | Remaining native acceptance |
 | --- | --- | --- |
-| Must: System / Light / Dark (#4) | Top-level radio group; saved preference; live system signal; Light fallback; modern and legacy listeners tested | Windows WebView2 and Mint WebKitGTK system changes, restart persistence and visual acceptance |
-| Must: five-step whole-UI zoom (#5) | Exactly 90/100/115/130/150%; saved preference; document scaling and container reflow; exact font/icon scaling and pointer/keyboard tests | Native scale, OS scaling interaction, persistence and all surfaces |
-| Must: remove Overview banner (#57) | Removed markup/CSS; browser regression checks; owner confirmation on Windows v1.2.7 | Recheck the combined build, including Mint |
-| Must: keyboard, focus, names, announcements | Native radio/range semantics, visible focus, skip link, page/result focus, live phase/result and Schedule statuses; axe and interaction tests | Actual keyboard traversal and screen-reader announcement quality on both platforms |
-| Must: contrast and layout | Light/dark palette checks (4.5:1 text, 3:1 controls/focus), axe, all zooms at 640/1040px; default-scale 390/900/1140px checks | Native visual inspection at the minimum window, ordinary laptop size and actual OS scaling |
-| Must: preserve work and operations | Selection/navigation/checkbox/log continuity and explicit operation starts tested with simulated operations | Actual Validate and approved tool operation/elevation on both platforms |
-| Should: actionable failures (#6) | Recognized backend message catalog, original diagnostics, Repair/Update/manual/mentor guidance, no automatic work, unknown fallback; Windows/Mint fixtures | Representative native cases and safe action flow |
-| Should: Install / Repair / Update scope | Existing Overview descriptions; full Repair and managed-tool Update scope explained in guidance and before starting | Student/mentor comprehension; assess whether further wording is needed |
-| Should: compact controls, spacing, progress | Theme/range/detail targets, responsive controls, focus/progress/live log behavior covered by browser QA | Native comfort/readability; additional polish beyond implemented work is proposed for later |
-| Could: Overview maintenance prominence (#10) | Separate open work; existing Schedule remains the detailed view | Proposed deferral; not an acceptance gate for this implementation |
-| Could: reduced motion | Existing CSS disables animations/transitions; reduced-motion browser check passes | Confirm native system preference and usable non-animated progress |
-| Could: appearance reset / extra log presentation | No dedicated reset; existing log wrapping, contrast, scaling and scrolling retained | Proposed deferral; existing controls can select System and 100% |
+| #4: System/Light/Dark, default and persistence | Named icon buttons with pressed state; System first-launch default; live system signal and Light fallback; stored manual overrides | Windows and Mint live OS change, explicit override, restart persistence; document detection limitations |
+| #4: consistent accessible appearance | Navy dark palette; shared application surfaces; contrast/axe checks; focus and non-color selection indicator | Both themes across all pages and app-owned dialogs; native high contrast, keyboard, Narrator/Orca; external OS dialogs follow OS settings |
+| #5: five-step whole-UI zoom | Exactly 90/100/115/130/150%, default 100%, immediate document scaling, stored selection | Exact steps, native scaling across surfaces, OS scaling interaction and restart persistence |
+| #4/#5 approved refinement: compact controls | PR #69 replaces text/radio theme choices and slider with icon buttons and minus/percentage/plus; shared 1100-logical-pixel responsive transition | Wide heading placement; compact branded header/settings icon and nonmodal panel; no controls wrapping below heading |
+| #4/#5: accessible interactions | Named native buttons, pressed/expanded states, one polite zoom announcement; tooltips; focus transfer at zoom limits and responsive transitions; held-key reversal guard | Spoken names/states/value, limit behavior, tooltip dismissal, outside click/Escape/navigation behavior, short-window reachability |
+| #4/#5: preserve work | Browser operation/log, navigation, selection and checkbox continuity | Actual Validate plus a separately prepared native tool operation/elevation on each platform |
+| #6: plain-language failed-check guidance | Recognized diagnostic catalog: what failed, readiness impact, safe Repair/Update/manual/mentor next step; expandable original diagnostics | Representative actual native reports, understandable wording and correct next action on each platform |
+| #6: explicit action and scope | Review actions select Overview operation without starting; broad Repair scope explained; Schedule read-only | No work/elevation until explicit start; full Repair scope understood; disabled schedule not blindly enabled |
+| #6: distinctions and fallback | PASS/WARNING/FAIL/INFORMATION retained; optional identity/auth informational; unknown fallback does not invent diagnosis | Healthy/informational report and representative failure cases; retain unexercised native branches as Not run |
+| #57: banner removal (closed) | Removed markup/CSS, browser checks and owner Windows confirmation | Combined-build regression on both platforms; preserve branding/default Install/content order |
 
-The should/could deferrals above are recommendations for owner acceptance, not
-claims those enhancements shipped or that unrelated issues were completed.
-No additional mandatory code gap was identified beyond the PR #66 summary fix:
-missing-installation labels now require a complete known missing-tool message;
-command errors merely ending in “not found” remain Needs attention.
+The issue #5 slider/arrow-key requirements and #4 persistent text labels are
+superseded by the owner's approved button refinement merged in PR #69. Test
+Tab/Shift+Tab and Enter/Space on appearance buttons, not slider arrows/Home/End.
+Keep the issue history; do not mistake the obsolete interaction for a regression.
 
-## Codex preparation before asking for UAT
+No additional mandatory implementation gap was identified in this audit; native
+acceptance remains outstanding. #10 (maintenance prominence) and #63 (icon white
+background) are open **outside this milestone**; they are not silently accepted,
+closed or added to this milestone. Extra reset controls and log presentation are
+not requirements of its four issues. Reduced motion remains an accessibility
+regression check, not a reason to waive a discovered defect.
 
-1. Finish code review and successful CI on the exact proposed source; record its
-   commit, merged PRs, supported platforms and known limitations below.
-2. Once build preparation is separately authorized, provide an explicitly versioned
-   native test build and installation/authentication instructions for each OS.
-   **Ordinary current CI bundles retain development identity 1.2.1. They are not
-   suitable upgrade instructions for the owner's v1.2.7 installation.** Codex must
-   resolve test-build identity before handing an installer to the owner.
-3. Supply the exact artifact locations, hashes/authentication evidence, and the
-   app version expected in the window. Published releases/tags/assets remain
-   immutable. Preparing or promoting a release is a separate authorized step.
-4. Confirm a Windows 11 desktop and Linux Mint Cinnamon 22.x amd64 desktop/tester
-   are available. A Linux container, native package CI, or Chromium preview is not
-   a substitute for these desktop sessions. Record a missing platform as blocked.
-5. Prepare controlled fixture/workstation cases for #6 without requiring the owner
-   to write code, remove development tools, alter project data or improvise repair
-   commands. Synthetic report UI tests are labeled simulated; they are not proof
-   of a real native failure or native repair.
-6. Retain all automated evidence. The PR #66 review used 103 unit/model tests and
-   a production build; its established browser suite has 42 checks. The summary
-   correction adds regression tests and a targeted desktop/mobile/guidance rerun.
-   Check the final PR head's CI rather than treating older green checks as current.
+## Engineering evidence and handoff gates
 
-Controlled setup/restoration commands and their limits are documented in
-[Native UAT fixtures](UI-NATIVE-UAT-FIXTURES.md). Native execution remains pending.
+- PR #69's exact reviewed head passed all six verification jobs:
+  [CI run 38795492101](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38795492101).
+  The release job was skipped. Local evidence: 103 unit/model/component tests,
+  70 browser checks, frontend compilation, formatting and whitespace checks.
+- The browser matrix covers both themes/all zooms at 320/640/1100/1101/1440/1920px,
+  with all-page regressions and accessibility checks. Browser machine operations
+  are simulated. These results do not certify WebView2/WebKitGTK desktop behavior.
+- [Fixture evidence](UI-NATIVE-UAT-EVIDENCE.md) records successful helper-only
+  Windows Server 2022 and Mint 22.3 Xfce-userland/container automation. It proves
+  setup/restoration behavior, not Windows 11/Cinnamon UI, native Repair or speech.
+- Post-merge CI is a separate run; do not infer its completion from PR checks.
+  Before any later candidate handoff, Codex rechecks the exact candidate source,
+  authentication, package identities and known limitations. Development-identity
+  1.2.1 CI packages are not upgrade candidates for the owner's installed v1.2.8.
+- Only after separate build authorization does Codex supply a versioned,
+  authenticated candidate and precise installation instructions. Until then,
+  preparation is documentary and native execution of the refinements is pending.
+
+Codex owns fixtures, evidence interpretation, diagnosis and follow-up QA. The
+owner handles desktop UAT without writing code or manufacturing failures.
+[Controlled fixture instructions](UI-NATIVE-UAT-FIXTURES.md) remain the authority
+for enrollment, preconditions and restoration; helper execution evidence is
+already recorded, while actual installed-app fixture UAT remains pending.
 
 ## Record before testing
 
@@ -111,6 +127,9 @@ language; Codex will interpret logs and maintain the acceptance record.
 
 Check Overview, Validation, Schedule and About at every cell below. Use a typical
 1040×820 window and the 640×600 minimum; allow normal vertical scrolling.
+Record a separate copy of this matrix for each platform/window size, noting OS
+scale and results on all four pages. On the clean first-launch profile, verify
+100% is selected before changing it.
 
 | Theme | 90% | 100% | 115% | 130% | 150% |
 | --- | --- | --- | --- | --- | --- |
@@ -119,11 +138,37 @@ Check Overview, Validation, Schedule and About at every cell below. Use a typica
 
 - Text, icons, buttons, navigation, tables and logs should scale together. No
   clipping, overlapping content or horizontal page scrolling; sidebar and logs
-  remain scrollable and controls remain reachable. Appearance controls may wrap.
-- Use pointer and arrow keys, Home and End on UI zoom. The label, endpoints and
-  displayed percentage must be understandable; there are exactly five choices.
+  remain scrollable and controls remain reachable. Controls must not wrap beneath
+  the heading: use inline controls when wide and the settings popover when compact.
+- Use minus/plus by pointer and Tab then Enter/Space. Each activation moves one
+  step; the percentage remains readable in its fixed-width segment. At 90% minus
+  is disabled; at 150% plus is disabled. Focus moves to the enabled opposite button
+  when reaching a limit. Holding Enter/Space must not reverse direction after
+  that transfer. There is no slider or slider-specific keyboard interaction.
 - Reopen after selecting a non-default percentage. Confirm it is restored.
 - Repeat the largest zoom at the laptop's normal OS scaling; note any limitations.
+
+### 3a. Compact settings and responsive transitions
+
+- Start at 1440×820 and 100%, then resize through the layout transition to
+  640×600. Branding/navigation move to the top header and a settings icon appears
+  opposite the branding. No appearance row should wrap below the heading.
+- At each zoom, resize both ways across the transition. The breakpoint is 1100
+  logical pixels: application zoom and OS scaling can change its apparent width.
+  Judge the resulting layout, not a fixed physical-pixel screenshot.
+- Open Appearance settings by keyboard: focus enters the first theme button.
+  System/Light/Dark use half-circle/sun/moon icons with accessible names and a
+  selected border/fill. Zoom uses minus, current percentage, plus. Choices apply
+  immediately; the panel stays open while the layout stays compact.
+- Tab and Shift+Tab can leave the nonmodal panel. Escape closes it and restores
+  trigger focus; the trigger toggles it; outside clicks preserve clicked focus;
+  page navigation dismisses it. Test resizing to wide with panel focus, and
+  resizing to compact with inline-control focus: focus must remain meaningful.
+- Shorten the window at 150% with the panel open. It remains within the available
+  area beneath the trigger, scrolls internally as needed, and all controls remain
+  reachable. No overlay blocks unrelated controls after dismissal.
+- Test hover/focus theme tooltips: Escape dismisses them, including when pointer
+  hover and keyboard focus are separate; renewed hover/focus shows them again.
 
 ### 4. Keyboard and assistive technology
 
@@ -133,13 +178,15 @@ Check Overview, Validation, Schedule and About at every cell below. Use a typica
 - Try the skip link, each page, expandable diagnostics, and scrolling a focused
   log with the keyboard. There should be no focus trap or unreachable control.
 - With the platform screen reader, confirm meaningful names, selected theme,
-  zoom percentage, PASS / WARNING / FAIL / INFORMATION, operation phase and
+  Appearance settings expanded/collapsed state, theme pressed state and one useful
+  zoom announcement per change, PASS / WARNING / FAIL / INFORMATION, operation phase and
   completion/failure messages, and Schedule refresh results. Record missing,
   duplicate, confusing or excessively repeated announcements; axe cannot certify
   their spoken quality. Codex investigates any such issue before acceptance.
 - Enable the OS reduced-motion preference. Progress should remain understandable
   while spinners/transitions stop. Assess text/controls in both themes and any
-  normally used system contrast/text-scale mode.
+  normally used system contrast/text-scale mode. In Windows high contrast, a
+  selected theme must retain a distinct outer keyboard-focus ring.
 
 ### 5. Preserve current work and live operations
 
@@ -156,21 +203,30 @@ Check Overview, Validation, Schedule and About at every cell below. Use a typica
 
 ### 6. Actionable failure guidance
 
-On the controlled cases supplied by Codex:
+Codex prepares one case at a time only on a disposable environment. Never
+manufacture these failures on the owner's working machine. Record the original
+native diagnostic, plain-language impact/next step, technical details, action
+behavior, restored state and post-restore Validate result.
 
-- Inspect one Repair case, one manual step, one runtime/platform or mentor case,
-  a known available tool update, and unknown-failure fallback where available.
-  Explanations should match the problem and the next safe step.
-- Expand Technical details and compare the original diagnostic. Failures appear
-  first. Warnings and optional Git identity/authentication remain distinct.
-- Review Repair and Review Update should only select the operation on Overview.
-  Confirm no operation/progress/elevation starts until the explicit start click.
-  Repair's full tools/configuration/maintenance scope must be clear.
-- View Schedule is read-only navigation. Maintenance uncertainty should not tell
-  students to blindly enable or repair an intentionally disabled schedule.
-- Record native scenarios that could not be exercised as Not run, including
-  unknown failures. Automated fixture coverage is recorded separately; Codex and
-  the owner must assess remaining evidence before marking #6 accepted.
+| Case | Preparation and expected acceptance | Current native status |
+| --- | --- | --- |
+| Healthy / optional identity/auth | Dedicated baseline account; actual Validate. Optional Git identity/auth stays INFORMATION; warnings remain distinct | Pending candidate/environment |
+| Repair guidance | Helper `workspace`, only with empty workspace; missing workspace shows Repair guidance. Review Repair selects Overview/Repair without work/elevation | Pending disposable desktop |
+| Manual guidance | Helper `git-manual`; non-main default branch shows manual next step, original diagnostic, no automatic Repair for the row | Pending disposable desktop |
+| Mentor guidance | Helper `mentor-repository`; missing synthetic configured repository shows mentor guidance without implying project loss | Pending disposable desktop; Validate only, restore before any tool operation |
+| Disabled/uncertain schedule | Separate disposable snapshot, not supported by helpers; read-only Schedule/mentor guidance, no blind enable/Repair recommendation | Not run |
+| Genuine managed tool update | Known supported older-tool snapshot plus genuine package metadata; Review Update selects without work; show managed-tool scope | Not run; no fabricated update metadata or owner-tool downgrade |
+| Runtime / unknown failure | Independently available real report; safe mentor/details fallback, no invented diagnosis/command; command ending “not found” is not automatically a missing installation | Not run; simulated regression tests are separate evidence |
+| Real elevated tool operation | Separately approved full-scope operation on workspace snapshot; theme/zoom changes preserve progress/logs across elevation | Blocked without disposable desktop and full snapshot recovery |
+
+Failures should appear first; technical details retain the original diagnostic.
+Repair's broader tools/configuration/maintenance scope must be clear. No Review
+button starts work: only the explicit operation start may do so. For repository
+fixtures run Validate only. Restore between cases using the documented helper;
+never upload its private backup/ledger. If restoration refuses changed content,
+stop and use full snapshot recovery. Full Repair requires full snapshot recovery,
+not helper-only rollback. Missing runtime/update/fallback native cases remain
+Not run until exercised or explicitly accepted as limitations by the owner.
 
 ### 7. Schedule and retained behavior
 
@@ -186,20 +242,21 @@ On the controlled cases supplied by Codex:
 
 ## Result sheet and acceptance gate
 
-For each platform, record Pass / Fail / Blocked / Not run for sections 1–7. For a
+For each platform, record Pass / Fail / Blocked / Not run for sections 1–7 (including 3a). For a
 problem, provide the page, theme, zoom, window size, OS scale, what happened versus
 what was expected, and a screenshot/log where useful. Never convert Not run into
 Pass based on another platform's result.
 
 | Section | Windows result / evidence | Mint result / evidence |
 | --- | --- | --- |
-| Overview / banner / default operation | Pending | Pending |
-| Theme, live OS changes, persistence | Pending | Pending |
-| All page/theme/zoom/window combinations | Pending | Pending |
-| Keyboard, focus, names, announcements, reduced motion | Pending | Pending |
-| Preserved selections and native operations | Pending | Pending |
-| Failure/manual/update/mentor/fallback guidance | Pending | Pending |
-| Schedule, pause policy and baseline retention | Pending | Pending |
+| Overview / banner / default operation | Pending new candidate | Blocked: no desktop |
+| Theme, live OS changes, persistence | Pending new candidate | Blocked: no desktop |
+| All page/theme/zoom/window combinations | Pending new candidate | Blocked: no desktop |
+| Compact panel, transitions, tooltips and zoom limits | Pending new candidate | Blocked: no desktop |
+| Keyboard, focus, names, announcements, reduced motion | Pending new candidate | Blocked: no desktop |
+| Preserved selections and native operations | Pending candidate; tool operation blocked without disposable desktop | Blocked: no desktop |
+| Failure/manual/update/mentor/fallback guidance | Controlled cases blocked without disposable desktop; other cases Not run | Blocked: no desktop |
+| Schedule, pause policy and baseline retention | Pending new candidate | Blocked: no desktop |
 
 Codex reviews the evidence, fixes reproducible defects, reruns relevant QA, and
 supplies a fresh test build only when authorized. Do not overwrite published
@@ -208,3 +265,18 @@ explicitly accepts the tested behavior and any documented limitations/deferrals.
 Only then close the accepted issues/milestone. Stable promotion and any fleet
 rollout/policy changes remain separate decisions; no such action is part of this
 plan.
+
+## Next phase and closure checklist
+
+After plan review, Codex keeps the acceptance record current and investigates any
+newly reported defects. No owner execution is requested while the authenticated
+candidate containing PR #69 is unavailable. Build authorization remains a separate
+later decision.
+
+Before closure, Codex links exact candidate/source/authentication evidence and
+per-platform results, fixes reproducible defects and reruns relevant QA. The
+owner then accepts each issue and any named limitations explicitly. Pending,
+Blocked and Not run are never converted to Pass by CI or another platform's
+success. Keep #4/#5/#6 and the milestone open until that decision. Stable
+promotion, fleet rollout and application-update policy changes require separate
+authorization even after UI acceptance.
