@@ -137,3 +137,42 @@ the unavailable-history observation for the new completed run without erasing
 it. It does not prove a natural weekly firing, pre/post preservation or reboot
 completion. Remaining checks, #59 and rollout/promotion gates stay open; see the
 chronological completed-maintenance entry for exact evidence and log reference.
+
+## v1.2.6 full-release readiness decision — prepared October 14, 2026
+
+The owner subsequently stated **“Testing complete. Let's move toward full
+release.”** This is recorded as the owner's overall completion statement; a
+final platform/test-scope summary and any accepted limitations have been
+requested to reconcile the pending rows below. Earlier test history remains
+unchanged. This preparation does not itself promote the release or resume PCs.
+
+| Gate | Evidence / disposition |
+| --- | --- |
+| Exact candidate and source | v1.2.6; tag/source `741f681c0444a8d44d9430a107c80f2fed95b68e` verified unchanged |
+| Native CI, signing and published authentication | PASS; main run `38600886692`, protected candidate run `38608215787`; Windows SYSTEM and actual Mint checks passed |
+| Immutable assets | Five published asset hashes still match the candidate record; independently downloaded installers pass checksum verification |
+| Affected Windows 11 installation | PASS; owner confirmed first attempt without manual ACL remediation |
+| GUI Update / standalone Validate | PASS; 31 passing validation checks, zero failures |
+| Protected task and controlled maintenance | PASS; SYSTEM/Highest protected launcher, app/engine 1.2.6, reported baseline 1.2.1, tool exit 0 |
+| Application-update policy | PASS for observed paused state through GUI/installed worker and completed maintenance; byte preservation not independently established |
+| Remaining owner evidence / accepted limitations | Reconcile owner's completion statement with per-PC authentication, logs/private ACLs/baseline/data/settings/schedule preservation, reboot, representative affected PCs, Mint owner UAT if in scope, student-account/school-network checks and real weekly firing; do not fabricate missing results |
+| Recovery | Automatic signed recovery remains unconfirmed on the manually installed test PC; document mentor recovery procedure/accepted limitation and preserve separate automatic-install/recovery pilot |
+| Documentation | PR #61 contains chronological evidence; complete final owner disposition before merge/release decision |
+| Stable promotion / pilot / fleet resume | Separate explicit scope/authorization still to be recorded; keep application updates and broader rollout paused |
+
+The prepared promotion target is the **existing v1.2.6 prerelease**, with Windows
+installer SHA-256
+`15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690` and
+manifest SHA-256
+`746b517cffd6c68b2cd24a05fb2f4104c7dca8a48f716eb69efc4cd3eec2ff30`.
+If authorized after final acceptance review, change only that release's
+prerelease/latest status; do not rebuild, re-sign, retag or replace any asset.
+Stable visibility is repository-wide, and already-unpaused eligible PCs could
+discover it; confirm fleet pause state before promotion. Preserve historical
+recovery assets and document the exact accepted recovery source. Stable promotion
+does not authorize policy resume. A controlled automatic-update/recovery pilot
+requires named PCs still on an older eligible version and separate authorization;
+do not downgrade the already-installed v1.2.6 test PC to create that pilot.
+
+Current decision: **technical candidate evidence verified; final owner scope,
+accepted limitations and explicit promotion/rollout disposition pending**.
