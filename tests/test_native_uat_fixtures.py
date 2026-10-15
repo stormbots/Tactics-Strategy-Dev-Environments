@@ -151,6 +151,8 @@ class NativeFixtures(unittest.TestCase):
         self.assertEqual(args[0][-2], "-EncodedCommand")
         script = base64.b64decode(args[0][-1]).decode("utf-16-le")
         self.assertIn("$env:SDE_UAT_STATE_PATH", script)
+        self.assertIn("[System.IO.Directory]::SetAccessControl", script)
+        self.assertNotIn("Set-Acl", script)
         self.assertNotIn(str(self.root), script)
         self.assertEqual(kwargs["env"]["SDE_UAT_STATE_PATH"], str(self.root))
 

@@ -38,7 +38,7 @@ def main():
 
     cli("enroll", "--acknowledge-disposable-vm")
     if os.name == "nt":
-        script = "$a=Get-Acl -LiteralPath $env:SDE_UAT_STATE_PATH; if(!$a.AreAccessRulesProtected){throw 'Inherited root ACL'}; $s=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value; foreach($r in $a.Access){if($r.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -ne $s){throw 'Unexpected principal'}}; if($a.Access.Count -eq 0){throw 'Empty ACL'}"
+        script = "$a=[System.IO.Directory]::GetAccessControl($env:SDE_UAT_STATE_PATH); if(!$a.AreAccessRulesProtected){throw 'Inherited root ACL'}; $s=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value; foreach($r in $a.Access){if($r.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -ne $s){throw 'Unexpected principal'}}; if($a.Access.Count -eq 0){throw 'Empty ACL'}"
         import base64
         subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", base64.b64encode(script.encode("utf-16-le")).decode()], env={**os.environ, "SDE_UAT_STATE_PATH": str(root)}, check=True)
     else:
