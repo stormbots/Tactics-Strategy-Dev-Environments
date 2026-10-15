@@ -12,6 +12,10 @@ on:
       - 'tests/test_schedule.py'
   workflow_dispatch:
     inputs:
+      ui_milestone:
+        description: Publish only the new 1.2.8 UI milestone candidate; 1.2.7 is an unpublished upgrade fixture
+        type: boolean
+        default: false
       banner_removal:
         description: Publish only the new 1.2.7 Overview banner removal candidate; earlier versions remain unpublished fixtures
         type: boolean
@@ -43,6 +47,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
+          UI_MILESTONE: ${{ inputs.ui_milestone }}
           BANNER_REMOVAL: ${{ inputs.banner_removal }}
           LOGS_MIGRATION: ${{ inputs.logs_migration }}
           MIGRATION: ${{ inputs.migration }}
@@ -50,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           selected=0
-          for option in "$BANNER_REMOVAL" "$LOGS_MIGRATION" "$MIGRATION" "$CORRECTION"; do
+          for option in "$UI_MILESTONE" "$BANNER_REMOVAL" "$LOGS_MIGRATION" "$MIGRATION" "$CORRECTION"; do
             if [[ "$option" = true ]]; then selected=$((selected + 1)); fi
           done
           test "$selected" -le 1
@@ -63,7 +68,7 @@ jobs:
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: ${{ (inputs.banner_removal || github.event_name == 'pull_request') && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
+      BUILD_VERSIONS: ${{ (inputs.ui_milestone || github.event_name == 'pull_request') && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
     strategy:
       fail-fast: false
       matrix:
@@ -170,8 +175,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     env:
-      CANDIDATE_VERSIONS: ${{ inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
-      CANDIDATE_NOTES: ${{ inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
+      CANDIDATE_VERSIONS: ${{ inputs.ui_milestone && '1.2.8' || inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
+      CANDIDATE_NOTES: ${{ inputs.ui_milestone && 'docs/RELEASE-NOTES-1.2.8.md' || inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
     permissions:
       contents: write
       actions: read

@@ -23,8 +23,14 @@ fi
 if [[ -f /work/uat/1.2.6/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
   versions+=(1.2.6)
 fi
+if [[ -f /work/uat/1.2.7/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions+=(1.2.7)
+fi
+if [[ -f /work/uat/1.2.8/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions=(1.2.7 1.2.8)
+fi
 for version in "${versions[@]}"; do
-  if [[ "$version" = 1.2.3 ]]; then
+  if [[ "$version" = "${versions[1]}" ]]; then
     printf '# legacy maintenance UAT sentinel\n' > "$legacy"
     chmod 0755 "$legacy"
   fi
@@ -37,7 +43,7 @@ for version in "${versions[@]}"; do
   [[ "$(dpkg-query -W -f='${Status}' skyview-dev-setup)" == 'install ok installed' ]]
   [[ "$(dpkg-query -W -f='${Version}' skyview-dev-setup)" == "$version" ]]
   [[ -x /usr/bin/skyview-dev-setup ]]
-  if [[ "$version" = 1.2.2 ]]; then
+  if [[ "$version" = "${versions[0]}" ]]; then
     [[ ! -e "$legacy" ]]
   else
     [[ "$(cat "$legacy")" == '# legacy maintenance UAT sentinel' ]]
