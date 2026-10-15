@@ -82,6 +82,8 @@ export function ThemeButtons({
             onKeyDown={(event) => {
               if (event.key === "Escape") setDismissed(value);
             }}
+            onFocus={() => setDismissed(null)}
+            onMouseEnter={() => setDismissed(null)}
             onMouseLeave={() => setDismissed(null)}
             onBlur={() => setDismissed(null)}
           >

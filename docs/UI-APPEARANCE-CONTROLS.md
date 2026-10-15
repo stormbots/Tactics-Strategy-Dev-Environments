@@ -30,7 +30,8 @@ buttons. #4 and #5 remain open for native acceptance.
   the panel. The panel is width-constrained and scrolls vertically in short windows.
   Available height is measured beneath the trigger on opening, zoom changes and
   window resizing, including very short windows. Escape also dismisses hovered
-  theme tooltips while keyboard focus remains elsewhere.
+  theme tooltips while keyboard focus remains elsewhere; a new hover/focus
+  interaction shows them again.
 
 ## Engineering verification
 
@@ -42,11 +43,10 @@ WCAG AA axe scans, contrast tokens, preference persistence/live OS theme changes
 keyboard operation, popover focus/dismissal, layout transitions, blocked storage,
 a short viewport, and preservation of active validation/provisioning logs.
 
-Initial checks: 103 unit/model/component tests and 64 browser checks passed.
-The review follow-up adds three regressions for zoom-limit focus, live resizing
-to a very short viewport, and hovered-tooltip dismissal; all 25 focused appearance
-cases passed after the fixes. TypeScript/Vite frontend
-compilation and formatting passed. Browser verification used Debian Chromium
+Final review checks: 103 unit/model/component tests and all 68 browser checks
+passed. The review follow-up covers zoom-limit focus, live resizing to a very
+short viewport, hovered-tooltip dismissal, and restoring tooltips on renewed
+focus/hover. TypeScript/Vite frontend compilation and formatting passed. Browser verification used Debian Chromium
 154.0.8037.57 with a temporary executable override; CI uses Playwright's installed
 Chromium with the standard repository configuration. Native desktop UAT is pending.
 

@@ -296,3 +296,20 @@ test("Escape dismisses hovered theme tooltips when keyboard focus is elsewhere",
     page.getByRole("button", { name: "Overview", exact: true }),
   ).toBeFocused();
 });
+
+test("Escape outside the appearance controls does not suppress the next focus tooltip", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 820 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Overview", exact: true }).focus();
+  await page.keyboard.press("Escape");
+  const system = page.getByRole("button", { name: "System", exact: true });
+  await system.focus();
+  await expect(
+    page
+      .locator(".theme-option")
+      .filter({ has: system })
+      .locator(".appearance-tooltip"),
+  ).toBeVisible();
+});
