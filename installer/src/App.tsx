@@ -302,7 +302,7 @@ export default function App() {
             <p className="eyebrow">YOUR DEVELOPMENT WORKSTATION</p>
             <h1 ref={pageHeading} tabIndex={-1}>
               {page === "overview"
-                ? "Ready to build."
+                ? "Are you ready to build?"
                 : page === "validation"
                   ? "Environment validation"
                   : page === "schedule"
