@@ -79,4 +79,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        text = traceback.format_exc()
+        print(text)
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            print("::error::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+        raise SystemExit(1)

@@ -145,6 +145,7 @@ class NativeFixtures(unittest.TestCase):
 
     def test_windows_acl_path_is_data_not_powershell_code(self):
         with patch.object(fixtures.os, "name", "nt"), patch.object(fixtures.subprocess, "run") as invoke:
+            invoke.return_value.returncode = 0
             fixtures.secure(self.root)
         args, kwargs = invoke.call_args
         self.assertEqual(args[0][-2], "-EncodedCommand")

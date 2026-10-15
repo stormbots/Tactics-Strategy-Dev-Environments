@@ -63,9 +63,11 @@ def secure(root):
         # Backups may contain private Git configuration. Disable inherited ACLs.
         script = "$p=$env:SDE_UAT_STATE_PATH; $s=[Security.Principal.WindowsIdentity]::GetCurrent().User; $a=New-Object Security.AccessControl.DirectorySecurity; $a.SetOwner($s); $a.SetAccessRuleProtection($true,$false); $r=New-Object Security.AccessControl.FileSystemAccessRule($s,'FullControl','ContainerInherit,ObjectInherit','None','Allow'); $a.AddAccessRule($r); Set-Acl -LiteralPath $p -AclObject $a -ErrorAction Stop"
         encoded = base64.b64encode(script.encode("utf-16-le")).decode()
-        subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
-                       env={**os.environ, "SDE_UAT_STATE_PATH": str(root)},
-                       check=True, capture_output=True, text=True)
+        result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+                                env={**os.environ, "SDE_UAT_STATE_PATH": str(root)},
+                                capture_output=True, text=True)
+        if result.returncode:
+            raise ValueError("Windows ACL setup failed: " + result.stderr[:3000])
     else:
         if root.stat().st_uid != os.getuid():
             raise ValueError("Fixture directory must belong to this account")
