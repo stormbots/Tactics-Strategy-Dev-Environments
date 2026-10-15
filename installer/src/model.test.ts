@@ -9,6 +9,7 @@ import {
   toolStatus,
   toolForCheck,
   updateInspectionIncomplete,
+  type Check,
   type Mode,
   type Report,
 } from "./model";
@@ -112,7 +113,7 @@ describe("operation states", () => {
   });
 });
 describe("workstation state detection", () => {
-  it("handles all five required states", () => {
+  it("distinguishes missing tools from unverified requirements", () => {
     expect(
       environmentStatus([{ status: "FAIL", message: "Git: not installed" }]),
     ).toBe("Not installed");
@@ -127,7 +128,7 @@ describe("workstation state detection", () => {
         { status: "PASS", message: "Git: 2.x" },
         { status: "FAIL", message: "Weekly maintenance" },
       ]),
-    ).toBe("Needs repair");
+    ).toBe("Needs attention");
     expect(environmentStatus(checksFrom(valid))).toBe("Ready");
     expect(environmentStatus(checksFrom(valid), true)).toBe(
       "Updates available",
@@ -190,7 +191,7 @@ describe("tool metadata", () => {
       toolsFrom(["SKYVIEW_EVENT|tool|Git|{bad", "Git 2.44.0 available"]),
     ).toEqual([]);
   });
-  it("displays versions, unavailable versions, and repair status without guessing", () => {
+  it("displays versions and directs failed checks to validation without guessing", () => {
     const check = { status: "PASS" as const, message: "Git: 2.43.0" };
     expect(toolStatus(check, { ...record, updateCheck: "current" })).toBe(
       "Update available · 2.43.0 → 2.44.0",
@@ -209,7 +210,7 @@ describe("tool metadata", () => {
         { ...check, status: "FAIL" },
         { ...record, updateCheck: "current" },
       ),
-    ).toBe("Missing / needs repair");
+    ).toBe("Needs attention · see validation");
     expect(
       toolForCheck({
         status: "PASS",
@@ -220,4 +221,43 @@ describe("tool metadata", () => {
       toolForCheck({ status: "PASS", message: "Google Chrome found" }),
     ).toBe("Chrome");
   });
+});
+
+it("keeps unknown failures neutral and does not infer a repair", () => {
+  expect(
+    environmentStatus([{ status: "FAIL", message: "An unknown check failed" }]),
+  ).toBe("Needs attention");
+  expect(toolStatus({ status: "WARNING", message: "Git: warning" })).toBe(
+    "Warning · see validation",
+  );
+  const state = reducer(
+    { ...initialState, stage: "running" },
+    {
+      type: "complete",
+      report: report(
+        [
+          "SKYVIEW_EVENT|validation|FAIL|An unknown check failed",
+          "SKYVIEW_EVENT|summary|1|Failed",
+        ],
+        1,
+      ),
+    },
+  );
+  expect(state.error).toContain("recommended next steps");
+  expect(state.error).not.toContain("use Repair");
+});
+
+it("does not describe runtime or command failures as missing installations", () => {
+  const runtimeFailure: Check = {
+    status: "FAIL",
+    message:
+      "Node.js: expected runtime family or usable command; detected v25.0.0",
+  };
+  expect(environmentStatus([runtimeFailure])).toBe("Needs attention");
+  expect(
+    environmentStatus([
+      { status: "PASS", message: "Git: 2.49.0" },
+      runtimeFailure,
+    ]),
+  ).toBe("Needs attention");
 });

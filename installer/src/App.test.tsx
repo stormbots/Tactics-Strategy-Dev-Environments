@@ -207,3 +207,130 @@ it("shows the version and approved external links on About", async () => {
     ).violations,
   ).toEqual([]);
 });
+
+it("reviews Repair without starting it and retains the explicit start action", async () => {
+  vi.mocked(operate).mockClear();
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 1,
+    success: false,
+    lines: [
+      "SKYVIEW_EVENT|validation|FAIL|Git: not installed",
+      "SKYVIEW_EVENT|validation|INFO|Git identity: not configured (optional)",
+      "SKYVIEW_EVENT|summary|1|Failed",
+    ],
+    log_path: "test.log",
+    platform: { label: "Windows 11", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "Not installed" });
+  fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
+  expect(screen.getByText("Git could not be found")).toBeTruthy();
+  expect(screen.getByText("INFORMATION")).toBeTruthy();
+  expect(screen.getByText(/Repair runs the full workflow/)).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: /Review Repair for Git/ }),
+  );
+  expect(vi.mocked(operate)).not.toHaveBeenCalled();
+  const start = screen.getByRole("button", {
+    name: "Repair Development Environment",
+  });
+  expect(start).toBeTruthy();
+  expect(screen.getByRole("status").textContent).toContain(
+    "choose whether to start",
+  );
+  fireEvent.click(start);
+  await waitFor(() =>
+    expect(vi.mocked(operate)).toHaveBeenCalledWith(
+      "repair",
+      expect.any(String),
+      false,
+      expect.any(Function),
+    ),
+  );
+});
+it("reviews Update for an available managed update without starting it", async () => {
+  vi.mocked(operate).mockClear();
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49.0",
+      'SKYVIEW_EVENT|tool|Git|{"tool":"Git","installedVersion":"2.49.0","availableVersion":"2.50.0","updateAvailable":true,"updateCheck":"current"}',
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "test.log",
+    platform: { label: "Linux Mint 22.3", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "Updates available",
+  });
+  fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
+  expect(screen.getByText("PASS")).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: /Review Update for Managed update available for Git/,
+    }),
+  );
+  expect(vi.mocked(operate)).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Update Development Tools" }),
+  );
+  await waitFor(() =>
+    expect(vi.mocked(operate)).toHaveBeenCalledWith(
+      "update",
+      expect.any(String),
+      false,
+      expect.any(Function),
+    ),
+  );
+});
+it("retains unknown diagnostics as plain text and offers mentor guidance", async () => {
+  const message = "Unknown check <script>alert('example')</script>";
+  vi.mocked(operate).mockClear();
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 1,
+    success: false,
+    lines: [
+      `SKYVIEW_EVENT|validation|FAIL|${message}`,
+      "SKYVIEW_EVENT|summary|1|Failed",
+    ],
+    log_path: "test.log",
+    platform: { label: "Linux Mint 22.3", supported: true },
+  });
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { name: "Needs attention" });
+  fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
+  expect(screen.getByText("This check needs a mentor's review")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Review Repair/ })).toBeNull();
+  const details = container.querySelector(
+    ".check-diagnostics",
+  ) as HTMLDetailsElement;
+  expect(details.open).toBe(false);
+  fireEvent.click(screen.getByText("Technical details", { exact: true }));
+  expect(screen.getByText(message)).toBeTruthy();
+  expect(container.querySelector("script")).toBeNull();
+  expect(vi.mocked(operate)).not.toHaveBeenCalled();
+});
+
+it("blocks guidance actions while an operation is streaming checks", async () => {
+  vi.mocked(operate).mockClear();
+  vi.mocked(operate).mockImplementationOnce(
+    async (_mode, _id, _updates, emit) => {
+      emit("SKYVIEW_EVENT|validation|FAIL|Git: not installed");
+      return new Promise(() => {});
+    },
+  );
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready" });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
+  const review = screen.getByRole("button", {
+    name: /Review Repair for Git/,
+  }) as HTMLButtonElement;
+  expect(review.disabled).toBe(true);
+  fireEvent.click(review);
+  expect(vi.mocked(operate)).toHaveBeenCalledTimes(1);
+});
