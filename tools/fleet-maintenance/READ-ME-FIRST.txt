@@ -1,0 +1,42 @@
+SDE FLEET MAINTENANCE LAUNCHERS
+
+Copy this entire folder to the flash drive. Use only on managed Windows x64 or
+Linux Mint laptops with SDE and its existing maintenance schedule installed.
+Close SDE normally and save work first. Plug in power and connect to the internet.
+
+These scripts do THREE things:
+1. Resume SDE automatic app installation (this also permits future stable releases).
+2. Enable the EXISTING scheduled task / timer, preserving its schedule.
+3. Request maintenance immediately. This really updates development tools as well
+   as checking/installing an eligible stable SDE app update.
+They do not install SDE on a bare laptop, create a missing schedule, force-close
+apps, bypass signature checks, repair permissions, delete locks, or force reboot.
+
+WINDOWS
+Double-click Start-SDE-Maintenance-Windows.cmd. Keep its companion .ps1 in the
+same folder. Approve the administrator/UAC prompt. Read the result and local log
+path, press Enter, and remove the drive. If school policy blocks scripts, ask the
+administrator; these launchers do not override Group Policy.
+
+LINUX MINT
+Open a terminal. Type bash followed by a space, drag
+Start-SDE-Maintenance-Linux.sh from the flash drive into the terminal, then press
+Enter. Enter your sudo password when asked. No chmod or executable USB filesystem
+is required. Read the result, then press Enter. Remove the drive afterward.
+
+Maintenance continues independently from installed system files. You do not need
+to leave the flash drive inserted or wait at the laptop for the update to finish.
+Launch success is NOT installation success. An open SDE app or other package work
+may defer installation. Future attempts use the retained enabled schedule.
+
+AFTERWARD
+Reopen SDE and check About (current stable target: 1.2.9) and Schedule for the app
+update outcome AND the separate tool-maintenance result. Future stable versions
+may become eligible later; these scripts do not pin the fleet to 1.2.9.
+
+If a launcher fails, preserve its local log/error and send it to Codex. Earlier
+successful changes may remain enabled; the scripts do not silently roll those
+changes back. A missing task/timer/updater requires mentor review.
+
+Native desktop verification of these standalone launchers has not yet run.
+See QA.txt for the checks performed before delivery.

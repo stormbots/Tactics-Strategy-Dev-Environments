@@ -1,0 +1,21 @@
+QA performed before delivery (2026-10-15)
+
+- Bash syntax check passed.
+- PowerShell 7.6.7 parser check passed. Script uses Windows PowerShell 5.1 syntax;
+  actual Windows PowerShell 5.1/UAC/ScheduledTasks execution remains untested.
+- Five Linux scenarios passed using a test-only copy with substituted worker,
+  systemctl, OS identity and private log location: success, missing unit, legacy
+  launcher, resume failure, and policy remaining paused. Failure cases did not
+  enable timers or request maintenance. No real system service/policy was changed.
+- Nine Windows scenarios passed using a test-only copy with mocked privilege and
+  platform commands: success, already running, missing updater, missing task,
+  wrong principal, legacy action, resume failure, paused result and enable failure.
+  Failed cases did not request maintenance; an already-running task was not
+  started again. No actual Windows task, UAC or updater was exercised.
+- Fixed task/unit names and installed updater paths checked against repository
+  implementation and mentor documentation. No executable is bundled in this ZIP.
+
+Native desktop execution has not run. Use the first laptop of each OS as the
+smoke test, then confirm the real maintenance outcome before relying on launch
+success. The native SDE updater still enforces its existing trust/coordination
+checks; these launchers never claim that starting maintenance proves an upgrade.
