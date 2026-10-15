@@ -41,6 +41,7 @@ import {
   operate,
   type Destination,
 } from "./bridge";
+import { ThemeControl } from "./ThemeControl";
 import { AboutPage, SchedulePage } from "./DetailsPages";
 const modes: Record<
   Mode,
@@ -290,6 +291,9 @@ export default function App() {
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
+        <div className="appearance-toolbar">
+          <ThemeControl />
+        </div>
         {!native && (
           <div className="preview-banner">
             <Info size={16} />
@@ -302,7 +306,7 @@ export default function App() {
             <p className="eyebrow">YOUR DEVELOPMENT WORKSTATION</p>
             <h1 ref={pageHeading} tabIndex={-1}>
               {page === "overview"
-                ? "Ready to build."
+                ? "Are you ready to build?"
                 : page === "validation"
                   ? "Environment validation"
                   : page === "schedule"
