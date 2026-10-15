@@ -17,7 +17,8 @@ buttons. #4 and #5 remain open for native acceptance.
 - The panel stays open during appearance changes while the layout remains compact.
   It closes on toggle, Escape, outside pointer activation, page navigation, or
   transition to wide layout. Keyboard opening focuses the first theme button;
-  Escape restores trigger focus. Tab is not trapped. Resizing transfers focus
+  Escape restores trigger focus. At either zoom limit, focus moves to the enabled
+  opposite zoom button instead of falling back to the document. Tab is not trapped. Resizing transfers focus
   between equivalent inline controls and the compact trigger.
 - One mounted owner holds both preferences across panel dismissal and layout
   transitions, including when local storage cannot be written.
@@ -27,6 +28,9 @@ buttons. #4 and #5 remain open for native acceptance.
   one set of controls is exposed. One polite live region reports the zoom value.
 - At very narrow logical widths, labels stack above their button group inside
   the panel. The panel is width-constrained and scrolls vertically in short windows.
+  Available height is measured beneath the trigger on opening, zoom changes and
+  window resizing, including very short windows. Escape also dismisses hovered
+  theme tooltips while keyboard focus remains elsewhere.
 
 ## Engineering verification
 
@@ -38,8 +42,10 @@ WCAG AA axe scans, contrast tokens, preference persistence/live OS theme changes
 keyboard operation, popover focus/dismissal, layout transitions, blocked storage,
 a short viewport, and preservation of active validation/provisioning logs.
 
-Local checks: 103 unit/model/component tests and 64 browser checks passed
-(63-test full regression run plus the overlay hit-test regression). TypeScript/Vite frontend
+Initial checks: 103 unit/model/component tests and 64 browser checks passed.
+The review follow-up adds three regressions for zoom-limit focus, live resizing
+to a very short viewport, and hovered-tooltip dismissal; all 25 focused appearance
+cases passed after the fixes. TypeScript/Vite frontend
 compilation and formatting passed. Browser verification used Debian Chromium
 154.0.8037.57 with a temporary executable override; CI uses Playwright's installed
 Chromium with the standard repository configuration. Native desktop UAT is pending.

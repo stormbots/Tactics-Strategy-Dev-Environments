@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
 export type ThemePreference = "system" | "light" | "dark";
@@ -62,6 +62,13 @@ export function ThemeButtons({
   choose,
 }: ReturnType<typeof useThemePreference>) {
   const [dismissed, setDismissed] = useState<string | null>(null);
+  useEffect(() => {
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDismissed("all");
+    };
+    document.addEventListener("keydown", dismiss);
+    return () => document.removeEventListener("keydown", dismiss);
+  }, []);
   return (
     <div className="theme-control" role="group" aria-label="Theme">
       {(["system", "light", "dark"] as const).map((value) => {
@@ -71,7 +78,7 @@ export function ThemeButtons({
           <span
             className="theme-option"
             key={value}
-            data-tip-dismissed={dismissed === value}
+            data-tip-dismissed={dismissed === value || dismissed === "all"}
             onKeyDown={(event) => {
               if (event.key === "Escape") setDismissed(value);
             }}

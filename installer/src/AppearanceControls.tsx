@@ -59,6 +59,25 @@ export function AppearanceControls({ page }: { page: string }) {
     }
   }, [compact]);
 
+  useLayoutEffect(() => {
+    if (!compact || !open) return;
+    const fit = () => {
+      const bounds = trigger.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const available = Math.max(
+        0,
+        (window.innerHeight - bounds.bottom) / (zoom.zoom / 100) - 16,
+      );
+      panel.current?.style.setProperty(
+        "--appearance-max-height",
+        `${available}px`,
+      );
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [compact, open, zoom.zoom]);
+
   useEffect(() => {
     if (previousPage.current !== page) setOpen(false);
     previousPage.current = page;

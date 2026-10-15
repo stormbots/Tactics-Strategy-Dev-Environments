@@ -1009,9 +1009,13 @@ progress::-moz-progress-bar {
   z-index: 45;
   width: 220px;
   max-width: calc(100vw / var(--ui-scale) - 40px);
-  max-height: max(80px, calc(100dvh / var(--ui-scale) - 90px));
+  max-height: var(
+    --appearance-max-height,
+    calc(100dvh / var(--ui-scale) - 90px)
+  );
   overflow: auto;
-  padding: 28px 14px 14px;
+  padding: min(28px, var(--appearance-max-height, 200px) / 4) 14px
+    min(14px, var(--appearance-max-height, 200px) / 8);
   border: 1px solid var(--control-line);
   border-radius: 6px;
   background: var(--surface);

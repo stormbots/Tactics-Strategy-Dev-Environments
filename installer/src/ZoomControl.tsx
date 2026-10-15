@@ -44,6 +44,20 @@ export function ZoomButtons({
   choose,
 }: ReturnType<typeof useZoomPreference>) {
   const position = zoomLevels.indexOf(zoom);
+  function step(delta: number, button: HTMLButtonElement) {
+    const next = position + delta;
+    if (
+      (next === 0 || next === zoomLevels.length - 1) &&
+      document.activeElement === button
+    ) {
+      button.parentElement
+        ?.querySelector<HTMLButtonElement>(
+          `[data-appearance-key="${delta > 0 ? "decrease" : "increase"}"]`,
+        )
+        ?.focus();
+    }
+    choose(next);
+  }
   return (
     <div className="zoom-control" role="group" aria-label="UI zoom">
       <button
@@ -52,7 +66,7 @@ export function ZoomButtons({
         aria-label="Decrease zoom"
         data-appearance-key="decrease"
         disabled={position === 0}
-        onClick={() => choose(position - 1)}
+        onClick={(event) => step(-1, event.currentTarget)}
       >
         −
       </button>
@@ -65,7 +79,7 @@ export function ZoomButtons({
         aria-label="Increase zoom"
         data-appearance-key="increase"
         disabled={position === zoomLevels.length - 1}
-        onClick={() => choose(position + 1)}
+        onClick={(event) => step(1, event.currentTarget)}
       >
         +
       </button>

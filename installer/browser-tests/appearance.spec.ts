@@ -239,3 +239,60 @@ test("compact popover stays above navigation and page content", async ({
     );
   expect(unobscured).toBe(true);
 });
+
+test("zoom limits retain keyboard focus on the enabled opposite button", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await page.goto("/");
+  await chooseZoom(page, 3);
+  const plus = page.getByRole("button", { name: "Increase zoom" });
+  const minus = page.getByRole("button", { name: "Decrease zoom" });
+  await plus.focus();
+  await plus.press("Enter");
+  await expect(plus).toBeDisabled();
+  await expect(minus).toBeFocused();
+  await chooseZoom(page, 1);
+  await minus.focus();
+  await minus.press("Space");
+  await expect(minus).toBeDisabled();
+  await expect(plus).toBeFocused();
+});
+
+test("popover refits when an already open window becomes very short", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 640, height: 820 });
+  await page.goto("/");
+  await chooseZoom(page, 4);
+  await page.setViewportSize({ width: 640, height: 150 });
+  await expect
+    .poll(async () => {
+      const box = (await page.locator(".appearance-popover").boundingBox())!;
+      return box.y + box.height;
+    })
+    .toBeLessThanOrEqual(150);
+  await page.getByRole("button", { name: "Decrease zoom" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".zoom-value:visible")).toHaveText("130%");
+});
+
+test("Escape dismisses hovered theme tooltips when keyboard focus is elsewhere", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 820 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Overview", exact: true }).focus();
+  const system = page.getByRole("button", { name: "System", exact: true });
+  await system.hover();
+  const tip = page
+    .locator(".theme-option")
+    .filter({ has: system })
+    .locator(".appearance-tooltip");
+  await expect(tip).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tip).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Overview", exact: true }),
+  ).toBeFocused();
+});
