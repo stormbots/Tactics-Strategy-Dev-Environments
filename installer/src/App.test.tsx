@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import {
   render,
   screen,
@@ -68,7 +68,19 @@ vi.mock("./bridge", () => ({
   })),
   open: vi.fn(async () => {}),
 }));
-afterEach(cleanup);
+beforeEach(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 it("shows a prominent busy indicator while startup validation is pending", async () => {
   vi.mocked(inspect).mockReturnValueOnce(new Promise(() => {}));
   const { container } = render(<App />);

@@ -30,8 +30,8 @@ function systemChange(dark: boolean) {
 }
 it("defaults to System, follows live changes, and unsubscribes", () => {
   const view = render(<ThemeControl />);
-  expect((screen.getByLabelText("System") as HTMLInputElement).checked).toBe(
-    true,
+  expect(screen.getByLabelText("System").getAttribute("aria-pressed")).toBe(
+    "true",
   );
   expect(document.documentElement.dataset.theme).toBe("light");
   systemChange(true);
@@ -52,8 +52,8 @@ it("persists manual overrides and restores them before rendering", () => {
   initializeTheme();
   expect(document.documentElement.dataset.theme).toBe("dark");
   render(<ThemeControl />);
-  expect((screen.getByLabelText("Dark") as HTMLInputElement).checked).toBe(
-    true,
+  expect(screen.getByLabelText("Dark").getAttribute("aria-pressed")).toBe(
+    "true",
   );
   fireEvent.click(screen.getByLabelText("Light"));
   systemChange(true);
@@ -68,8 +68,8 @@ it("falls back to Light with System selected if theme detection is unavailable",
   initializeTheme();
   render(<ThemeControl />);
   expect(document.documentElement.dataset.theme).toBe("light");
-  expect((screen.getByLabelText("System") as HTMLInputElement).checked).toBe(
-    true,
+  expect(screen.getByLabelText("System").getAttribute("aria-pressed")).toBe(
+    "true",
   );
   fireEvent.click(screen.getByLabelText("Dark"));
   expect(document.documentElement.dataset.theme).toBe("dark");
@@ -104,8 +104,8 @@ it("falls back safely when system detection throws", () => {
   });
   initializeTheme();
   render(<ThemeControl />);
-  expect((screen.getByLabelText("System") as HTMLInputElement).checked).toBe(
-    true,
+  expect(screen.getByLabelText("System").getAttribute("aria-pressed")).toBe(
+    "true",
   );
   expect(document.documentElement.dataset.theme).toBe("light");
 });

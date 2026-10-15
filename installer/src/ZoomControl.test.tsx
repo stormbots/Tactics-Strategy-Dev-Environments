@@ -9,41 +9,36 @@ afterEach(() => {
   localStorage.clear();
   document.documentElement.style.removeProperty("--ui-scale");
 });
-it("defaults to the second position at exactly 100%", () => {
+it("defaults to 100%, has no slider, and steps through bounded levels", () => {
   render(<ZoomControl />);
-  const slider = screen.getByRole("slider", {
-    name: "UI zoom",
-  }) as HTMLInputElement;
-  expect(slider.value).toBe("1");
-  expect(slider.min).toBe("0");
-  expect(slider.max).toBe("4");
-  expect(slider.step).toBe("1");
-  expect(slider.getAttribute("aria-valuetext")).toBe("100%");
-  expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(
-    "1",
-  );
-});
-it("applies and saves each exact scale and restores it before rendering", () => {
-  const view = render(<ZoomControl />);
-  const slider = screen.getByRole("slider", { name: "UI zoom" });
-  zoomLevels.forEach((value, position) => {
-    fireEvent.change(slider, { target: { value: position } });
-    expect(slider.getAttribute("aria-valuetext")).toBe(`${value}%`);
+  expect(screen.queryByRole("slider")).toBeNull();
+  expect(screen.getByText("100%")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Decrease zoom" }));
+  expect(
+    (screen.getByRole("button", { name: "Decrease zoom" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  for (const value of zoomLevels.slice(1)) {
+    fireEvent.click(screen.getByRole("button", { name: "Increase zoom" }));
+    expect(screen.getByText(`${value}%`)).toBeTruthy();
+    expect(localStorage.getItem("sde.uiZoom")).toBe(String(value));
     expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(
       String(value / 100),
     );
-    expect(localStorage.getItem("sde.uiZoom")).toBe(String(value));
-  });
-  view.unmount();
-  document.documentElement.style.removeProperty("--ui-scale");
+  }
+  expect(
+    (screen.getByRole("button", { name: "Increase zoom" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+});
+it("restores the saved scale before rendering and on remount", () => {
+  localStorage.setItem("sde.uiZoom", "130");
   initializeZoom();
   expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(
-    "1.5",
+    "1.3",
   );
   render(<ZoomControl />);
-  expect(
-    (screen.getByRole("slider", { name: "UI zoom" }) as HTMLInputElement).value,
-  ).toBe("4");
+  expect(screen.getByText("130%")).toBeTruthy();
 });
 it("rejects saved scales outside the five supported values", () => {
   for (const value of ["", "1", "120", "150px", "NaN", "Infinity", "1000"]) {
@@ -63,10 +58,8 @@ it("works when preference storage is blocked", () => {
   });
   initializeZoom();
   render(<ZoomControl />);
-  fireEvent.change(screen.getByRole("slider", { name: "UI zoom" }), {
-    target: { value: 4 },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Increase zoom" }));
   expect(document.documentElement.style.getPropertyValue("--ui-scale")).toBe(
-    "1.5",
+    "1.15",
   );
 });

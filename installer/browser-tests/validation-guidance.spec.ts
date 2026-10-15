@@ -1,3 +1,4 @@
+import { chooseTheme, chooseZoom, closeAppearance } from "./appearance-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
@@ -37,12 +38,9 @@ for (const theme of ["Light", "Dark"])
       await expect(
         page.getByRole("heading", { name: "Partially installed", exact: true }),
       ).toBeVisible();
-      await page.getByRole("radio", { name: theme, exact: true }).check();
-      if (width === 640) {
-        const zoom = page.getByRole("slider", { name: "UI zoom", exact: true });
-        await zoom.focus();
-        await zoom.press("End");
-      }
+      await chooseTheme(page, theme);
+      if (width === 640) await chooseZoom(page, 4);
+      await closeAppearance(page);
       await page.getByRole("button", { name: /^Validation/ }).click();
       const row = page
         .getByRole("row")

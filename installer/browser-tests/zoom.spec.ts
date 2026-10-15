@@ -1,17 +1,13 @@
+import {
+  openAppearance,
+  chooseTheme,
+  chooseZoom,
+  closeAppearance,
+} from "./appearance-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const levels = [90, 100, 115, 130, 150];
-async function chooseZoom(page: Page, position: number) {
-  const slider = page.getByRole("slider", { name: "UI zoom", exact: true });
-  await slider.focus();
-  await slider.press("Home");
-  for (let i = 0; i < position; i++) await slider.press("ArrowRight");
-  await expect(slider).toHaveAttribute(
-    "aria-valuetext",
-    `${levels[position]}%`,
-  );
-}
 async function audit(page: Page) {
   await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
   const result = await page.evaluate(async () => {
@@ -53,11 +49,8 @@ for (const theme of ["Light", "Dark"]) {
             exact: true,
           }),
         ).toBeVisible();
-        await page.getByRole("radio", { name: theme, exact: true }).check();
+        await chooseTheme(page, theme);
         await chooseZoom(page, position);
-        await expect(
-          page.locator(".zoom-slider input:focus-visible"),
-        ).toHaveCSS("outline-style", "solid");
         const sizes = await page.evaluate(() => {
           const el = document.querySelector(".operation-description")!;
           const svg = document.querySelector(".mode-tabs button svg")!;
@@ -96,6 +89,7 @@ for (const theme of ["Light", "Dark"]) {
         ).toHaveAttribute("aria-pressed", "true");
         await chooseZoom(page, position);
         for (const name of ["Validation", "Schedule", "About"]) {
+          await closeAppearance(page);
           await page
             .getByRole("button", { name: new RegExp(`^${name}`) })
             .click();
@@ -114,27 +108,32 @@ for (const theme of ["Light", "Dark"]) {
           await audit(page);
         }
         await page.reload();
-        await expect(
-          page.getByRole("slider", { name: "UI zoom", exact: true }),
-        ).toHaveAttribute("aria-valuetext", `${zoom}%`);
+        await openAppearance(page);
+        await expect(page.locator(".zoom-value:visible")).toHaveText(
+          `${zoom}%`,
+        );
       });
     }
   }
 }
-test("zoom control defaults to 100% and bounds keyboard choices to the five positions", async ({
+test("zoom buttons support keyboard activation and bounded single steps", async ({
   page,
 }) => {
   await page.goto("/");
-  const slider = page.getByRole("slider", { name: "UI zoom", exact: true });
-  await expect(slider).toHaveAttribute("aria-valuetext", "100%");
-  await slider.focus();
-  await slider.press("End");
-  await expect(slider).toHaveAttribute("aria-valuetext", "150%");
-  await slider.press("ArrowRight");
-  await expect(slider).toHaveAttribute("aria-valuetext", "150%");
-  await slider.press("Home");
-  await slider.press("ArrowLeft");
-  await expect(slider).toHaveAttribute("aria-valuetext", "90%");
+  await openAppearance(page);
+  await expect(page.locator(".zoom-value:visible")).toHaveText("100%");
+  const increase = page.getByRole("button", { name: "Increase zoom" });
+  await increase.focus();
+  await increase.press("Enter");
+  await expect(page.locator(".zoom-value:visible")).toHaveText("115%");
+  await chooseZoom(page, 4);
+  await expect(
+    page.getByRole("button", { name: "Increase zoom" }),
+  ).toBeDisabled();
+  await chooseZoom(page, 0);
+  await expect(
+    page.getByRole("button", { name: "Decrease zoom" }),
+  ).toBeDisabled();
 });
 test("zoom and theme changes preserve an active operation and log", async ({
   page,
@@ -149,7 +148,7 @@ test("zoom and theme changes preserve an active operation and log", async ({
   const log = page.getByRole("region", { name: "Provisioning log" });
   await expect(log).toContainText("Checking system");
   await chooseZoom(page, 4);
-  await page.getByRole("radio", { name: "Dark", exact: true }).check();
+  await chooseTheme(page, "Dark");
   await expect(log).toContainText("Checking system");
   await expect(
     page.getByRole("heading", { name: "Live details" }),
@@ -160,26 +159,10 @@ test("zoom and theme changes preserve an active operation and log", async ({
   await audit(page);
 });
 
-test("pointer selection reaches every zoom position after the control scales", async ({
+test("pointer buttons reach every zoom level after scaling", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 640, height: 600 });
   await page.goto("/");
-  const slider = page.getByRole("slider", { name: "UI zoom", exact: true });
-  for (const position of [4, 0, 2, 3, 1]) {
-    await slider.scrollIntoViewIfNeeded();
-    const box = (await slider.boundingBox())!;
-    const scale = await page.evaluate(() =>
-      parseFloat(getComputedStyle(document.documentElement).zoom),
-    );
-    const inset = 9 * scale;
-    await page.mouse.click(
-      box.x + inset + ((box.width - 2 * inset) * position) / 4,
-      box.y + box.height / 2,
-    );
-    await expect(slider).toHaveAttribute(
-      "aria-valuetext",
-      `${levels[position]}%`,
-    );
-  }
+  for (const position of [4, 0, 2, 3, 1]) await chooseZoom(page, position);
 });
