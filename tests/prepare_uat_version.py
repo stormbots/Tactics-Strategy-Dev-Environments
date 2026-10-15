@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSIONS = ("1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7")
+VERSIONS = ("1.2.2", "1.2.3", "1.2.4", "1.2.5", "1.2.6", "1.2.7", "1.2.8")
 
 
 def prepare(root, version):

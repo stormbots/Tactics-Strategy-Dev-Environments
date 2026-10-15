@@ -12,8 +12,11 @@ installation. The combined milestone build still needs native regression checks.
 The Overview question is now “Are you ready to build?”; the status card supplies
 the actual readiness result.
 
-No test build, version change, signing dispatch, publication or stable promotion
-is authorized by this plan. Release preparation remains deferred.
+The owner authorized v1.2.8 testing-prerelease preparation on 2026-10-15,
+including application builds and protected signing/publication. Stable promotion,
+fleet rollout and policy resume remain deferred. Native acceptance remains pending.
+See [v1.2.8 installation and UAT](UI-UAT-1.2.8.md) once Codex confirms the signed
+assets are ready.
 
 ## Requirement audit
 

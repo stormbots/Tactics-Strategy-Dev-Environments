@@ -23,6 +23,8 @@ try {
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.4' }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.5/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.5' }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.6/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.6' }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.7/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions += '1.2.7' }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.8/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.7', '1.2.8') }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
@@ -83,7 +85,7 @@ $action.Arguments += $pairFlag
 Register-ScheduledTask -TaskName $task -Action $action -User SYSTEM -RunLevel Highest -Force | Out-Null
 try {
     Start-ScheduledTask -TaskName $task
-    $minutes = if ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.6/Skyview-Dev-Setup-Windows-x64.exe'))) { 26 } elseif ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.5/Skyview-Dev-Setup-Windows-x64.exe'))) { 21 } elseif ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { 16 } else { 11 }
+    $minutes = if ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.8/Skyview-Dev-Setup-Windows-x64.exe'))) { 11 } elseif ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.7/Skyview-Dev-Setup-Windows-x64.exe'))) { 31 } elseif ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.6/Skyview-Dev-Setup-Windows-x64.exe'))) { 26 } elseif ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.5/Skyview-Dev-Setup-Windows-x64.exe'))) { 21 } elseif ($UatPair -and (Test-Path (Join-Path $InstallerRoot '1.2.4/Skyview-Dev-Setup-Windows-x64.exe'))) { 16 } else { 11 }
     $deadline = (Get-Date).AddMinutes($minutes)
     while (-not (Test-Path $done) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
     if (Test-Path $result) { Get-Content $result }
