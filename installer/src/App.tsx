@@ -43,8 +43,7 @@ import {
 } from "./bridge";
 import { ValidationCheck } from "./ValidationCheck";
 import { operationScope } from "./validationGuidance";
-import { ZoomControl } from "./ZoomControl";
-import { ThemeControl } from "./ThemeControl";
+import { AppearanceControls } from "./AppearanceControls";
 import { AboutPage, SchedulePage } from "./DetailsPages";
 const modes: Record<
   Mode,
@@ -247,11 +246,14 @@ export default function App() {
         Skip to main content
       </a>
       <aside className="sidebar">
-        <div className="brand">
-          <img src="/skyview-logo.png" alt="Skyview Robotics" />
-          <div>
-            SKYVIEW<span>ROBOTICS</span>
+        <div className="brand-row">
+          <div className="brand">
+            <img src="/skyview-logo.png" alt="Skyview Robotics" />
+            <div>
+              SKYVIEW<span>ROBOTICS</span>
+            </div>
           </div>
+          <div id="compact-appearance-slot" />
         </div>
         <div className="sidebar-product">
           Student Development
@@ -303,11 +305,8 @@ export default function App() {
           <span>Skyview Dev Setup · {appVersion}</span>
         </div>
       </aside>
+      <AppearanceControls page={page} />
       <main id="main" tabIndex={-1}>
-        <div className="appearance-toolbar">
-          <ThemeControl />
-          <ZoomControl />
-        </div>
         {!native && (
           <div className="preview-banner">
             <Info size={16} />
@@ -328,6 +327,7 @@ export default function App() {
                     : "About Skyview Dev Setup"}
             </h1>
           </div>
+          <div id="wide-appearance-slot" />
           <span className="system">
             <Laptop size={16} />
             {s.platform.label}

@@ -1,3 +1,8 @@
+import {
+  openAppearance,
+  chooseTheme,
+  closeAppearance,
+} from "./appearance-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
@@ -36,20 +41,21 @@ for (const theme of ["Light", "Dark"] as const) {
       await expect(
         page.getByRole("heading", { name: "Partially installed", exact: true }),
       ).toBeVisible();
-      await page.getByRole("radio", { name: theme, exact: true }).check();
+      await chooseTheme(page, theme);
       await expect(page.locator("html")).toHaveAttribute(
         "data-theme",
         theme.toLowerCase(),
       );
-      await page.getByRole("radio", { name: theme, exact: true }).focus();
-      await page.keyboard.press("ArrowLeft");
+      await openAppearance(page);
+      await page.getByRole("button", { name: theme, exact: true }).focus();
+      await page.keyboard.press("Space");
       await expect(
-        page.locator(".theme-options input:focus-visible + span"),
+        page.locator(".theme-control button:focus-visible"),
       ).toHaveCSS("outline-style", "solid");
-      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Enter");
       await expect(
-        page.getByRole("radio", { name: theme, exact: true }),
-      ).toBeChecked();
+        page.getByRole("button", { name: theme, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
       await audit(page);
       await page.screenshot({
         path: `test-results/theme-${theme}-${width}-overview.png`,
@@ -60,19 +66,15 @@ for (const theme of ["Light", "Dark"] as const) {
       const option = page.getByLabel(
         "Check for managed package updates during validation",
       );
-      await option.check();
-      await page
-        .getByRole("radio", {
-          name: theme === "Light" ? "Dark" : "Light",
-          exact: true,
-        })
-        .check();
+      await option.click();
+      await chooseTheme(page, theme === "Light" ? "Dark" : "Light");
       await expect(
         page.getByRole("button", { name: "Update", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
       await expect(option).toBeChecked();
-      await page.getByRole("radio", { name: theme, exact: true }).check();
+      await chooseTheme(page, theme);
       for (const name of ["Validation", "Schedule", "About"]) {
+        await closeAppearance(page);
         await page
           .getByRole("button", { name: new RegExp(`^${name}`) })
           .click();
@@ -82,21 +84,17 @@ for (const theme of ["Light", "Dark"] as const) {
           );
         const heading = page.getByRole("heading", { level: 1 });
         const title = await heading.textContent();
-        await page
-          .getByRole("radio", {
-            name: theme === "Light" ? "Dark" : "Light",
-            exact: true,
-          })
-          .check();
+        await chooseTheme(page, theme === "Light" ? "Dark" : "Light");
         await expect(heading).toHaveText(title!);
-        await page.getByRole("radio", { name: theme, exact: true }).check();
+        await chooseTheme(page, theme);
         await expect(heading).toHaveText(title!);
         await audit(page);
       }
       await page.reload();
+      await openAppearance(page);
       await expect(
-        page.getByRole("radio", { name: theme, exact: true }),
-      ).toBeChecked();
+        page.getByRole("button", { name: theme, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
       await expect(page.locator("html")).toHaveAttribute(
         "data-theme",
         theme.toLowerCase(),
@@ -109,14 +107,18 @@ test("System follows live changes, manual override and returning to System", asy
 }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
-  await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
+  await openAppearance(page);
+  await expect(page.getByRole("button", { name: "System" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("radio", { name: "Light", exact: true }).check();
+  await chooseTheme(page, "Light");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("radio", { name: "System" }).check();
+  await chooseTheme(page, "System");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 test("switching theme preserves an active operation and expanded log", async ({
@@ -131,7 +133,7 @@ test("switching theme preserves an active operation and expanded log", async ({
     .click();
   const log = page.getByRole("region", { name: "Provisioning log" });
   await expect(log).toContainText("Checking system");
-  await page.getByRole("radio", { name: "Dark", exact: true }).check();
+  await chooseTheme(page, "Dark");
   await expect(log).toContainText("Checking system");
   await expect(
     page.getByRole("heading", { name: "Live details" }),
@@ -148,7 +150,7 @@ for (const theme of ["Light", "Dark"] as const) {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("radio", { name: theme, exact: true }).check();
+    await chooseTheme(page, theme);
     const ratios = await page.evaluate(() => {
       const style = getComputedStyle(document.documentElement);
       function luminance(role: string) {
@@ -206,8 +208,12 @@ test("unavailable system detection keeps System selected with Light fallback", a
     Object.defineProperty(window, "matchMedia", { value: undefined }),
   );
   await page.goto("/");
-  await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
+  await openAppearance(page);
+  await expect(page.getByRole("button", { name: "System" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("radio", { name: "Dark", exact: true }).check();
+  await chooseTheme(page, "Dark");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
