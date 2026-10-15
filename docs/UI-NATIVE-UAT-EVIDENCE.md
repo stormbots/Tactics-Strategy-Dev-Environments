@@ -1,83 +1,114 @@
 # Native fixture verification evidence — 2026-10-15
 
-## Outcome
+## Scope
 
-**Native verification is blocked on both requested platforms.** No disposable
-Windows or Mint desktop is attached or configured for remote access in this
-session. Local regression checks passed; they do not establish native acceptance.
-No platform defect was reproduced, so no speculative helper changes were made.
+The helper verification uses the same automation approach as earlier native
+checks: a disposable GitHub Windows runner and genuine Linux Mint userland
+extracted from the signed official ISO. User-provided VMs are not required for
+these helper checks. The earlier Debian-only access assessment was incomplete:
+GitHub Actions supplies the disposable native environments remotely.
 
-The helpers remain uncommitted local changes based on source
-`b6cbf6548e8ec09522a7d61bf29d8101826dda69` (merged PR #66).
+This is fixture automation, not desktop UI UAT. The Windows job uses Windows
+Server 2022, not Windows 11. Mint runs in a container from the 22.3 Xfce ISO, not a
+booted Cinnamon desktop. No SDE package is built/installed; no application Validate,
+Repair, elevation-dialog, screen-reader or appearance acceptance is inferred.
+
+## Reviewed and tested source
+
+- Branch: `qa/native-uat-fixtures`.
+- Tested source: `f2689bb36084c42745cbc41e482bc85a4bf485f0`.
+- [Fixture-only CI run](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38738469312).
+- Later documentation-only commits do not alter the tested helper/workflow files.
 
 | File tested | SHA-256 |
 | --- | --- |
-| `tests/native_uat_fixtures.py` | `5749cfd7f9523c46e3974faef366148008fc5331b7fc44f68c69c9b72673e6c1` |
-| `tests/test_native_uat_fixtures.py` | `73e7951e280044c73b2de1c718b099fcb699d309885b6b70d4dd17d712b81481` |
+| `tests/native_uat_fixtures.py` | `8144b017083b91e7625ba51e44f8a250d8028910f3c7b61ddb97a89e1a70498c` |
+| `tests/test_native_uat_fixtures.py` | `1fd78b1425214bb32c98b70ad18c7ed4008b905e2c490d54ec9364c0ab88690e` |
+| `tests/verify_native_uat_cli.py` | `daff537d416a96938109755fb177c4956ff21003fd7c1e24c355e6226729ae62` |
 
-## Available execution environment
+## Platform results
 
-- Debian GNU/Linux 13 (trixie), x86_64; Linux kernel 6.18.44.
-- Python 3.12.14; Git 2.52.0.
-- No `/dev/kvm`, QEMU, VirtualBox, libvirt CLI, PowerShell or Tailscale CLI.
-- Managed runtime observations were current: no remote-access secrets, runtime
-  variables or outbound identities were configured. The supported policy reports
-  no VPN configuration and zero TCP destination grants.
-- No connected Windows or Mint desktop tool was available. Docker availability
-  does not supply either of the requested desktop environments.
+**Both fixture jobs passed** on the exact source above. Windows completed in
+38 seconds; Mint completed in 5 minutes 18 seconds.
 
-No remote host was guessed, scanned, provisioned, or accessed. The user was asked
-whether disposable Windows 11 and Mint Cinnamon VMs can be connected, with access
-credentials configured through secure environment settings rather than chat.
 
-## Local verification actually executed
-
-| Check | Result | Scope |
+| Check | Windows runner | Mint non-root container |
 | --- | --- | --- |
-| `python -m unittest discover -s tests -p test_native_uat_fixtures.py -v` | **17 passed** | Temporary filesystem roots and real Git; native identity/target paths substituted |
-| `python -m py_compile tests/native_uat_fixtures.py tests/test_native_uat_fixtures.py` | Pass | Python syntax/compilation only |
-| Actual CLI `enroll --acknowledge-disposable-vm` on Debian, temporary state path | Pass | Nonzero exit with `Native fixtures require Windows or Linux Mint`; verified no state directory created |
-| `git diff --check` | Pass | Tracked diff whitespace check |
+| Regression suite | Pass: 16 passed, one POSIX-only test skipped | Pass: all 17 passed |
+| Actual CLI enrollment and private backup permissions | Pass | Pass |
+| Actual workspace apply/restore, repeated restore | Pass | Pass |
+| Actual Git-default apply/restore, exact original bytes | Pass | Pass |
+| Actual installed-location repository CSV apply/restore | Pass | Pass |
+| Actual changed-file refusal preserves the edit | Pass | Pass |
+| Evidence artifact retained | `native-fixture-Windows` | `native-fixture-Mint` |
 
-The 17 tests cover exact-byte Git restoration, both repository CSV schemas,
-empty workspace restoration and repeated restore, preservation of student work,
-drift/deleted-file refusal, active-case exclusion, wrong-host/acknowledgement
-checks, pending-intent recovery, permission-denied recovery, linked targets,
-state-directory location, exclusive locking, and PowerShell command construction.
-The Windows ACL command is mocked in its construction test; it was **not executed
-on Windows**. Real Git/file operations in this suite still run on Debian, not Mint.
-The local verbose test log is `work/native-uat-tests.log`; it is temporary evidence,
-not a native acceptance report.
+The CLI smoke test uses actual platform identity, account/profile and target paths;
+it does not mock the OS, Git command, filesystem or Windows ACL API. Windows uses
+a dedicated synthetic HOME/USERPROFILE on the disposable runner. Mint uses an
+actual non-root account with a dedicated home. Neither contains student data.
+Machine-wide fixture locations start absent; the harness refuses existing data.
+The test-owned CSV location is prepared writable without weakening the helper.
 
-## Native execution record
+The Windows native smoke checks a protected current-user-only DACL. Mint checks
+0700 and account ownership. Native commands apply/restore all three supported
+cases and compare exact original bytes, then deliberately edit the Git fixture
+and verify restoration refuses to overwrite it. Tests never export the private
+ledger or backup configuration. JSON records and regression output are retained
+as Actions artifacts; retention is finite, so preserve them before expiry if
+needed for long-term acceptance.
 
-| Required check | Windows 11 | Mint Cinnamon 22.x |
-| --- | --- | --- |
-| Desktop/OS, dedicated account, snapshot and access verified | Blocked — no connected host | Blocked — no connected host |
-| Enrollment and private backup directory permissions | Not run | Not run |
-| Actual CLI workspace apply/restore | Not run | Not run |
-| Actual CLI Git-default apply/restore and effective setting | Not run | Not run |
-| Installed repository CSV apply/restore | Not run | Not run |
-| Native Validate observes expected diagnostics and guidance | Not run | Not run |
-| Post-restore Validate matches baseline | Not run | Not run |
-| Drift/interruption handling and snapshot recovery | Not run | Not run |
-| Elevated Repair continuity and full snapshot recovery | Not run | Not run |
+### Retained artifacts
 
-## Resume procedure
+Both artifacts were present and unexpired when recorded:
 
-Once Codex has secure access to disposable desktops, verify host identity and
-snapshot recovery first, then follow [fixture commands](UI-NATIVE-UAT-FIXTURES.md).
-Record the exact helper hashes above (or new hashes after reviewed fixes), OS,
-Python/Git, account type, current installed SDE version, snapshot identity, command
-exit codes, permission checks, original native diagnostics, restoration results
-and the post-restoration report. Keep private Git backup contents out of evidence.
+| Artifact | Archive SHA-256 |
+| --- | --- |
+| [Windows evidence](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38738469312/artifacts/11973744215) | `18fdb1ecc380cae8ad9d9089e9ab420a69fca1ae798051e12b70615dcc6185d5` |
+| [Mint evidence](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38738469312/artifacts/11974870791) | `acb372fd28345f8aca1e8b6568d249f1dc5d87a528dec0d6f1cb58e7b6f3394e` |
 
-Helper-only verification can use a suitable existing installation to establish
-setup/restore behavior. Such a run on v1.2.7 cannot accept the newer theme/zoom/
-guidance UI: combined milestone UI UAT still requires a separately authorized test
-build. If no suitable installed baseline exists, record the native backend case
-Blocked rather than building/installing SDE under this task.
+Each contains its platform JSON smoke record and `unit-tests.txt`. Archive
+hashes are from the GitHub artifacts API; helper hashes above identify the
+source actually exercised. These artifacts are test evidence, not installers.
 
-Application versions, workflows, tags, build dispatch, signing, releases and
-application-update policy were not changed. No push or PR was opened that could
-trigger application builds. Release preparation remains deferred.
+## Defects and verification improvements
+
+1. Windows failed while loading `Set-Acl` from `Microsoft.PowerShell.Security`.
+   The captured native error reported that the command's module could not load.
+   Replaced that module-dependent operation with Windows .NET
+   `System.IO.Directory.SetAccessControl`; the actual Windows CLI and DACL check
+   then passed. Command paths remain environment data, not interpolated script.
+2. Made Python/Git test prerequisites explicit in the minimal Mint image after
+   its first CLI step stopped before producing smoke evidence. Only test
+   dependencies are installed, not SDE or its development-tool baseline.
+3. Preserve unit failures as bounded Actions annotations and text artifacts,
+   including when the job fails. Direct log downloads were unavailable from the
+   local restricted network, so annotations supplied the Windows diagnosis.
+
+Superseded failed/cancelled runs are not acceptance evidence. The final source
+run linked above supplies the platform result. No failure was hidden by disabling
+ACL checks or bypassing the non-root Mint guard.
+
+## Local checks
+
+Debian 13 x86_64, Python 3.12.14, Git 2.52.0:
+
+- All 17 regression tests passed, using temporary paths and substituted platform
+  identity. These are local tests, separately labeled from actual native CLI runs.
+- Python compilation of all four helper/test entry points passed.
+- Workflow YAML parsed with the expected isolated push branch and two fixture jobs.
+- Actual unsupported-host enrollment rejected Debian with nonzero exit and no
+  state directory created.
+- `git diff --check` passed.
+
+## Deferred acceptance and delivery
+
+Actual Windows 11 and booted Mint Cinnamon UI acceptance remains pending under
+[the consolidated plan](UI-MILESTONE-UAT.md). Successful helper automation neither
+accepts #4/#5/#6 nor closes their issues. Unknown/runtime failures, genuine tool
+updates, scheduler changes and full Repair are outside this smoke test.
+
+Application versions, tags, signing, releases and update policy remain unchanged.
+Only fixture-specific CI ran, triggered by the isolated branch push; no application
+build workflow was dispatched. No PR was opened because the current unfiltered
+PR workflow would trigger application builds. The helper changes and evidence
+remain on the reviewable test branch, with main unchanged.

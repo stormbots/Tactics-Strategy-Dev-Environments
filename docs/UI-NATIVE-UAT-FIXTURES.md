@@ -8,24 +8,30 @@ sign artifacts, publish releases, or change application-update policy.
 
 Implemented: `tests/native_uat_fixtures.py`, one shared Python CLI for Windows and
 Linux Mint. Local tests exercise real Git and filesystem restoration in temporary
-roots, with platform identity and target locations substituted. Native Windows
-ACL behavior and booted Mint/Windows application acceptance remain **Not run**.
-No lab machine or installer was prepared by adding these helpers.
-See the [verification evidence](UI-NATIVE-UAT-EVIDENCE.md) for local results and
-platform access blockers; neither native platform is accepted yet.
+roots, with platform identity and target locations substituted. The fixture-only
+Actions workflow exercises actual Windows ACL/CLI behavior and
+authenticated Mint userland as a non-root account. It builds no application and
+installs no SDE package. See the [verification evidence](UI-NATIVE-UAT-EVIDENCE.md)
+for exact runs, results and remaining desktop UAT. Neither platform’s application
+UI is accepted by helper automation.
 
 Codex prepares the VM and runs the commands below. The owner tests the UI and
 returns observations; the owner is not expected to write scripts or break tools.
 
 ## Prerequisites
 
-- A disposable Windows 11 or Mint Cinnamon 22.x desktop VM, dedicated test account,
-  and a snapshot captured before fixture enrollment. The explicit enrollment flag
-  is the operator's assertion of disposability; the helper cannot prove a VM is
-  disposable and is not a security boundary against the same local account.
-- A separately authorized, correctly versioned test build. Current development
+- For owner UI UAT: a disposable Windows 11 or Mint Cinnamon 22.x desktop VM,
+  dedicated test account, and a snapshot captured before fixture enrollment.
+  For helper automation: an ephemeral Actions Windows VM or authenticated Mint
+  container with synthetic configuration and a dedicated fixture profile/account.
+  The legacy `--acknowledge-disposable-vm` flag also acknowledges that disposable
+  CI environment; it does not assert a booted desktop or establish UI acceptance.
+  The helper cannot prove disposability and is not a security boundary against
+  the same local account.
+- For application UAT, a separately authorized, correctly versioned test build.
+  Helper-only automation does not need an SDE build. Current development
   bundles are not upgrade instructions for the owner's installed v1.2.7.
-- A completed healthy native Validate report. Save its log and the app/source,
+- For application UAT, a completed healthy native Validate report. Save its log and the app/source,
   baseline, schedule and pause-policy record from the consolidated plan.
 - Python 3, Git, and a new private state-directory path outside Development.
   Use the dedicated desktop account throughout. Mint rejects root execution;
@@ -130,3 +136,22 @@ identity verification, authenticated artifacts and explicit installation
 instructions before handing builds to the owner. Any changed published candidate
 needs a new version. Build dispatch, signing, publication and stable promotion
 remain deferred; no such changes accompany these fixture helpers.
+
+## Fixture-only CI
+
+`.github/workflows/native-uat-fixtures.yml` runs on pushes to the dedicated
+`qa/native-uat-fixtures` branch. Windows uses the real runner filesystem and .NET
+ACL implementation. Mint uses the existing signed-ISO extraction procedure,
+then runs the helper as a non-root test account in that genuine Mint userland.
+The CLI smoke test substitutes no platform identity or target paths: it enrolls,
+applies and restores all three cases at their actual platform locations. Its
+Git profile contains only synthetic test data. It also checks drift refusal.
+
+This differs from the local unit suite, which substitutes platform/target paths.
+CI does not install SDE, run a native application Validate report, exercise a
+desktop/screen reader, or run Repair. Those acceptance checks remain pending.
+
+No PR is opened while application builds are deferred: the existing unfiltered
+PR workflow would build SDE. The isolated branch’s push triggers only fixture
+verification. Success artifacts contain unit output and a small JSON evidence
+record, never the private ledger/configuration backup.
