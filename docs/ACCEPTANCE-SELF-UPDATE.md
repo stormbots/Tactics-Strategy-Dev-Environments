@@ -158,7 +158,7 @@ unchanged. This preparation does not itself promote the release or resume PCs.
 | Remaining owner evidence / accepted limitations | Reconcile owner's completion statement with per-PC authentication, logs/private ACLs/baseline/data/settings/schedule preservation, reboot, representative affected PCs, Mint owner UAT if in scope, student-account/school-network checks and real weekly firing; do not fabricate missing results |
 | Recovery | Automatic signed recovery remains unconfirmed on the manually installed test PC; document mentor recovery procedure/accepted limitation and preserve separate automatic-install/recovery pilot |
 | Documentation | PR #61 contains chronological evidence; complete final owner disposition before merge/release decision |
-| Stable promotion / pilot / fleet resume | Separate explicit scope/authorization still to be recorded; keep application updates and broader rollout paused |
+| Stable promotion / pilot / fleet resume | Owner explicitly authorized **stable promotion only** after declaring testing complete. No automatic pilot or fleet resume is authorized; laptop application-update policies remain paused |
 
 The prepared promotion target is the **existing v1.2.6 prerelease**, with Windows
 installer SHA-256
@@ -174,5 +174,17 @@ does not authorize policy resume. A controlled automatic-update/recovery pilot
 requires named PCs still on an older eligible version and separate authorization;
 do not downgrade the already-installed v1.2.6 test PC to create that pilot.
 
-Current decision: **technical candidate evidence verified; final owner scope,
-accepted limitations and explicit promotion/rollout disposition pending**.
+Current decision: **owner declared testing complete and explicitly authorized
+stable promotion only**. No additional per-PC evidence was supplied with that
+statement, so earlier unreported details and recovery limitations are not
+retrospectively marked as individually verified. No pilot/fleet resume or issue
+closure is inferred.
+
+The authorized attempt to promote existing v1.2.6 with
+`gh release edit v1.2.6 --prerelease=false --latest` was blocked by GitHub API
+`Forbidden` before any release change. **Promotion is pending, not complete.**
+The connected GitHub tools provide read access to releases but no release-update
+action. Owner UI handoff: edit the existing v1.2.6 release, clear prerelease and
+select latest, retaining the tag and all five assets. Codex must verify the live
+flags, exact source tag and unchanged hashes afterward. Keep laptop policies
+paused and retain separate automatic-update/recovery pilot gates.
