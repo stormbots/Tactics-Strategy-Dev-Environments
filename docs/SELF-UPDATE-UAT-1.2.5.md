@@ -213,13 +213,13 @@ pass this checklist.
 | Passing source CI | [run 38586204871](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38586204871); Windows Server 2022 evidence, not Windows 11 acceptance |
 | Existing CI artifact | [Windows artifact 11907130742](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38586204871/artifacts/11907130742); development fixture, not an approved workstation candidate |
 | CI artifact archive SHA-256 | `4bdf792117ea46a8b06a777b9654744efa1f71f409a80996ec955de110a11415` (GitHub-reported archive digest; **not the installer hash**) |
-| New immutable candidate version / source commit | **Prepared target: v1.2.6; not yet built/signed**. Full build SHA **PENDING**. It must contain the reviewed migration; list and review any differences from `7281331`, including version/packaging changes |
-| Protected candidate build run / immutable asset URL | **PENDING**; retain build provenance and signature verification evidence |
-| Candidate Windows installer SHA-256 | **PENDING — required before testing**; record the 64 hexadecimal digits for the actual `.exe`, not its download ZIP |
-| Signed manifest / signature verification | **PENDING**; verify the complete candidate asset set with the installed pinned worker using the established [owner UAT procedure](SELF-UPDATE-UAT.md) |
+| New immutable candidate version / source commit | **v1.2.6 signed prerelease**, `741f681c0444a8d44d9430a107c80f2fed95b68e` (merged PR #60); migration source unchanged from reviewed `7281331`, with documented candidate recipe/identity and UAT documentation changes |
+| Protected candidate build run / immutable asset URL | [run 38608215787](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787), [v1.2.6 prerelease](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6); all source, Windows/Mint build-pair and sign-publish jobs passed |
+| Candidate Windows installer SHA-256 | `15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690`; actual `.exe`, 4,095,109 bytes; independently downloaded and hash-checked |
+| Signed manifest / signature verification | Protected signing and post-publication pinned-key verification passed; manifest SHA-256 `746b517cffd6c68b2cd24a05fb2f4104c7dca8a48f716eb69efc4cd3eec2ff30`. Repeat full-set verification with the installed pinned worker on each test PC using the [owner UAT procedure](SELF-UPDATE-UAT.md) |
 
-No new signed candidate or installer hash is established by this record. Do not
-substitute the published v1.2.5 assets, reuse their tag with changed bytes, install
+The new signed candidate and installer hash were verified on October 14, 2026.
+Affected-PC acceptance is still NOT RUN. Do not substitute the published v1.2.5 assets, reuse their tag with changed bytes, install
 the CI development fixture on school workstations, or treat an archive digest as
 release authentication. Candidate preparation/publication retains its separate
 authorization gate. After obtaining the approved candidate, verify its installer
@@ -237,6 +237,44 @@ main CI, successful Windows SYSTEM/Mint candidate tests and human approval in
 `sde-release-signing`. Do not dispatch from the unmerged PR or bypass these
 guards. Record the verified published installer hash emitted by the workflow's
 final download/authentication step, then confirm it locally before testing.
+
+#### Signed candidate verification — October 14, 2026
+
+[Protected run 38608215787](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787)
+used `release/v1.2.uat` at `741f681c0444a8d44d9430a107c80f2fed95b68e`,
+with `logs_migration=true`, `migration=false`, `correction=false`. Exact-main
+[CI 38600886692](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38600886692)
+passed before signing. Windows SYSTEM and actual Mint candidate tests passed
+through 1.2.6 (`SDE_UAT_PAIR_WINDOWS_OK`, `SDE_UAT_PAIR_MINT_OK`); the Windows
+1.2.6 native installer exited 0. These are CI results, not affected-PC owner UAT.
+
+The protected `sign-publish` job completed signing, pinned-key authentication,
+immutable prerelease publication and download/authentication of all five
+published assets. Tag v1.2.6 points to the exact source above; the release is
+nondraft and remains a prerelease. Existing v1.2.5 assets were not replaced.
+The signed manifest's stable-intent channel does not override GitHub prerelease
+exclusion or authorize automatic installation.
+
+Codex independently downloaded all five assets. Both installer hashes matched
+`SHA256SUMS.txt`, signed-manifest entries and GitHub asset digests; their sizes
+matched the manifest. Manifest/signature/checksum hashes also matched GitHub
+digests. Pinned-key verification evidence here is from the protected workflow;
+the local executor lacked the Rust toolchain to independently rerun the source
+verifier. Each PC must still authenticate its complete downloaded folder using
+the trusted installed worker before installation.
+
+| Published asset | SHA-256 |
+| --- | --- |
+| Skyview-Dev-Setup-Windows-x64.exe | `15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690` |
+| Skyview-Dev-Setup-LinuxMint-amd64.deb | `d5018f5ccb8523a011cde88c30ff971c498188308b251978b457a0db5dc9778e` |
+| sde-update.json | `746b517cffd6c68b2cd24a05fb2f4104c7dca8a48f716eb69efc4cd3eec2ff30` |
+| sde-update.json.minisig | `28965ff6dd31ec09debe50d27a419ae0e4f6b286cd5768ce26f0a0ab8405daeb` |
+| SHA256SUMS.txt | `2a179acb7c75df797813722d2c807ecd2c68e19017e369b50abf5ddf499e6894` |
+
+**Disposition: signed-candidate preparation/CI verification complete; affected-PC
+Windows 11 installation, preservation, application, scheduled-maintenance and
+paused-policy results remain pending.** Keep #59 open and broader rollout paused.
+No stable promotion, automatic-update rollout or owner acceptance is inferred.
 
 #### Before the first attempt — capture without changing permissions
 
@@ -333,3 +371,216 @@ authorizes deployment. Passing this checklist alone does not authorize student
 fleet unattended installation, automatic-update rollout, stable promotion,
 closing #59 or closing other Windows 11 acceptance gates. No merge, release
 publication or policy change is performed by preparing this checklist.
+
+## Affected Windows 11 owner retest — October 14, 2026
+
+**PASS — Successful installation without manual remediation (owner-reported).**
+The owner reported that SDE v1.2.6 installed successfully and explicitly confirmed
+this was an affected laptop still carrying the failing legacy Logs permissions,
+on the first attempt, without manual ACL correction. This is a new result,
+distinct from the historical v1.2.5 pass after manual remediation. The PC
+identifier, Windows build, native installer exit code, per-PC pinned verification
+and downloaded installer hash were not supplied. The expected candidate is the
+immutable v1.2.6/source/hash recorded above; the report does not independently
+establish the exact bytes used on this PC.
+
+### Subsequent GUI Update and validation evidence
+
+After installation, the owner ran **Update in SDE** and supplied `Pasted text.txt`
+(25,106 bytes; SHA-256
+`37f61338ba8232e2ef331d11f3d2237a65a3c3c2aa0d94d1a687d15d4a6fe766`).
+The attachment records development-tool updates and subsequent environment
+validation, not automatic SDE application installation or a SYSTEM scheduled run.
+GUI Update is a separate tool-changing action after the application installation;
+its results must not be used to infer pre/post installer preservation.
+
+The output reaches:
+
+```text
+SKYVIEW_EVENT|summary|0|Validation completed with 0 failed checks
+SKYVIEW_EVENT|progress|100|Development environment ready
+```
+
+**PASS — GUI development-tool Update reached completion and its reported
+validation checks passed, with warnings.** No overall helper/native exit code
+was included in the supplied output. Node.js remained 24.21.0, with the
+`nodejs-lts` pin restored; Python remained in the python314 family at 3.14.8.
+VSCodium, Firefox, PowerShell Core and 7-Zip upgrades reported success.
+Other package checks reported current versions. All listed tools, required editor
+extensions, development folder and configured Windows/Git settings passed
+validation. The output reports existing editor settings were preserved.
+Git identity and GitHub authentication were optional/unconfigured, and no
+repositories were configured, so repository checkout/work preservation was not
+exercised by this Update run.
+
+Warnings and limitations retained from the attachment:
+
+- Chocolatey repeatedly reported a pending reboot, including before package
+  updates began. Its configuration allowed updates to continue. Reboot completion
+  and post-reboot validation have not been reported.
+- Updates for VSCodium, Firefox, PowerShell Core and 7-Zip emitted
+  `Unable to find the parent package 'skyview-student-dev'.` and NuGet dependency
+  constraint warnings referencing `skyview-student-dev 1.2.1`. The corresponding
+  upgrades subsequently succeeded; this is a package-metadata diagnostic finding,
+  not evidence that the Logs migration or installation failed. Investigate package
+  metadata if persistent; no package deletion/reinstall or new issue is authorized
+  by this record.
+- VSCodium emitted DEP0169 `url.parse()` deprecation warnings, and Firefox warned
+  about an uninstall registry-key lookup. Neither prevented reported completion.
+- `PASS Weekly maintenance enabled` checks task presence/readability and enabled
+  state only. It does not check an actual scheduled invocation, exact trigger,
+  SYSTEM principal, action migration or unchanged task XML.
+- Tool records show `updateCheck=notChecked` after this run. Their
+  `updateAvailable=false` values are not an independent fresh update-availability
+  check or application-update policy evidence.
+
+### Remaining acceptance gates
+
+Installation without manual remediation is confirmed by the owner, and the
+interactive GUI Update/validation result is recorded. Log bytes/private ACLs,
+parent/Logs post-install ACLs, applied baseline bytes/version, student data and
+schedule preservation still need their own evidence. The dependency warning's
+v1.2.1 reference does not prove baseline preservation. Actual application/engine
+identity, paused-policy state/preservation, student read-only access, scheduled
+maintenance execution and post-reboot validation also remain pending.
+
+This report supports the #59 migration fix on one affected PC; it does not fully
+pass the preservation checklist or establish fleet acceptance. Keep #59 open,
+application updates and broader rollout paused, and existing release/automatic
+installation/recovery/school-network acceptance gates intact. No stable promotion,
+additional-PC installation or issue closure is inferred from this result.
+
+### Subsequent standalone Validate output — October 14, 2026
+
+**PASS — Standalone development-environment validation.** The owner supplied a
+second `Pasted text.txt` containing the GUI Validate output (5,629 bytes; SHA-256
+`bb9baaa63544da61067285a8dc60f540b073e5585973cd22080f248ae883d1a3`).
+It records 31 PASS validation events, 2 optional INFO events, no FAIL events,
+`Validation completed with 0 failed checks` and `Development environment ready`.
+Reported installed tool versions match the preceding Update output, including
+Node.js 24.21.0, Python 3.14.8 and PowerShell 7.6.7. Required tools, editor
+extensions, settings presence, development folder, Git defaults and configured
+Windows settings pass. Git identity and GitHub authentication remain optional
+and unconfigured. `Weekly maintenance enabled` again confirms enabled/readable
+task state, not a scheduled execution or schedule-preservation comparison.
+
+No package upgrade output or pending-reboot/dependency warning appears in this
+Validate-only attachment; those Chocolatey conditions were not checked by this
+operation. Reboot completion was not explicitly reported, so this is not yet a
+confirmed post-reboot result and does not establish that prior warnings cleared.
+Tool records still use `updateCheck=notChecked`. Native/helper exit, app/engine
+identity, actual paused application-update policy and the outstanding
+preservation/scheduled-execution checks remain unverified by this attachment.
+Broader rollout remains paused; the historical installation and Update evidence
+above remain unchanged.
+
+### Schedule page observation — October 14, 2026
+
+The owner supplied the Schedule page text after the installation/Update/Validate
+reports. **PASS — open application reports v1.2.6 and current application-update
+installation setting is paused by administrator.** The UI lists pause-setting
+change time as October 14, 2026, 05:43 in the workstation's displayed local time.
+This confirms the observed paused setting, not byte-for-byte policy preservation
+or a completed automatic-update attempt.
+
+The page reports `\\Skyview Robotics - Dev Tool Updates` enabled, every week on
+Sunday at 03:00 local time, with missed-run catch-up enabled. Displayed last run:
+October 14, 2026, 05:18; last Scheduler result: Succeeded (`0x00000000`). Displayed
+next run: October 18, 2026, 03:00. These are workstation-local displayed times;
+no UTC conversion or execution guarantee is inferred. Pre-install task XML and
+run chronology were not supplied, so neither unchanged schedule nor a successful
+post-v1.2.6 SYSTEM maintenance invocation is established by this historical result.
+
+The observed installed application, candidate, attempt outcome/times, maintenance
+engine, applied baseline, tool/native results and signed recovery are unavailable
+or unrecorded. Coordination is `SDE or maintenance is active`, which is expected
+while SDE is open and does not itself prove maintenance is executing.
+
+Missing attempt history is allowed after a manual bootstrap: the installer
+activates an engine but does not fabricate a maintenance attempt or recovery
+receipt. See [manual-install expectations](SELF-UPDATE-UAT.md#immediate-checks-and-maintenance-no-weekly-wait).
+This display is consistent with missing history, but also covers unreadable or
+invalid history; distinguish these by checking the trusted task action, installed
+worker status and protected logs. It does not reverse the owner-reported install
+pass, prove engine/baseline absence or establish successful automatic installation.
+Unconfirmed signed recovery after manual bootstrap remains a known reduced
+recovery capability, not proof that signed-candidate verification failed.
+
+Next inspection: close SDE normally, read the existing task action/SYSTEM
+principal and active engine receipt/status from an administrator terminal.
+Before any immediate maintenance test, verify the task targets the protected
+maintenance host and that other package/maintenance work is idle. An authorized
+existing SYSTEM task invocation keeps application policy paused but also runs
+development-tool maintenance; capture its fresh independent results and logs.
+Do not resume application updates, use Repair to manufacture a result, alter
+task settings, delete receipts or infer that old log bytes were preserved from
+this page. Other preservation, post-reboot and acceptance gates remain pending;
+#59 stays open and broader rollout remains paused.
+
+### Administrator task/worker inspection — October 14, 2026
+
+The owner's read-only inspection confirms the existing task executes
+`C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` with
+`-NoProfile -NonInteractive -ExecutionPolicy Bypass -File`
+`C:\ProgramData\SkyviewRobotics\SelfUpdate\Invoke-SkyviewMaintenance.ps1`.
+Principal is SYSTEM, RunLevel Highest. **PASS — observed task routes to the
+protected maintenance host under the required principal.** Pre/post trigger,
+settings or task ACL preservation is not established by this inspection.
+
+The trusted installed `sde-update-trust.exe self-update-status` reports
+`paused=true`, `coordination=idle`, `outcome=unavailable`, `phase=unknown` and
+`policyChangedAt=1791981810`. Attempt times, observed application/engine/baseline,
+tool/native exits and log reference remain null; `recoveryAvailable=false`.
+**PASS — installed-worker observation of paused policy and idle coordination.**
+Unavailable history remains unclassified (absent, unreadable or invalid); no
+completed task invocation is claimed. False/default reboot and recovery fields
+in this unavailable status do not clear the earlier pending-reboot warning or
+prove recovery material was checked.
+
+The next maintenance acceptance step is one controlled invocation of this
+existing enabled SYSTEM task, with SDE closed normally and other work idle,
+following the [immediate UAT procedure](SELF-UPDATE-UAT.md#immediate-checks-and-maintenance-no-weekly-wait).
+It really runs development-tool maintenance while application updates remain
+paused. Wait for native/package work to finish, then capture the fresh task run
+time/result and installed-worker/Schedule status. Expected evidence includes
+engine 1.2.6, independent tool outcome, baseline identity and paused app outcome.
+Do not terminate work, resume policy, alter the schedule or synthesize history.
+Other preservation, reboot and deployment gates remain open.
+
+### Completed controlled SYSTEM maintenance run — October 14, 2026
+
+**PASS — existing SYSTEM maintenance task completed using engine v1.2.6,
+reported baseline v1.2.1 and independent tool exit 0, with application updates
+remaining paused.** The owner supplied fresh task and installed-worker output
+after the controlled invocation. Task state is Ready, LastTaskResult is 0,
+LastRunTime is October 14, 2026, 15:46:38 in the workstation's displayed local
+time, and NextRunTime remains October 18, 2026, 03:00. Earlier inspection
+established the protected launcher and SYSTEM/Highest principal. This proves a
+controlled invocation of the provisioned task, not a natural weekly firing.
+
+The installed worker reports:
+
+```json
+{"paused":true,"policyChangedAt":1791981810,"outcome":"paused","phase":"policy","checkedAt":1792018003,"completedAt":1792018042,"applicationVersion":"1.2.6","candidateVersion":null,"maintenanceEngineVersion":"1.2.6","appliedBaselineVersion":"1.2.1","toolExit":0,"nativeExit":null,"rebootRequired":false,"recoveryAvailable":false,"logReference":"logs/f375cf06-faad-4aec-98aa-5e52fdbea161.log","coordination":"idle"}
+```
+
+Fresh completed history now reports matching application/engine identities and
+the older applied development baseline, resolving the earlier unavailable
+observations for this run. The reported pause-change timestamp is unchanged from
+the preceding installed-worker inspection; policy byte/ACL preservation across
+installation still requires its own comparison. `outcome=paused`, `phase=policy`
+is the expected application result, separate from `toolExit=0`. No native SDE
+installer ran in this attempt (`nativeExit=null`), and no automatic installation
+or signed recovery pass is claimed. `recoveryAvailable=false` remains the known
+reduced recovery capability after manual bootstrap. This worker result's
+`rebootRequired=false` does not by itself clear the earlier Chocolatey/Windows
+pending-reboot condition; no post-reboot confirmation was supplied.
+
+Retain the referenced protected log under
+`C:\ProgramData\SkyviewRobotics\SelfUpdate\logs` for diagnostics. Baseline version
+identity, successful controlled maintenance and paused application behavior pass;
+baseline/log bytes and private ACL preservation, per-PC downloaded-asset
+authentication, student data/settings comparison, pre/post schedule comparison,
+actual weekly firing, post-reboot and other acceptance conditions remain open.
+Keep #59 open, application updates and broader rollout paused. This result
+authorizes no stable promotion, automatic-update pilot or fleet acceptance.

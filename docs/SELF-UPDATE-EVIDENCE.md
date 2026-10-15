@@ -3,8 +3,11 @@
 This report describes the required verification gates. Observed results and links
 for the current commit belong in its pull request and Actions run; a prior green
 run is not proof that a changed commit passed. #43 owns school-laptop UAT and owner
-release approval. Production installation remains paused; candidate releases stay
-prereleases. Nothing in this test suite authorizes promotion or enables laptops.
+release approval. Workstation application installation remains paused; new
+candidates start as prereleases until explicit owner promotion. The existing
+v1.2.6 assets have now been promoted to stable/latest; see the
+[current acceptance and release record](ACCEPTANCE-SELF-UPDATE.md). Nothing in
+this test suite authorizes promotion or enables laptops.
 
 ## Automated evidence
 

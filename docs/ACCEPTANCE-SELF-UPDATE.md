@@ -1,5 +1,13 @@
 # Self-update acceptance record (#43)
 
+**Current release: v1.2.6 stable/latest, verified October 14, 2026.** The owner
+declared testing complete and explicitly authorized stable promotion only. The
+exact source, unchanged asset hashes, reported Windows results and evidence
+limitations are recorded chronologically below. No automatic-update pilot,
+classroom resume or issue closure is authorized; laptop policies remain paused.
+
+## Historical initial candidate checkpoint (October 12, 2026)
+
 **Owner UAT: Pending. Stable promotion: Not authorized. Classroom resume: Not authorized.**
 
 On 2026-10-12 the owner confirmed the encrypted release key and Bitwarden
@@ -68,3 +76,146 @@ No unattended student-fleet installation, automatic application-update rollout,
 stable promotion or closure of outstanding Windows 11 acceptance tests is
 authorized. Keep application updates paused. Prior version-specific acceptance
 and published verification evidence remain unchanged.
+
+## v1.2.6 candidate verification (2026-10-14; owner UAT pending)
+
+The [immutable signed v1.2.6 prerelease](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6)
+contains the #59 Logs migration from merged PR #60, source
+`741f681c0444a8d44d9430a107c80f2fed95b68e`. Exact-main CI and protected
+[candidate run 38608215787](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/38608215787)
+passed, including Windows SYSTEM/Mint version-chain checks and signed published
+asset authentication. Independent downloaded hashes matched the published
+checksums, manifest entries and GitHub digests. Windows installer SHA-256:
+`15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690`.
+
+See the [candidate identity, verification evidence and affected-PC checklist](SELF-UPDATE-UAT-1.2.5.md#affected-pc-windows-11-checklist-for-reviewed-commit-7281331).
+This completes candidate preparation only. Affected Windows 11 first-attempt
+installation without manual remediation, preservation, application, maintenance
+and paused-policy checks remain pending. Per-PC pinned verification is required.
+Keep application updates and broader rollout paused, #59 open, and all existing
+owner acceptance, school-network, automatic-install/recovery and stable-promotion
+gates intact. The historical v1.2.5 manual-remediation pass is unchanged.
+
+## Affected Windows 11 v1.2.6 owner result (2026-10-14)
+
+**PASS — Successful installation without manual remediation (owner-reported).**
+The owner explicitly confirmed an affected laptop with the failing legacy Logs
+permissions installed v1.2.6 on the first attempt without manual ACL correction.
+Subsequent GUI development-tool Update reached completion with zero failed
+validation checks, retained Node 24.x pinning/Python 3.14.x and reported preserved
+editor settings. Pending-reboot and Chocolatey dependency warnings remain in the
+[chronological evidence record](SELF-UPDATE-UAT-1.2.5.md#affected-windows-11-owner-retest--october-14-2026).
+
+This is an owner-reported installation pass and interactive Update/validation
+result, not completed candidate acceptance. Per-PC artifact authentication,
+log/baseline/data/ACL/schedule preservation, app/engine identity, actual paused
+policy, scheduled execution and post-reboot evidence remain pending. Keep #59
+open and broader rollout/application updates paused; prior acceptance history and
+all other release gates remain unchanged.
+
+The owner subsequently supplied standalone GUI Validate output: **PASS**, with
+31 passing checks, 2 optional/unconfigured informational checks and zero failures.
+Reported tool versions match the preceding Update output. Reboot completion was
+not explicitly confirmed; paused application-update policy, app/engine identity,
+preservation and actual scheduled execution still require separate evidence.
+See the chronological standalone Validate entry in the same UAT record.
+
+The subsequent Schedule page confirms **open app v1.2.6 and application-update
+installation paused by administrator**. The weekly Sunday 03:00 task is enabled
+and shows historical Scheduler success (`0x00000000`); pre/post preservation and
+successful execution with the new engine are not established. Attempt history,
+observed installed identity, engine/baseline, tool/native results and signed
+recovery remain unavailable/unrecorded. Missing history after manual bootstrap
+is allowed, but requires distinguishing absent history from unreadable/invalid
+state. See the chronological Schedule observation for displayed local times,
+limits and next inspection. Broader rollout and the remaining gates stay paused.
+
+Administrator read-only inspection subsequently confirms the task action targets
+the protected SelfUpdate launcher under SYSTEM/Highest, and the installed worker
+reports `paused=true`, `coordination=idle`. Those observations pass; attempt
+history/engine/baseline/tool/native results remain unavailable and do not establish
+a completed invocation. The controlled existing-task run and remaining
+preservation/reboot checks are still pending.
+
+The subsequent **controlled existing SYSTEM task invocation passed**: task Ready,
+result 0, fresh worker history with app/engine 1.2.6, reported applied baseline
+1.2.1, `toolExit=0`, paused application outcome and idle coordination. No native
+application installer ran; signed recovery remains unconfirmed. This supersedes
+the unavailable-history observation for the new completed run without erasing
+it. It does not prove a natural weekly firing, pre/post preservation or reboot
+completion. Remaining checks, #59 and rollout/promotion gates stay open; see the
+chronological completed-maintenance entry for exact evidence and log reference.
+
+## v1.2.6 full-release readiness decision — prepared October 14, 2026
+
+The owner subsequently stated **“Testing complete. Let's move toward full
+release.”** This is recorded as the owner's overall completion statement; a
+final platform/test-scope summary and any accepted limitations have been
+requested to reconcile the pending rows below. Earlier test history remains
+unchanged. This preparation does not itself promote the release or resume PCs.
+
+| Gate | Evidence / disposition |
+| --- | --- |
+| Exact candidate and source | v1.2.6; tag/source `741f681c0444a8d44d9430a107c80f2fed95b68e` verified unchanged |
+| Native CI, signing and published authentication | PASS; main run `38600886692`, protected candidate run `38608215787`; Windows SYSTEM and actual Mint checks passed |
+| Immutable assets | Five published asset hashes still match the candidate record; independently downloaded installers pass checksum verification |
+| Affected Windows 11 installation | PASS; owner confirmed first attempt without manual ACL remediation |
+| GUI Update / standalone Validate | PASS; 31 passing validation checks, zero failures |
+| Protected task and controlled maintenance | PASS; SYSTEM/Highest protected launcher, app/engine 1.2.6, reported baseline 1.2.1, tool exit 0 |
+| Application-update policy | PASS for observed paused state through GUI/installed worker and completed maintenance; byte preservation not independently established |
+| Remaining owner evidence / accepted limitations | Reconcile owner's completion statement with per-PC authentication, logs/private ACLs/baseline/data/settings/schedule preservation, reboot, representative affected PCs, Mint owner UAT if in scope, student-account/school-network checks and real weekly firing; do not fabricate missing results |
+| Recovery | Automatic signed recovery remains unconfirmed on the manually installed test PC; document mentor recovery procedure/accepted limitation and preserve separate automatic-install/recovery pilot |
+| Documentation | PR #61 contains chronological evidence; complete final owner disposition before merge/release decision |
+| Stable promotion / pilot / fleet resume | Owner explicitly authorized **stable promotion only** after declaring testing complete. No automatic pilot or fleet resume is authorized; laptop application-update policies remain paused |
+
+The prepared promotion target is the **existing v1.2.6 prerelease**, with Windows
+installer SHA-256
+`15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690` and
+manifest SHA-256
+`746b517cffd6c68b2cd24a05fb2f4104c7dca8a48f716eb69efc4cd3eec2ff30`.
+If authorized after final acceptance review, change only that release's
+prerelease/latest status; do not rebuild, re-sign, retag or replace any asset.
+Stable visibility is repository-wide, and already-unpaused eligible PCs could
+discover it; confirm fleet pause state before promotion. Preserve historical
+recovery assets and document the exact accepted recovery source. Stable promotion
+does not authorize policy resume. A controlled automatic-update/recovery pilot
+requires named PCs still on an older eligible version and separate authorization;
+do not downgrade the already-installed v1.2.6 test PC to create that pilot.
+
+Current decision: **owner declared testing complete and explicitly authorized
+stable promotion only**. No additional per-PC evidence was supplied with that
+statement, so earlier unreported details and recovery limitations are not
+retrospectively marked as individually verified. No pilot/fleet resume or issue
+closure is inferred.
+
+The authorized attempt to promote existing v1.2.6 with
+`gh release edit v1.2.6 --prerelease=false --latest` was blocked by GitHub API
+`Forbidden` before any release change. **Promotion is pending, not complete.**
+The connected GitHub tools provide read access to releases but no release-update
+action. Owner UI handoff: edit the existing v1.2.6 release, clear prerelease and
+select latest, retaining the tag and all five assets. Codex must verify the live
+flags, exact source tag and unchanged hashes afterward. Keep laptop policies
+paused and retain separate automatic-update/recovery pilot gates.
+
+## v1.2.6 stable promotion verified — October 14, 2026
+
+After the owner saved the existing release, Codex verified live GitHub metadata:
+
+- [v1.2.6](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6)
+  is nondraft and **stable** (`prerelease=false`).
+- The latest-release endpoint resolves to this same v1.2.6 release (ID 413021724).
+- Tag v1.2.6 still targets `741f681c0444a8d44d9430a107c80f2fed95b68e`.
+- Exactly five assets remain. Every GitHub-reported SHA-256 matches the signed
+  candidate record and prior independently downloaded bytes: both installers,
+  signed manifest, detached signature and checksums file are unchanged.
+
+Windows installer SHA-256 remains
+`15b29e9a3f50787ed05734faf0b480b48825bd88fff349ad944bab72bf2fa690`.
+Full asset hashes remain in the version-specific UAT record.
+
+**Disposition: authorized stable/latest promotion complete and verified.** This
+supersedes the earlier blocked/pending promotion state, preserving that history.
+No rebuild, re-sign, retag or asset replacement occurred. No laptop policy was
+changed and no automatic-update pilot, fleet resume or issue closure was
+authorized. Keep laptop application updates paused pending separately approved
+pilot/rollout work; earlier evidence limitations remain recorded.
