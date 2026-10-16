@@ -646,3 +646,11 @@ a bounded framing library or native broker API does not by itself clear B01–B0
 evidence before calling the protocol implementation-ready. Further design work
 is permitted by the review request; prototype/production code, automated workflow
 dispatch and candidate builds still need a later instruction.
+
+
+## 12. Phase 1 validation plan
+
+The [Phase 1 plan](APP-UPDATE-NOW-PHASE1-VALIDATION.md) specifies 22 isolated
+experiments for B01–B06, evidence levels, pass/fail rules and a W1-only local
+prototype proposal. It does not implement or execute those experiments. Native
+privilege, package, power-loss and desktop proof remain separately scoped gates.
