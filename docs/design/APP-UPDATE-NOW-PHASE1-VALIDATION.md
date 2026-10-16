@@ -321,7 +321,9 @@ handoff under stated fairness/OS assumptions, while retaining old-client exclusi
   suspend/resume invalidation under synthetic clocks then native platform clocks.
   Include 11–30-second legitimate session drains: under revision 2's current strict
   freshness wording these may safely defer even before the drain allowance ends.
-  Record that usability conflict for decision D01; do not silently relax freshness
+  This is historical revision-2 behavior. Revision 3 resolves D01: freshness at
+  accepted commit, with a separate 45-second final-launch-decision deadline.
+  Align W1 and test exact boundaries before claiming revision-3 coverage; do not silently relax freshness
   or perform network I/O after admission closes. Kernel-uninterruptible I/O is not
   promised a hard wall-clock termination; uncertain intent is never erased to meet
   an advertised time limit.
@@ -384,7 +386,7 @@ integration proof pending, or Resolved at the named evidence scope. No blanket
 
 | Decision / gate | Required disposition before proceeding |
 | --- | --- |
-| D01 Timing compatibility | Clarify freshness at commit versus spawn and the 10/30/45-second interaction using E21. Any changed meaning needs a reviewed protocol revision. |
+| D01 Timing compatibility | Resolved in protocol revision 3: age ≤10 seconds at accepted commit; drain <30 seconds; final launch decision <45 seconds after A. Revised W1 checks and native timing evidence remain pending. |
 | D02 Windows SYSTEM mechanism | Accept the narrowly scoped one-shot task only after E01–E03/E05 prove fixed action, access rights and account modes; otherwise redesign. |
 | D03 Linux lifetime mechanism | Choose direct root versus transient system-service supervision from E10; explicitly control cgroup/restart/kill behavior without a permanent daemon. |
 | D04 Legacy hook authorization | Specify and prove a new-parent and supported-old-parent binding. If infeasible, define a supported initial migration route instead of weakening the exception. |
@@ -407,3 +409,7 @@ SDE/package managers, create package fixtures, dispatch CI/builds, or prepare re
 
 The owner subsequently authorized W1. The linked evidence records what actually
 ran; this historical instruction does not authorize W2/W3 or integration.
+
+## Revision-3 follow-up
+
+See [W1 protocol review](APP-UPDATE-NOW-W1-REVIEW.md) for resolved timing, close-grant and query-cache rules. The pinned baseline and recorded W1 results above remain revision-2 evidence. W2/W3, production implementation and build dispatch remain deferred.

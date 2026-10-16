@@ -121,3 +121,9 @@ legacy upgrades, power-loss durability and real recovery remain unverified.
 B01–B06 all remain unresolved; no native acceptance or implementation-readiness
 claim is made. W2/W3, production integration and any workflow/build/release actions
 need separate authorization. The approved v1.2.9 fleet rollout is unchanged.
+
+## Subsequent specification review
+
+[Protocol revision-3 decisions](../../../docs/design/APP-UPDATE-NOW-W1-REVIEW.md)
+resolve the three findings. This unchanged harness and recorded evidence remain
+a revision-2 baseline; revision-3 conformance and all native validation are pending.

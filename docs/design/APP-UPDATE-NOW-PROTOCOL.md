@@ -1,6 +1,6 @@
 # #72: App-only update and close/install protocol
 
-**Status:** review draft, revision 2. Not implementation-ready; blockers B01–B06 remain. No implementation or build authorization.
+**Status:** review draft, revision 3. Not implementation-ready; blockers B01–B06 remain. No implementation or build authorization.
 **Design:** Option A inline Schedule card with Option C preparation progress.
 **Issue:** https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/72
 **Inspected implementation:** `ff2ff50c768663ef3dd22bd640859102d5978c34`.
@@ -129,8 +129,9 @@ Proposed initial bounds (internal policy constants, not webview parameters):
   other windows are not killed. On timeout record Deferred and release pre-install
   locks; do not launch an installer or preserve a fake installation journal.
 - Before admission closes: complete network eligibility refresh and expensive
-  package/authentication checks while the GUI can explain progress. A result older
-  than ten seconds at commit requires a fresh check, not silent use of stale data.
+  package/authentication checks while the GUI can explain progress. Eligibility must be at most ten seconds old when A is acquired and commit is
+  accepted (inclusive boundary). If acquiring A crosses that limit, release A and
+  refresh while the GUI remains open before accepting commit.
   If the selected version/digest changes, require a new reviewed preparation.
 - Native installation: no kill deadline. Indeterminate progress, durable journal
   and existing recovery rules apply until a trustworthy outcome is established.
@@ -143,7 +144,8 @@ CommitInstall is the explicit installation authorization boundary. Once accepted
 channel loss or GUI crash is not cancellation. The supervisor may proceed after
 all session leases actually drain. It aborts before launch if the drain deadline
 or a final policy/identity/eligibility/package check fails. The GUI closes only
-after a matching authenticated acknowledgement; no acknowledgement means it stays
+after a matching authenticated, currently valid close grant as defined in section 6;
+no valid close grant means it stays
 open and shows uncertain handoff status until reconciled or timed out.
 
 The server processes CommitInstall and CancelPreparation in one serialized state
@@ -211,25 +213,32 @@ Canonical updater order is **O exclusive → A exclusive → S exclusive**.
    CommitAccepted progress, keep A held, and enqueue acknowledgement without
    waiting for a client to read it. Receipt or socket writes cannot suspend the
    deadline indefinitely. Begin bounded session draining. The initiating GUI disables new operations and requests
-   its normal close. The Busy mechanism must distinguish closing for this handoff
+   its normal close only after validating the close grant in section 6. The Busy mechanism must distinguish closing for this handoff
    from an active provisioning operation that correctly prevents close.
 4. Obtain S exclusive without releasing O/A. Retry only this nonblocking acquisition
    within the session-drain bound; never upgrade the GUI's own shared S in place.
 5. Repeat bounded local installed-identity, pause, staged-integrity and package-
-   health checks. Admission closure has a 45-second total pre-intent budget,
-   inclusive of the 30-second session drain and local checks/receipt work. No
+   health checks. Admission closure starts a non-renewable 45-second deadline
+   through the final pre-spawn decision, inclusive of session drain, checks and
+   durable intent/receipt work. The drain must finish strictly before 30 seconds;
+   the final launch decision must occur strictly before 45 seconds. No
    network fetch, credential prompt or unbounded package-manager wait is permitted
-   here. If refreshed release evidence is now too old, safely defer/reopen rather
-   than performing network work after the GUI closed. A remote release may change
+   here. Bind the eligibility snapshot to this attempt, Ready epoch and exact
+   candidate. Its ten-second age limit applies at commit acceptance, not again
+   after draining. This bounded continuation permits evidence age strictly below
+   55 seconds at the final launch decision; it is not a renewable grant. A remote release may change
    immediately after the last check: record that check and do not promise an atomic
    GitHub-to-native-launch transaction. Never silently substitute another candidate.
 6. Create/flush durable installation intent and the detailed private installation
    receipt **before** spawning the native installer. Both must be durable before
    any process that can mutate the installed app starts. Once intent is created,
-   missing the pre-intent budget must not clear that intent on a timer. Record a
+   missing the launch-decision deadline must not clear that intent on a timer. Record a
    conservative recovery outcome if pre-spawn completion is uncertain.
    Perform the final pause read after durable intent/receipt work, immediately
-   before spawn with no intervening network, credential prompt or blocking IPC.
+   before spawn; then check the monotonic launch deadline, with no intervening
+   network, credential prompt or blocking IPC. Expiry prohibits spawn. Finalize
+   only if no launch is proven; otherwise retain recovery intent. This bounds the
+   local decision, not OS scheduling or the duration of the spawn syscall.
    If paused, finalize this proven-not-launched transaction safely and do not spawn.
    A pause arriving after that final read can race the OS spawn; it is preserved
    but cannot be promised to preempt this launch. This matches the existing
@@ -287,24 +296,56 @@ replay after disconnect; a new attempt uses a new rendezvous and authorization.
   bounded strings and integers, unknown fields, duplicate JSON keys, invalid UTF-8,
   excessive nesting and out-of-range values rejected before command execution. Logs/notes are not raw
   control messages; sanitize public text and use official validated links only.
-- Keep two identifiers distinct: monotonically increasing **event sequence** for
-  status ordering, and an immutable **Ready epoch** for consent. A harmless progress
-  event must not make the user's Commit stale. A fixed-size command-ID/result cache
-  supports idempotence on this one channel; bind each ID to its complete canonical
-  payload and phase. Reusing an ID with different content is a protocol violation.
-  Every response names attempt/transaction, command, authoritative state and event
-  sequence. Check replay IDs before applying state changes or frame-queue effects.
+- Keep **event sequence**, immutable **Ready epoch**, mutation **commandId** and
+  read-only **queryId** separate. Event sequence orders authoritative state/progress;
+  polling does not advance it or invalidate consent. Responses identify the attempt,
+  supervisor incarnation, correlation ID, current state and event sequence.
 - Client commands: Hello, PrepareLatestStable, CancelPreparation, CommitInstall,
   GetStatus. Server messages: HelloAccepted, Progress, Ready, CommitAccepted,
   Rejected, Terminal. No ResumePolicy, arbitrary Run, installer path or download URL.
-- CommitInstall includes the Ready epoch, transaction/version/digest and expected
-  installed identity, not the last progress event number; stale/foreign commitments
-  fail. Repeating a previously accepted Commit on the same channel returns its
-  authoritative result even though its original Ready state has advanced. Public status never authorizes control.
-- CommitAccepted is sent only after admission is locked and protected progress
-  published. A lost response is resolved by an idempotent retry on the same live
-  channel; retry does not extend deadlines. After commit, the supervisor no longer
-  depends on the connection or invoking GUI for continued execution.
+- Mutation replay records retain the complete canonical payload and accepted effect
+  for each logical action for the entire attempt. Reserve three fixed slots for
+  PrepareLatestStable, CommitInstall and CancelPreparation; do not evict accepted
+  records. Each action can be accepted at most once. A second commandId for an
+  already accepted logical action returns AlreadyAccepted without a new effect or
+  slot. Same-ID altered payload is a protocol violation. Invalid/rejected requests
+  use bounded transient replies, not permanent replay entries. A new preparation
+  after expiry/cancellation requires a new authenticated attempt and authorization.
+- GetStatus uses queryId only, never occupies a mutation slot, never authorizes
+  closing and never renews any deadline. Keep at most one outstanding status query
+  per connection and one coalesced current-status reply, with no query history.
+  Repeated queryIds simply read current state. Rate/queue/frame bounds still apply
+  before processing queries or retries; floods cannot consume reserved mutation
+  capacity. Distinct identifier namespaces prevent query/mutation ID collisions.
+- CommitInstall includes Ready epoch, transaction/version/digest and expected
+  installed identity, not the last progress event number. A matching retry preserves
+  the historical accepted effect, but regenerates the response from current state;
+  never replay cached close authority. Public status never authorizes control.
+- CommitAccepted distinguishes historical `effectAccepted` from `closeAuthorized`.
+  Close authority is true only while the original supervisor owns O/A, this exact
+  commit is in session draining, no terminal decision exists and the non-renewable
+  drain deadline remains live. Bind it to the original channel/process instance,
+  attempt, incarnation, Ready epoch, candidate digest, commandId and current event
+  sequence. Expired, Deferred, Canceled, Recovery and completed states always return
+  false even when effectAccepted is true. Status and unsolicited progress cannot
+  substitute for this correlated control response.
+- The native GUI bridge accepts a close grant only for its outstanding commit or
+  explicit same-command retry, authenticated live channel and matching bindings.
+  Reject responses older than the highest observed event sequence or superseded
+  by a terminal event. Validate the absolute drain deadline in the same boot-bound,
+  suspend-aware host monotonic clock domain before requesting graceful close; fail
+  closed on uncertain mapping, suspend or incarnation change. No wall-clock TTL
+  or receipt-relative timeout may extend a delayed grant. Exact platform clock
+  mapping remains a B02/B06 native proof obligation; no mapped clock, no close.
+- Close authority describes state at response generation and expires at the drain
+  deadline. A supervisor can crash between bridge validation and actual GUI exit;
+  IPC cannot make those operations atomic. A late detected EOF cancels a pending
+  close where possible. Do not claim guaranteed installation or automatic reopening:
+  a crash can leave the GUI closed without an update. Native mutation still needs
+  O/A/S and durable intent, and uncertain intent still requires recovery.
+- Publish protected progress after acquiring A before sending CommitAccepted.
+  Lost responses use same-channel retry without another effect or deadline renewal.
+  After commit, execution no longer depends on the connection or invoking GUI.
 - All IPC reads/writes are bounded/asynchronous relative to the supervisor's state
   machine. Before commit, transport failure cancels safely. After commit, discard
   the channel and continue from authoritative state; a full pipe cannot prevent
@@ -558,7 +599,7 @@ remain explicit acceptance work, not inferred from container/Server CI.
 | F18 | Reopen after A closes, before ACK, after ACK, during GUI exit | New supported main GUI never starts or obtains S; update notice; no cancellation. |
 | F19 | Reopen while acquiring S, installing, postchecking, releasing | Continuous exclusion until durable terminal state; no replacement race. |
 | F20 | Other GUI stays open; initiating window refuses close | Bounded Deferred, no force-close; release pre-install reservation safely. |
-| F21 | Commit acknowledgement lost / duplicate commit | GUI closes only on authenticated matching ACK; idempotent replay; no deadline extension. |
+| F21 | Commit acknowledgement lost / duplicate commit | Historical acceptance is separate from current close grant; reject expired/delayed/terminal replies; idempotent effect, no deadline extension. Include supervisor crash after client validation. |
 | F22 | GUI crash before versus after accepted commit | Before: cancel. After: independent supervisor can proceed only after session drain. |
 | F23 | Supervisor killed at every state before durable intent | No installer ever started; OS leases release; normal startup not permanently denied. |
 | F24 | Power loss or helper killed between durable intent and spawn | Conservative interrupted recovery; no automatic journal deletion or retry. |
@@ -583,7 +624,7 @@ remain explicit acceptance work, not inferred from container/Server CI.
 | F42 | Target package drops/downgrades admission capability, rollback/uninstall races | Reject unsupported target/migration; current gate identities and uncertain state survive. |
 | F43 | Suspend/resume, reboot or clock discontinuity while Ready | Invalidate pre-install grant; no stale authorization extended by suspend or reconnect. |
 | F44 | Pause change before versus after final local read, and GitHub withdrawal after refresh | Before read: stop. After read: documented race, no claimed global atomicity; retained policy applies next time. |
-| F45 | Freshness expires, DNS stalls or package lock remains busy after A closes | No network/unbounded wait in closure window; safely defer within pre-intent budget. |
+| F45 | Eligibility age crosses ten seconds during drain; DNS stalls or package lock remains busy | Accepted snapshot survives bounded drain; no network after A. Drain <30 seconds and final launch decision <45 seconds; expired or uncertain intent is handled conservatively. |
 | F46 | Crash at each final receipt/status/journal-clear/lock-release boundary | No ordinary Updated while journal unresolved; no app mutation without durable intent. |
 | F47 | APT installs required runtime dependencies | Allowed bounded app-dependency scope; no remove/distribution/managed-tool or baseline operation. |
 | F48 | Standalone root namespace/user-session mismatch, IPC endpoint survives supervisor turnover | Fail authentication; no endpoint transfer, inherited authority or automatic reconnect. |
@@ -619,7 +660,7 @@ mean platform feasibility, race freedom or security has been experimentally prov
 | R02: Package hooks would reject/wait on their own parent journal/locks | Critical | Define narrowly authenticated package-hook exception, additive migration, and legacy proof requirement. B04 remains blocking. |
 | R03: IPC backpressure could freeze commit/expiry while holding locks | High | Bounded framing/queues and nonblocking supervisor; post-commit independence. Native proof under B02/B03. |
 | R04: Progress sequence conflated with readiness consent | High | Immutable Ready epoch distinct from event sequence; payload-bound idempotence. |
-| R05: Network refresh after closing GUI allowed unbounded perceived outage | High | Refresh before A; bounded local-only pre-intent window and freshness rule; no global GitHub atomicity claim. |
+| R05: Network refresh after closing GUI allowed unbounded perceived outage | High | Refresh before A; bounded local-only launch-decision window and commit freshness rule; no global GitHub atomicity claim. |
 | R06: Suspend could indefinitely extend readiness grant | High | Boot/incarnation binding; suspend-aware expiry or invalidate on resume. |
 | R07: Existing pause API cannot atomically preempt native spawn | High | Explicit final-read boundary and both race outcomes; no stronger promise than existing contract. |
 | R08: Generic Commit requirement accidentally applied to automatic updates | Medium | Scope explicit GUI Commit to manual mode; preserve scheduled authorization. |
@@ -634,10 +675,12 @@ mean platform feasibility, race freedom or security has been experimentally prov
 | B03 Independent supervisor lifetime | Windows task and Linux root process survive GUI/terminal/logoff transitions appropriately; retained journal protects orphan package children; Linux one-shot supervision/cgroup ownership chosen and proven. | Codex; mechanism must be finalized, no daemon assumption. |
 | B04 Package-hook and target/migration compatibility | New and legacy-parent hook authentication rule; no reentrant locks; supported old-source upgrade matrix; trusted target capability evidence; rollback/uninstall/gate-identity behavior. | Codex; legacy hook proof and proposed installer-carried capability representation unproven. |
 | B05 Durability and restricted recovery startup | Windows/Unix ordered receipt/journal durability including reboot/power loss, native child-quiescence reconciliation and user-readable recovery notice without acquiring a normal GUI session. | Codex; no automatic uncertain-state clearance authorized. |
-| B06 Coordination/state-machine proof | Model or deterministic interleaving review for A/O/S and legacy wrappers, all fault boundaries, bounded admission/drain behavior, validated suspended-state handling. Then native cross-process and desktop acceptance. | Codex owns engineering evidence; owner handles later desktop UAT. No proof/tests implemented in this documentation-only revision. |
+| B06 Coordination/state-machine proof | Model or deterministic interleaving review for A/O/S and legacy wrappers, all fault boundaries, bounded admission/drain behavior, validated suspended-state handling. Then native cross-process and desktop acceptance. | Codex owns engineering evidence; owner handles later desktop UAT. Revision-2 W1 L1 evidence exists; revision-3 alignment and native proof remain pending. |
 
 Product defaults for review: five-minute Ready, thirty-second drain, forty-five-
-second total admission-to-intent bound, ten-second eligibility freshness. Confirm
+second admission-to-final-launch-decision bound, ten-second eligibility freshness
+at accepted commit. These revision-3 timing rules supersede the revision-2
+admission-to-intent and spawn-age interpretation. Confirm
 these against platform behavior before freezing them. A timeout may abandon a
 proven pre-install transaction; it never erases uncertain native intent. Selecting
 a bounded framing library or native broker API does not by itself clear B01–B06.
@@ -652,7 +695,8 @@ dispatch and candidate builds still need a later instruction.
 
 The [Phase 1 plan](APP-UPDATE-NOW-PHASE1-VALIDATION.md) specifies 22 isolated
 experiments for B01–B06, evidence levels, pass/fail rules and a W1-only local
-prototype proposal. It does not implement or execute those experiments. Native
+prototype proposal. The plan itself does not execute experiments; the separately authorized W1
+execution is recorded below. Native
 privilege, package, power-loss and desktop proof remain separately scoped gates.
 
 
@@ -661,5 +705,7 @@ privilege, package, power-loss and desktop proof remain separately scoped gates.
 The subsequently authorized [W1 harness and findings](../../tests/prototypes/manual-update/EVIDENCE.md)
 provide L1-only model evidence. See its explicit scope and fault ledger; all six
 blockers remain open. Freshness/drain timing, historical ACK validity and query
-cache accounting need protocol decisions before integration. No native proof,
+cache accounting are resolved normatively by revision 3; see the
+[W1 review and alignment requirements](APP-UPDATE-NOW-W1-REVIEW.md). The existing
+harness/evidence remain a revision-2 baseline and do not validate these new rules. No native proof,
 production implementation or workflow/build dispatch follows from this result.

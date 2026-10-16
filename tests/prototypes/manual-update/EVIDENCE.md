@@ -60,3 +60,9 @@ B04 real hook/target migration, B05 native durability/recovery, and B06 native
 coordination/desktop proof remain open. W1 supplies only bounded model evidence
 for selected state, ordering, parsing and timing aspects. Do not proceed directly
 to production implementation or claim that native UAT has passed.
+
+## Subsequent specification review
+
+[Protocol revision-3 decisions](../../../docs/design/APP-UPDATE-NOW-W1-REVIEW.md)
+resolve the three findings. This unchanged harness and recorded evidence remain
+a revision-2 baseline; revision-3 conformance and all native validation are pending.
