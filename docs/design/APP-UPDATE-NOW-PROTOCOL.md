@@ -1,9 +1,10 @@
 # #72: App-only update and close/install protocol
 
-**Status:** review draft, revision 1. No implementation or build authorization.
+**Status:** review draft, revision 2. Not implementation-ready; blockers B01–B06 remain. No implementation or build authorization.
 **Design:** Option A inline Schedule card with Option C preparation progress.
 **Issue:** https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/72
 **Inspected implementation:** `ff2ff50c768663ef3dd22bd640859102d5978c34`.
+This revision reviews the proposed protocol, not alleged defects in shipped v1.2.9.
 All proposed names, schemas and deadlines below are design decisions for review,
 not claims about functionality shipped in v1.2.9. No release version is allocated.
 
@@ -32,9 +33,11 @@ Relevant current source:
 1. A GUI request grants neither administrative privilege nor arbitrary execution.
 2. Only fixed official release selection and pinned authentication determine the
    install candidate. A discovery result alone is not trusted installation input.
-3. No native installation starts without explicit CommitInstall, successful
-   administrator authorization, valid policy, compatible coordination, exclusive
-   installation access and durable installation intent.
+3. No **manual** native installation starts without explicit CommitInstall and
+   transaction-scoped administrator authorization. Both manual and scheduled
+   installation require valid policy, compatible coordination, exclusive access
+   and durable intent. Existing scheduled authorization does not require a GUI
+   CommitInstall and is not disabled by this feature.
 4. The supervisor owns preparation and installation outside the installed app
    directory. It does not depend on a webview, removable drive, user CWD, or GUI
    process remaining alive.
@@ -59,7 +62,11 @@ Relevant current source:
 - **Elevated bootstrap:** fixed installed administrative entry point, validated
   ownership/ACL/path/package association; starts a trusted external engine snapshot.
   It must not reuse the long-running `skyview-dev-setup --privileged` GUI helper.
-- **Supervisor:** a bounded one-shot process from that snapshot. It holds leases,
+  Windows: UAC authorizes a fixed broker which starts the final snapshot worker as
+  SYSTEM; administrator elevation alone is not SYSTEM identity. Linux: polkit
+  starts the final root supervisor without a Windows-style identity hop.
+- **Supervisor:** a one-shot process from that snapshot with bounded pre-install
+  lifetime, but no forced native-installer termination deadline. It holds leases,
   handles requests, stages, supervises native installation and writes receipts.
   It remains alive independently after the GUI exits. No always-running service.
 - **Coordination:** existing protected coordination root; add an admission gate
@@ -74,6 +81,14 @@ Rendezvous IDs supplied before elevation are strictly validated hints, not autho
 to choose a path, user, executable, release or action. No request grants file access
 outside fixed validated roots. Reject symlinks, reparse points, hard links, unsafe
 ancestors and untrusted ownership/ACLs using the existing platform contracts.
+
+Local administrators/root and a compromised kernel are outside this privilege
+boundary; they already control the installation. Same-user malware or a compromised
+webview cannot be distinguished from that user's intent by a nonce or process path.
+Security comes from explicit OS authorization of a fixed narrow action, authenticated
+transport, strict command scope and signed packages, not from claiming that IPC
+proves a physical button click. Bound resource use and tolerate denial of service
+without privilege escalation. A process path/PID alone is never peer authentication.
 
 A supervisor snapshots its complete required generation before it can commit.
 It verifies snapshot provenance and protocol capabilities. Updating the installed
@@ -97,13 +112,26 @@ Proposed initial bounds (internal policy constants, not webview parameters):
 - Administrator authorization: governed by OS cancellation; do not hold operation
   or admission locks while awaiting the credential prompt.
 - Channel setup after successful bootstrap: 30 seconds; otherwise shut down safely.
+- Before commit, complete each IPC frame within five seconds; a connect/Hello/Prepare
+  exchange has a fixed 30-second overall bound. Acquire O only for an accepted
+  Prepare request, not merely because a client connected. Limit control frames to
+  ten per second, queue at most 32 controls and coalesce progress to one replaceable
+  snapshot. A slow, flooding or silent client cannot keep O/A alive indefinitely.
 - Network preparation: retain existing bounded download/retry/size policy. Do not
   invent a new unbounded wait or report false percentage while waiting on a retry.
-- Ready: five minutes from readiness on a monotonic clock; show remaining time and
-  explanation, then cancel immediate intent. Repeated requests do not extend it.
+- Ready: five minutes from readiness; show remaining time and explanation, then
+  cancel immediate intent. Use a boot/incarnation-bound suspend-aware monotonic
+  deadline where available; on resume or uncertain sleep/clock continuity, invalidate
+  pre-install readiness. Ordinary suspend-excluding elapsed time alone cannot keep
+  an administrative grant alive through an overnight sleep. Repeated requests,
+  progress polls and reconnect attempts never extend the grant.
 - CommitAccepted: 30 seconds to drain existing sessions. New starts are blocked;
   other windows are not killed. On timeout record Deferred and release pre-install
   locks; do not launch an installer or preserve a fake installation journal.
+- Before admission closes: complete network eligibility refresh and expensive
+  package/authentication checks while the GUI can explain progress. A result older
+  than ten seconds at commit requires a fresh check, not silent use of stale data.
+  If the selected version/digest changes, require a new reviewed preparation.
 - Native installation: no kill deadline. Indeterminate progress, durable journal
   and existing recovery rules apply until a trustworthy outcome is established.
 
@@ -179,18 +207,33 @@ Canonical updater order is **O exclusive → A exclusive → S exclusive**.
 2. Try A exclusive. A racing GUI either completes its A-shared-to-S-shared entry
    first and becomes an existing session, or fails admission after A closes.
    Do not wait indefinitely for A or acknowledge commitment without owning it.
-3. Publish CommitAccepted progress, keep A held, send acknowledgement, and begin
-   bounded session draining. The initiating GUI disables new operations and requests
+3. Start the non-renewable drain deadline at the instant A closes. Publish
+   CommitAccepted progress, keep A held, and enqueue acknowledgement without
+   waiting for a client to read it. Receipt or socket writes cannot suspend the
+   deadline indefinitely. Begin bounded session draining. The initiating GUI disables new operations and requests
    its normal close. The Busy mechanism must distinguish closing for this handoff
    from an active provisioning operation that correctly prevents close.
 4. Obtain S exclusive without releasing O/A. Retry only this nonblocking acquisition
    within the session-drain bound; never upgrade the GUI's own shared S in place.
-5. Repeat installed identity, pause, eligible-release, authenticated staging and
-   package-health checks. If the candidate changed since the user reviewed it,
-   do not substitute a different version silently; end this request and recheck.
+5. Repeat bounded local installed-identity, pause, staged-integrity and package-
+   health checks. Admission closure has a 45-second total pre-intent budget,
+   inclusive of the 30-second session drain and local checks/receipt work. No
+   network fetch, credential prompt or unbounded package-manager wait is permitted
+   here. If refreshed release evidence is now too old, safely defer/reopen rather
+   than performing network work after the GUI closed. A remote release may change
+   immediately after the last check: record that check and do not promise an atomic
+   GitHub-to-native-launch transaction. Never silently substitute another candidate.
 6. Create/flush durable installation intent and the detailed private installation
    receipt **before** spawning the native installer. Both must be durable before
-   any process that can mutate the installed app starts.
+   any process that can mutate the installed app starts. Once intent is created,
+   missing the pre-intent budget must not clear that intent on a timer. Record a
+   conservative recovery outcome if pre-spawn completion is uncertain.
+   Perform the final pause read after durable intent/receipt work, immediately
+   before spawn with no intervening network, credential prompt or blocking IPC.
+   If paused, finalize this proven-not-launched transaction safely and do not spawn.
+   A pause arriving after that final read can race the OS spawn; it is preserved
+   but cannot be promised to preempt this launch. This matches the existing
+   pause/launch contract; tests must cover both race orderings.
 7. Invoke the existing native installation/postcheck path with the owned lease
    bundle. Refactor its boundary so it does not reacquire O/S. Only a typed,
    validated installation lease bundle permits native mutation.
@@ -203,6 +246,9 @@ acquisition and deferral rather than waiting for GUIs. Legacy supported schedule
 clients use O→S; they cannot overlap a manual transaction that owns O. They do not
 participate in the new manual handshake or inherit its authority.
 
+GUI/backend clients that own S shared may only **try** O nonblocking; they may
+not wait for O or A exclusive. Existing shell/Python/PowerShell coordination
+wrappers also take session/operation leases: include them in the ordering audit.
 No participant that owns S shared may wait for O or A exclusive. GUI operation
 requests remain nonblocking, with no lock upgrade. These rules avoid the cycle
 GUI(A/S waits O) ↔ updater(O waits A/S).
@@ -223,37 +269,75 @@ replay after disconnect; a new attempt uses a new rendezvous and authorization.
 - The privileged side verifies the connecting GUI using OS peer identity and a
   process-instance identity (kernel PID plus creation identity/retained process
   handle, not PID alone), expected desktop user/session, and the trusted installed
-  executable. Rendezvous arguments alone do not authenticate any of these.
+  executable. Retain process identity through preparation and recheck that the
+  original GUI instance is alive for each pre-commit state-changing request.
+  Do not accept a passed socket/pipe handle as evidence that a different process
+  is the original caller. Rendezvous arguments alone do not authenticate identity.
 - The GUI authenticates the privileged endpoint before trusting status or closing.
   The supervisor also authenticates the GUI; a UUID/nonce is not a substitute for
   OS peer authentication. Reject remote and cross-session connection attempts.
-- Bind the channel to a supervisor-issued transaction UUID, process-instance
-  identities, a fresh 256-bit challenge/capability and the reviewed candidate
-  version/manifest digest. Capability is scoped to this one live connection and
+- Bind the authenticated channel first to a supervisor-issued attempt UUID,
+  process-instance identities and a fresh 256-bit challenge/capability. After
+  preparation, bind a separate immutable Ready epoch to the selected version,
+  manifest digest, installed-version expectation and supervisor incarnation.
+  A Hello before discovery cannot already authenticate a nonexistent candidate. Capability is scoped to this one live connection and
   remains in native memory; never put it in command-line arguments, logs, public
   status, environment variables or JavaScript/localStorage.
 - Length-prefixed UTF-8 JSON, maximum 16 KiB per message; strict tagged types,
-  bounded strings and integers, unknown fields rejected. Logs/notes are not raw
+  bounded strings and integers, unknown fields, duplicate JSON keys, invalid UTF-8,
+  excessive nesting and out-of-range values rejected before command execution. Logs/notes are not raw
   control messages; sanitize public text and use official validated links only.
-- Monotonic sequence numbers and command IDs; every state-changing response names
-  the transaction, accepted command, authoritative state and sequence. Repeated
-  command IDs return the same result; conflicting reuse is rejected.
+- Keep two identifiers distinct: monotonically increasing **event sequence** for
+  status ordering, and an immutable **Ready epoch** for consent. A harmless progress
+  event must not make the user's Commit stale. A fixed-size command-ID/result cache
+  supports idempotence on this one channel; bind each ID to its complete canonical
+  payload and phase. Reusing an ID with different content is a protocol violation.
+  Every response names attempt/transaction, command, authoritative state and event
+  sequence. Check replay IDs before applying state changes or frame-queue effects.
 - Client commands: Hello, PrepareLatestStable, CancelPreparation, CommitInstall,
   GetStatus. Server messages: HelloAccepted, Progress, Ready, CommitAccepted,
   Rejected, Terminal. No ResumePolicy, arbitrary Run, installer path or download URL.
-- CommitInstall includes the Ready transaction/version/digest and last known state
-  sequence; stale/foreign commitments fail. Public status never authorizes control.
+- CommitInstall includes the Ready epoch, transaction/version/digest and expected
+  installed identity, not the last progress event number; stale/foreign commitments
+  fail. Repeating a previously accepted Commit on the same channel returns its
+  authoritative result even though its original Ready state has advanced. Public status never authorizes control.
 - CommitAccepted is sent only after admission is locked and protected progress
   published. A lost response is resolved by an idempotent retry on the same live
   channel; retry does not extend deadlines. After commit, the supervisor no longer
   depends on the connection or invoking GUI for continued execution.
+- All IPC reads/writes are bounded/asynchronous relative to the supervisor's state
+  machine. Before commit, transport failure cancels safely. After commit, discard
+  the channel and continue from authoritative state; a full pipe cannot prevent
+  timeout, lock release, native launch, postchecks or terminal receipt persistence.
 
 ### Windows proposed profile
 
-The fixed privileged bootstrap starts the final snapshot supervisor. That
-supervisor creates a local-only, single-instance named pipe with a fresh validated
-rendezvous ID; it owns the authenticated endpoint for the whole connection. Use FILE_FLAG_FIRST_PIPE_INSTANCE and reject
-remote clients. Endpoint owner is SYSTEM or Builtin Administrators; use an explicit
+The existing worker's `system()` check requires LocalSystem. A UAC-elevated
+administrator process must not call that path directly or silently weaken it.
+
+Proposed bridge: after explicit UAC consent, a fixed installed administrator broker
+creates a private bounded request and registers/starts a dedicated **one-shot,
+on-demand SYSTEM task** for this request. Its executable is the fixed protected
+manual bootstrap, with only a strictly validated request UUID; task configuration
+contains no GUI-supplied script, path, URL, user or command. It has no recurring
+trigger and must not alter/reuse the weekly tool-maintenance task. Do not grant
+ordinary users task-run/edit/registration rights. Prove task-folder/definition ACLs,
+account-mode behavior and restart policy before accepting this bridge (B01).
+
+The SYSTEM bootstrap validates the administrator-owned request, scope, live original
+GUI identity and expiry, then starts the final protected snapshot supervisor. The
+supervisor—not an intermediate process—creates and owns the authenticated endpoint.
+Only one transaction can claim the request; a scheduler retry must reject a claimed
+request even if a previous attempt crashed. Disable automatic task restarts; never
+resume a committed/native-uncertain transaction as a new preparation. Cleanup may
+remove only this terminal request's task/metadata after the supervisor and all
+package children are known finished. Leaving a disabled inert task after failure
+is safer than deleting or restarting an uncertain live transaction.
+
+The supervisor creates a local-only, single-instance named pipe with a fresh
+validated rendezvous ID. Use FILE_FLAG_FIRST_PIPE_INSTANCE and reject remote
+clients. The final endpoint owner/server identity must be SYSTEM, not merely any
+administrator process; use an explicit
 protected DACL. Grant the original desktop client only the precise connect/read/
 write/read-control rights needed, **not** generic write rights that also grant
 FILE_CREATE_PIPE_INSTANCE, nor WRITE_DAC/WRITE_OWNER. No user-created fallback pipe.
@@ -268,8 +352,9 @@ using the kernel pipe APIs; failure to query/validate is a denial, not an allowa
 
 **Phase-1 proof requirement:** validate this rights/identity exchange with a
 standard student user, same-user UAC elevation and alternate-administrator UAC.
-If the required native queries cannot be made under the intended DACL, revise the
-Windows IPC design and review it before implementation continues; do not weaken
+Also prove that an unprivileged GUI cannot impersonate the SYSTEM server with a
+restricted token, alternate object owner or extra pipe instance. If the required
+native queries cannot be made under the intended DACL, revise the Windows IPC design and review it before implementation continues; do not weaken
 server authentication or rely on a public nonce. A squatted endpoint must cause
 bootstrap failure while SDE stays open, never a connection to the squatter.
 
@@ -316,7 +401,7 @@ not proof of lock ownership; native receipts/postchecks decide installation succ
 | Durable intent exists, no proven completion | Block normal startup/retry with recovery guidance. Distinguish live Busy from interrupted intent; no unconditional age-based cleanup. |
 | Supervisor dies while native child continues | Journal survives even if locks release. Do not launch main GUI or another updater, kill the child, clear intent, or infer completion from parent death. |
 | Proven completion plus failed postcheck | Retain required recovery evidence; never label Updated or automatically retry the same transaction. |
-| Pause or candidate changes before native launch | Stop without installation and record Paused/StaleCandidate. No policy override or unreviewed version substitution. |
+| Pause observed at a required check, or candidate differs at the fresh eligibility check | Stop without installation and record Paused/StaleCandidate. A concurrent pause after the last read is not guaranteed to win the spawn race; preserve it for subsequent attempts. No silent version substitution. |
 | Pause changes after native launch | Allow native installer to finish; preserve the new pause policy for subsequent work. |
 | Native result indicates reboot | Report RebootRequired distinctly; never force reboot or pretend ordinary postcheck success. |
 
@@ -325,6 +410,24 @@ package/installer child quiescence, inspect installed resources/identity and nat
 package health, and reconcile the durable transaction. PID absence alone is
 insufficient. This draft deliberately does not invent automatic recovery where the
 existing mentor contract requires assessment.
+
+Publishing Updated has a strict order: finish native work and postchecks; persist
+the detailed complete receipt and final safe status; then clear the compatibility
+installation journal, then release S/A/O. Crashes between receipt publication and
+journal removal remain conservatively recovery-required; the UI cannot label them
+ordinary Updated from the public status alone. Lock/journal state takes precedence.
+Durability includes file flush, atomic replacement and parent/namespace persistence
+where supported; Windows power-loss guarantees need native proof (B05). Logical deadlines are
+not a promise that an uninterruptible kernel/storage operation can always be
+terminated on time. Never unlock a transaction with uncertain intent just to
+meet a user-facing timeout; report the appropriate recovery state once it can
+be safely established.
+
+App-only does not mean zero operating-system dependency changes: APT may resolve
+required SDE runtime libraries under the existing no-remove policy. No managed-tool
+update/provisioning, distribution upgrade, baseline change or weakened package
+authentication is allowed. Record app dependency changes without claiming that
+every system package necessarily remains byte-identical.
 
 A normal launch during live admission closure uses a small accessible native
 notice, without entering the main application. An unresolved-install recovery
@@ -354,7 +457,9 @@ signed-engine association require Phase-1 review.
   Existing automatic maintenance remains usable only where its original contracts
   still validate. Never claim handoff protection without the admission capability.
 - Preserve existing transaction schema/recovery compatibility and leave unknown
-  or active journals intact. Migration during uncertain package work is rejected.
+  or active journals intact. Reject an **unrelated/uncertain** installation; do not
+  blanket-reject the active journal belonging to the installer's own supervised
+  package hook. See the bootstrap exception and proof gate below.
 - Respect the Linux fixed schema-1 launcher: prefer a separate versioned manual
   bootstrap rather than assuming package replacement upgrades that launcher.
   On Windows also install a dedicated fixed protected manual bootstrap, preserving
@@ -372,6 +477,55 @@ signed-engine association require Phase-1 review.
 - Old scheduled workers that respect O/S remain serialized by O. No capability
   upgrade permits abandoning those gates or ignoring their package children.
 
+### Package-hook and mixed-generation exception (review gate B04)
+
+NSIS postinstall and DEB postinst invoke `--coordination-init` and bootstrap **while
+the supervising installer owns the installation locks and journal**. They must not
+enter normal GUI startup, acquire A/O/S as a new independent participant, wait on
+their own parent, clear its journal, or reset an existing gate. Otherwise the
+protocol deadlocks or rejects every legitimate upgrade.
+
+During an authenticated package-hook invocation, additive initialization of the
+new admission gate/manual bootstrap and validation of existing objects is allowed
+without reacquiring the parent's leases. Existing metadata probes must remain
+usable with the Windows sharing modes held by the supervisor. Publish capability
+activation only after all required files/policies validate; native postchecks must
+verify the same activated generation. Never garbage-collect a live snapshot.
+
+This exception cannot be selected by a plain flag, environment variable, journal
+existence or root-owned record alone. It needs a platform-authenticated native
+installer/package-hook invocation and binding to the **current live supervising
+installation**, not arbitrary ancestor PID strings. The new manual parent can
+provide an explicit scoped bootstrap context, but old workers do not provide that
+new token. A separate legacy-upgrade verification rule must be specified and proven
+for each supported old parent/package hook, or an explicit supported migration
+path must be documented. Do not invent a permissive fallback. This remains a
+blocking compatibility decision; the draft does not claim the legacy proof exists.
+
+The candidate package must preserve the coordination protocol required by the
+running snapshot; publishing it as stable must carry forward that compatibility.
+Capability checks in the installed version alone cannot prove the target package
+keeps gate identities/schema/ordering. Define required target capability evidence
+and validate it under the existing signed-package trust model before manual
+installation can be declared supported. A signed package is authentic, but its
+signature alone is not a new protocol-capability declaration.
+
+Do not add fields to the current strict schema-1 signed `sde-update.json`: older
+fleet verifiers reject unknown fields/schemas. The proposed representation is a
+bounded capability declaration **inside the authenticated installer bytes**: DEB
+custom control fields and Windows NSIS/PE version-resource fields for coordination
+protocol, manual protocol and bootstrap capability. Exact names/parser limits and
+NSIS resource feasibility require B04 proof before adoption. Authenticate the full
+installer first, then inspect these declarations before commit; after installation,
+compare declarations against actual protected files and activated capabilities.
+Do not execute an uninstalled target helper to query its capabilities. A missing,
+malformed, incompatible or uninspectable declaration is UnsupportedTarget, not
+permission to guess from the version or downgrade to an older release. Preserve
+schema-1 trust interoperability and test existing 1.2.5+ verifiers against the new
+candidate format in the later authorized packaging phase. Rollback/uninstall
+must not remove active gates or bypass unresolved journals; only compatible
+recovery packages or a mentor-confirmed quiescent recovery path are supported.
+
 No version/tag allocation, installer rebuild, signing, policy resume, schedule
 change or fleet deployment follows from accepting this specification.
 
@@ -386,13 +540,13 @@ remain explicit acceptance work, not inferred from container/Server CI.
 | --- | --- | --- |
 | F01 | Current/offline/malformed release response | Correct Current versus Unavailable; no elevation or mutation. |
 | F02 | Draft/prerelease/older/platform-incompatible candidate | Never offered for install; no string-order comparison error. |
-| F03 | Paused before prepare, during Ready, before launch | No install or implicit resume; clear pause explanation. |
+| F03 | Pause observed before prepare, during Ready, or at final policy read | No install or implicit resume; clear pause explanation. Test after-read race separately in F44. |
 | F04 | UAC/polkit denied or canceled | GUI stays open; no protected staging/commit left active. |
 | F05 | Same-user versus alternate-admin elevation | Correct original GUI peer binding; no root/admin profile substitution or GUI relaunch. |
 | F06 | Wrong UID/SID/session, PID reuse, foreign executable | Reject channel/command without changing policy or package state. |
 | F07 | Pipe/socket squatting or linked directory/receipt | Fail closed; GUI never accepts spoofed supervisor status or close instruction. |
 | F08 | Oversized/unknown/version-mismatched/truncated IPC | Bounded rejection and safe cleanup; no parser-controlled paths or execution. |
-| F09 | Replayed capability, reused conflicting command ID, stale Commit | Reject; exactly one state transition/native launch. |
+| F09 | Replayed capability, conflicting command ID or stale Ready epoch | Reject; one transition/native launch. Benign event-sequence advancement does not invalidate valid consent. |
 | F10 | Signature/hash/size/package-identity mismatch | No Ready or install; GUI remains usable with accurate failure. |
 | F11 | Candidate becomes ineligible, changes version, or installed version advances | Revalidate; no downgrade or silent replacement of reviewed target. |
 | F12 | Existing Validate/provisioning/maintenance owns O | Preparation reports Busy without interruption; no new conflicting work. |
@@ -412,13 +566,27 @@ remain explicit acceptance work, not inferred from container/Server CI.
 | F26 | Native nonzero/unknown completion/postcheck failure | Preserve evidence/recovery; never report Updated or fabricate rollback. |
 | F27 | Native success / reboot-indicated outcome | Verify resources/version/engine; distinguish Updated from RebootRequired. |
 | F28 | Legacy S holder or old scheduled O/S worker, including intent written between startup checks | Safe deferral/exclusion; post-S journal recheck prevents normal startup after an old worker crashes; no false claim of legacy admission support. |
-| F29 | Missing gate, partial capability migration, wrong permissions, active journal | Manual feature unavailable; existing data/locks/policy untouched. |
+| F29 | Missing gate, partial capability migration, wrong permissions, unrelated/uncertain journal | Manual feature unavailable; existing data/locks/policy untouched. The installer's own authenticated hook is tested separately in F40. |
 | F30 | App-only install with no tool schedule | Works when trusted app bootstrap/capabilities exist; no tool provisioning/schedule creation. |
 | F31 | Full manual upgrade | Tools, baseline, schedule, pause and project/editor data preserved; real version/engine and receipts agree. |
 | F32 | Stale/unknown/tampered public status or disconnect | No false success/close authority; safe status unavailable; authoritative journal respected. |
 | F33 | Light/dark/high contrast, all zooms, minimum window, keyboard/reader | Stable targets/focus, real accessible progress, no byte-by-byte speech spam or clipping. |
 | F34 | Reboot after completion versus uncertain installation | Completed receipt remains usable; uncertain state retains recovery restriction; no stale Ready grant. |
 | F35 | USB/terminal/GUI removed after accepted handoff | Installed snapshot and supervisor continue independently; no dependency on original launcher files. |
+
+| F36 | Administrator UAC broker attempts direct native installation without SYSTEM hop | Reject identity; no weakening of system() or fallback to administrator install. |
+| F37 | SYSTEM task request swapped, duplicated, expired, automatically retried or user-edited | Narrow fixed action only; claimed request cannot run twice; no post-crash automatic install. |
+| F38 | Slow partial IPC frame, flooding, blocked server write or dead reader | Bounded memory and deadlines; before commit cancel; after commit proceed/defer independently without lock leak. |
+| F39 | Ready valid while a progress heartbeat increments event sequence | Valid Ready epoch still commits; stale epoch or changed payload does not. |
+| F40 | Legitimate new/legacy NSIS or DEB hook runs with parent O/A/S and journal held | No recursive-lock deadlock/self-rejection; no journal/gate replacement; authenticated hook context required. |
+| F41 | An unrelated privileged caller copies a hook flag/env/journal reference | Does not gain the package-hook exception or clear/alter an active transaction. |
+| F42 | Target package drops/downgrades admission capability, rollback/uninstall races | Reject unsupported target/migration; current gate identities and uncertain state survive. |
+| F43 | Suspend/resume, reboot or clock discontinuity while Ready | Invalidate pre-install grant; no stale authorization extended by suspend or reconnect. |
+| F44 | Pause change before versus after final local read, and GitHub withdrawal after refresh | Before read: stop. After read: documented race, no claimed global atomicity; retained policy applies next time. |
+| F45 | Freshness expires, DNS stalls or package lock remains busy after A closes | No network/unbounded wait in closure window; safely defer within pre-intent budget. |
+| F46 | Crash at each final receipt/status/journal-clear/lock-release boundary | No ordinary Updated while journal unresolved; no app mutation without durable intent. |
+| F47 | APT installs required runtime dependencies | Allowed bounded app-dependency scope; no remove/distribution/managed-tool or baseline operation. |
+| F48 | Standalone root namespace/user-session mismatch, IPC endpoint survives supervisor turnover | Fail authentication; no endpoint transfer, inherited authority or automatic reconnect. |
 
 Cross-process tests must place barriers at each acquisition/release/receipt/spawn
 boundary and deliberately schedule both race orderings. Do not use successful
@@ -439,7 +607,42 @@ standard desktop accounts and genuine privilege transitions on both platforms.
 5. Only with later authorization prepare a fresh immutable test candidate, perform
    desktop UAT, and separately decide release/promotion/rollout.
 
-Open review decisions: confirm the five-minute Ready / thirty-second drain bounds;
-prove Windows rights for both UAC account modes; choose the concrete bounded IPC
-framing library; confirm platform durability and restricted-startup recovery UX.
-These are review/implementation gates, not permission to relax the invariants.
+## 11. Revision-2 review findings and remaining blockers
+
+These findings concern omissions/contradictions in revision 1, not a completed
+implementation review. “Revised” means the written rule is corrected; it does not
+mean platform feasibility, race freedom or security has been experimentally proven.
+
+| Finding | Severity | Revision / disposition |
+| --- | --- | --- |
+| R01: UAC administrator treated as adequate Windows worker identity | Critical | Preserve SYSTEM contract; specify dedicated one-shot SYSTEM broker. B01 remains blocking. |
+| R02: Package hooks would reject/wait on their own parent journal/locks | Critical | Define narrowly authenticated package-hook exception, additive migration, and legacy proof requirement. B04 remains blocking. |
+| R03: IPC backpressure could freeze commit/expiry while holding locks | High | Bounded framing/queues and nonblocking supervisor; post-commit independence. Native proof under B02/B03. |
+| R04: Progress sequence conflated with readiness consent | High | Immutable Ready epoch distinct from event sequence; payload-bound idempotence. |
+| R05: Network refresh after closing GUI allowed unbounded perceived outage | High | Refresh before A; bounded local-only pre-intent window and freshness rule; no global GitHub atomicity claim. |
+| R06: Suspend could indefinitely extend readiness grant | High | Boot/incarnation binding; suspend-aware expiry or invalidate on resume. |
+| R07: Existing pause API cannot atomically preempt native spawn | High | Explicit final-read boundary and both race outcomes; no stronger promise than existing contract. |
+| R08: Generic Commit requirement accidentally applied to automatic updates | Medium | Scope explicit GUI Commit to manual mode; preserve scheduled authorization. |
+| R09: Target-package compatibility and cleanup after successful receipts unspecified | High | Require target capability evidence; define final write/journal-clear order and conservative crash outcomes. B04/B05 remain blocking. |
+| R10: App-only wording implied no runtime dependency changes | Medium | Permit required app runtime dependencies within existing native no-remove policy, excluding tool/baseline upgrades. |
+| R11: New capability fields could break strict schema-1 fleet verifiers | High | Keep signed manifest schema unchanged; propose inspectable declarations inside signed-installer bytes. Representation/parser feasibility remains B04. |
+
+| Blocker | Evidence needed to clear it | Owner / current state |
+| --- | --- | --- |
+| B01 Windows SYSTEM launch broker | Reviewed fixed-action task/request/ACL/restart/cleanup design and native proof under standard-user, same-user and alternate-admin UAC. No dependency on provisioned weekly task. | Codex; design proposed, no prototype/validation authorized or performed. |
+| B02 Mutual IPC authentication | Exact Windows DACL/pipe access masks and both peer checks; Linux ACL/SO_PEERCRED/process-instance policy; impersonation/squatting/replay and bounded-I/O evidence. Resolve original-client binding without trusting caller identity strings. | Codex; requirements specified, native feasibility unproven. |
+| B03 Independent supervisor lifetime | Windows task and Linux root process survive GUI/terminal/logoff transitions appropriately; retained journal protects orphan package children; Linux one-shot supervision/cgroup ownership chosen and proven. | Codex; mechanism must be finalized, no daemon assumption. |
+| B04 Package-hook and target/migration compatibility | New and legacy-parent hook authentication rule; no reentrant locks; supported old-source upgrade matrix; trusted target capability evidence; rollback/uninstall/gate-identity behavior. | Codex; legacy hook proof and proposed installer-carried capability representation unproven. |
+| B05 Durability and restricted recovery startup | Windows/Unix ordered receipt/journal durability including reboot/power loss, native child-quiescence reconciliation and user-readable recovery notice without acquiring a normal GUI session. | Codex; no automatic uncertain-state clearance authorized. |
+| B06 Coordination/state-machine proof | Model or deterministic interleaving review for A/O/S and legacy wrappers, all fault boundaries, bounded admission/drain behavior, validated suspended-state handling. Then native cross-process and desktop acceptance. | Codex owns engineering evidence; owner handles later desktop UAT. No proof/tests implemented in this documentation-only revision. |
+
+Product defaults for review: five-minute Ready, thirty-second drain, forty-five-
+second total admission-to-intent bound, ten-second eligibility freshness. Confirm
+these against platform behavior before freezing them. A timeout may abandon a
+proven pre-install transaction; it never erases uncertain native intent. Selecting
+a bounded framing library or native broker API does not by itself clear B01–B06.
+
+**Exit criterion:** resolve or explicitly redesign each blocker with recorded
+evidence before calling the protocol implementation-ready. Further design work
+is permitted by the review request; prototype/production code, automated workflow
+dispatch and candidate builds still need a later instruction.
