@@ -654,3 +654,12 @@ The [Phase 1 plan](APP-UPDATE-NOW-PHASE1-VALIDATION.md) specifies 22 isolated
 experiments for B01–B06, evidence levels, pass/fail rules and a W1-only local
 prototype proposal. It does not implement or execute those experiments. Native
 privilege, package, power-loss and desktop proof remain separately scoped gates.
+
+
+### W1 execution evidence
+
+The subsequently authorized [W1 harness and findings](../../tests/prototypes/manual-update/EVIDENCE.md)
+provide L1-only model evidence. See its explicit scope and fault ledger; all six
+blockers remain open. Freshness/drain timing, historical ACK validity and query
+cache accounting need protocol decisions before integration. No native proof,
+production implementation or workflow/build dispatch follows from this result.

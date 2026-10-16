@@ -1,0 +1,43 @@
+test_authentication_is_required_even_with_fixture_capability (test_harness.ControlChecks.test_authentication_is_required_even_with_fixture_capability) ... ok
+test_cancel_commit_orderings (test_harness.ControlChecks.test_cancel_commit_orderings) ... ok
+test_idempotent_commit_and_conflicting_id (test_harness.ControlChecks.test_idempotent_commit_and_conflicting_id) ... ok
+test_late_cached_ack_cannot_close_after_defer (test_harness.ControlChecks.test_late_cached_ack_cannot_close_after_defer) ... ok
+test_non_reader_coalesces_progress_without_blocking_ticks (test_harness.ControlChecks.test_non_reader_coalesces_progress_without_blocking_ticks) ... ok
+test_progress_does_not_invalidate_ready_epoch (test_harness.ControlChecks.test_progress_does_not_invalidate_ready_epoch) ... ok
+test_query_cache_exhaustion_counterexample (test_harness.ControlChecks.test_query_cache_exhaustion_counterexample) ... ok
+test_rate_and_cache_bounds (test_harness.ControlChecks.test_rate_and_cache_bounds) ... ok
+test_all_persistence_boundaries (test_harness.DurabilityChecks.test_all_persistence_boundaries) ... ok
+test_crash_does_not_turn_unflushed_receipt_into_success (test_harness.DurabilityChecks.test_crash_does_not_turn_unflushed_receipt_into_success) ... ok
+test_fake_child_fixed_temporary_sentinel (test_harness.DurabilityChecks.test_fake_child_fixed_temporary_sentinel) ... ok
+test_missing_intent_directory_flush_is_detected (test_harness.DurabilityChecks.test_missing_intent_directory_flush_is_detected) ... ok
+test_all_truncated_prefixes_reject_at_eof (test_harness.FramingChecks.test_all_truncated_prefixes_reject_at_eof) ... ok
+test_every_split_boundary_and_bytewise (test_harness.FramingChecks.test_every_split_boundary_and_bytewise) ... ok
+test_length_chunk_and_string_bounds (test_harness.FramingChecks.test_length_chunk_and_string_bounds) ... ok
+test_malformed_corpus (test_harness.FramingChecks.test_malformed_corpus) ... ok
+test_maximum_frame_and_seeded_malformed_traffic (test_harness.FramingChecks.test_maximum_frame_and_seeded_malformed_traffic) ... ok
+test_multiple_frames_and_clean_eof (test_harness.FramingChecks.test_multiple_frames_and_clean_eof) ... ok
+test_non_string_tags_and_clock_discontinuity (test_harness.FramingChecks.test_non_string_tags_and_clock_discontinuity) ... ok
+test_slowloris_deadline_not_renewed (test_harness.FramingChecks.test_slowloris_deadline_not_renewed) ... ok
+test_unknown_fields_bad_identifiers_and_types (test_harness.FramingChecks.test_unknown_fields_bad_identifiers_and_types) ... ok
+test_bounded_exploration (test_harness.ModelChecks.test_bounded_exploration) ... ok
+test_existing_reader_precedes_commit (test_harness.ModelChecks.test_existing_reader_precedes_commit) ... ok
+test_existing_session_drains_or_times_out (test_harness.ModelChecks.test_existing_session_drains_or_times_out) ... ok
+test_helper_crash_preserves_live_child_intent (test_harness.ModelChecks.test_helper_crash_preserves_live_child_intent) ... ok
+test_historical_success_does_not_override_new_legacy_intent (test_harness.ModelChecks.test_historical_success_does_not_override_new_legacy_intent) ... ok
+test_negative_admission_control (test_harness.ModelChecks.test_negative_admission_control) ... ok
+test_negative_missing_intent_control (test_harness.ModelChecks.test_negative_missing_intent_control) ... ok
+test_negative_post_session_control (test_harness.ModelChecks.test_negative_post_session_control) ... ok
+test_new_launch_blocked_after_commit (test_harness.ModelChecks.test_new_launch_blocked_after_commit) ... ok
+test_old_worker_race_rechecked_after_session (test_harness.ModelChecks.test_old_worker_race_rechecked_after_session) ... ok
+test_pause_before_read_aborts_but_after_read_can_lose_race (test_harness.ModelChecks.test_pause_before_read_aborts_but_after_read_can_lose_race) ... ok
+test_prepare_close_cancels_without_mutation (test_harness.ModelChecks.test_prepare_close_cancels_without_mutation) ... ok
+test_success_and_journal_order (test_harness.ModelChecks.test_success_and_journal_order) ... ok
+test_terminal_cancel_does_not_release_foreign_operation (test_harness.ModelChecks.test_terminal_cancel_does_not_release_foreign_operation) ... ok
+test_boundaries_and_never_clear_intent_on_timeout (test_harness.TimingChecks.test_boundaries_and_never_clear_intent_on_timeout) ... ok
+test_freshness_drain_counterexample (test_harness.TimingChecks.test_freshness_drain_counterexample) ... ok
+test_suspend_reboot_and_clock_discontinuity (test_harness.TimingChecks.test_suspend_reboot_and_clock_discontinuity) ... ok
+
+----------------------------------------------------------------------
+Ran 38 tests in 0.060s
+
+OK

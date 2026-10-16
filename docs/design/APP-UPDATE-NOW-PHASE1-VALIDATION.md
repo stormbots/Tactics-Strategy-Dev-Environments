@@ -1,6 +1,8 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** review proposal only. No prototype, experiment or build has been run.
+**Status:** W1 authorized and executed locally; L1 evidence only. W2/W3 and
+production integration remain unauthorized. No workflow/application build was dispatched.
+See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
 **Baseline:** [protocol revision 2](APP-UPDATE-NOW-PROTOCOL.md), commit
 `7a9c3de3aee6f2bab22e9c91f6acaf0d934f7005`.
 **Issue:** https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/72
@@ -15,9 +17,10 @@ feature, invoke an installed updater, modify fleet state, allocate a version or
 create a candidate/release/signature. Do not create/change workflows, open a PR
 that triggers builds, or dispatch anything under the current authorization.
 
-All experiments below are **planned**, not completed. Actual prototype coding,
-local compilation, native privileged tests, fixture packaging and CI dispatch each
-need scope granted by a later instruction. Those permissions are not inferred from
+The experiment list below remains the validation target. Selected L1 portions
+were exercised by the authorized W1 harness; see its per-fault ledger rather than
+marking entire experiments complete. Native tests, fixture packaging, W2/W3 and
+CI dispatch still require separately granted scope. Those permissions are not inferred from
 this planning request or from the already approved v1.2.9 rollout.
 
 Evidence levels must remain distinct:
@@ -61,8 +64,8 @@ not evidence that an old released installer actually upgraded successfully.
 | W2: native primitives | Add fixed-action Windows SYSTEM broker and Linux supervisor/IPC/lock adapters, solely on disposable native test hosts. Run sentinel experiments after separate native-test authorization. | No weekly task/timer changes, fleet hosts, installed updater, actual application upgrade or production GUI. |
 | W3: disposable fixture integration | If separately authorized, create minimal non-SDE NSIS/DEB fixtures and test bootstrap context/capability extraction against temporary state; perform controlled VM resets/storage tests. | No published SDE packages or signing keys, no application version changes, no production package database/data outside disposable host. No implicit CI dispatch. |
 
-Recommend authorizing **W1 only first**. It is small and reversible and can expose
-protocol contradictions before privilege-specific code exists. W2/W3 require
+**W1 only was subsequently authorized and implemented locally.** Its findings
+require review before expanding scope; no privilege-specific code was added. W2/W3 require
 review of their exact host/privilege/cleanup scope; they are not included in W1.
 Do not generalize a successful prototype straight into a privileged production API.
 
@@ -394,7 +397,7 @@ replacement. Preserve evidence and redesign before executing dependent experimen
 Product-level application integration remains unauthorized even after a successful
 wave; review evidence and scope the next instruction separately.
 
-## 12. Proposed next instruction
+## 12. W1 authorization used (historical)
 
 “Implement only W1 of #72's Phase 1 plan: an isolated local protocol/state-machine,
 framing and deterministic fault harness using temporary test roots and fake native
@@ -402,4 +405,5 @@ children. Run local harness checks and report counterexamples/coverage. Do not
 modify production code or workflows, elevate, register tasks/services, run installed
 SDE/package managers, create package fixtures, dispatch CI/builds, or prepare releases.”
 
-This wording is a proposal for later authorization, not an action taken by this plan.
+The owner subsequently authorized W1. The linked evidence records what actually
+ran; this historical instruction does not authorize W2/W3 or integration.
