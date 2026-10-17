@@ -640,11 +640,17 @@ mod tests {
         let v1 = "# SDE_COORDINATION_V1";
         let v2 = "# SDE_COORDINATION_ADMISSION_V2";
         assert!(compatible_maintenance_at(&paths, v2).is_ok());
+        // Ordinary Windows file creation assigns the runner's personal SID,
+        // which is intentionally not a trusted installed-component owner.
+        #[cfg(windows)]
+        drop(windows::journal(&helper).unwrap());
         std::fs::write(&helper, v1).unwrap();
         assert_eq!(
             compatible_maintenance_at(&paths, v2),
             Err(Error::NeedsRepair)
         );
+        #[cfg(windows)]
+        drop(windows::journal(&entry).unwrap());
         std::fs::write(&entry, v1).unwrap();
         assert!(compatible_maintenance_at(&paths, v1).is_ok());
         assert_eq!(
