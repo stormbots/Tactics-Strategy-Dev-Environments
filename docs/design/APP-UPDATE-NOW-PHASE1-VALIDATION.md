@@ -1,6 +1,6 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** W1 executed locally (L1); the separately authorized W2a–W2g unprivileged
+**Status:** W1 executed locally (L1); the separately authorized W2a–W2h unprivileged
 Linux coordination and IPC subsets were executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.
 See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
@@ -523,4 +523,24 @@ child-subreaper state are recorded. This is only an E06/B02 lifetime subset: no
 continuous message-origin, live-client delegation, reverse server-loss, production
 enrollment/privilege, package, post-commit or desktop proof. B01–B06 remain open;
 all other W2/W3, elevation, registration, production implementation, package
+operations, workflow/build dispatch and release preparation remain deferred.
+
+
+## Separately authorized W2h execution
+
+The [W2h record](../../tests/prototypes/manual-update-w2h/README.md) documents a
+healthy original-client control and explicit live-client socket delegation. Both
+use the unchanged reviewed credential/liveness guard with `guarded` selected.
+The holder sends through the inherited connected socket while the original client
+remains alive. SO_PEERCRED still names the enrolled original client and its
+retained pidfd remains live, so the server permits one test action. Independent
+process/descriptor and sender/non-sender counters establish a counterexample to
+original-process message authorship under that guard. Diagnostic success is
+explicitly separate from authentication safety: healthy control Pass; delegation
+CounterexampleDetected; production readiness false. Fifteen focused checks pass.
+All six actors are reaped, both roots/socket entries removed, no infrastructure
+failures occur, and subreaper state is restored. This is an E06/B02 diagnostic
+subset, not an authentication fix, production flaw claim, post-commit or desktop
+proof. B02 needs a specification decision on the finding; B01–B06 remain open.
+All other W2/W3, elevation, registration, production implementation, package
 operations, workflow/build dispatch and release preparation remain deferred.
