@@ -135,7 +135,10 @@ class LocalChecks(unittest.TestCase):
 
 class EvidenceChecks(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):cls.report=json.loads(Path(__file__).with_name('evidence').joinpath('linux-run.json').read_text())
+    def setUpClass(cls):
+        root=Path(__file__).with_name('evidence')
+        report=root/'reviewed-linux-run.json'
+        cls.report=json.loads((report if report.exists() else root/'linux-run.json').read_text())
     def ev(self,c,name):return next(t['evidence'] for t in c['trace'] if t['barrier']==name)
 
     def test_source_hashes_and_result_scope(self):
@@ -147,7 +150,7 @@ class EvidenceChecks(unittest.TestCase):
         self.assertEqual([c['case'] for c in self.report['cases']],['L1','L2'])
         self.assertEqual([c['action_count'] for c in self.report['cases']],[1,0])
         for c in self.report['cases']:
-            self.assertTrue(w.verify_case_evidence(c))
+            self.assertTrue(w.verify_case_evidence(c, completed=True))
             e=self.ev(c,'kernel-receive-and-truncation-check');s=self.ev(c,'action-send-permitted')
             self.assertEqual(e['received_bytes'],s['return_value']);self.assertEqual(e['payload_sha256'],s['payload_sha256'])
             self.assertEqual(s['attached_fds'],[])
@@ -161,6 +164,38 @@ class EvidenceChecks(unittest.TestCase):
             self.assertFalse(c['failures']);self.assertTrue(c['cleanup']['root_removed']);self.assertFalse(Path(c['fixture']['root']).exists())
             self.assertEqual(len(c['cleanup']['actors']),2)
             self.assertTrue(all(a['reaped'] and a['exit_code']==0 and not a['forced'] for a in c['cleanup']['actors']))
+
+    def test_completion_requires_both_stop_acknowledgements(self):
+        c=copy.deepcopy(self.report['cases'][1]);c['trace']=c['trace'][:-2]
+        with self.assertRaises(RuntimeError):w.verify_case_evidence(c,completed=True)
+
+    def test_cleanup_must_match_enrolled_actors(self):
+        for kind in ('foreign','duplicate','forced','unreaped','exit','missing-root','failure'):
+            c=copy.deepcopy(self.report['cases'][1]);a=c['cleanup']['actors'][0]
+            if kind=='foreign':a['pid']+=10000
+            elif kind=='duplicate':a['pid']=c['cleanup']['actors'][1]['pid']
+            elif kind=='forced':a['forced']=True
+            elif kind=='unreaped':a['reaped']=False
+            elif kind=='exit':a['exit_code']=False
+            elif kind=='missing-root':c['cleanup']['root_removed']=False
+            else:c['failures'].append('synthetic cleanup failure')
+            with self.subTest(kind=kind),self.assertRaises(RuntimeError):w.verify_case_evidence(c,completed=True)
+
+    def test_corrupted_stop_identity_is_rejected(self):
+        c=copy.deepcopy(self.report['cases'][1])
+        c['trace'][-1]['evidence']['exiting_pid']+=1
+        with self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_corrupted_final_actor_counters_are_rejected(self):
+        for field,value in [('actions',1),('requests_sent',1),('transfer_fds',[99])]:
+            c=copy.deepcopy(self.report['cases'][1]);c['trace'][-1]['evidence'][field]=value
+            with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_stop_before_final_observation_is_rejected(self):
+        c=copy.deepcopy(self.report['cases'][1]);times=[t['at'] for t in c['trace']]
+        stop=c['trace'].pop();c['trace'].insert(-2,stop)
+        for n,t in enumerate(c['trace']):t.update(index=n,at=times[n])
+        with self.assertRaises(RuntimeError):w.verify_case_evidence(c)
 
     def test_corrupted_readiness_enrollment_and_post_observation_order_rejected(self):
         for kind in ('options','enrollment','ordering'):

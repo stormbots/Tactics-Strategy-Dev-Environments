@@ -719,3 +719,23 @@ implementation, elevation, registration, package operations, build dispatch and
 release preparation remain deferred. W2h's counterexample, W2i–W2k's narrow
 results and B01–B06 statuses are unchanged. Diagnostic success is not
 authentication safety; no publication or PR belongs to this execution.
+
+
+#### W2l implementation/evidence review
+
+The [W2l-only review](../../tests/prototypes/manual-update-w2l/README.md#implementationevidence-review)
+of `e10f5cb` corrected missing stop-acknowledgement validation and added a final
+completion audit binding reaped cleanup records to enrolled actor identities.
+Final counters, empty transfer inventories, shutdown ordering, normal exits,
+removed fixture and failure-free completion are required. Three local regression
+methods reproduce five failed assertions before the fix; no native security
+counterexample was observed. Original artifacts are preserved alongside a
+separate source-pinned reviewed report. All 27 focused checks pass. Only L1/L2
+were rerun: 37 events, 1/0 actions, complete 53-byte payloads, actual L2 MSG_CTRUNC
+without MSG_TRUNC, no delivered credentials or rights, truncation-specific
+rejection, unchanged inventories/settings and complete owned cleanup. Diagnostic
+success does not establish authentication safety. W2h's counterexample,
+W2i–W2k's limits and all six blockers remain unchanged. Descriptor partial
+delivery, all other W2/W3, production implementation, elevation, registration,
+package operations, build dispatch and release preparation remain deferred.
+No publication or PR belongs to this review.

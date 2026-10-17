@@ -284,7 +284,7 @@ def verify_evaluation(case, evaluation, sender):
     return 'Expected'
 
 
-def verify_case_evidence(report):
+def verify_case_evidence(report, completed=False):
     """Audit trace relationships before Pass; never supplies receiver authority."""
     require(report['case'] in CASES, 'unknown case evidence')
     names = [event['barrier'] for event in report['trace']]
@@ -344,6 +344,24 @@ def verify_case_evidence(report):
     order += ['receiver-before-send','sender-before','action-send-permitted','kernel-receive-and-truncation-check']
     if report['case'] == 'L1': order.append('healthy-action-reply-verified')
     order += ['sender-after','runner-instance-after-'+str(server['pid']),'runner-instance-after-'+str(client['pid'])]
+    stops = ['stop-'+str(client['pid']), 'stop-'+str(server['pid'])]
+    if completed or any(name.startswith('stop-') for name in names):
+        require(set(name for name in names if name.startswith('stop-')) == set(stops), 'missing/unexpected stop evidence')
+        for who, actions, sent in [(client, 0, 1), (server, report['action_count'], 0)]:
+            stopped = ev('stop-'+str(who['pid']))
+            for field in ('exiting_pid', 'actions', 'requests_sent'):
+                i.check_count(stopped[field], 'invalid stop integer evidence')
+            require(stopped['exiting_pid'] == who['pid'], 'stop actor identity mismatch')
+            require(stopped['actions'] == actions and stopped['requests_sent'] == sent and stopped['transfer_fds'] == [], 'final actor accounting mismatch')
+        order += stops
+    if completed:
+        cleanup = report['cleanup']
+        require(cleanup['root_removed'] is True and not report['failures'], 'incomplete fixture cleanup')
+        records = cleanup['actors']
+        require(len(records) == 2 and {r['pid'] for r in records} == {client['pid'], server['pid']}, 'cleanup actor ownership mismatch')
+        for record in records:
+            require(type(record['pid']) is int and type(record['exit_code']) is int and record['exit_code'] == 0
+                    and record['reaped'] is True and record['forced'] is False, 'abnormal actor cleanup')
     indices = [names.index(name) for name in order]
     require(indices == sorted(indices), 'barrier ordering evidence')
     return True
@@ -427,6 +445,9 @@ def run_case(case):
                 endpoint.unlink()
             root.rmdir(); report['cleanup']['root_removed'] = not root.exists()
         except BaseException as exc: report['failures'].append('fixture cleanup: '+str(exc))
+        if report.get('result') == 'Pass' and not report['failures']:
+            try: verify_case_evidence(report, completed=True)
+            except BaseException as exc: report['failures'].append('completion audit: '+str(exc))
         if report['failures'] and report.get('result') == 'Pass': report['result'] = 'Fail'
     return report
 

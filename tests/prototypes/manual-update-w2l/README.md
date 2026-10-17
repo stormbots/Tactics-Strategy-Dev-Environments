@@ -149,3 +149,42 @@ python -m unittest discover -s tests/prototypes/manual-update-w2l -p test_checks
 Evidence audits read the checked-in report and do not run actors. Missing
 prerequisites do not authorize installation, elevation or substitution of the
 required mechanism. No publication or PR belongs to this execution.
+
+## Implementation/evidence review
+
+Reviewed initial commit `e10f5cb`. The receive/validator path and initial native
+observations were correct within this narrow scope. The evidence audit did not
+validate stop acknowledgements: corrupted exiting PID, final counters and stop
+ordering could pass. The runtime also lacked a final audit binding successful
+cleanup records to the enrolled actors. These are evidence-assurance gaps, not
+observed native authorization counterexamples.
+
+The W2l-only fix checks both stop identities, final role-specific counters,
+empty transfer inventories and shutdown ordering. Before reporting Pass, a final
+completion audit requires both acknowledgements, exactly the two enrolled actor
+PIDs, normal integer-zero exits, reaping without forced cleanup, removed fixture
+and no failures. Synthetic corruption checks cover missing acknowledgements and
+foreign/duplicate actor records, abnormal cleanup and false completion claims.
+No shared helper or earlier experiment is changed.
+
+[Before-fix regressions](evidence/review-regressions-before-fixes.txt) preserve
+five failed assertions across three newly added test methods (the two recorded
+commands also run two passing existing tests). These are local corrupted-evidence
+checks, not native fault injection or authentication counterexamples.
+[Reviewed native report](evidence/reviewed-linux-run.json) records the same two
+schedules only: 37 events; L1 one action and actual credentials
+`[43058,1000,1000]`; L2 all 53 payload bytes, flags 1073741832 (MSG_CTRUNC without
+MSG_TRUNC), empty ancillary/credential lists and zero actions. Four owned actors
+exit zero/reap without forced cleanup; both roots are removed; receiver/runner
+inventories match and subreaper remains 0→0. No unexpected native failures occur.
+
+[Reviewed checks](evidence/review-checks.txt): **27 pass**, comprising 18 local
+synthetic/mocked checks and nine saved-evidence audits. Audits select the reviewed
+report when present. Original artifacts remain unchanged; both reports retain
+their own source hashes. Diagnostic success and narrow primitive Pass remain
+separate from **authentication safety: Unproven**, and production readiness false.
+Native crash/cleanup faults, protected enrollment, bidirectional hostile writers,
+full transaction/close-grant/recovery integration and platform compatibility
+remain unvalidated. W2h's counterexample, W2i–W2k's limited results and B01–B06
+remain unchanged. Descriptor partial delivery and all other deferred work were
+not executed. This review makes a local commit only; publication is separate.

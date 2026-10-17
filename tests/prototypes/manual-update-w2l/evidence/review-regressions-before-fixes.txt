@@ -1,0 +1,64 @@
+test_corrupted_stop_identity_is_rejected (test_checks.EvidenceChecks.test_corrupted_stop_identity_is_rejected) ... FAIL
+test_stop_before_final_observation_is_rejected (test_checks.EvidenceChecks.test_stop_before_final_observation_is_rejected) ... FAIL
+test_failed_healthy_stops_dependent_native_case (test_checks.LocalChecks.test_failed_healthy_stops_dependent_native_case) ... ok
+test_missing_actual_ctrunc_or_unexpected_payload_truncation_stops (test_checks.LocalChecks.test_missing_actual_ctrunc_or_unexpected_payload_truncation_stops) ... ok
+
+======================================================================
+FAIL: test_corrupted_stop_identity_is_rejected (test_checks.EvidenceChecks.test_corrupted_stop_identity_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2l/test_checks.py", line 168, in test_corrupted_stop_identity_is_rejected
+    with self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_stop_before_final_observation_is_rejected (test_checks.EvidenceChecks.test_stop_before_final_observation_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2l/test_checks.py", line 179, in test_stop_before_final_observation_is_rejected
+    with self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.005s
+
+FAILED (failures=2)
+
+test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) ...
+  test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) (field='actions') ... FAIL
+  test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) (field='requests_sent') ... FAIL
+  test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) (field='transfer_fds') ... FAIL
+
+======================================================================
+FAIL: test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) (field='actions')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2l/test_checks.py", line 173, in test_corrupted_final_actor_counters_are_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) (field='requests_sent')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2l/test_checks.py", line 173, in test_corrupted_final_actor_counters_are_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_corrupted_final_actor_counters_are_rejected (test_checks.EvidenceChecks.test_corrupted_final_actor_counters_are_rejected) (field='transfer_fds')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2l/test_checks.py", line 173, in test_corrupted_final_actor_counters_are_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.003s
+
+FAILED (failures=3)
