@@ -1,0 +1,34 @@
+test_actual_truncation_payload_and_returned_ancillary (test_checks.EvidenceChecks.test_actual_truncation_payload_and_returned_ancillary) ... ok
+test_hashes_and_failed_disposition_preserved (test_checks.EvidenceChecks.test_hashes_and_failed_disposition_preserved) ... ok
+test_healthy_pass_and_partial_failure_with_zero_actions (test_checks.EvidenceChecks.test_healthy_pass_and_partial_failure_with_zero_actions) ... ok
+test_healthy_stop_and_cleanup_corruption_rejected (test_checks.EvidenceChecks.test_healthy_stop_and_cleanup_corruption_rejected) ... ok
+test_inventory_exposes_unreturned_pipe_fd_and_no_immediate_closure_proof (test_checks.EvidenceChecks.test_inventory_exposes_unreturned_pipe_fd_and_no_immediate_closure_proof) ... ok
+test_owned_cleanup_and_settings_after_stop (test_checks.EvidenceChecks.test_owned_cleanup_and_settings_after_stop) ... ok
+test_actual_credential_and_ancillary_shape_required (test_checks.LocalChecks.test_actual_credential_and_ancillary_shape_required) ... ok
+test_both_owned_ends_must_be_sent (test_checks.LocalChecks.test_both_owned_ends_must_be_sent) ... ok
+test_capacities_cannot_be_tuned (test_checks.LocalChecks.test_capacities_cannot_be_tuned) ... ok
+test_cloexec_and_immediate_closure_required (test_checks.LocalChecks.test_cloexec_and_immediate_closure_required) ... ok
+test_complete_payload_and_successful_send_required (test_checks.LocalChecks.test_complete_payload_and_successful_send_required) ... ok
+test_disabled_pre_send_passcred_stops (test_checks.LocalChecks.test_disabled_pre_send_passcred_stops) ... ok
+test_duplicate_inventory_rejected (test_checks.LocalChecks.test_duplicate_inventory_rejected) ... ok
+test_failed_healthy_stops_second_case (test_checks.LocalChecks.test_failed_healthy_stops_second_case) ... ok
+test_fixed_capacity_formula (test_checks.LocalChecks.test_fixed_capacity_formula) ... ok
+test_healthy (test_checks.LocalChecks.test_healthy) ... ok
+test_healthy_rejection_is_not_counterexample (test_checks.LocalChecks.test_healthy_rejection_is_not_counterexample) ... ok
+test_installed_descriptor_must_match_sent_pipe_end (test_checks.LocalChecks.test_installed_descriptor_must_match_sent_pipe_end) ... ok
+test_inventory_must_stay_identical (test_checks.LocalChecks.test_inventory_must_stay_identical) ... ok
+test_missing_ctrunc_or_payload_truncation_stops (test_checks.LocalChecks.test_missing_ctrunc_or_payload_truncation_stops) ... ok
+test_partial_delivery (test_checks.LocalChecks.test_partial_delivery) ... ok
+test_receive_actual_flags_and_cleanup_before_inventory (test_checks.LocalChecks.test_receive_actual_flags_and_cleanup_before_inventory) ... ok
+test_sender_exact_credentials_and_two_rights (test_checks.LocalChecks.test_sender_exact_credentials_and_two_rights) ... ok
+test_strict_integer_counts_and_sizes (test_checks.LocalChecks.test_strict_integer_counts_and_sizes) ... ok
+test_truncation_specific_rejection_required (test_checks.LocalChecks.test_truncation_specific_rejection_required) ... ok
+test_unexpected_authorization_is_counterexample (test_checks.LocalChecks.test_unexpected_authorization_is_counterexample) ... ok
+test_validator_cannot_acquire_credentials_after_truncation (test_checks.LocalChecks.test_validator_cannot_acquire_credentials_after_truncation) ... ok
+test_validator_flags_and_length_bound_to_receive (test_checks.LocalChecks.test_validator_flags_and_length_bound_to_receive) ... ok
+test_zero_or_two_installed_descriptors_not_pass (test_checks.LocalChecks.test_zero_or_two_installed_descriptors_not_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.008s
+
+OK

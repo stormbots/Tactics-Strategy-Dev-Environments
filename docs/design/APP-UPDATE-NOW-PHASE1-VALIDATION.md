@@ -739,3 +739,34 @@ W2i–W2k's limits and all six blockers remain unchanged. Descriptor partial
 delivery, all other W2/W3, production implementation, elevation, registration,
 package operations, build dispatch and release preparation remain deferred.
 No publication or PR belongs to this review.
+
+
+### Separately authorized W2m partial-descriptor ancillary truncation
+
+The [W2m record](../../tests/prototypes/manual-update-w2m/README.md) preserves a
+**stopped native failure**, not a primitive feasibility pass. Only M1 and M2 ran,
+with fixed `CMSG_SPACE(sizeof(ucred)) + CMSG_LEN(sizeof(int))` capacity (52 bytes
+here) in M2, normal payload capacity and unchanged transport/validator guards.
+M1 passes with one action. M2 sends both ends of one owned pipe and receives the
+full 53-byte payload with actual MSG_CTRUNC, no MSG_TRUNC, correct raw kernel
+credentials, truncation-specific rejection and zero actions. Python returns no
+SCM_RIGHTS item, yet the receiver FD inventory gains one live CLOEXEC read-end
+matching the sender's pipe. The validator enumerates/closes zero returned rights;
+immediate closure and stable receiver inventory are not established. The source
+of the missing returned metadata across kernel/runtime boundaries is unresolved.
+
+The harness stops on `receiver FD inventory changed`, without retry, capacity
+tuning, mechanism substitution or later native probes. Thirty-three events are
+recorded. Sender post-receive validity and final M2 instance/shutdown observations
+are not reached. All four owned actors are reaped; the two M2 actors require
+forced SIGTERM cleanup. Both fixture roots are removed; runner inventories stay
+unchanged and subreaper remains 0→0 without settings mutation. Twenty-nine local
+checks pass, including six saved-report audits that require the observed failure;
+these checks do not convert native M2 into Pass. Diagnostic success=false,
+primitive result=Incomplete/Fail/Blocked (M2 Fail), authentication safety=Unproven,
+production readiness=false. No unauthorized action is observed, but the
+receiver-cleanup invariant fails. W2h's counterexample, W2i–W2l's limited results
+and B01–B06 remain unchanged. All other W2/W3, production implementation,
+elevation, registration, package operations, build dispatch and release
+preparation remain deferred. Native execution stays stopped pending review;
+no publication or PR belongs to this execution.
