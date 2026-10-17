@@ -61,7 +61,7 @@ validation of production readiness/handshake lifetime.
 
 ## Native results
 
-[Machine-readable report](evidence/linux-run.json): **both cases Pass**, with
+[Reviewed machine-readable report](evidence/reviewed-linux-run.json): **both cases Pass**, with
 90 trace events (45 per case).
 
 | Case | Observed behavior |
@@ -72,7 +72,8 @@ validation of production readiness/handshake lifetime.
 In the recorded stalled case the kernel pipe capacity is 65,536 bytes, 128 frames
 are accepted and subsequent writes observe errno 11. There are 384 backpressure
 events and 383 coalesced overwrites. Pending high-water is **one frame / 512 bytes**;
-after deferral the pending slot is discarded. The reader still reports **zero
+after deferral the pending slot is discarded and counted explicitly as one
+discarded update. The reader still reports **zero
 bytes read and 65,536 bytes queued** after lock release. Responsive delivery is
 verified separately; transient backpressure in that control would not itself be
 a failure if progress is delivered and the other invariants hold.
@@ -98,7 +99,7 @@ path mountinfo matches are recorded; no VM/container, desktop, service/task or
 subreaper setting was created/changed. Only utility definitions from the reviewed
 W2b test helper are reused, with that dependency bound by source hash.
 
-[Five focused checks](evidence/local-checks.txt) pass: blocking writer rejection,
+[Original five focused checks](evidence/local-checks.txt) pass: blocking writer rejection,
 10,000 blocked updates retaining only the latest bounded frame, successful-write
 slot removal, partial atomic-size write failure, and broken-reader errors staying
 distinct from EAGAIN. These are mock/error-path checks, not additional native
@@ -131,3 +132,55 @@ await_deferred is an observer request; source and fixed-deadline traces support
 that it does not initiate expiry, but no separate observer-free schedule ran.
 No exhaustive liveness or universal kernel-I/O termination proof is claimed.
 All six blockers remain open, including B02/B06; no broader wave is authorized.
+
+
+## W2e implementation and evidence review
+
+Reviewed initial commit `3cecd56`. The [original native run](evidence/linux-run.json)
+and [five-check output](evidence/local-checks.txt) remain unchanged historical
+evidence. Their source hashes describe the earlier implementation.
+
+The native traces supported backpressure/control/lock-release claims, but the
+harness validated queue peaks only after pump and did not reconcile final bytes.
+The review added these W2e-only checks:
+
+- Validate every supervisor snapshot, including late status/deferral/exit replies:
+  strict nonnegative integer counters, one pending frame, consistent byte/frame
+  sizes, errno evidence and monotonic cumulative counters.
+- Count a frame discarded at deferral explicitly and enforce
+  updates = frames_written + coalesced_updates + discarded_updates + pending_entries.
+  Discarding an already-empty slot is idempotent.
+- After deferral makes the writer stable, validate reader mode/open endpoint and
+  require bytes_read + queued_bytes = writer bytes_written. Stalled readers still
+  must have zero bytes read; responsive readers must have received progress.
+
+[Pre-fix regression output](evidence/review-counterexamples.txt) records two
+failures among seven focused checks: synthetic late queue-bound violations and
+unaccounted updates were accepted by the old reply checker. These are evidence-
+validation gaps, not observed production defects or an unexpected native loss.
+The original implementation deliberately dropped unsent progress at deferral;
+its new counter makes that existing behavior auditable.
+
+[Reviewed eleven-check output](evidence/review-checks.txt) passes: original buffer/
+write-error checks plus late reply validation, accounting, idempotent discard,
+counter regression, boolean-counter rejection and reader/writer reconciliation.
+These use mocks, not eleven native backpressure schedules or malicious-IPC tests.
+
+The [reviewed native run](evidence/reviewed-linux-run.json) again passes both
+cases with 90 trace events, unchanged lock/state identities, expected actor exits,
+no remaining children, no cleanup fallback and both roots removed. All updates
+are accounted for. In the stalled case, 512 updates equal 128 accepted frames +
+383 coalesced replacements + one discarded frame, with no final pending frame.
+All 65,536 accepted bytes remain queued at the alive/open reader, which reads zero.
+Both fixed two-second deadlines and observed deferral/reply/lock-verification
+points satisfy the test watchdog. Recorded hashes match reviewed W2e sources and
+the unchanged W2b utility helper; original artifacts remain unchanged.
+
+Remaining gaps are those above: observer-free expiry has no separate native
+schedule, total RSS and allocations are unmeasured, only one pipe capacity and
+small trusted controls were used, and no actual timeout/broken-reader/storage/
+cleanup fault injection, adversarial transport or platform/privileged integration
+was added. Counter validation checks consistency of cooperating test reports; it
+is not independent production peer authentication or proof of universal resource
+bounds. All six blockers remain open, and no other W2/W3, elevation, registration,
+production, package or build/release work was performed.

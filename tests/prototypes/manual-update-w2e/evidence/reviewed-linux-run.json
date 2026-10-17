@@ -1,0 +1,2317 @@
+{
+  "cases": [
+    {
+      "cleanup": {
+        "actors": [
+          {
+            "exitcode": 0,
+            "pid": 26917,
+            "role": "gui"
+          },
+          {
+            "exitcode": 0,
+            "pid": 26919,
+            "role": "reader"
+          },
+          {
+            "exitcode": 0,
+            "pid": 26920,
+            "role": "supervisor"
+          }
+        ],
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true
+      },
+      "deadline_evidence": {
+        "deadline": 47350.166118107,
+        "decision_at": 47350.168201712,
+        "lease_seconds": 2.0,
+        "locks_verified_at": 47350.170378846,
+        "reply_received_at": 47350.170121156,
+        "start": 47348.166118107,
+        "watchdog_seconds": 5.0
+      },
+      "deferral_record": {
+        "body": {
+          "deadline": 47350.166118107,
+          "decision_at": 47350.168201712,
+          "intent_created": false,
+          "mutation_starts": 0,
+          "start": 47348.166118107,
+          "state": "Deferred",
+          "test_only": true
+        },
+        "identity": {
+          "device": 33,
+          "inode": 4385,
+          "mode": "0o600",
+          "regular": true,
+          "size": 174,
+          "uid": 1000
+        },
+        "sha256": "af73c79e1f92b56b98c36c8914355310c5c077057139feb4467abbfbf64daffe"
+      },
+      "failures": [],
+      "locks_after": {
+        "A": {
+          "device": 33,
+          "inode": 4383,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 4382,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 4384,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "locks_before": {
+        "A": {
+          "device": 33,
+          "inode": 4383,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 4382,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 4384,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "mode": "responsive",
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "progress_evidence": {
+        "backpressure_events": 0,
+        "bytes_written": 262144,
+        "coalesced_updates": 0,
+        "discarded_updates": 0,
+        "frame_bytes": 512,
+        "frames_written": 512,
+        "high_bytes": 512,
+        "high_entries": 1,
+        "last_errno": null,
+        "pending_bytes": 0,
+        "pending_entries": 0,
+        "updates": 512
+      },
+      "reader_evidence": {
+        "bytes_read": 262144,
+        "endpoint_open": true,
+        "event": "reader_status",
+        "held": [],
+        "held_identities": {},
+        "identity": {
+          "pid": 26919,
+          "ppid": 26916,
+          "start_ticks": 4734809,
+          "uid": 1000
+        },
+        "mode": "responsive",
+        "pipe_identity": {
+          "device": 12,
+          "inode": 178623,
+          "mode": "0o600",
+          "regular": false,
+          "size": 0,
+          "uid": 1000
+        },
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "queued_bytes": 0
+      },
+      "result": "Pass",
+      "root": "/tmp/PROTOTYPE-W2e-responsive-26hcoa37",
+      "root_identity": {
+        "device": 33,
+        "inode": 4381,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0006335479993140325,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 26917,
+            "ppid": 26916,
+            "start_ticks": 4734804,
+            "uid": 1000
+          },
+          "role": "gui",
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.0476903860035236,
+          "event": "control_reply",
+          "reply": {
+            "event": "ready",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 4384,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26917,
+              "ppid": 26916,
+              "start_ticks": 4734804,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            }
+          },
+          "role": "gui",
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.04845479200594127,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 26919,
+            "ppid": 26916,
+            "start_ticks": 4734809,
+            "uid": 1000
+          },
+          "role": "reader",
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.08351525000034599,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 0,
+            "endpoint_open": true,
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26919,
+              "ppid": 26916,
+              "start_ticks": 4734809,
+              "uid": 1000
+            },
+            "mode": "responsive",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 0
+          },
+          "role": "reader",
+          "sequence": 4
+        },
+        {
+          "elapsed_seconds": 0.0840955390012823,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 26920,
+            "ppid": 26916,
+            "start_ticks": 4734812,
+            "uid": 1000
+          },
+          "role": "supervisor",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.123550176002027,
+          "event": "control_reply",
+          "reply": {
+            "deadline": null,
+            "decision_at": null,
+            "event": "ready",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4383,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4382,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 0,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 0,
+              "high_bytes": 0,
+              "high_entries": 0,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 0
+            },
+            "start": null,
+            "state": "Prepared"
+          },
+          "role": "supervisor",
+          "sequence": 6
+        },
+        {
+          "elapsed_seconds": 0.1237369690061314,
+          "event": "independent_lock_probe",
+          "expected": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "sequence": 7
+        },
+        {
+          "command": "begin",
+          "elapsed_seconds": 0.12378260800323915,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 8
+        },
+        {
+          "elapsed_seconds": 0.12535604900040198,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47350.166118107,
+            "decision_at": null,
+            "event": "begun",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4383,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4382,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 0,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 0,
+              "high_bytes": 0,
+              "high_entries": 0,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 0
+            },
+            "start": 47348.166118107,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 9
+        },
+        {
+          "command": "begin",
+          "elapsed_seconds": 0.12537918400630588,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0015940320008667186,
+          "sequence": 10
+        },
+        {
+          "command": "pump",
+          "elapsed_seconds": 0.1254366210050648,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 11
+        },
+        {
+          "elapsed_seconds": 0.1296542140044039,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47350.166118107,
+            "decision_at": null,
+            "event": "pumped",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4383,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4382,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 262144,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 512,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47348.166118107,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 12
+        },
+        {
+          "command": "pump",
+          "elapsed_seconds": 0.12967610700434307,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.004237854001985397,
+          "sequence": 13
+        },
+        {
+          "command": "await_progress",
+          "elapsed_seconds": 0.12974049400509102,
+          "event": "control_request",
+          "role": "reader",
+          "sequence": 14
+        },
+        {
+          "elapsed_seconds": 0.13068221900175558,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 262144,
+            "endpoint_open": true,
+            "event": "reader_status",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26919,
+              "ppid": 26916,
+              "start_ticks": 4734809,
+              "uid": 1000
+            },
+            "mode": "responsive",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 0
+          },
+          "role": "reader",
+          "sequence": 15
+        },
+        {
+          "command": "await_progress",
+          "elapsed_seconds": 0.13069053200160852,
+          "event": "control_latency",
+          "role": "reader",
+          "seconds": 0.0009485850023338571,
+          "sequence": 16
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.13074726800550707,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 17
+        },
+        {
+          "elapsed_seconds": 0.13243326900555985,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47350.166118107,
+            "decision_at": null,
+            "event": "pong",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4383,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4382,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 262144,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 512,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47348.166118107,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 18
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.13245265900332015,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0017038490041159093,
+          "sequence": 19
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 0.13251012600085232,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 20
+        },
+        {
+          "elapsed_seconds": 0.13414632200147025,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47350.166118107,
+            "decision_at": null,
+            "event": "status",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4383,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4382,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 262144,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 512,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47348.166118107,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 21
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 0.13416213500022423,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.001650448000873439,
+          "sequence": 22
+        },
+        {
+          "command": "await_deferred",
+          "elapsed_seconds": 0.13421330300479895,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 23
+        },
+        {
+          "elapsed_seconds": 2.127795756001433,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47350.166118107,
+            "decision_at": 47350.168201712,
+            "event": "deferred",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 262144,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 512,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47348.166118107,
+            "state": "Deferred"
+          },
+          "role": "supervisor",
+          "sequence": 24
+        },
+        {
+          "command": "await_deferred",
+          "elapsed_seconds": 2.127835897001205,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 1.9936203209945234,
+          "sequence": 25
+        },
+        {
+          "elapsed_seconds": 2.128071983999689,
+          "event": "independent_lock_probe",
+          "expected": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "sequence": 26
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.1282101630058605,
+          "event": "control_request",
+          "role": "gui",
+          "sequence": 27
+        },
+        {
+          "elapsed_seconds": 2.1294946470006835,
+          "event": "control_reply",
+          "reply": {
+            "event": "gui_alive",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 4384,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26917,
+              "ppid": 26916,
+              "start_ticks": 4734804,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            }
+          },
+          "role": "gui",
+          "sequence": 28
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.1295068750041537,
+          "event": "control_latency",
+          "role": "gui",
+          "seconds": 0.0012949399970239028,
+          "sequence": 29
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.129629241004295,
+          "event": "control_request",
+          "role": "reader",
+          "sequence": 30
+        },
+        {
+          "elapsed_seconds": 2.130512597002962,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 262144,
+            "endpoint_open": true,
+            "event": "reader_status",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26919,
+              "ppid": 26916,
+              "start_ticks": 4734809,
+              "uid": 1000
+            },
+            "mode": "responsive",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 0
+          },
+          "role": "reader",
+          "sequence": 31
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.1305204990057973,
+          "event": "control_latency",
+          "role": "reader",
+          "seconds": 0.0008897559964680113,
+          "sequence": 32
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.130637376001687,
+          "event": "control_request",
+          "role": "reader",
+          "sequence": 33
+        },
+        {
+          "elapsed_seconds": 2.1312794180048513,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 262144,
+            "endpoint_open": true,
+            "event": "exiting",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26919,
+              "ppid": 26916,
+              "start_ticks": 4734809,
+              "uid": 1000
+            },
+            "mode": "responsive",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 0
+          },
+          "role": "reader",
+          "sequence": 34
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.131284475006396,
+          "event": "control_latency",
+          "role": "reader",
+          "seconds": 0.0006452769957832061,
+          "sequence": 35
+        },
+        {
+          "elapsed_seconds": 2.1386983539996436,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 26919,
+          "role": "reader",
+          "sequence": 36
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.138706115001696,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 37
+        },
+        {
+          "elapsed_seconds": 2.140319467005611,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47350.166118107,
+            "decision_at": 47350.168201712,
+            "event": "exiting",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26920,
+              "ppid": 26916,
+              "start_ticks": 4734812,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178623,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 262144,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 512,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47348.166118107,
+            "state": "Deferred"
+          },
+          "role": "supervisor",
+          "sequence": 38
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.1403496519997134,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.001641003997065127,
+          "sequence": 39
+        },
+        {
+          "elapsed_seconds": 2.14783042199997,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 26920,
+          "role": "supervisor",
+          "sequence": 40
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.1478364909999073,
+          "event": "control_request",
+          "role": "gui",
+          "sequence": 41
+        },
+        {
+          "elapsed_seconds": 2.1486236120035755,
+          "event": "control_reply",
+          "reply": {
+            "event": "exiting",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 4384,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26917,
+              "ppid": 26916,
+              "start_ticks": 4734804,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            }
+          },
+          "role": "gui",
+          "sequence": 42
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.148636111000087,
+          "event": "control_latency",
+          "role": "gui",
+          "seconds": 0.0007965350014274009,
+          "sequence": 43
+        },
+        {
+          "elapsed_seconds": 2.156280778006476,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 26917,
+          "role": "gui",
+          "sequence": 44
+        },
+        {
+          "actors_exited": true,
+          "elapsed_seconds": 2.1579582060003304,
+          "event": "teardown_only_removal",
+          "not_recovery": true,
+          "sequence": 45
+        }
+      ]
+    },
+    {
+      "cleanup": {
+        "actors": [
+          {
+            "exitcode": 0,
+            "pid": 26927,
+            "role": "gui"
+          },
+          {
+            "exitcode": 0,
+            "pid": 26928,
+            "role": "reader"
+          },
+          {
+            "exitcode": 0,
+            "pid": 26929,
+            "role": "supervisor"
+          }
+        ],
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true
+      },
+      "deadline_evidence": {
+        "deadline": 47352.322946469,
+        "decision_at": 47352.325096966,
+        "lease_seconds": 2.0,
+        "locks_verified_at": 47352.326822903,
+        "reply_received_at": 47352.326670252,
+        "start": 47350.322946469,
+        "watchdog_seconds": 5.0
+      },
+      "deferral_record": {
+        "body": {
+          "deadline": 47352.322946469,
+          "decision_at": 47352.325096966,
+          "intent_created": false,
+          "mutation_starts": 0,
+          "start": 47350.322946469,
+          "state": "Deferred",
+          "test_only": true
+        },
+        "identity": {
+          "device": 33,
+          "inode": 4390,
+          "mode": "0o600",
+          "regular": true,
+          "size": 174,
+          "uid": 1000
+        },
+        "sha256": "7833dc15077c71615329307edd53d4a218ccbf2f93869aebd18f6f360d5e788a"
+      },
+      "failures": [],
+      "locks_after": {
+        "A": {
+          "device": 33,
+          "inode": 4388,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 4387,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 4389,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "locks_before": {
+        "A": {
+          "device": 33,
+          "inode": 4388,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 4387,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 4389,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "mode": "stalled",
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "progress_evidence": {
+        "backpressure_events": 384,
+        "bytes_written": 65536,
+        "coalesced_updates": 383,
+        "discarded_updates": 1,
+        "frame_bytes": 512,
+        "frames_written": 128,
+        "high_bytes": 512,
+        "high_entries": 1,
+        "last_errno": 11,
+        "pending_bytes": 0,
+        "pending_entries": 0,
+        "updates": 512
+      },
+      "reader_evidence": {
+        "bytes_read": 0,
+        "endpoint_open": true,
+        "event": "reader_status",
+        "held": [],
+        "held_identities": {},
+        "identity": {
+          "pid": 26928,
+          "ppid": 26916,
+          "start_ticks": 4735023,
+          "uid": 1000
+        },
+        "mode": "stalled",
+        "pipe_identity": {
+          "device": 12,
+          "inode": 178658,
+          "mode": "0o600",
+          "regular": false,
+          "size": 0,
+          "uid": 1000
+        },
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "queued_bytes": 65536
+      },
+      "result": "Pass",
+      "root": "/tmp/PROTOTYPE-W2e-stalled-57rzum0s",
+      "root_identity": {
+        "device": 33,
+        "inode": 4386,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0006842950024292804,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 26927,
+            "ppid": 26916,
+            "start_ticks": 4735020,
+            "uid": 1000
+          },
+          "role": "gui",
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.03651465100119822,
+          "event": "control_reply",
+          "reply": {
+            "event": "ready",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 4389,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26927,
+              "ppid": 26916,
+              "start_ticks": 4735020,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            }
+          },
+          "role": "gui",
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.0370117529964773,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 26928,
+            "ppid": 26916,
+            "start_ticks": 4735023,
+            "uid": 1000
+          },
+          "role": "reader",
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.08190718600235414,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 0,
+            "endpoint_open": true,
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26928,
+              "ppid": 26916,
+              "start_ticks": 4735023,
+              "uid": 1000
+            },
+            "mode": "stalled",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 0
+          },
+          "role": "reader",
+          "sequence": 4
+        },
+        {
+          "elapsed_seconds": 0.08241586499934783,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 26929,
+            "ppid": 26916,
+            "start_ticks": 4735028,
+            "uid": 1000
+          },
+          "role": "supervisor",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.1222643250002875,
+          "event": "control_reply",
+          "reply": {
+            "deadline": null,
+            "decision_at": null,
+            "event": "ready",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4388,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4387,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 0,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 0,
+              "high_bytes": 0,
+              "high_entries": 0,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 0
+            },
+            "start": null,
+            "state": "Prepared"
+          },
+          "role": "supervisor",
+          "sequence": 6
+        },
+        {
+          "elapsed_seconds": 0.12239634500292595,
+          "event": "independent_lock_probe",
+          "expected": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "sequence": 7
+        },
+        {
+          "command": "begin",
+          "elapsed_seconds": 0.1225681150026503,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 8
+        },
+        {
+          "elapsed_seconds": 0.12397964100091485,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47352.322946469,
+            "decision_at": null,
+            "event": "begun",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4388,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4387,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 0,
+              "bytes_written": 0,
+              "coalesced_updates": 0,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 0,
+              "high_bytes": 0,
+              "high_entries": 0,
+              "last_errno": null,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 0
+            },
+            "start": 47350.322946469,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 9
+        },
+        {
+          "command": "begin",
+          "elapsed_seconds": 0.12399837900011335,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0014281910043791868,
+          "sequence": 10
+        },
+        {
+          "command": "pump",
+          "elapsed_seconds": 0.12405450399819529,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 11
+        },
+        {
+          "elapsed_seconds": 0.12815582499752054,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47352.322946469,
+            "decision_at": null,
+            "event": "pumped",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4388,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4387,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 384,
+              "bytes_written": 65536,
+              "coalesced_updates": 383,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 128,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": 11,
+              "pending_bytes": 512,
+              "pending_entries": 1,
+              "updates": 512
+            },
+            "start": 47350.322946469,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 12
+        },
+        {
+          "command": "pump",
+          "elapsed_seconds": 0.12820551999902818,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0041491130032227375,
+          "sequence": 13
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 0.12830150499939919,
+          "event": "control_request",
+          "role": "reader",
+          "sequence": 14
+        },
+        {
+          "elapsed_seconds": 0.12929859400173882,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 0,
+            "endpoint_open": true,
+            "event": "reader_status",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26928,
+              "ppid": 26916,
+              "start_ticks": 4735023,
+              "uid": 1000
+            },
+            "mode": "stalled",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 65536
+          },
+          "role": "reader",
+          "sequence": 15
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 0.12930705700273393,
+          "event": "control_latency",
+          "role": "reader",
+          "seconds": 0.0010040889974334277,
+          "sequence": 16
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.12936455399903934,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 17
+        },
+        {
+          "elapsed_seconds": 0.13238899000134552,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47352.322946469,
+            "decision_at": null,
+            "event": "pong",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4388,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4387,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 384,
+              "bytes_written": 65536,
+              "coalesced_updates": 383,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 128,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": 11,
+              "pending_bytes": 512,
+              "pending_entries": 1,
+              "updates": 512
+            },
+            "start": 47350.322946469,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 18
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.13241813400236424,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0029463579994626343,
+          "sequence": 19
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 0.13251285799924517,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 20
+        },
+        {
+          "elapsed_seconds": 0.13420050100103253,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47352.322946469,
+            "decision_at": null,
+            "event": "status",
+            "held": [
+              "A",
+              "O"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 4388,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "O": {
+                "device": 33,
+                "inode": 4387,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 384,
+              "bytes_written": 65536,
+              "coalesced_updates": 383,
+              "discarded_updates": 0,
+              "frame_bytes": 512,
+              "frames_written": 128,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": 11,
+              "pending_bytes": 512,
+              "pending_entries": 1,
+              "updates": 512
+            },
+            "start": 47350.322946469,
+            "state": "Waiting"
+          },
+          "role": "supervisor",
+          "sequence": 21
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 0.13422169299883535,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0017071529946406372,
+          "sequence": 22
+        },
+        {
+          "command": "await_deferred",
+          "elapsed_seconds": 0.13433691800310044,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 23
+        },
+        {
+          "elapsed_seconds": 2.1262641709981835,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47352.322946469,
+            "decision_at": 47352.325096966,
+            "event": "deferred",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 384,
+              "bytes_written": 65536,
+              "coalesced_updates": 383,
+              "discarded_updates": 1,
+              "frame_bytes": 512,
+              "frames_written": 128,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": 11,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47350.322946469,
+            "state": "Deferred"
+          },
+          "role": "supervisor",
+          "sequence": 24
+        },
+        {
+          "command": "await_deferred",
+          "elapsed_seconds": 2.1263009070025873,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 1.9919615749968216,
+          "sequence": 25
+        },
+        {
+          "elapsed_seconds": 2.1265193470026134,
+          "event": "independent_lock_probe",
+          "expected": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "sequence": 26
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.1265691119988333,
+          "event": "control_request",
+          "role": "gui",
+          "sequence": 27
+        },
+        {
+          "elapsed_seconds": 2.1273504049968324,
+          "event": "control_reply",
+          "reply": {
+            "event": "gui_alive",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 4389,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26927,
+              "ppid": 26916,
+              "start_ticks": 4735020,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            }
+          },
+          "role": "gui",
+          "sequence": 28
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.1273597690014867,
+          "event": "control_latency",
+          "role": "gui",
+          "seconds": 0.0007892740031820722,
+          "sequence": 29
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.127441511998768,
+          "event": "control_request",
+          "role": "reader",
+          "sequence": 30
+        },
+        {
+          "elapsed_seconds": 2.129657365003368,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 0,
+            "endpoint_open": true,
+            "event": "reader_status",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26928,
+              "ppid": 26916,
+              "start_ticks": 4735023,
+              "uid": 1000
+            },
+            "mode": "stalled",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 65536
+          },
+          "role": "reader",
+          "sequence": 31
+        },
+        {
+          "command": "status",
+          "elapsed_seconds": 2.1296681620005984,
+          "event": "control_latency",
+          "role": "reader",
+          "seconds": 0.002225016003649216,
+          "sequence": 32
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.129772389002028,
+          "event": "control_request",
+          "role": "reader",
+          "sequence": 33
+        },
+        {
+          "elapsed_seconds": 2.1305579480031156,
+          "event": "control_reply",
+          "reply": {
+            "bytes_read": 0,
+            "endpoint_open": true,
+            "event": "exiting",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26928,
+              "ppid": 26916,
+              "start_ticks": 4735023,
+              "uid": 1000
+            },
+            "mode": "stalled",
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "queued_bytes": 65536
+          },
+          "role": "reader",
+          "sequence": 34
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.130563926999457,
+          "event": "control_latency",
+          "role": "reader",
+          "seconds": 0.000789593999797944,
+          "sequence": 35
+        },
+        {
+          "elapsed_seconds": 2.137960148000275,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 26928,
+          "role": "reader",
+          "sequence": 36
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.1379642149986466,
+          "event": "control_request",
+          "role": "supervisor",
+          "sequence": 37
+        },
+        {
+          "elapsed_seconds": 2.1392309209986706,
+          "event": "control_reply",
+          "reply": {
+            "deadline": 47352.322946469,
+            "decision_at": 47352.325096966,
+            "event": "exiting",
+            "held": [],
+            "held_identities": {},
+            "identity": {
+              "pid": 26929,
+              "ppid": 26916,
+              "start_ticks": 4735028,
+              "uid": 1000
+            },
+            "intent_created": false,
+            "lease_seconds": 2.0,
+            "mutation_starts": 0,
+            "pipe_capacity": 65536,
+            "pipe_identity": {
+              "device": 12,
+              "inode": 178658,
+              "mode": "0o600",
+              "regular": false,
+              "size": 0,
+              "uid": 1000
+            },
+            "pipe_nonblocking": true,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "progress": {
+              "backpressure_events": 384,
+              "bytes_written": 65536,
+              "coalesced_updates": 383,
+              "discarded_updates": 1,
+              "frame_bytes": 512,
+              "frames_written": 128,
+              "high_bytes": 512,
+              "high_entries": 1,
+              "last_errno": 11,
+              "pending_bytes": 0,
+              "pending_entries": 0,
+              "updates": 512
+            },
+            "start": 47350.322946469,
+            "state": "Deferred"
+          },
+          "role": "supervisor",
+          "sequence": 38
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.1392560890017194,
+          "event": "control_latency",
+          "role": "supervisor",
+          "seconds": 0.0012903620008728467,
+          "sequence": 39
+        },
+        {
+          "elapsed_seconds": 2.1466341729974374,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 26929,
+          "role": "supervisor",
+          "sequence": 40
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.1466409330023453,
+          "event": "control_request",
+          "role": "gui",
+          "sequence": 41
+        },
+        {
+          "elapsed_seconds": 2.1474281050032005,
+          "event": "control_reply",
+          "reply": {
+            "event": "exiting",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 4389,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "identity": {
+              "pid": 26927,
+              "ppid": 26916,
+              "start_ticks": 4735020,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            }
+          },
+          "role": "gui",
+          "sequence": 42
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 2.147439371998189,
+          "event": "control_latency",
+          "role": "gui",
+          "seconds": 0.0007956539993756451,
+          "sequence": 43
+        },
+        {
+          "elapsed_seconds": 2.1548793990004924,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 26927,
+          "role": "gui",
+          "sequence": 44
+        },
+        {
+          "actors_exited": true,
+          "elapsed_seconds": 2.156815458998608,
+          "event": "teardown_only_removal",
+          "not_recovery": true,
+          "sequence": 45
+        }
+      ]
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44",
+    "os_release": "Debian GNU/Linux 13 (trixie)",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux surrogate transport/locks",
+  "experiment": "W2e progress backpressure / safe pre-install deferral",
+  "failures": [],
+  "limits": [
+    "Test-only 2-second lease and 5-second diagnostic watchdog, not production timeout/scheduling proof.",
+    "Queue counters bound pending frames, not measured total process RSS.",
+    "Same-UID trusted controls; no production authenticated IPC, installer, journal, postcheck or recovery.",
+    "No Windows/Mint desktop, service, privilege, durability, package or build validation. B01-B06 remain open."
+  ],
+  "result": "Pass",
+  "source_hashes": {
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2",
+    "manual-update-w2e/run_experiment.py": "ee1367aec30dfcf5c9c86ea7a7ea4ae20b32c5b291a7ac2c49e2be2729bde11d",
+    "manual-update-w2e/test_checks.py": "09ca69e8ad2f6da2431f76f7677f74b14003b2aab9accec31308b631736cd23b"
+  },
+  "started_at_utc": "2026-10-17T05:41:25.261079+00:00"
+}

@@ -46,6 +46,7 @@ class Progress:
         self.sequence = self.bytes_written = self.frames_written = self.blocked = self.coalesced = 0
         self.high_entries = self.high_bytes = 0
         self.last_errno = None
+        self.discarded = 0
 
     def update(self):
         self.sequence += 1
@@ -71,11 +72,48 @@ class Progress:
         self.bytes_written += written
         self.pending = None
 
+    def discard(self):
+        if self.pending is not None:
+            self.discarded += 1
+            self.pending = None
+
     def snapshot(self):
-        return dict(updates=self.sequence, bytes_written=self.bytes_written, frames_written=self.frames_written,
+        return dict(updates=self.sequence, discarded_updates=self.discarded, bytes_written=self.bytes_written, frames_written=self.frames_written,
             backpressure_events=self.blocked, last_errno=self.last_errno, coalesced_updates=self.coalesced,
             pending_entries=int(self.pending is not None), pending_bytes=len(self.pending or b''),
             high_entries=self.high_entries, high_bytes=self.high_bytes, frame_bytes=FRAME)
+
+
+def validate_progress(stats, previous=None):
+    counters = ('updates', 'discarded_updates', 'frames_written', 'bytes_written', 'backpressure_events',
+                'coalesced_updates', 'pending_entries', 'pending_bytes', 'high_entries', 'high_bytes')
+    ensure(all(type(stats.get(name)) is int and stats[name] >= 0 for name in counters), 'invalid progress counters')
+    ensure(type(stats.get('frame_bytes')) is int and stats['frame_bytes'] == FRAME, 'invalid progress frame size')
+    ensure(0 <= stats['pending_entries'] <= stats['high_entries'] <= 1
+           and stats['pending_bytes'] == stats['pending_entries'] * FRAME
+           and stats['high_bytes'] == stats['high_entries'] * FRAME, 'progress queue bound violated')
+    ensure(stats['bytes_written'] == stats['frames_written'] * FRAME, 'progress byte accounting mismatch')
+    ensure(stats['updates'] == stats['frames_written'] + stats['coalesced_updates']
+           + stats['discarded_updates'] + stats['pending_entries'], 'progress update accounting mismatch')
+    ensure((stats['backpressure_events'] == 0 and stats.get('last_errno') is None)
+           or (stats['backpressure_events'] > 0 and stats.get('last_errno') in (errno.EAGAIN, errno.EWOULDBLOCK)),
+           'progress errno accounting mismatch')
+    if previous is not None:
+        monotonic = set(counters) - {'pending_entries', 'pending_bytes'}
+        ensure(all(stats[name] >= previous[name] for name in monotonic), 'progress counter regressed')
+
+
+def validate_reader(reader_state, progress, mode):
+    ensure(reader_state.get('mode') == mode and reader_state.get('endpoint_open') is True,
+           'reader mode/endpoint mismatch')
+    ensure(all(type(reader_state.get(name)) is int and reader_state[name] >= 0 for name in ('bytes_read', 'queued_bytes')),
+           'invalid reader counters')
+    ensure(reader_state['bytes_read'] + reader_state['queued_bytes'] == progress['bytes_written'],
+           'reader/writer byte accounting mismatch')
+    if mode == 'stalled':
+        ensure(reader_state['bytes_read'] == 0 and reader_state['queued_bytes'] > 0, 'stalled reader drained/closed')
+    else:
+        ensure(reader_state['bytes_read'] > 0, 'responsive reader received no progress')
 
 
 def acquire(root, name, mode):
@@ -184,7 +222,7 @@ def supervisor(root, fd):
             finally:
                 os.close(out)
             # This is proven pre-install state. No journal or native child exists.
-            progress.pending = None
+            progress.discard()
             for name in ('A', 'O'):
                 os.close(held.pop(name))
             state = 'Deferred'
@@ -298,6 +336,9 @@ class Case:
                and not int(reply['privilege']['effective_capabilities'], 16), 'actor identity/privilege mismatch')
         ensure(reply['held'] == sorted(reply['held_identities']) and all(value == self.baseline[name]
                for name, value in reply['held_identities'].items()), 'held lock evidence mismatch')
+        if entry['role'] == 'supervisor':
+            validate_progress(reply['progress'], entry.get('previous_progress'))
+            entry['previous_progress'] = dict(reply['progress'])
         if not exiting:
             ensure(not select.select([entry['pidfd']], [], [], 0)[0], 'actor exited at control barrier')
         return reply
@@ -388,6 +429,7 @@ class Case:
         self.report['deadline_evidence'].update(reply_received_at=reply_received_at, locks_verified_at=locks_verified_at)
         ensure(self.command(gui_entry, 'status', 'gui_alive')['held'] == ['S'], 'GUI session lost')
         final_reader = self.command(reader_entry, 'status', 'reader_status')
+        validate_reader(final_reader, deferred['progress'], self.mode)
         ensure(final_reader['endpoint_open'], 'reader endpoint closed before proof')
         if self.mode == 'stalled':
             ensure(final_reader['bytes_read'] == 0 and final_reader['queued_bytes'] > 0, 'stalled reader drained to permit deferral')
