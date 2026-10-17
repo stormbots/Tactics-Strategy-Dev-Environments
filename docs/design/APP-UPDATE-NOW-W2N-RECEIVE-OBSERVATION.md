@@ -1,8 +1,10 @@
-# #72 W2n receive-observation specification — draft for review
+# #72 W2n receive-observation specification — reviewed draft revision 2
 
 Status: **documentation only; not implemented, compiled or executed**.
 A separate implementation/execution authorization is required after review.
 This draft does not authorize rerunning W2m or any other experiment.
+Review baseline: `51a038e`. See the [review disposition](APP-UPDATE-NOW-W2N-REVIEW.md)
+for resolved design gaps and remaining validation gates.
 
 ## 1. Question and preserved baseline
 
@@ -61,10 +63,36 @@ For every intercepted call:
 - No allocation/free, file/socket open/close, logging I/O, environment lookup,
   symbol resolution, Python callback, sleep, lock acquisition or FD metadata
   syscall inside the receive wrapper. Snapshot work uses preallocated storage
-  and bounded memory copies only. Keep the same return path for failures.
+  and bounded memory copies only. Keep the same return path for real-call
+  failures. Preservation applies only to the supported, valid-instrumentation
+  path; the exceptional observer-failure rule below must not be called preserved
+  native behavior.
 - Never act on a descriptor number found in a payload, raw snapshot or inventory.
   The existing validator alone processes Python-returned SCM_RIGHTS. The
   observer is not an additional cleanup or authorization mechanism.
+
+Resolution, entry and errno rules:
+
+- Complete symbol resolution and TLS warming before declaring the actor ready;
+  do not resolve lazily on the first observed call. A resolution/initialization
+  failure ends that owned actor before admission, rather than returning a fake
+  recvmsg failure. No action receive is permitted in that state.
+- Single-threaded actors must have no asynchronous handler that calls recvmsg or
+  accesses observer state; no thread/async-signal safety claim is made. Review
+  generated code and linkage for TLS/PLT/IFUNC helpers that might allocate or
+  resolve lazily. If warming/provider inspection cannot support that constraint,
+  classify the observer unsupported; do not silently weaken it.
+- At entry save caller errno, perform only validated bounded preparation, then
+  restore entry errno immediately before the real call. Save real-call errno
+  immediately on return; restore it after all snapshot bookkeeping. Forward
+  failures exactly, without interpreting stale success errno as a syscall error.
+- An already-resolved observer that detects recursion or corrupted ownership
+  must mark the run invalid and fail-stop its owned actor using a fixed process
+  termination path. This exceptional termination is an allowed diagnostic abort,
+  **not** exactly-once forwarding or preserved behavior. It is never an observed
+  recvmsg result. Do not fabricate errno/return values, recurse indefinitely or
+  continue N1/N2. Parent-held process handles account for the exit. A snapshot
+  lost on this path is Incomplete, never Complete.
 
 No production changes, application builds, package operations, privileged work,
 registration, workflows, signing or release work are included.
@@ -88,7 +116,12 @@ container or substitute mechanisms.
 Record compiler invocation/version, observer source/binary hash, Python
 executable and loaded `_socket`/libc file identities/hashes, and observer/symbol
 provider paths/build IDs where available. Resolve the next recvmsg before
-arming, record its provider and require it lies outside the observer. Record
+arming, record its actual loaded provider and require it be the intended libc
+provider, not merely any address outside the observer. Reject an unexplained
+interposer chain. Do not disable platform mediation/security or replace inherited
+loader settings to force an acceptable provider; report unsupported coverage.
+File hashes and build IDs identify artifacts, not their exact source or integrity
+against an attacker with same-process modification privileges. Record
 unavailable source/build provenance as Unknown; version strings or upstream tags
 must not be treated as exact running-source attestation. Unknown provenance
 limits causal attribution even if boundary observation succeeds.
@@ -100,10 +133,29 @@ native action schedules; no alternative instrumentation is automatically allowed
 ## 4. Observer lifecycle and coverage verification
 
 The future observer exports only fixed test setup/status/arm/snapshot functions.
-They expose evidence, not commands, credentials or expected acceptance bits.
+They expose evidence, not executable commands, transaction capabilities or
+expected acceptance bits. Captured kernel credentials are diagnostic evidence.
 There is no arbitrary-path logging API. Python loads the already-preloaded
 observer by its verified identity; a second independent library instance is not
 acceptable. Exported status identifies the library instance and its storage.
+Use explicit ctypes argtypes/restype matching the recorded C ABI; default ctypes
+integer/pointer conversions are not acceptable.
+
+The fixed interface has no generic memory-read or executor operation:
+
+| Operation | Contract |
+| --- | --- |
+| Setup/status | Return bounded version/ABI/provider/instance data and saturating entry/exit/error counters; no recvmsg and no state reset. Initialization happens once before ready. |
+| Arm | Accept only the accepted socket FD, bounded run/case token and phase sequence; reject rearm, malformed input or wrong lifecycle state. Store the current global entry count. No expected result, capacity override or descriptor attachment parameter. |
+| Snapshot metadata | Return immutable record size, validity state, sequence and snapshot generation; before completion return NotReady without polling the socket. |
+| Snapshot chunk | Copy at most 512 bytes into a caller-owned, length-declared buffer using checked offset/length arithmetic. Reject invalid ranges; never permit arbitrary addresses or return observer-internal pointers. All chunks bind to one generation and call ID. |
+
+The in-process caller is trusted test Python, not a hostile-pointer C API. Setup
+loads must prove their instance equals the interposed instance: a fixture-only
+caller token set through the control interface must appear with its generation
+in the actual wrapper's capture/status. Resolving a matching filename or querying
+a second loaded copy alone is insufficient. The token cannot influence receive
+acceptance.
 
 1. Resolve and warm symbol/TLS/setup operations before the actor reports ready.
    Fail initialization explicitly if resolution/ABI checks fail. Do not silently
@@ -119,11 +171,16 @@ acceptable. Exported status identifies the library instance and its storage.
 4. Record exactly one matching receive invocation in that arm window. A second
    entry, recursion, unexpected FD, missed entry, error/retry or saturated counter
    makes coverage invalid. Do not rearm, overwrite the first record or hide a
-   retry. Every actual invocation is still forwarded exactly once.
+   retry. Ordinary invalid-shape/counter observations are recorded without
+   changing the real call; recursive/corrupted observer entry uses the explicit
+   exceptional abort rule, never a claimed forwarding success.
 5. After Python's original validator and immediate-close checks, and after its
    receiver after-inventory, export the snapshot/status through the fixed setup
    interface. No snapshot retrieval/allocation occurs between validation and
-   immediate EBADF checks. The parent compares call counts and identities.
+   immediate EBADF checks. Export is non-consuming local memory access, not a new
+   probe. The parent compares call counts and identities. Once exported, freeze
+   the record permanently; post-capture status may add a separate coverage-error
+   indicator, never rewrite the captured bytes or counters.
 
 Seeing a loaded library alone does not prove interception. N1 requires successful
 call capture, intact credential data and agreement with Python's observation.
@@ -133,7 +190,11 @@ show the captured call is the action, not Hello, a reply, or a control read.
 ## 5. Capture format, bounds and storage
 
 Per server process, reserve one static record of at most **4096 bytes**, plus
-bounded scalar state. No ring growth or overwrite. The record contains:
+at most **512 bytes** of scalar state, for a maximum **4608 bytes** of observer
+capture/state storage per server. The 4096-byte record budget includes raw and
+sanitized arrays plus masks; it is not 4096 bytes per copy. This does not bound
+Python, loader or total process memory. No ring growth or overwrite. The record
+contains:
 
 - Format version, run/case/phase identifier, process identity token, arm sequence,
   entry/exit counts, call ID and observer status flags. Parent-held OS creation
@@ -150,36 +211,75 @@ bounded scalar state. No ring growth or overwrite. The record contains:
 - Input/output iovec lengths and counts and control-pointer consistency. The
   supported fixture has one payload iovec; other shapes are unsupported.
 
+Supported memory contract: the caller is the verified test Python socket path,
+not arbitrary native code. A single existing readable msghdr and iovec must own
+buffers whose lifetimes extend through return. Record original control pointer,
+iovec pointer/count, iov_base and capacity before forwarding. Only the original
+buffers may be copied, and only after successful return with unchanged pointer /
+iovec identity and supported lengths. A bounds check does not prove pointer
+readability; unknown caller memory, thread mutation, async mutation or an invalid
+shape cannot be made safe by guessing. Do not install a SIGSEGV recovery handler.
+A crash yields Incomplete and owned cleanup, not a repaired record.
+
 Save input capacity/pointers before forwarding. On success copy no more than
 min(returned control length, original capacity, 256); do not trust an excessive
 returned length to expand memory access. An excessive value is a recorded
 invalid observation and a stop condition. If the control pointer unexpectedly
 changes, do not dereference the replacement. On a negative return, record errno
 and scalars but do not inspect undefined output memory or infer FD delivery.
-No pre-call read of the uninitialized control buffer is allowed.
+Payload copying is separately capped by the nonnegative return value, original
+iovec capacity and 256-byte capture bound, with overflow-safe conversions. A
+returned payload size above either allowed bound is invalid; never trust an
+output iovec length to authorize copying. An input capacity above the supported
+256-byte ancillary bound is recorded as unsupported without inspecting that
+buffer. No pre-call read of the uninitialized control buffer is allowed.
 
-Native control padding can contain uninitialized bytes. Hold the bounded memory
-snapshot only in the private actor record until evidence extraction. For saved
-hex evidence, parse headers with independently bounds-checked, overflow-safe
-byte offsets and redact alignment padding/unused bytes, recording an explicit
-validity/redaction mask. Preserve header and actual data bytes exactly; never
-change the caller's buffer or call redacted padding raw kernel data. If malformed
-metadata prevents identifying data boundaries, redact the ambiguous remainder,
-preserve lengths/error/location and stop; do not guess headers or FD integers.
+Native control padding can contain uninitialized bytes. Keep the bounded raw
+memory snapshot only in the static private actor record. After the original
+validator, immediate-close checks and after-inventory, perform redaction within
+the observer's fixed storage **before any chunk API exposes bytes**. Do not send
+unredacted storage through ctypes/Python and rely on later publication filtering.
+Use one checked, allocation-free sanitizing pass over known field offsets:
 
-The offline parser reports each cmsg offset, length, level, type, data span,
-credential tuple and complete descriptor integers, plus truncation/malformed
-status. It must not use the same traversal result as an independent proof.
-It never calls close or authorizes an action. Exact raw memory is not claimed
-for redacted regions; returned `msg_controllen` is not a guarantee every padding
-byte was kernel-written.
+- Accept only in-range, complete headers with supported ABI sizes. Read fields
+  through bounded copies, not unaligned struct-pointer casts; check additions
+  and alignment rounding for overflow before advancing.
+- Preserve only identified header fields and complete data bytes for known
+  SOL_SOCKET SCM_CREDENTIALS (12 bytes) / SCM_RIGHTS (whole native int values).
+  Mask alignment/struct padding, unused bytes and unknown control data. Preserve
+  a byte-level visibility mask; zero-filled evidence is explicitly Redacted,
+  not alleged syscall output. Unknown types or malformed/incomplete data make
+  the observation Invalid and stop; expose at most already-verified fields.
+- A final cmsg may end at CMSG_LEN without its trailing CMSG_SPACE padding.
+  Missing trailing padding is not by itself a malformed header. Do not invent
+  a next header beyond the returned/control-capacity bound.
+- Raw `msg_controllen` remains separately recorded. It does not guarantee all
+  padding/unused bytes were kernel-written. Raw storage is inaccessible through
+  exports and is cleared after sanitized generation is frozen; clearing touches
+  observer storage only, not Python's original control buffer.
+
+An independent offline parser of the sanitized export checks header offsets,
+lengths, mask consistency, native integer layout and data spans. It cannot use
+Python's tuple list, the actor's parsed list or libc CMSG_NXTHDR as its sole
+oracle. Report mask-approved cmsg fields, credential tuples and complete FD
+integers, with unknown/redacted regions explicit. Two parsers are not independent
+native executions and cannot recover hidden bytes; capture/redaction correctness
+remains an instrumentation obligation. Neither parser closes FDs or authorizes
+action. Never accept a mask that hides known header/data inconsistencies.
 
 Keep setup/status/capture exports bounded so each existing private control line
 remains at most **4096 bytes**. Native snapshots are retrieved and serialized in
 fixed bounded chunks if needed, with call ID, offset and total length; no
 unbounded base64/hex line or dynamic queue. Chunk retrieval must be repeatable
-and immutable, not trigger another capture. Set total saved W2n report size to
-at most **128 KiB** across both cases; record overflow as failure, never truncate
+and immutable, not trigger another capture. Verify all expected ranges are
+present exactly once, non-overlapping and at the same generation/size; reject
+missing/duplicate/foreign chunks rather than silently filling gaps. Set total
+saved W2n report size to
+at most **128 KiB** across both cases. Reserve at least **4 KiB** of that budget
+for terminal outcome/overflow/ownership reporting; do not fill the whole budget
+and then lose the failure reason. Before a size-limited record is appended,
+check its encoded size. On overflow omit that whole record, mark evidence
+Incomplete in the reserved terminal record, and stop. Never silently truncate
 and report completion. Store in fresh run-owned 0700 roots, with 0600 evidence
 files created exclusively without following links. Separate preserved evidence
 from ephemeral socket/observer-build roots. No real capabilities or secrets are
@@ -206,7 +306,15 @@ Common order:
 5. The observer surrounds that receive. Python returns its normal tuple, runs
    the unchanged validator and action logic, immediately checks any enumerated
    FD closures, and captures its receiver after-inventory. Export the immutable
-   native record before evaluating evidence pass/fail relationships.
+   native record before evaluating evidence pass/fail relationships. Diagnostic
+   orchestration needs a fixed finalization path that attempts only memory export
+   even when the original Python receive/validation path raises. It must preserve
+   the original exception and any already-observed acceptance/effect, not replace
+   them with an export error. Do not rerun receive, repeat validation, open a new
+   FD inventory or query sender status on that path. If capture/closure/inventory
+   stages were not reached, report them Not collected and observation Incomplete.
+   Dead/crashed actors may make an in-memory snapshot unrecoverable; do not
+   promise evidence survival across process death or add an out-of-scope logger.
 6. Parent correlates the evidence. On any stop condition, take no new probe or
    sender-status observation; preserve the already captured record and perform
    owned cleanup. Missing later observations remain explicitly Not collected.
@@ -250,14 +358,24 @@ Report separate fields, not a combined pass count:
 N1 must meet every healthy requirement to admit N2. N2 observation_result can be
 Complete with cleanup_result=Fail when its captured, correlated leak reproduces
 and owned teardown is fully accounted. This is diagnostic evidence completion,
-not primitive safety success. If the metadata agrees and immediate FD closure
+not primitive safety success. Observation Complete requires valid coverage,
+full bounded correlation and preserved required records; successful owned
+teardown is reported separately and is additionally required before declaring
+the overall diagnostic session accounted. Observation Complete can coexist with
+ownership_cleanup_result=Incomplete, but then overall session completion is false.
+A partial native snapshot may remain useful with observation Invalid/Incomplete;
+never discard it just because a later integrity or cleanup check fails.
+If the metadata agrees and immediate FD closure
 passes, record non-reproduction in the instrumented run; W2m remains Fail.
 
 Native rights data present but Python data absent localizes the discrepancy to
-after the recorded forwarding boundary, subject to observer verification. Native
-rights absent plus matching live extra FD means it is already present at that
-boundary. Neither proves exact kernel/libc/interpreter causation or eliminates
-instrumentation effects. Missing provenance remains a stated limitation.
+after the recorded forwarding boundary, subject to observer verification. If the
+native export contains no rights header while a later inventory gains a
+matching live FD, the discrepancy spans that boundary and the later inventory;
+it does **not** prove when the FD was installed, since no independent inventory
+was taken at the exact forwarding return. Record this as a relation requiring
+further attribution, not proof of a kernel-side cause. Neither proves exact
+kernel/libc/interpreter causation or eliminates instrumentation effects. Missing provenance remains a stated limitation.
 
 ## 8. Cleanup, restoration and stop rules
 
@@ -285,7 +403,10 @@ forwarding mismatch, failed/short send or receive, missing correlation, MSG_TRUN
 absent required N2 MSG_CTRUNC, malformed/oversized control metadata, identity or
 ownership change, deadline/resource violation, unauthorized action or incomplete
 evidence/cleanup. Use the existing five-second test-only per-operation watchdog,
-with no retries or production-timeout claim.
+with no retries or production-timeout claim. The observer itself does not call a
+clock or implement a new timer in the receive wrapper; bounded code is reviewed
+and the parent owns deadline enforcement. A parent timeout enters owned cleanup;
+if the actor must die before exporting, record observation Incomplete.
 
 A reproduced N2 inventory mismatch is a terminal **anticipated diagnostic
 finding**, not permission to continue probing. Preserve its already captured
@@ -307,7 +428,30 @@ IDs, chunk loss, multiple entries, missing interception, errno/result forwarding
 rejection/cleanup distinction and preserved counterexamples. Label these local
 checks separately from N1/N2 native evidence. Compilation of an isolated observer
 would be part of that later experiment authorization, not an application build.
-No compile, local test suite or experiment belongs to this draft step.
+No compile, local test suite or experiment belongs to this review step.
+
+## 10. Remaining gates before authorization and execution
+
+This revision resolves design ambiguities; it does not supply empirical
+feasibility. A later authorization must distinguish implementing the observer
+and local checks from admitting native N1/N2. Implementation must not automatically
+proceed to native schedules when a gate is still unmet.
+
+| Gate | Current evidence / required disposition |
+| --- | --- |
+| Documentation / interface gate | This review defines exceptional abort behavior, caller-memory assumptions, bounded API operations, sanitization/export and finalization. Concrete C function prototypes and serialized field offsets are still not specified: they must be documented and reviewed before implementation authorization, not improvised in code. |
+| Toolchain / provider feasibility | Not checked by this documentation task. Later authorized setup must demonstrate the supported ABI, existing toolchain, intended libc target and same-instance interception through the existing Hello; otherwise Blocked, not an alternate receiver. |
+| Observer implementation review | Not implemented. Source/linkage review must establish no hidden allocation/lazy binding/locks/I/O inside the valid receive path, single-call forwarding and errno preservation. Local mock checks alone cannot prove native interception. |
+| Memory/export integrity | Not implemented. Later local checks must cover pointer/length changes, final unpadded headers, integer overflow, unsupported control types, masks, chunk consistency, bounded errors and preservation of acceptance/effect on failure. |
+| Failure/ownership handling | Not implemented. Export must not move into the immediate-close interval; original failures and coverage invalidation must survive whenever the actor remains alive. Crash snapshot loss stays explicit. Native fault injection is not included in N1/N2. |
+| Native observation | Not run. N1 must meet all healthy conditions before N2. Capturing N2 is not a repair or permission for another diagnostic. Authentication safety and production readiness stay unproven/false. |
+
+Recommendation: publish this review, then close the remaining C-ABI/record-layout
+specification gap in documentation before requesting implementation. These are
+concrete missing details, not proof that the observer is infeasible. Once the
+interface is reviewable, the smallest implementation scope is the isolated
+observer plus local checks with native execution still deferred. Authorize N1/N2
+only after reviewing that implementation and its remaining prerequisites.
 
 W2h's counterexample, W2i–W2l's limited results and W2m's stopped cleanup failure
 remain unchanged. B01–B06 remain open. All other W2/W3, production implementation,

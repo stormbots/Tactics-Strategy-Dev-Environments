@@ -809,3 +809,20 @@ pass. W2m remains Fail and W2h remains an authentication counterexample.
 No implementation, compilation, tests or experiments were performed for this
 draft. All B01–B06 and existing deferrals remain unchanged; no publication or
 PR belongs to this step.
+
+
+#### W2n documentation review — revision 2
+
+The [W2n review](APP-UPDATE-NOW-W2N-REVIEW.md) revises only the proposed
+receive-observation specification. It tightens intended-provider/same-instance
+verification, caller-memory assumptions, entry/exit errno and exceptional abort
+rules, pre-export sanitization, immutable bounded chunking, overflow reporting,
+failure-path snapshot handling and outcome separation. It corrects attribution:
+missing native rights metadata plus a later added FD does not prove when the FD
+was installed or identify a kernel-side cause. Concrete C/ctypes prototypes and
+serialized record ABI remain D1, a documentation blocker before implementation
+authorization. Runtime feasibility, implementation/local-check review and native
+healthy admission are separate later evidence gates. No code, tests, compilation
+or experiments occurred. W2m remains Fail, W2h remains an authentication
+counterexample, and B01–B06 and all deferrals remain unchanged. No publication or
+PR belongs to this review.
