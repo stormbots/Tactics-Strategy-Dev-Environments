@@ -590,3 +590,19 @@ safety, reverse hostile-writer rejection, Windows or integrated close/install
 behavior. B01–B06 remain open. All other W2/W3, production implementation,
 elevation, registration, package operations, build dispatch and release
 preparation remain deferred. No publication or PR is part of this execution.
+
+
+#### W2i implementation/evidence review
+
+The W2i-only review of `41c04b9` corrected healthy-failure/counterexample
+classification, signal-race/wait cleanup, explicit holder reaping proof, final
+report persistence and the JSON nesting test/guard. It tightened native evidence
+validation for explicit/automatic credentials, actual senders, numeric counts,
+endpoint identities, option readiness and ordered barriers. The [reviewed W2i
+record](../../tests/prototypes/manual-update-w2i/README.md#review-corrections-and-affected-qa)
+preserves baseline artifacts and adds a reviewed source-pinned native report.
+All 29 focused checks pass. The same three native schedules retain 1/0/0 actions,
+EPERM on forgery, 64 events and complete registered-actor cleanup/restoration.
+Local mocked fault tests are not native fault coverage. Diagnostic success does
+not establish authentication safety; the prior W2h counterexample is preserved,
+all six blockers stay open, and all other work remains deferred.

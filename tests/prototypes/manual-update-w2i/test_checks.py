@@ -1,4 +1,4 @@
-"""Synthetic validator checks only; no hostile native credential/FD schedules."""
+"""W2i local checks: synthetic inputs, saved evidence and mocked faults only."""
 import array
 import importlib.util
 import json
@@ -95,7 +95,9 @@ class NativeEvidenceChecks(unittest.TestCase):
     """Audit saved native evidence; does not execute further native schedules."""
     @classmethod
     def setUpClass(cls):
-        cls.report=json.loads(Path(__file__).with_name('evidence').joinpath('linux-run.json').read_text())
+        root=Path(__file__).with_name('evidence')
+        path=root/'reviewed-linux-run.json'
+        cls.report=json.loads((path if path.exists() else root/'linux-run.json').read_text())
 
     def trace(self, case, name):
         return next(e['evidence'] for e in case['trace'] if e['barrier']==name)
@@ -152,7 +154,7 @@ class NativeEvidenceChecks(unittest.TestCase):
             self.assertTrue(self.trace(c,'runner-original-after')['pidfd_live'])
 
     def test_cleanup_and_barrier_integrity(self):
-        self.assertEqual(self.report['runner_fds_before_after'],[4,4])
+        self.assertEqual(*self.report['runner_fds_before_after'])
         self.assertEqual(self.report['subreaper_before'],self.report['subreaper_after'])
         for c in self.report['cases']:
             self.assertEqual(c['failures'],[])
@@ -174,6 +176,93 @@ class NativeEvidenceChecks(unittest.TestCase):
         self.assertFalse(result['forced'])
         signal_send.assert_not_called()
         self.assertEqual(a.proc.wait.call_count,2)
+
+
+
+
+class ReviewRegressions(unittest.TestCase):
+    """Local fault/corruption checks; not new native fault schedules."""
+    def report_case(self, index=1):
+        import copy
+        return copy.deepcopy(json.loads(Path(__file__).with_name('evidence').joinpath('linux-run.json').read_text())['cases'][index])
+
+    def test_failed_healthy_control_is_not_counterexample(self):
+        with self.assertRaisesRegex(RuntimeError,'unexpected action outcome'):
+            w.check_action_outcome('I1',dict(authorized_actions=0,requests_received=1))
+        self.assertEqual(w.check_action_outcome('I2',dict(authorized_actions=1,requests_received=1)),'CounterexampleDetected')
+
+    def test_boolean_action_counts_rejected(self):
+        for field in ('authorized_actions','requests_received'):
+            value=dict(authorized_actions=0,requests_received=1);value[field]=False
+            with self.subTest(field=field),self.assertRaisesRegex(RuntimeError,'invalid'):
+                w.check_action_outcome('I2',value)
+
+    def test_deep_json_within_record_limit_hits_depth_guard(self):
+        raw=b'['*(w.MAX_JSON_DEPTH+1)+b'0'+b']'*(w.MAX_JSON_DEPTH+1)
+        self.assertLess(len(raw)+4,w.MAX_RECORD)
+        setup=SyntheticValidatorChecks();setup.setUp()
+        decision=setup.validate(data=struct.pack('!I',len(raw))+raw)
+        self.assertEqual(decision['reason'],'JSON nesting bound')
+
+    def test_json_depth_scanner_ignores_quoted_brackets_and_escapes(self):
+        body={'text':'['*20+'"'+']'*20+'\\'}
+        self.assertEqual(w.bounded_json(json.dumps(body).encode()),body)
+
+    def test_direct_actor_exit_race_still_waits_and_closes(self):
+        from unittest.mock import Mock,patch
+        a=w.Actor.__new__(w.Actor);a.proc=Mock();a.proc.pid=42;a.proc.poll.return_value=None;a.proc.wait.return_value=0
+        a.fd=99;a.stopping=False
+        with patch.object(w,'live',return_value=True),patch.object(w.signal,'pidfd_send_signal',side_effect=ProcessLookupError),patch.object(w.os,'close') as close:
+            r=a.close()
+        self.assertTrue(r['reaped']);a.proc.wait.assert_called_once_with(timeout=w.TIMEOUT);close.assert_called_once_with(99)
+
+    def test_direct_actor_wait_failure_closes_transport_and_pidfd(self):
+        from unittest.mock import Mock,patch
+        a=w.Actor.__new__(w.Actor);a.proc=Mock();a.proc.pid=42;a.proc.poll.return_value=0
+        a.proc.wait.side_effect=RuntimeError('wait failure');a.fd=99;a.stopping=False
+        with patch.object(w.os,'close') as close,self.assertRaisesRegex(RuntimeError,'wait failure'):
+            a.close()
+        close.assert_called_once_with(99)
+        for pipe in (a.proc.stdin,a.proc.stdout,a.proc.stderr):pipe.close.assert_called_once()
+
+    def test_adopted_holder_wait_identity_and_terminal_status(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        for pid,code in ((43,os.CLD_EXITED),(42,os.CLD_STOPPED)):
+            with patch.object(w,'live',return_value=False),patch.object(w.os,'waitid',return_value=SimpleNamespace(si_pid=pid,si_code=code,si_status=0)),self.assertRaises(RuntimeError):
+                w.reap_holder(99,dict(pid=42))
+
+    def test_corrupt_explicit_schedule_and_holder_counts_rejected(self):
+        for what in ('explicit','count','sender','endpoint','inheritable','namespace'):
+            c=self.report_case()
+            def ev(name):return next(e['evidence'] for e in c['trace'] if e['barrier']==name)
+            if what=='explicit':ev('holder-send-permitted')['requested_credentials']=[1,1000,1000]
+            elif what=='count':ev('holder-status')['requests_sent']=0
+            elif what=='sender':ev('holder-send-permitted')['sender']['pid']+=10000
+            elif what=='endpoint':ev('holder-ready-after-handle-retained')['descriptor']['device']+=1
+            elif what=='inheritable':ev('holder-ready-after-handle-retained')['inherited']['inheritable']=False
+            elif what=='namespace':ev('holder-after')['identity']['namespaces']['user']='foreign'
+            with self.subTest(what=what),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_same_endpoint_requires_device_and_options(self):
+        d=dict(device=1,inode=2,type=socket.SOCK_SEQPACKET,passcred=1)
+        for k in d:
+            other=dict(d);other[k]+=1
+            self.assertFalse(w.same_endpoint(d,other))
+
+    def test_restoration_failure_is_saved_and_fails_diagnostic(self):
+        from unittest.mock import patch
+        from contextlib import redirect_stdout
+        import io
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            out=Path(root)/'result.json'
+            # Stop before native actors. This is a wholly mocked main lifecycle.
+            with patch.object(w,'subreaper',side_effect=[0,RuntimeError('setup failure'),RuntimeError('restore failure')]),patch.object(w,'run_case') as run,redirect_stdout(io.StringIO()):
+                self.assertEqual(w.main(out),1)
+            run.assert_not_called()
+            r=json.loads(out.read_text());self.assertFalse(r['diagnostic_success']);self.assertIsNone(r['subreaper_after'])
+            self.assertIn('restore failure',r['finalization_failures'][0])
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

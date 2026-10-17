@@ -1,0 +1,56 @@
+test_direct_actor_exit_race_still_waits_and_closes (checks.ReviewRegressions.test_direct_actor_exit_race_still_waits_and_closes) ... ERROR
+test_direct_actor_wait_failure_closes_transport_and_pidfd (checks.ReviewRegressions.test_direct_actor_wait_failure_closes_transport_and_pidfd) ... FAIL
+test_restoration_failure_is_saved_and_fails_diagnostic (checks.ReviewRegressions.test_restoration_failure_is_saved_and_fails_diagnostic) ... ERROR
+
+======================================================================
+ERROR: test_direct_actor_exit_race_still_waits_and_closes (checks.ReviewRegressions.test_direct_actor_exit_race_still_waits_and_closes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2i/test_checks.py", line 216, in test_direct_actor_exit_race_still_waits_and_closes
+    r=a.close()
+      ^^^^^^^^^
+  File "/workspace/Tactics-Strategy-Dev-Environments/work/w2i-review/original.py", line 327, in close
+    signal.pidfd_send_signal(self.fd, signal.SIGTERM)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+ProcessLookupError
+
+======================================================================
+ERROR: test_restoration_failure_is_saved_and_fails_diagnostic (checks.ReviewRegressions.test_restoration_failure_is_saved_and_fails_diagnostic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2i/test_checks.py", line 260, in test_restoration_failure_is_saved_and_fails_diagnostic
+    self.assertEqual(w.main(out),1)
+                     ^^^^^^^^^^^
+  File "/workspace/Tactics-Strategy-Dev-Environments/work/w2i-review/original.py", line 502, in main
+    subreaper(initial_subreaper)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1202, in _execute_mock_call
+    raise result
+RuntimeError: restore failure
+
+======================================================================
+FAIL: test_direct_actor_wait_failure_closes_transport_and_pidfd (checks.ReviewRegressions.test_direct_actor_wait_failure_closes_transport_and_pidfd)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2i/test_checks.py", line 225, in test_direct_actor_wait_failure_closes_transport_and_pidfd
+    close.assert_called_once_with(99)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 960, in assert_called_once_with
+    raise AssertionError(msg)
+AssertionError: Expected 'close' to be called once. Called 0 times.
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.030s
+
+FAILED (failures=1, errors=2)

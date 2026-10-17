@@ -1,0 +1,34 @@
+test_actor_close_waits_after_exit_acknowledgement (test_checks.NativeEvidenceChecks.test_actor_close_waits_after_exit_acknowledgement) ... ok
+test_case_counts_and_actual_forgery_errno (test_checks.NativeEvidenceChecks.test_case_counts_and_actual_forgery_errno) ... ok
+test_cleanup_and_barrier_integrity (test_checks.NativeEvidenceChecks.test_cleanup_and_barrier_integrity) ... ok
+test_holder_inheritance_live_original_and_namespace (test_checks.NativeEvidenceChecks.test_holder_inheritance_live_original_and_namespace) ... ok
+test_independent_holder_kernel_attribution (test_checks.NativeEvidenceChecks.test_independent_holder_kernel_attribution) ... ok
+test_options_and_both_hello_directions (test_checks.NativeEvidenceChecks.test_options_and_both_hello_directions) ... ok
+test_source_hash_and_readiness_scope (test_checks.NativeEvidenceChecks.test_source_hash_and_readiness_scope) ... ok
+test_adopted_holder_wait_identity_and_terminal_status (test_checks.ReviewRegressions.test_adopted_holder_wait_identity_and_terminal_status) ... ok
+test_boolean_action_counts_rejected (test_checks.ReviewRegressions.test_boolean_action_counts_rejected) ... ok
+test_corrupt_explicit_schedule_and_holder_counts_rejected (test_checks.ReviewRegressions.test_corrupt_explicit_schedule_and_holder_counts_rejected) ... ok
+test_deep_json_within_record_limit_hits_depth_guard (test_checks.ReviewRegressions.test_deep_json_within_record_limit_hits_depth_guard) ... ok
+test_direct_actor_exit_race_still_waits_and_closes (test_checks.ReviewRegressions.test_direct_actor_exit_race_still_waits_and_closes) ... ok
+test_direct_actor_wait_failure_closes_transport_and_pidfd (test_checks.ReviewRegressions.test_direct_actor_wait_failure_closes_transport_and_pidfd) ... ok
+test_failed_healthy_control_is_not_counterexample (test_checks.ReviewRegressions.test_failed_healthy_control_is_not_counterexample) ... ok
+test_json_depth_scanner_ignores_quoted_brackets_and_escapes (test_checks.ReviewRegressions.test_json_depth_scanner_ignores_quoted_brackets_and_escapes) ... ok
+test_restoration_failure_is_saved_and_fails_diagnostic (test_checks.ReviewRegressions.test_restoration_failure_is_saved_and_fails_diagnostic) ... ok
+test_same_endpoint_requires_device_and_options (test_checks.ReviewRegressions.test_same_endpoint_requires_device_and_options) ... ok
+test_dead_enrolled_instance (test_checks.SyntheticValidatorChecks.test_dead_enrolled_instance) ... ok
+test_lengths_empty_multiple_oversize (test_checks.SyntheticValidatorChecks.test_lengths_empty_multiple_oversize) ... ok
+test_malformed_utf8_duplicate_json_depth_schema (test_checks.SyntheticValidatorChecks.test_malformed_utf8_duplicate_json_depth_schema) ... ok
+test_missing_duplicate_wrong_size_credentials (test_checks.SyntheticValidatorChecks.test_missing_duplicate_wrong_size_credentials) ... ok
+test_no_close_of_payload_named_descriptor (test_checks.SyntheticValidatorChecks.test_no_close_of_payload_named_descriptor) ... ok
+test_no_credential_cache_between_calls (test_checks.SyntheticValidatorChecks.test_no_credential_cache_between_calls) ... ok
+test_payload_pid_cannot_replace_sender (test_checks.SyntheticValidatorChecks.test_payload_pid_cannot_replace_sender) ... ok
+test_rights_closed_on_rejection_and_truncation (test_checks.SyntheticValidatorChecks.test_rights_closed_on_rejection_and_truncation) ... ok
+test_truncation_flags (test_checks.SyntheticValidatorChecks.test_truncation_flags) ... ok
+test_unknown_control_type (test_checks.SyntheticValidatorChecks.test_unknown_control_type) ... ok
+test_valid_explicit_metadata_control (test_checks.SyntheticValidatorChecks.test_valid_explicit_metadata_control) ... ok
+test_wrong_uid_gid (test_checks.SyntheticValidatorChecks.test_wrong_uid_gid) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.042s
+
+OK

@@ -16,23 +16,27 @@ guard's authentication counterexample. W2i tests a different proposed transport;
 it does not retroactively turn W2h into an authentication pass or close B02.
 B01–B06 remain open.
 
-The final [native report](evidence/linux-run.json) has three fresh connections and
+The reviewed [native report](evidence/reviewed-linux-run.json) has three fresh connections and
 64 ordered barrier events:
 
 | Case | Kernel / syscall evidence | Authorized actions |
 | --- | --- | --- |
-| I1: intended original, explicit valid credentials | Sender/original PID 35653; received SCM_CREDENTIALS `[35653,1000,1000]`; complete 53-byte record; fixed reply independently credential-checked | 1 |
-| I2: live original, inherited-socket holder, automatic credentials | Original PID 35656 remains live; actual holder PID 35657; received SCM_CREDENTIALS `[35657,1000,1000]`; complete 53-byte record; receiver rejects `sender mismatch` | 0 |
-| I3: holder explicitly claims original PID | Original PID 35659 remains live; holder PID 35660; sendmsg returns -1 with actual errno 1 / EPERM; independent receiver status reports no received/queued record | 0 |
+| I1: intended original, explicit valid credentials | Sender/original PID 36349; received SCM_CREDENTIALS `[36349,1000,1000]`; complete 53-byte record; fixed reply independently credential-checked | 1 |
+| I2: live original, inherited-socket holder, automatic credentials | Original PID 36351 remains live; actual holder PID 36352; received SCM_CREDENTIALS `[36352,1000,1000]`; complete 53-byte record; receiver rejects `sender mismatch` | 0 |
+| I3: holder explicitly claims original PID | Original PID 36354 remains live; holder PID 36355; sendmsg returns -1 with actual errno 1 / EPERM; independent receiver status reports no received/queued record | 0 |
 
 These are observed run-specific PIDs, not fixed inputs. I3's errno, not a receive
 timeout, establishes the observed kernel refusal. The original sends no action
 in I2/I3; holder payload fields and attempt bindings are otherwise valid.
 
-[Focused checks](evidence/checks.txt): **19 pass** — 12 synthetic validator checks,
-6 saved-evidence audits, and 1 mocked orderly-exit regression check. None of those
-19 checks is an additional native hostile-traffic schedule. The initial
-[12-check synthetic-only record](evidence/synthetic-checks.txt) is also retained.
+[Reviewed focused checks](evidence/review-checks.txt): **29 pass** — the original
+12 synthetic validator checks and 7 evidence/orderly-exit checks, plus 10 review
+regressions covering synthetic, corrupted-evidence and mocked failure paths.
+None is an additional native hostile-traffic schedule. The original
+[native report](evidence/linux-run.json), [19-check record](evidence/checks.txt) and
+[12-check synthetic-only record](evidence/synthetic-checks.txt) remain historical
+baseline evidence at commit `41c04b9`; their source hash does not identify the
+reviewed source. The reviewed report pins the current harness hash.
 
 ## Trust, ordering and resource bounds
 
@@ -60,7 +64,8 @@ liveness-to-action proof. No SO_PEERCRED dependency or fallback is used.
 Test-only bounds: 16,384 record bytes including four-byte length prefix; 256
 ancillary bytes; 4,096 control-line bytes; one action attempt per sender; one
 connection per case; five-second per-operation watchdogs. Fixed JSON schema
-limits depth, fields and PID range. No generic command execution or real secret
+enforces an eight-container JSON nesting bound before decoding, then limits
+accepted fields and PID range. No generic command execution or real secret
 is accepted. The reader does not cache credentials from earlier records.
 
 ## Environment, cleanup and restoration
@@ -123,9 +128,38 @@ Ready, close grant, durable intent, installation or recovery state machines.
 Hostile/delegated server writers, process exit races, thread/exec/credential or
 namespace transitions, privileged forgery, protected root-owned endpoint/bootstrap
 enrollment, compatibility migration, Windows attribution and desktop/service
-integration remain unvalidated. Cleanup fault coverage is limited to the observed
-reporting/startup failures and the mocked orderly-exit regression, not arbitrary
-native crash, pidfd failure or unkillable descendant injection.
+integration remain unvalidated. Cleanup fault coverage includes the observed initial reporting/startup failures
+and local mocked orderly-exit, signal-race, wait, ownership/status and restoration
+checks. Those mocks are not native crash, pidfd failure, descriptor truncation or
+unkillable-descendant injection. Unknown/pre-enrollment descendants remain an
+explicit gap; absent or failed reaping evidence cannot authorize fixture deletion.
+
+## Review corrections and affected QA
+
+Review baseline: `41c04b9`. Only this W2i harness, its checks/evidence and linked
+W2i documentation were changed.
+
+| Finding | Correction | Coverage |
+| --- | --- | --- |
+| Healthy I1 rejection was recorded as an authentication counterexample | Healthy failure is Fail; only observed delegated action acceptance is CounterexampleDetected; counterexamples propagate to top-level property results | Local classification/count regressions; unchanged native I1/I2 schedules |
+| Actor exit could race a signal and skip waiting / FD closure | Treat ESRCH as a race, still wait for the owned child; close transports and retained pidfd in finally | Mocked signal race and wait failure regressions |
+| Exited holder was not sufficient proof of reaping | Require a validated normal holder wait or terminal adopted-holder wait with matching PID; preserve root if reaping is uncertain | Normal native reaping plus mocked wrong wait identity/status; no native crash injection |
+| Restoration or audit errors could prevent final report persistence | Preserve finalization errors, fail diagnostic success, and retain results; do not claim restored state after a restoration error | Mocked setup/restoration failure with no actor launch |
+| Original nesting fixture exceeded frame limit before JSON parsing | Enforce depth before decoding; add a within-limit depth fixture and quoted-bracket/escape control | Synthetic only |
+| Evidence checks did not require every intended submission mode / holder count | Audit explicit I1, automatic I2, forged I3; strict integer counts, actual sender, namespaces, endpoint device/inode/options, liveness and barrier order | Audit before native case Pass plus local corrupted-record tests |
+| Socket options were audited late | Assert listener/client receiving options before connect/readiness and preserve non-inheritable enrollment pidfd flags | Same three native schedules |
+
+[Three before-fix regressions](evidence/review-regressions-before-fixes.txt) were
+run against the unmodified baseline using existing entrypoints: signal/exit race,
+wait failure FD cleanup, and report persistence on restoration failure. They
+produce two errors and one failed assertion before correction. New-helper
+absence is **not** counted as a reproduced defect. The reviewed suite passes
+all 29 checks; the native rerun retains I1/I2/I3 = 1/0/0, actual EPERM, 64 events,
+normal reaping of eight owned actors, removed roots and restored settings.
+
+No new authentication counterexample appeared in the reviewed native run.
+Diagnostic success and narrow primitive feasibility remain distinct from
+unproven authentication safety. No B01–B06 blocker is closed.
 
 ## Reproduction (only within separately authorized W2i scope)
 

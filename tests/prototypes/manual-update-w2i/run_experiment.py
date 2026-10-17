@@ -23,6 +23,7 @@ MAX_RECORD = 16384
 MAX_CONTROL = 4096
 ANCILLARY = 256  # bounded recvmsg control storage, not a native hostile-input proof
 CASES = ('I1', 'I2', 'I3')
+MAX_JSON_DEPTH = 8
 
 
 def require(ok, reason):
@@ -100,6 +101,29 @@ def no_duplicates(pairs):
     return result
 
 
+def bounded_json(raw):
+    """Bound nesting before JSON allocates containers; strings/escapes are opaque."""
+    text = raw.decode('utf-8')
+    depth, quoted, escaped = 0, False, False
+    for char in text:
+        if quoted:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == '"':
+                quoted = False
+        elif char == '"':
+            quoted = True
+        elif char in '[{':
+            depth += 1
+            require(depth <= MAX_JSON_DEPTH, 'JSON nesting bound')
+        elif char in ']}':
+            depth -= 1
+            require(depth >= 0, 'JSON container mismatch')
+    return json.loads(text, object_pairs_hook=no_duplicates)
+
+
 def validate(data, ancillary, flags, expected, expected_frame, alive):
     """Pure rejection logic plus owned delivered-SCM_RIGHTS cleanup. Synthetic tests labeled."""
     delivered = []
@@ -123,7 +147,7 @@ def validate(data, ancillary, flags, expected, expected_frame, alive):
         require(parsed_creds[0] == (expected['pid'], expected['uids'][0], expected['gids'][0]), 'sender mismatch')
         require(alive, 'enrolled peer exited')
         require(len(data) >= 5 and struct.unpack('!I', data[:4])[0] == len(data)-4, 'envelope length')
-        body = json.loads(data[4:].decode('utf-8'), object_pairs_hook=no_duplicates)
+        body = bounded_json(data[4:])
         # Fixed schema gives depth/field/integer bounds; no extensible command executor.
         require(type(body) is dict and set(body) == {'tag', 'attempt', 'claim_pid'}, 'schema')
         require(type(body['claim_pid']) is int and 0 < body['claim_pid'] <= 2147483647, 'PID bound')
@@ -179,6 +203,7 @@ def actor(role, endpoint=None, inherited=None):
             listener = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
             listener.settimeout(TIMEOUT)
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
+            require(descriptor(listener)['passcred'] == 1, 'Blocked: listener credential option')
             listener.bind(endpoint)
             os.chmod(endpoint, 0o600)
             listener.listen(1)
@@ -189,6 +214,7 @@ def actor(role, endpoint=None, inherited=None):
             # Record inherited descriptor flag BEFORE altering it in the holder.
             inheritance = descriptor(conn) if role == 'holder' else None
             conn.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
+            require(descriptor(conn)['passcred'] == 1 and descriptor(conn)['type'] == socket.SOCK_SEQPACKET, 'Blocked: receiving socket options')
             initial = dict(identity=identity(), descriptor=descriptor(conn), inherited=inheritance)
         write_control(1, initial)
         while True:
@@ -199,7 +225,8 @@ def actor(role, endpoint=None, inherited=None):
                 enrolled = c['identity']
                 peer_fd = bind(enrolled)
                 attempt = c['attempt']
-                write_control(1, dict(enrolled=enrolled, retained_pidfd=peer_fd, live=live(peer_fd)))
+                require(not os.get_inheritable(peer_fd), 'pidfd unexpectedly inheritable')
+                write_control(1, dict(enrolled=enrolled, retained_pidfd=peer_fd, pidfd_inheritable=os.get_inheritable(peer_fd), live=live(peer_fd)))
             elif op == 'connect':
                 require(role == 'client' and enrolled is not None, 'connect before enrollment')
                 conn.connect(endpoint)
@@ -292,6 +319,7 @@ def actor(role, endpoint=None, inherited=None):
 class Actor:
     def __init__(self, role, endpoint):
         self.stopping = False
+        self.fd, self.proc = None, None
         self.proc = subprocess.Popen([sys.executable, '-I', str(SCRIPT), '--actor', role, str(endpoint)],
             close_fds=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.fd = None
@@ -313,26 +341,153 @@ class Actor:
 
     def close(self):
         forced = False
-        # A stop acknowledgement precedes interpreter teardown. Wait for orderly
-        # exit rather than racing it with a signal.
-        if self.stopping:
-            try:
-                self.proc.wait(timeout=TIMEOUT)
-            except subprocess.TimeoutExpired:
-                pass
-        if self.proc.poll() is None:
-            forced = True
+        try:
+            if self.proc is None:
+                return dict(pid=None, exit_code=None, reaped=True, forced=False, not_started=True)
+            # A stop acknowledgement precedes interpreter teardown. Await orderly
+            # exit; an ESRCH signal race still requires the owned-child wait.
+            if self.stopping:
+                try:
+                    self.proc.wait(timeout=TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    pass
+            if self.proc.poll() is None:
+                forced = True
+                try:
+                    if self.fd is not None:
+                        if live(self.fd):
+                            signal.pidfd_send_signal(self.fd, signal.SIGTERM)
+                    else:
+                        self.proc.terminate()  # still-unreaped direct child only
+                except ProcessLookupError:
+                    pass
+            code = self.proc.wait(timeout=TIMEOUT)
+            return dict(pid=self.proc.pid, exit_code=code, reaped=True, forced=forced)
+        finally:
+            if self.proc is not None:
+                for pipe in (self.proc.stdin, self.proc.stdout, self.proc.stderr):
+                    pipe.close()
             if self.fd is not None:
-                if live(self.fd):
-                    signal.pidfd_send_signal(self.fd, signal.SIGTERM)
-            else:
-                self.proc.terminate()  # still-unreaped direct child only
-        code = self.proc.wait(timeout=TIMEOUT)
-        for pipe in (self.proc.stdin, self.proc.stdout, self.proc.stderr):
-            pipe.close()
-        if self.fd is not None:
-            os.close(self.fd)
-        return dict(pid=self.proc.pid, exit_code=code, reaped=True, forced=forced)
+                os.close(self.fd)
+                self.fd = None
+
+
+def reap_holder(fd, info):
+    """Only a registered adopted holder; a wait error never proves reaping."""
+    require(not live(fd) or bool(select.select([fd], [], [], TIMEOUT)[0]), 'holder exit watchdog')
+    waited = os.waitid(os.P_PIDFD, fd, os.WEXITED)
+    require(waited.si_pid == info['pid'], 'holder wait identity')
+    require(waited.si_code in (os.CLD_EXITED, os.CLD_KILLED, os.CLD_DUMPED), 'holder wait status')
+    return dict(pid=waited.si_pid, status=waited.si_status, code=waited.si_code, reaped=True)
+
+
+def check_count(value, reason):
+    require(type(value) is int and value >= 0, reason)
+
+
+def check_action_outcome(case, decision):
+    check_count(decision['authorized_actions'], 'invalid action count')
+    check_count(decision['requests_received'], 'invalid receive count')
+    wanted = 1 if case == 'I1' else 0
+    if case == 'I2' and decision['authorized_actions'] > 0:
+        return 'CounterexampleDetected'
+    require(decision['authorized_actions'] == wanted, 'unexpected action outcome')
+    require(decision['requests_received'] == 1, 'request accounting')
+    return 'Expected'
+
+
+def same_endpoint(left, right):
+    return all(left[k] == right[k] for k in ('device', 'inode', 'type', 'passcred'))
+
+
+def verify_case_evidence(result):
+    """Independent fail-closed evidence audit, also used before a case can pass."""
+    def ev(name):
+        matches = [t['evidence'] for t in result['trace'] if t['barrier'] == name]
+        require(len(matches) == 1, 'missing/duplicate evidence: '+name)
+        return matches[0]
+    case = result['case']
+    original = ev('original-before')['identity']
+    server = ev('listener-ready-before-connect')['identity']
+    for info in (original, server):
+        unprivileged(info)
+        require(info['namespaces'] == original['namespaces'], 'evidence namespace mismatch')
+    require(server['pid'] != original['pid'], 'server/client identity collision')
+    require(ev('trusted-client-enrollment')['enrolled'] == original, 'client enrollment evidence')
+    require(ev('trusted-server-enrollment')['enrolled'] == server, 'server enrollment evidence')
+    for barrier, field in [('listener-ready-before-connect', 'listener'),
+                           ('client-passcred-ready', 'descriptor'),
+                           ('accepted-options-verified-before-send', 'descriptor')]:
+        d = ev(barrier)[field]
+        require(d['type'] == socket.SOCK_SEQPACKET and d['passcred'] == 1, 'wrong socket options')
+    # A healthy reply proves the intended server path only, not hostile reverse writers.
+    for decision, expected in [(ev('hello-credentials-and-reply')['verification'], original),
+                               (ev('server-credentials-verified'), server)]:
+        require(decision['accepted'] is True and decision['flags'] & (socket.MSG_TRUNC | socket.MSG_CTRUNC) == 0, 'hello verification evidence')
+        require(decision['credentials'] == [[expected['pid'], expected['uids'][0], expected['gids'][0]]], 'hello sender evidence')
+        require(decision['pidfd_live'] is True, 'hello liveness evidence')
+    for position in ('before', 'after'):
+        obs = ev('runner-original-'+position)
+        require(obs['identity'] == original and obs['pidfd_live'] is True, 'original instance/liveness evidence')
+    require(ev('original-after')['identity'] == original, 'original identity changed')
+    check_count(ev('original-after')['requests_sent'], 'invalid original send count')
+    require(ev('original-after')['requests_sent'] == (1 if case == 'I1' else 0), 'original sender accounting')
+    sender = original
+    if case != 'I1':
+        sender = result['holder']
+        unprivileged(sender)
+        require(sender['ppid'] == original['pid'] and sender['pid'] not in (original['pid'], server['pid']), 'holder ownership evidence')
+        require(sender['namespaces'] == original['namespaces'], 'holder namespace evidence')
+        spawned, ready = ev('holder-inheritance'), ev('holder-ready-after-handle-retained')
+        require(spawned['holder_identity'] == sender and ready['identity'] == sender, 'holder instance evidence')
+        require(spawned['close_fds'] is True and spawned['pass_fds'] == [ev('original-before')['descriptor']['fd']], 'inheritance allowlist')
+        require(ready['inherited']['inheritable'] is True and same_endpoint(ready['descriptor'], ev('original-before')['descriptor']), 'inherited endpoint evidence')
+        for position in ('before', 'after'):
+            obs = ev('holder-'+position)
+            require(obs['identity'] == sender and obs['pidfd_live'] is True, 'holder instance/liveness evidence')
+        status = ev('holder-status')
+        check_count(status['requests_sent'], 'invalid holder send count')
+        require(status['requests_sent'] == 1 and status['identity'] == sender, 'holder sender accounting')
+        require(same_endpoint(status['descriptor'], ready['descriptor']), 'holder endpoint changed')
+    sent = ev('original-send-permitted' if case == 'I1' else 'holder-send-permitted')
+    require(sent['sender'] == sender and sent['tag'] == 'action', 'actual sender evidence')
+    check_count(sent['calls'], 'invalid syscall count')
+    check_count(sent['requests_sent'], 'invalid sender count')
+    require(sent['calls'] == 1 and sent['requests_sent'] == 1, 'one submission required')
+    explicit = None if case == 'I2' else [original['pid'], sender['uids'][0], sender['gids'][0]]
+    require(sent['requested_credentials'] == explicit, 'wrong explicit/automatic credential schedule')
+    require(same_endpoint(sent['descriptor'], ev('original-before')['descriptor']), 'sender endpoint evidence')
+    if case == 'I3':
+        require(type(sent['return_value']) is int and sent['return_value'] == -1 and type(sent['errno']) is int and sent['errno'] == errno.EPERM, 'forgery syscall evidence')
+        decision = ev('independent-receiver-count-after-forgery')
+        check_count(decision['authorized_actions'], 'invalid forgery action count')
+        check_count(decision['requests_received'], 'invalid forgery receive count')
+        require(decision['authorized_actions'] == decision['requests_received'] == 0 and decision['queued_record'] is False, 'forgery receiver evidence')
+    else:
+        require(type(sent['return_value']) is int and sent['return_value'] == sent['requested_bytes'] and sent['errno'] is None, 'complete send evidence')
+        decision = ev('record-evaluation')
+        require(check_action_outcome(case, decision) == 'Expected', 'delegated authorization counterexample')
+        require(decision['credentials'] == [[sender['pid'], sender['uids'][0], sender['gids'][0]]], 'action sender credentials')
+        require(decision['accepted'] is (case == 'I1'), 'acceptance evidence')
+        if case == 'I2':
+            require(decision['reason'] == 'sender mismatch', 'holder rejection evidence')
+        else:
+            require(ev('action-reply-verified')['accepted'] is True, 'action reply evidence')
+    # The trace records released barriers, not inferred timing from sleeps.
+    names = [t['barrier'] for t in result['trace']]
+    required_order = ['listener-ready-before-connect', 'trusted-client-enrollment',
+                      'trusted-server-enrollment', 'connect-permitted',
+                      'accepted-options-verified-before-send', 'hello-send-permitted',
+                      'hello-credentials-and-reply', 'server-credentials-verified',
+                      'original-before', 'runner-original-before']
+    if case != 'I1':
+        required_order += ['holder-inheritance', 'holder-ready-after-handle-retained', 'holder-before']
+    required_order += ['original-send-permitted' if case == 'I1' else 'holder-send-permitted',
+                       'record-evaluation' if case != 'I3' else 'independent-receiver-count-after-forgery',
+                       'original-after', 'runner-original-after']
+    indices = [names.index(name) for name in required_order]
+    require(indices == sorted(indices), 'barrier order evidence')
+    return True
 
 
 def subreaper(value=None):
@@ -349,6 +504,7 @@ def run_case(case):
     actors = []
     holder_fd = None
     holder_info = None
+    holder_reaped = False
     root = Path(tempfile.mkdtemp(prefix='w2i-'))
     root_stat = root.stat()
     endpoint = root / 'record.sock'
@@ -402,11 +558,9 @@ def run_case(case):
         else:
             require(sent['errno'] is None and sent['return_value'] == sent['requested_bytes'], 'send failure')
             decision = command(server, 'record-evaluation', 'evaluate')
-            wanted = 1 if case == 'I1' else 0
-            if decision['authorized_actions'] != wanted:
+            if check_action_outcome(case, decision) == 'CounterexampleDetected':
                 result['counterexample'] = decision
-            require(decision['authorized_actions'] == wanted, 'unexpected action outcome')
-            require(decision['requests_received'] == 1, 'request accounting')
+                raise RuntimeError('delegated authorization counterexample')
             if case == 'I1':
                 require(decision['accepted'], 'healthy rejection')
                 command(client, 'action-reply-verified', 'reply-receive')
@@ -424,6 +578,8 @@ def run_case(case):
             command(client, 'holder-status', 'holder-command', command=dict(op='status'))
             reaped = command(client, 'holder-stop-and-reap', 'holder-command', command=dict(op='stop'))
             require(reaped['reaped_pid'] == holder_info['pid'] and reaped['exit_code'] == 0 and not live(holder_fd), 'holder reap evidence')
+            holder_reaped = True
+        verify_case_evidence(result)
         for a in actors:
             require(identity(a.info['pid']) == a.info and live(a.fd), 'actor identity changed')
         for a in reversed(actors):
@@ -434,8 +590,14 @@ def run_case(case):
         result['result'] = 'Blocked' if str(exc).startswith('Blocked:') else ('CounterexampleDetected' if result.get('counterexample') else 'Fail')
     finally:
         # Stop the known holder first. Normal path: its parent already reaped it.
-        if holder_fd is not None and live(holder_fd):
-            signal.pidfd_send_signal(holder_fd, signal.SIGTERM)
+        if holder_fd is not None:
+            try:
+                if live(holder_fd):
+                    signal.pidfd_send_signal(holder_fd, signal.SIGTERM)
+            except ProcessLookupError:
+                pass  # still reap/verify the retained instance below
+            except BaseException as exc:
+                result['failures'].append('holder signal: '+str(exc))
         result['actor_initializations'] = [getattr(a, 'initial', None) for a in actors]
         cleanup = result['cleanup']
         cleanup['direct_children'] = []
@@ -445,20 +607,20 @@ def run_case(case):
             except BaseException as exc:
                 result['failures'].append('cleanup: '+str(exc))
         if holder_fd is not None:
-            if not any(t['barrier'] == 'holder-stop-and-reap' for t in result['trace']):
-                try:
-                    # After client exit runner is the subreaper. Do not reap unknown children.
-                    require(not live(holder_fd) or bool(select.select([holder_fd], [], [], TIMEOUT)[0]), 'holder exit watchdog')
-                    waited = os.waitid(os.P_PIDFD, holder_fd, os.WEXITED)
-                    require(waited.si_pid == holder_info['pid'], 'holder wait identity')
-                    cleanup['adopted_holder'] = dict(pid=waited.si_pid, status=waited.si_status, code=waited.si_code)
-                except BaseException as exc:
-                    result['failures'].append('holder cleanup: '+str(exc))
-            cleanup['holder_pidfd_exited'] = not live(holder_fd)
-            os.close(holder_fd)
+            try:
+                if not holder_reaped:
+                    cleanup['adopted_holder'] = reap_holder(holder_fd, holder_info)
+                    holder_reaped = True
+                cleanup['holder_pidfd_exited'] = not live(holder_fd)
+            except BaseException as exc:
+                result['failures'].append('holder cleanup: '+str(exc))
+            finally:
+                os.close(holder_fd)
+        cleanup['holder_reaped'] = holder_reaped if holder_info is not None else None
+
         try:
             require(all(x['reaped'] for x in cleanup['direct_children']) and len(cleanup['direct_children']) == len(actors), 'unreaped actors')
-            require(holder_info is None or (holder_fd is not None and cleanup.get('holder_pidfd_exited')), 'holder ownership/exit uncertain')
+            require(holder_info is None or (holder_fd is not None and cleanup.get('holder_pidfd_exited') and holder_reaped), 'holder ownership/exit uncertain')
             if result.get('result') == 'Pass':
                 require(all(x['exit_code'] == 0 and not x['forced'] for x in cleanup['direct_children']), 'unexpected actor exit/forced cleanup')
             require(not root.is_symlink() and (root.stat().st_dev, root.stat().st_ino) == (root_stat.st_dev, root_stat.st_ino), 'root replaced')
@@ -478,12 +640,13 @@ def run_case(case):
 
 def main(output):
     report = dict(started=datetime.now(timezone.utc).isoformat(), environment=dict(kernel=platform.release(), platform=platform.platform(), python=sys.version, runner=identity()),
-                  limits=dict(record_bytes=MAX_RECORD, ancillary_bytes=ANCILLARY, control_bytes=MAX_CONTROL, watchdog_seconds=TIMEOUT),
+                  limits=dict(record_bytes=MAX_RECORD, ancillary_bytes=ANCILLARY, control_bytes=MAX_CONTROL, json_depth=MAX_JSON_DEPTH, watchdog_seconds=TIMEOUT),
                   source_sha256=hashlib.sha256(SCRIPT.read_bytes()).hexdigest(), cases=[], authentication_safety='Unproven', production_readiness=False)
-    initial_subreaper = subreaper()
-    report['subreaper_before'] = initial_subreaper
-    fd_before = len(os.listdir('/proc/self/fd'))
+    initial_subreaper, fd_before = None, None
     try:
+        initial_subreaper = subreaper()
+        report['subreaper_before'] = initial_subreaper
+        fd_before = len(os.listdir('/proc/self/fd'))
         unprivileged(report['environment']['runner'])
         for name in ('SOCK_SEQPACKET', 'SO_PASSCRED', 'SCM_CREDENTIALS', 'MSG_CMSG_CLOEXEC'):
             require(hasattr(socket, name), 'Blocked: missing '+name)
@@ -499,9 +662,22 @@ def main(output):
     except BaseException as exc:
         report['failure'] = str(exc)
     finally:
-        subreaper(initial_subreaper)
-        report['subreaper_after'] = subreaper()
-        report['runner_fds_before_after'] = [fd_before, len(os.listdir('/proc/self/fd'))]
+        report['finalization_failures'] = []
+        try:
+            if initial_subreaper is not None:
+                subreaper(initial_subreaper)
+                report['subreaper_after'] = subreaper()
+            else:
+                report['subreaper_after'] = None
+        except BaseException as exc:
+            report['subreaper_after'] = None
+            report['finalization_failures'].append('subreaper restoration: '+str(exc))
+        try:
+            fd_after = len(os.listdir('/proc/self/fd'))
+        except OSError as exc:
+            fd_after = None
+            report['finalization_failures'].append('final FD inventory: '+str(exc))
+        report['runner_fds_before_after'] = [fd_before, fd_after]
         children_path = Path(f'/proc/self/task/{os.getpid()}/children')
         try:
             report['remaining_direct_children'] = children_path.read_text().strip()
@@ -510,15 +686,21 @@ def main(output):
             # Optional kernel audit, not the owned-process reaping mechanism.
             report['remaining_direct_children'] = None
             report['child_enumeration'] = 'Unavailable: proc children file absent'
+        except OSError as exc:
+            report['remaining_direct_children'] = None
+            report['child_enumeration'] = 'Failed: '+str(exc)
+            report['finalization_failures'].append('child enumeration: '+str(exc))
         report['cleanup_scope'] = 'Registered run-owned actors; no claim about unrelated or unknown processes'
-        report['owned_cleanup_complete'] = all(
+        report['owned_cleanup_complete'] = bool(report['cases']) and all(
             c['cleanup'].get('root_removed') and len(c['cleanup'].get('direct_children', [])) == 2
             and all(a['reaped'] and a['exit_code'] == 0 for a in c['cleanup']['direct_children'])
-            and (c['case'] == 'I1' or c['cleanup'].get('holder_pidfd_exited'))
+            and (c['case'] == 'I1' or c['cleanup'].get('holder_pidfd_exited') and c['cleanup'].get('holder_reaped'))
             for c in report['cases'])
         report['diagnostic_success'] = (len(report['cases']) == 3 and all(c['result'] == 'Pass' for c in report['cases']) and 'failure' not in report
-            and report['subreaper_after'] == initial_subreaper and report['runner_fds_before_after'][0] == report['runner_fds_before_after'][1] and not report['remaining_direct_children'] and report['owned_cleanup_complete'])
-        report['primitive_result'] = 'Pass' if report['diagnostic_success'] else 'Incomplete/Fail/Blocked'
+            and report['subreaper_after'] == initial_subreaper and report['runner_fds_before_after'][0] == report['runner_fds_before_after'][1] and not report['remaining_direct_children'] and report['owned_cleanup_complete'] and not report['finalization_failures'])
+        counterexample = any(c.get('counterexample') for c in report['cases'])
+        report['authentication_safety'] = 'CounterexampleDetected' if counterexample else 'Unproven'
+        report['primitive_result'] = 'Pass' if report['diagnostic_success'] else ('CounterexampleDetected' if counterexample else 'Incomplete/Fail/Blocked')
         Path(output).write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps({k:report[k] for k in ('diagnostic_success', 'primitive_result', 'authentication_safety', 'production_readiness')}))
     return 0 if report['diagnostic_success'] else 1
