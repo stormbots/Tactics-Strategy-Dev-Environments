@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Runtime installation tests are restricted to disposable GitHub runners.' }
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:SDE_RUN_NATIVE_PACKAGES -ne '1') { throw 'Runtime installation tests require an explicitly authorized disposable GitHub runner.' }
 $choco = 'C:\ProgramData\chocolatey\bin\choco.exe'
 . (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Node24.ps1')
 # Simulate the reported real MSI/channel conflict, rather than a fake package.

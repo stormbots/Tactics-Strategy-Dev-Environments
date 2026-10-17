@@ -418,6 +418,11 @@ jobs:
           bash tests/Prepare-MintNativeCI.sh
           mkdir -p "$RUNNER_TEMP/sde-evidence"
           docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --mount "type=bind,src=$RUNNER_TEMP/sde-evidence,dst=/evidence" --entrypoint /bin/bash sde-mint22.3-native /work/tests/Test-LinuxSelfUpdateCI.sh
+      - name: Explicitly authorized desktop native package integration
+        if: inputs.run_native_packages && runner.os == 'Windows'
+        env:
+          SDE_RUN_NATIVE_PACKAGES: '1'
+        run: cargo test --locked --manifest-path installer/src-tauri/Cargo.toml github_runner_ -- --ignored --test-threads=1
       - name: Retain Windows native verification evidence
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4

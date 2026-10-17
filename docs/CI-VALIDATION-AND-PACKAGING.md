@@ -76,3 +76,18 @@ SHAs refer to the original reviewed commits, not the cherry-picked PR SHAs.
 The feature remains unwired/disabled. Native package-hook, compatibility migration,
 privilege/request lifetime and recovery gates remain open. Desktop UAT belongs to
 the owner on owned Mint and Windows 11 PCs after an authorized test build.
+
+### PR review correction: package-changing desktop tests
+
+The first workflow split moved `cargo test` into automatic desktop validation but
+missed two existing Windows tests enabled solely by GITHUB_ACTIONS: a real Node
+migration and a Chocolatey fixture installation. Automatic runs reached that test
+step on disposable runners; package operations may have occurred. A cancellation
+attempt found the run already completed. This is not described as prevented or
+as a native-package dispatch authorized by the owner. No student PC was targeted.
+
+Both tests are now explicitly ignored by default, assert a disposable runner AND
+SDE_RUN_NATIVE_PACKAGES=1 before any action, and are selected with --ignored only
+by a separately gated manual native-package step. The Node migration script also
+requires the opt-in. Automatic compilation still checks those test bodies, while
+automatic test execution excludes them. Regression checks enforce both layers.

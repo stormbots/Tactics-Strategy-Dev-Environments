@@ -47,7 +47,7 @@ class CiBoundaries(unittest.TestCase):
 
     def test_native_package_and_registration_steps_require_separate_opt_in(self):
         jobs = self.build['jobs']
-        patterns = r'Test-CoordinationCI|Test-MaintenanceCI|Test-LegacyMaintenanceAclCI|Start-Process \$installer|Test-WindowsSelfUpdateCI|apt-get install -y ./dist/|Test-LinuxSelfUpdateCI|SDE_REQUIRE_SCHEDULE_SYSTEMD'
+        patterns = r'--ignored|Test-CoordinationCI|Test-MaintenanceCI|Test-LegacyMaintenanceAclCI|Start-Process \$installer|Test-WindowsSelfUpdateCI|apt-get install -y ./dist/|Test-LinuxSelfUpdateCI|SDE_REQUIRE_SCHEDULE_SYSTEMD'
         checked = []
         for step in jobs['native']['steps']:
             if re.search(patterns, step.get('run', '')):
@@ -105,6 +105,24 @@ class CiBoundaries(unittest.TestCase):
             # Explicit bash uses Actions' -e -o pipefail on both OSes. A later
             # successful command must not mask an earlier native tool failure.
             self.assertEqual(step.get('shell'), 'bash')
+
+    def test_desktop_package_tests_are_ignored_without_explicit_dispatch(self):
+        source = (ROOT / 'installer/src-tauri/src/process.rs').read_text()
+        for name in ['github_runner_migrates_real_node26_to_node24_with_clean_environment',
+                     'github_runner_installs_chocolatey_fixture_with_clean_environment']:
+            match = re.search(r'#\[ignore = "Requires explicitly dispatched native package operations"\]\s+fn ' + name + r'\(\)\s*\{(.*?)let _guard', source, re.S)
+            self.assertIsNotNone(match, name)
+            self.assertIn('require_native_package_test();', match.group(1))
+        self.assertIn('std::env::var("SDE_RUN_NATIVE_PACKAGES")', source)
+        job = self.build['jobs']['native']
+        step = next(s for s in job['steps'] if s.get('name') == 'Explicitly authorized desktop native package integration')
+        self.assertIn('inputs.run_native_packages', step['if'])
+        self.assertEqual(step['env']['SDE_RUN_NATIVE_PACKAGES'], '1')
+        for step in self.build['jobs']['desktop-check']['steps']:
+            self.assertNotIn('--ignored', step.get('run', ''))
+            self.assertNotIn('SDE_RUN_NATIVE_PACKAGES', step.get('env', {}))
+        guard = (ROOT / 'tests/Test-Node24MigrationCI.ps1').read_text().splitlines()[1]
+        self.assertIn("$env:SDE_RUN_NATIVE_PACKAGES -ne '1'", guard)
 
     def test_only_publication_jobs_have_write_permission(self):
         for workflow, permitted in [(self.build, 'release'), (self.uat, 'sign-publish'), (self.probe, None)]:
