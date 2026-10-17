@@ -1,0 +1,61 @@
+test_authentication_after_request_is_rejected (__main__.Checks.test_authentication_after_request_is_rejected) ...
+  test_authentication_after_request_is_rejected (__main__.Checks.test_authentication_after_request_is_rejected) (case='healthy-original-client') ... FAIL
+  test_authentication_after_request_is_rejected (__main__.Checks.test_authentication_after_request_is_rejected) (case='live-client-delegation') ... FAIL
+test_cleanup_reaps_after_exit_signal_race (__main__.Checks.test_cleanup_reaps_after_exit_signal_race) ... FAIL
+test_cleanup_rejects_wrong_reaped_process (__main__.Checks.test_cleanup_rejects_wrong_reaped_process) ... FAIL
+test_counts_require_integer_evidence (__main__.Checks.test_counts_require_integer_evidence) ... ok
+test_dead_original_cannot_establish_live_delegation (__main__.Checks.test_dead_original_cannot_establish_live_delegation) ... ok
+test_delegated_action_is_counterexample (__main__.Checks.test_delegated_action_is_counterexample) ... ok
+test_existing_guard_accepts_live_enrolled_connection (__main__.Checks.test_existing_guard_accepts_live_enrolled_connection) ... ok
+test_existing_guard_rejects_different_kernel_pid (__main__.Checks.test_existing_guard_rejects_different_kernel_pid) ... ok
+test_existing_guard_rejects_exited_original (__main__.Checks.test_existing_guard_rejects_exited_original) ... ok
+test_extra_or_changed_inherited_descriptor_is_rejected (__main__.Checks.test_extra_or_changed_inherited_descriptor_is_rejected) ... ok
+test_guard_disable_or_mutant_variant_is_rejected (__main__.Checks.test_guard_disable_or_mutant_variant_is_rejected) ... ok
+test_healthy_control_is_not_general_authentication_proof (__main__.Checks.test_healthy_control_is_not_general_authentication_proof) ... ok
+test_non_sender_write_is_detected (__main__.Checks.test_non_sender_write_is_detected) ... ok
+test_payload_identity_cannot_replace_actual_sender (__main__.Checks.test_payload_identity_cannot_replace_actual_sender) ... ok
+test_privilege_and_reply_event_corruption_is_rejected (__main__.Checks.test_privilege_and_reply_event_corruption_is_rejected) ... ok
+test_request_before_liveness_barrier_is_rejected (__main__.Checks.test_request_before_liveness_barrier_is_rejected) ... ok
+test_unexpected_rejection_is_not_diagnostic_success (__main__.Checks.test_unexpected_rejection_is_not_diagnostic_success) ... ok
+test_unknown_case_allocates_nothing (__main__.Checks.test_unknown_case_allocates_nothing) ... ok
+
+======================================================================
+FAIL: test_authentication_after_request_is_rejected (__main__.Checks.test_authentication_after_request_is_rejected) (case='healthy-original-client')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2h/test_checks.py", line 127, in test_authentication_after_request_is_rejected
+    with self.subTest(case=report['case']), self.assertRaises(RuntimeError):
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_authentication_after_request_is_rejected (__main__.Checks.test_authentication_after_request_is_rejected) (case='live-client-delegation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2h/test_checks.py", line 127, in test_authentication_after_request_is_rejected
+    with self.subTest(case=report['case']), self.assertRaises(RuntimeError):
+                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_cleanup_reaps_after_exit_signal_race (__main__.Checks.test_cleanup_reaps_after_exit_signal_race)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2h/test_checks.py", line 145, in test_cleanup_reaps_after_exit_signal_race
+    wait.assert_called_once_with(99)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 960, in assert_called_once_with
+    raise AssertionError(msg)
+AssertionError: Expected 'wait_pidfd' to be called once. Called 0 times.
+
+======================================================================
+FAIL: test_cleanup_rejects_wrong_reaped_process (__main__.Checks.test_cleanup_rejects_wrong_reaped_process)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2h/test_checks.py", line 155, in test_cleanup_rejects_wrong_reaped_process
+    self.assertFalse(case.holder_reaped)
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.012s
+
+FAILED (failures=4)

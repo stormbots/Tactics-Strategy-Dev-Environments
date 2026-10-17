@@ -537,7 +537,11 @@ retained pidfd remains live, so the server permits one test action. Independent
 process/descriptor and sender/non-sender counters establish a counterexample to
 original-process message authorship under that guard. Diagnostic success is
 explicitly separate from authentication safety: healthy control Pass; delegation
-CounterexampleDetected; production readiness false. Fifteen focused checks pass.
+CounterexampleDetected; production readiness false. Eighteen reviewed focused
+checks pass. Review fixed initial-authentication ordering validation and W2h-local
+fallback reaping after a pidfd signal/exit race, including mismatched wait-PID
+rejection. Four pre-fix failing assertions across three added regressions are
+preserved; those failures are synthetic, not extra native security results.
 All six actors are reaped, both roots/socket entries removed, no infrastructure
 failures occur, and subreaper state is restored. This is an E06/B02 diagnostic
 subset, not an authentication fix, production flaw claim, post-commit or desktop

@@ -217,6 +217,62 @@ class Case(g.Case):
         ensure(srv.proc.wait(timeout=TIMEOUT) == 0, 'server shutdown failed')
 
 
+    def cleanup(self):
+        self.report['actor_cleanup'] = []
+        for actor in self.actors:
+            try:
+                if hasattr(actor, 'proc'):
+                    self.report['actor_cleanup'].append(actor.cleanup())
+            except Exception as exc:
+                self.report['failures'].append(f'actor cleanup: {type(exc).__name__}: {exc}')
+        try:
+            if self.holder_fd is not None and not self.holder_reaped:
+                ensure(self.holder_identity is not None, 'unknown holder ownership; no signal allowed')
+                if g.live(self.holder_fd):
+                    try:
+                        signal.pidfd_send_signal(self.holder_fd, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass  # owned process exited after the probe; still reap its retained pidfd
+                status = support.wait_pidfd(self.holder_fd)
+                ensure(status.si_pid == self.holder_identity['pid'], 'reaped process does not match registered holder')
+                ensure(status.si_code in (os.CLD_EXITED, os.CLD_KILLED, os.CLD_DUMPED) and type(status.si_status) is int and status.si_status >= 0, 'invalid holder wait status')
+                self.holder_reaped = True
+                self.report['holder_reap'] = dict(pid=status.si_pid,
+                    exit_code=status.si_status if status.si_code == os.CLD_EXITED else None,
+                    signal=status.si_status if status.si_code != os.CLD_EXITED else None,
+                    wait_code=status.si_code, by='runner-fallback', reaped=True)
+                self.report['failures'].append('forced/exceptional holder cleanup')
+        except Exception as exc:
+            self.report['failures'].append(f'holder cleanup: {exc}')
+        finally:
+            resources = []
+            if self.holder_fd is not None:
+                resources.append(('holder pidfd', lambda: os.close(self.holder_fd)))
+            for index, control in enumerate((self.parent_control, self.child_control)):
+                if control is not None:
+                    resources.append((f'holder control {index}', control.close))
+            close_errors = g.close_resources(resources)
+            self.holder_fd = None
+            self.report['close_errors'] = close_errors
+            self.report['failures'].extend(close_errors)
+        clean = len(self.report['actor_cleanup']) == len(self.actors) and all(c['reaped'] for c in self.report['actor_cleanup'])
+        try:
+            ensure(not close_errors and clean and not support.direct_children() and (self.holder_identity is None or self.holder_reaped), 'uncertain process cleanup; preserve root')
+            if self.root is None:
+                self.report['root_not_allocated'] = True
+                self.report['root_removed'] = True
+            else:
+                ensure(self.root_before is not None, 'unknown root identity; preserve root')
+                self.report['root_removed'] = peer.cleanup_root(self.root, self.root_before, self.sockets)
+            ensure(self.report['root_removed'], 'root removal not confirmed')
+        except Exception as exc:
+            self.report['failures'].append(f'filesystem cleanup: {exc}')
+        if not clean or any(c['forced'] or c['exit_code'] != 0 or c['stderr'] for c in self.report['actor_cleanup']):
+            self.report['failures'].append('actor failure or forced cleanup')
+        if self.report['failures']:
+            self.report['result'] = 'Fail'
+
+
 def validate_result(report):
     """An observed delegated action is a counterexample, never authentication Pass."""
     name, evaluation = report['case'], report['evaluation']
@@ -261,6 +317,12 @@ def validate_result(report):
         g.validate_socket_snapshot(record)
         ensure(g.same_socket(client_socket, record), 'not the inherited connected endpoint')
     ensure(type(hr['requests_sent_total']) is int and hr['requests_sent_total'] == 0, 'holder sent before readiness')
+    ready_observation = hr['runner_observed']
+    ensure(ready_observation['identity'] == holder_id and ready_observation['pidfd_live'] is True, 'missing independent holder readiness proof')
+    for auth in (report['server_auth'], report['client_auth']):
+        proof = auth['verification']
+        times = (proof['checked_at'], proof['verified_at'], ready_observation['observed_at'])
+        ensure(all(type(t) in (int, float) and 0 < t < float('inf') for t in times) and list(times) == sorted(times), 'authentication/readiness ordering invalid')
     cb, ca, hb, ha, sent = (report[k] for k in ('client_before', 'client_after', 'holder_before', 'holder_after', 'request_sender'))
     for msg, expected, event in [(cb, client_id, 'client-alive'), (ca, client_id, 'client-alive'),
                                  (hb, holder_id, 'holder-alive'), (ha, holder_id, 'holder-alive'),
@@ -275,7 +337,7 @@ def validate_result(report):
     counts = [(cb, 0), (hb, 0), (ca, int(not delegated)), (ha, int(delegated)), (sent, 1)]
     ensure(all(type(msg['requests_sent_total']) is int and msg['requests_sent_total'] == expected for msg, expected in counts), 'sender/non-sender request accounting mismatch')
     ensure(type(sent['requests_sent']) is int and sent['requests_sent'] == 1, 'missing actual sender request')
-    times = (cb['runner_observed']['observed_at'], hb['runner_observed']['observed_at'], sent['sent_at'], evaluation['evaluated_at'],
+    times = (ready_observation['observed_at'], cb['runner_observed']['observed_at'], hb['runner_observed']['observed_at'], sent['sent_at'], evaluation['evaluated_at'],
              ha['runner_observed']['observed_at'], ca['runner_observed']['observed_at'])
     ensure(all(type(t) in (int, float) and 0 < t < float('inf') for t in times) and list(times) == sorted(times), 'barrier ordering invalid')
     if delegated:

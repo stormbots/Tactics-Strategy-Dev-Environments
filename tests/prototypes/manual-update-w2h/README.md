@@ -67,7 +67,7 @@ authentication authority.
 
 ## Native result and counterexample
 
-[evidence/linux-run.json](evidence/linux-run.json) records 50 ordered barrier events,
+[Reviewed native evidence](evidence/reviewed-linux-run.json) records 50 ordered barrier events,
 source hashes, ownership, privileges, descriptor settings, both initial
 verification directions, retained pidfds, before/after process observations,
 request counts, evaluation results, cleanup and restoration.
@@ -77,8 +77,8 @@ request counts, evaluation results, cleanup and restoration.
 | Healthy original client | Original client | Original client | Live | 1 / 0 | 1 | Pass: healthy control only |
 | Live-client delegation | Distinct holder | Still original client | Live | 0 / 1 | 1 | CounterexampleDetected |
 
-In the recorded delegated schedule the enrolled client PID is 31664, actual holder
-sender PID is 31665, and the server still observes PID 31664 from SO_PEERCRED. Both
+In the delegated schedule the enrolled client and actual holder sender have
+distinct PIDs, and SO_PEERCRED still reports the enrolled client PID. Both
 credential/liveness conditions pass. This counterexample requires no omitted
 liveness check, mutation of the guard or parent permission to authorize an action.
 The finding is that connection credentials plus retained original-client liveness
@@ -97,9 +97,10 @@ inspection, not fabricated acceptance of the expected counterexample.
 Recorded environment: managed Linux 6.18.44 x86_64, Python 3.12.14,
 UID/EUID/GID 1000, zero effective capabilities. Both diagnostic schedules completed
 without infrastructure failures or cleanup fallback. The delegated authorization
-is the explicit authentication counterexample. No development execution failed.
+is the explicit authentication counterexample. No unexpected native execution
+failure occurred; pre-fix local regression failures are preserved below.
 
-[evidence/local-checks.txt](evidence/local-checks.txt) records 15 passing checks.
+[Original local checks](evidence/local-checks.txt) record 15 passing checks.
 They verify that the reused guard accepts a live enrolled connection but still
 rejects an exited original or mismatching kernel PID; that the healthy control
 cannot be generalized to safety; that delegated authorization is classified as a
@@ -116,11 +117,53 @@ are removed, no children remain and no close errors occur. The runner's temporar
 child-subreaper setting is restored 0 → 1 → 0; adoption is reserved for exceptional
 cleanup and is not used in either normal schedule. All retained handles close.
 
-Reviewed W2g cleanup utilities continue across individual close errors and refuse
+W2h cleanup uses reviewed W2g close utilities to continue across individual errors and refuses
 unknown/replaced paths or uncertain process cleanup. Only registered pidfds or a
 still-unreaped direct Popen child can be signaled; unknown adopted actors are not
 killed. Actual exceptional cleanup, timeouts and unkillable tasks were not tested
 natively. Path checks are fixture safeguards, not atomic hostile-race protection.
+
+
+## W2h implementation and evidence review
+
+The original `linux-run.json` and `local-checks.txt` are preserved unchanged, with
+source hashes bound to commit `b124ea7`. Reviewed source/evidence appears in
+`evidence/reviewed-linux-run.json` and `evidence/review-checks.txt`. No earlier
+helper source, guard implementation or experiment was modified/rerun.
+
+The original native records support the counterexample and its classification.
+Review fixed two narrow W2h proof/cleanup gaps:
+
+- The oracle now requires ordered initial credential-verification timestamps,
+  independently observed holder readiness, and readiness before the existing
+  client/holder/request/evaluation barriers. Previously a mutated authentication
+  timestamp after evaluation was accepted in either case.
+- W2h has a local fallback-cleanup override that still reaps the registered holder
+  if it exits between a live probe and pidfd signaling. The inherited path could
+  skip reaping after ProcessLookupError. W2h also requires the returned wait PID
+  to match the registered holder and validates the wait-event kind/status before
+  treating cleanup as complete. Signal termination and exit codes are recorded
+  separately. Mismatched wait evidence leaves reaping uncertain and prevents root
+  removal. Exceptional cleanup still fails the diagnostic, even when reaping
+  succeeds; it cannot create an authentication safety pass.
+
+[Pre-fix output](evidence/review-counterexamples.txt) records **four failing
+assertions across three added regressions in an 18-test suite**: authentication
+ordering for both native fixtures, a simulated exit/signal race, and mismatched
+reap PID. These are snapshot/mocked counterexamples to harness validation, not
+four native authentication failures. [Reviewed checks](evidence/review-checks.txt)
+pass **all 18 checks**. The two authentication timestamps and cleanup faults in
+these regressions are injected facts, not additional native schedules.
+
+The reviewed native run still records healthy control Pass and live delegation
+CounterexampleDetected, 50 barrier events and one permitted test action in each
+case. Both guards remain enabled with the unchanged `guarded` evaluator. All six
+actors exit zero and are reaped, both roots/socket entries are removed, no native
+cleanup fallback/close errors occur, and the subreaper flag is restored. The
+summary remains diagnostic_success=true, authentication_safety=CounterexampleDetected,
+production_readiness=false. Source hashes bind the reviewed W2h Python files and
+unchanged W2g/W2f/W2b helper definitions. Native exceptional-cleanup/timeout faults
+and broader security integration remain unvalidated.
 
 ## Remaining gaps and design consequence
 

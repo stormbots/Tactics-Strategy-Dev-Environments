@@ -3,6 +3,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
@@ -12,7 +13,10 @@ spec.loader.exec_module(w)
 
 
 def cases():
-    return json.loads((Path(__file__).parent / 'evidence/linux-run.json').read_text())['cases']
+    root = Path(__file__).parent / 'evidence'
+    reviewed = root / 'reviewed-linux-run.json'
+    path = reviewed if reviewed.exists() else root / 'linux-run.json'
+    return json.loads(path.read_text())['cases']
 
 
 class Checks(unittest.TestCase):
@@ -114,6 +118,44 @@ class Checks(unittest.TestCase):
         with patch.object(w.tempfile, 'mkdtemp', side_effect=AssertionError('must validate before allocation')):
             with self.assertRaises(RuntimeError):
                 w.Case('unknown')
+
+
+    def test_authentication_after_request_is_rejected(self):
+        for index in (0, 1):
+            report = cases()[index]
+            report['server_auth']['verification']['verified_at'] = report['evaluation']['evaluated_at'] + 1
+            with self.subTest(case=report['case']), self.assertRaises(RuntimeError):
+                w.validate_result(report)
+
+    def cleanup_fixture(self):
+        case = w.Case.__new__(w.Case)
+        case.actors = []
+        case.holder_fd, case.holder_reaped = 99, False
+        case.holder_identity = dict(pid=1234, uid=1000, gid=1000, ppid=100, start_ticks=55)
+        case.parent_control = case.child_control = None
+        case.root, case.root_before, case.sockets = Path('/unused/W2h-mock-only'), {}, {}
+        case.report = dict(result='Fail', root_removed=False, failures=['injected prior failure'], counterexample=None)
+        return case
+
+    def test_cleanup_reaps_after_exit_signal_race(self):
+        case = self.cleanup_fixture()
+        status = SimpleNamespace(si_pid=1234, si_code=w.os.CLD_EXITED, si_status=0)
+        with patch.object(w.g, 'live', return_value=True), patch.object(w.signal, 'pidfd_send_signal', side_effect=ProcessLookupError('mock exit race')), patch.object(w.support, 'wait_pidfd', return_value=status) as wait, patch.object(w.os, 'close'), patch.object(w.support, 'direct_children', return_value=[]), patch.object(w.peer, 'cleanup_root', return_value=True):
+            case.cleanup()
+        wait.assert_called_once_with(99)
+        self.assertTrue(case.holder_reaped)
+        self.assertEqual(case.report['holder_reap']['pid'], 1234)
+        self.assertEqual(case.report['result'], 'Fail')  # exceptional cleanup is not a diagnostic Pass
+
+    def test_cleanup_rejects_wrong_reaped_process(self):
+        case = self.cleanup_fixture()
+        status = SimpleNamespace(si_pid=9999, si_code=w.os.CLD_EXITED, si_status=0)
+        with patch.object(w.g, 'live', return_value=False), patch.object(w.support, 'wait_pidfd', return_value=status), patch.object(w.os, 'close'), patch.object(w.support, 'direct_children', return_value=[]), patch.object(w.peer, 'cleanup_root', return_value=True) as remove:
+            case.cleanup()
+        self.assertFalse(case.holder_reaped)
+        self.assertFalse(case.report['root_removed'])
+        remove.assert_not_called()
+
 
 
 if __name__ == '__main__':
