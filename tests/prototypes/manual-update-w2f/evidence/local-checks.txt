@@ -1,0 +1,13 @@
+test_creation_change_closes_pidfd (__main__.Checks.test_creation_change_closes_pidfd) ... ok
+test_exited_peer_denied (__main__.Checks.test_exited_peer_denied) ... ok
+test_gid_mismatch (__main__.Checks.test_gid_mismatch) ... ok
+test_kernel_error_denied (__main__.Checks.test_kernel_error_denied) ... ok
+test_missing_enrollment_denied (__main__.Checks.test_missing_enrollment_denied) ... ok
+test_same_uid_unexpected_pid_denied_before_proc_access (__main__.Checks.test_same_uid_unexpected_pid_denied_before_proc_access) ... ok
+test_short_kernel_record (__main__.Checks.test_short_kernel_record) ... ok
+test_uid_mismatch (__main__.Checks.test_uid_mismatch) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.002s
+
+OK

@@ -1,0 +1,498 @@
+{
+  "scope": "W2f only; no production authentication claim",
+  "enrollment": "Trusted parent control pipes; independent child creation identities; not production bootstrap",
+  "timing": "Five-second per-operation test watchdog; no production deadline claim",
+  "environment": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "privilege": {
+      "uid": 1000,
+      "euid": 1000,
+      "effective_capabilities": "0000000000000000"
+    },
+    "gid": 1000
+  },
+  "source_hashes": {
+    "manual-update-w2f/run_experiment.py": "b2c8468ba9d8e62383b64648a398b308897f1b79655e86183d572a7e519b3089",
+    "manual-update-w2f/test_checks.py": "d1cf01d654ce3434e24776a4c09cb437c65371635e1bcc2b2228406e36921961",
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2"
+  },
+  "cases": [
+    {
+      "case": "intended",
+      "root": "/tmp/PROTOTYPE-W2f-6o8ntllf",
+      "failures": [],
+      "ownership": [
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27850,
+            "ppid": 27848,
+            "start_ticks": 4775023,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27851,
+            "ppid": 27848,
+            "start_ticks": 4775026,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        }
+      ],
+      "root_metadata": {
+        "uid": 1000,
+        "mode": "0o700"
+      },
+      "sockets": {
+        "/tmp/PROTOTYPE-W2f-6o8ntllf/real.sock": {
+          "device": 33,
+          "inode": 4663,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true
+        }
+      },
+      "server_verifies_client": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 27851,
+            "ppid": 27848,
+            "start_ticks": 4775026,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47750.306698549,
+          "kernel": {
+            "pid": 27851,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 27851,
+            "ppid": 27848,
+            "start_ticks": 4775026,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 27851,
+            "ppid": 27848,
+            "start_ticks": 4775026,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true
+        }
+      },
+      "client_verifies_server": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 27850,
+            "ppid": 27848,
+            "start_ticks": 4775023,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47750.306633445,
+          "kernel": {
+            "pid": 27850,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 27850,
+            "ppid": 27848,
+            "start_ticks": 4775023,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 27850,
+            "ppid": 27848,
+            "start_ticks": 4775023,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true
+        }
+      },
+      "server_result": {
+        "event": "result",
+        "authorized_actions": 1,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "completed_at": 47750.308373609
+      },
+      "client_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 1,
+        "trusted_status": 1,
+        "completed_at": 47750.30841437
+      },
+      "passed": true,
+      "cleanup": [
+        {
+          "pid": 27850,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        },
+        {
+          "pid": 27851,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        }
+      ],
+      "root_removed": true
+    },
+    {
+      "case": "unexpected-client",
+      "root": "/tmp/PROTOTYPE-W2f-eau9_jxo",
+      "failures": [],
+      "ownership": [
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27852,
+            "ppid": 27848,
+            "start_ticks": 4775031,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27853,
+            "ppid": 27848,
+            "start_ticks": 4775034,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27854,
+            "ppid": 27848,
+            "start_ticks": 4775038,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        }
+      ],
+      "root_metadata": {
+        "uid": 1000,
+        "mode": "0o700"
+      },
+      "sockets": {
+        "/tmp/PROTOTYPE-W2f-eau9_jxo/real.sock": {
+          "device": 33,
+          "inode": 4665,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true
+        }
+      },
+      "server_verifies_client": {
+        "event": "verified",
+        "verification": {
+          "accepted": false,
+          "reason": "pid-mismatch",
+          "enrolled": {
+            "pid": 27853,
+            "ppid": 27848,
+            "start_ticks": 4775034,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47750.41635875,
+          "kernel": {
+            "pid": 27854,
+            "uid": 1000,
+            "gid": 1000
+          }
+        }
+      },
+      "client_verifies_server": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 27852,
+            "ppid": 27848,
+            "start_ticks": 4775031,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47750.416170095,
+          "kernel": {
+            "pid": 27852,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 27852,
+            "ppid": 27848,
+            "start_ticks": 4775031,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 27852,
+            "ppid": 27848,
+            "start_ticks": 4775031,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true
+        }
+      },
+      "server_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "completed_at": 47750.417515741
+      },
+      "client_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "completed_at": 47750.41758085
+      },
+      "passed": true,
+      "cleanup": [
+        {
+          "pid": 27852,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        },
+        {
+          "pid": 27853,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        },
+        {
+          "pid": 27854,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        }
+      ],
+      "root_removed": true
+    },
+    {
+      "case": "unexpected-server",
+      "root": "/tmp/PROTOTYPE-W2f-5kqmqctk",
+      "failures": [],
+      "ownership": [
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27855,
+            "ppid": 27848,
+            "start_ticks": 4775043,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27856,
+            "ppid": 27848,
+            "start_ticks": 4775046,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 27857,
+            "ppid": 27848,
+            "start_ticks": 4775050,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        }
+      ],
+      "root_metadata": {
+        "uid": 1000,
+        "mode": "0o700"
+      },
+      "sockets": {
+        "/tmp/PROTOTYPE-W2f-5kqmqctk/real.sock": {
+          "device": 33,
+          "inode": 4667,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true
+        },
+        "/tmp/PROTOTYPE-W2f-5kqmqctk/fake.sock": {
+          "device": 33,
+          "inode": 4668,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true
+        }
+      },
+      "server_verifies_client": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 27856,
+            "ppid": 27848,
+            "start_ticks": 4775046,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47750.534380731,
+          "kernel": {
+            "pid": 27856,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 27856,
+            "ppid": 27848,
+            "start_ticks": 4775046,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 27856,
+            "ppid": 27848,
+            "start_ticks": 4775046,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true
+        }
+      },
+      "client_verifies_server": {
+        "event": "verified",
+        "verification": {
+          "accepted": false,
+          "reason": "pid-mismatch",
+          "enrolled": {
+            "pid": 27855,
+            "ppid": 27848,
+            "start_ticks": 4775043,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47750.534341262,
+          "kernel": {
+            "pid": 27857,
+            "uid": 1000,
+            "gid": 1000
+          }
+        }
+      },
+      "server_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "completed_at": 47750.535510241
+      },
+      "client_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "completed_at": 47750.53555882
+      },
+      "passed": true,
+      "cleanup": [
+        {
+          "pid": 27855,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        },
+        {
+          "pid": 27856,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        },
+        {
+          "pid": 27857,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true
+        }
+      ],
+      "root_removed": true
+    }
+  ],
+  "failures": [],
+  "remaining_children": [],
+  "passed": true
+}

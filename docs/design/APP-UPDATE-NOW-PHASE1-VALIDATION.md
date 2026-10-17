@@ -479,3 +479,20 @@ counters, deadlines, process ownership, lock probes and cleanup are recorded.
 This is only an E07/B02/B06 Linux surrogate subset; all six blockers and all other
 W2/W3, elevation, registration, production implementation, package operations and
 workflow/build/release deferrals remain unchanged.
+
+
+## Separately authorized W2f execution
+
+The [W2f record](../../tests/prototypes/manual-update-w2f/README.md) documents
+mutual SO_PEERCRED checks bound to explicitly enrolled live process instances.
+Three native Linux schedules pass: intended peers authorize one fixed action;
+an unexpected same-UID client and an unexpected same-UID server are each rejected
+for PID mismatch, with zero authorized actions or trusted acknowledgments.
+Eight focused synthetic fail-closed checks pass. Both verification directions,
+process/socket ownership, source hashes and complete cleanup are recorded; an
+initial sandbox bind denial is preserved separately. Trusted parent enrollment
+and barrier-controlled exchange are fixture assumptions. This is only a narrow
+E06/B02 subset, without privileged namespace, production bootstrap, continuous
+session identity or Windows proof. All six blockers and all other W2/W3,
+elevation, registration, production implementation, package operations and
+workflow/build/release deferrals remain unchanged.
