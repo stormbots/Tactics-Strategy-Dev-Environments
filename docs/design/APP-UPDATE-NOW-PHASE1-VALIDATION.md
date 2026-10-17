@@ -606,3 +606,28 @@ EPERM on forgery, 64 events and complete registered-actor cleanup/restoration.
 Local mocked fault tests are not native fault coverage. Diagnostic success does
 not establish authentication safety; the prior W2h counterexample is preserved,
 all six blockers stay open, and all other work remains deferred.
+
+
+### Separately authorized W2j unexpected-descriptor execution
+
+The [W2j record](../../tests/prototypes/manual-update-w2j/README.md) documents only
+a healthy control and one otherwise-valid, explicitly credential-bearing record
+with one run-owned pipe descriptor. It preserves the reviewed W2i transport and
+validator unchanged. Kernel-installed receiver FD metadata shows CLOEXEC and the
+sender pipe's identity; the validator rejects the attachment with zero actions,
+closes the delivered FD, and immediate fstat/F_GETFD checks return EBADF before
+any inventory operation can reuse its number. Receiver FD inventories match and
+both sender pipe ends remain valid. The healthy control authorizes one action.
+
+Both native cases pass with 38 barrier events; all four direct actors exit
+normally/reap, both roots are removed, runner FD inventory is unchanged, and
+subreaper state stays 0→0 without mutation. Seventeen local checks pass, including
+synthetic/mocked ordering and corruption checks and saved-native-report audits;
+these are not additional native fault cases. No unexpected native failures occur.
+This supplies only a single completely delivered descriptor rejection/cleanup
+observation. Truncation, partial delivery, multi-FD/resource and hostile reverse
+writer schedules remain deferred. W2h remains an authentication counterexample;
+W2i remains limited primitive feasibility. Diagnostic success is not general
+authentication/adapter safety; B01–B06 stay open. All other W2/W3, production
+implementation, elevation, registration, package operations, build dispatch and
+release preparation remain deferred. No PR or publication is part of this step.
