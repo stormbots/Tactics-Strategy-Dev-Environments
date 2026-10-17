@@ -162,3 +162,42 @@ compilation, SYSTEM validation, native installation or desktop UAT. Formatting,
 Clippy and Windows compilation remain merge-readiness gaps. No Phase 2, elevation,
 registration, package operations, PR, build dispatch, publication or release work
 was undertaken. Historical findings and original evidence remain unchanged.
+
+
+## Development-component authorization and completed tooling checks
+
+After the preceding review, the owner explicitly authorized development components:
+"I want to unblock you from the tools you need for this job. You are allowed
+development components." That resolves the earlier tool-install approval blocker;
+its historical rejection and reports above are retained, not rewritten.
+
+Installed only workspace development components: rustfmt, clippy, the
+`x86_64-pc-windows-gnu` Rust standard library, and portable LLVM-MinGW 20261006.
+No system/native package-manager operation, elevation, service/task registration
+or installed application update was performed. LLVM-MinGW's official release
+asset SHA-256 was checked against the published GitHub asset digest before
+extraction. Compiler paths and source hashes are recorded in the evidence report;
+no global environment or installed application configuration was changed.
+
+Rustfmt was applied. Windows cross-compilation revealed a dead-code warning for
+the Linux-only context scope accessor; the accessor is now compiled only on Linux.
+No installer behavior changed. The remaining edits are standard formatting.
+
+[Completed tooling report](evidence/ISSUE72-SHARED-CORE-TOOLING.json) records:
+
+- `cargo fmt --check`: Pass.
+- Linux `cargo clippy --all-targets -- -D warnings`: Pass.
+- Windows GNU `cargo check --target x86_64-pc-windows-gnu --all-targets`: Pass,
+  including Windows-native backend and test-source type checking.
+- Windows GNU `cargo clippy --all-targets -- -D warnings`: Pass.
+- Allowed Linux updater library regression suite: **40 passed**, four privileged/
+  protected-staging/native cases explicitly filtered, as in the preceding review.
+
+All Cargo dependency resolution remained `--offline --locked`. The local HTTP
+regression uses only its loopback test server. No live update discovery or native
+installer/package operation ran. Earlier formatting/Clippy/Windows-target absence
+is no longer a blocker to these completed checks. Native Windows execution, real
+UAC/SYSTEM, MSVC compilation, Mint upgrades and desktop UAT remain **NotRun**;
+GNU cross-compilation does not establish those behaviors. Authentication safety
+remains Unproven and production readiness false. Phase 2, native package work,
+PR creation, build dispatch and release preparation remain deferred.

@@ -1,0 +1,117 @@
+{
+  "scope": "Phase 1 development-tooling validation only",
+  "baseline": "8f97360",
+  "started": "2026-10-17T13:56:15.547692+00:00",
+  "authorization": "Owner explicitly allowed development components after the previous installation rejection",
+  "tooling": {
+    "rustfmt": "installed workspace-only",
+    "clippy": "installed workspace-only",
+    "windows_rust_target": "x86_64-pc-windows-gnu",
+    "cross_compiler": "LLVM-MinGW 20261006 ucrt Ubuntu22.04 x86_64 portable workspace toolchain",
+    "cross_compiler_url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20261006/llvm-mingw-20261006-ucrt-ubuntu-22.04-x86_64.tar.xz",
+    "cross_compiler_sha256": "5f9c6ed95b2d4bdb2869a488c5fd5857fbdabcf288a0aa3eb1da43f6a08d8ab4"
+  },
+  "commands": [
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--manifest-path",
+        "updater/Cargo.toml",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--manifest-path",
+        "updater/Cargo.toml",
+        "--offline",
+        "--locked",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Checking sde-update-trust v0.1.0 (/workspace/Tactics-Strategy-Dev-Environments/work/issue72-app-only-core/updater)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.47s\n"
+    },
+    {
+      "argv": [
+        "cargo",
+        "check",
+        "--manifest-path",
+        "updater/Cargo.toml",
+        "--offline",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Checking sde-update-trust v0.1.0 (/workspace/Tactics-Strategy-Dev-Environments/work/issue72-app-only-core/updater)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.49s\n"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--manifest-path",
+        "updater/Cargo.toml",
+        "--offline",
+        "--locked",
+        "--target",
+        "x86_64-pc-windows-gnu",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s\n"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "updater/Cargo.toml",
+        "--offline",
+        "--locked",
+        "--lib",
+        "--",
+        "--skip",
+        "signed_upgrade_on_native_mint",
+        "--skip",
+        "signed_upgrade_under_system",
+        "--skip",
+        "e2e::",
+        "--skip",
+        "staging::tests::authenticated_stage_and_failed_download_cleanup",
+        "--skip",
+        "staging::tests::pinned_key_does_not_accept_test_signature_or_leave_files"
+      ],
+      "exit_code": 0,
+      "stdout": "\nrunning 40 tests\ntest discovery::tests::assets_and_redirects_fail_closed ... ok\ntest discovery::tests::pagination_and_failures_never_report_current ... ok\ntest discovery::tests::network_status_retry_deadline_and_size_contracts ... ok\ntest discovery::tests::selection_semantic_no_downgrade_and_no_fallback ... ok\ntest host::tests::installed_version_is_canonical ... ok\ntest host::tests::mint_version_gate ... ok\ntest host::tests::unsafe_unix_files_and_links_rejected ... ok\ntest install_core::tests::app_only_final_pause_is_before_intent ... ok\ntest install_core::tests::app_only_has_no_post_intent_policy_read_or_external_preparation ... ok\ntest install_core::tests::app_only_never_calls_tools_even_when_callback_would_fail ... ok\ntest install_core::tests::app_only_pause_never_uses_the_legacy_paused_receipt_hook ... ok\ntest install_core::tests::both_scopes_use_same_verified_install_and_completion_pipeline ... ok\ntest install_core::tests::current_or_downgrade_never_authenticates_or_creates_intent ... ok\ntest install_core::tests::every_post_intent_failure_preserves_intent_and_never_marks_updated ... ok\ntest install_core::tests::failed_completion_never_reports_updated_or_repairs_uncertainty ... ok\ntest install_core::tests::failed_scheduled_pause_receipt_preserves_intent_without_launch_or_completion ... ok\ntest install_core::tests::final_policy_read_failure_is_before_manual_intent_but_after_scheduled_intent ... ok\ntest install_core::tests::initial_pause_skips_identity_authentication_and_intent ... ok\ntest install_core::tests::malformed_versions_stop_before_authentication ... ok\ntest install_core::tests::native_non_success_including_reboot_code_never_clears_intent ... ok\ntest install_core::tests::pre_intent_failures_stop_both_scopes_without_launch ... ok\ntest install_core::tests::preflight_busy_defers_without_intent_or_native_effect ... ok\ntest install_core::tests::scheduled_final_pause_preserves_legacy_intent_cleanup_order ... ok\ntest install_core::tests::scheduled_paused_cleanup_failure_is_failed_not_paused ... ok\ntest install_core::tests::scheduled_tools_keep_exact_result_and_error ... ok\ntest install_core::tests::uncertain_begin_retains_intent_and_never_launches ... ok\ntest linux_install::tests::apt_contract_is_narrow_noninteractive_and_bounded ... ok\ntest observation::tests::actionable_failure_phases_are_distinct ... ok\ntest observation::tests::invalid_and_unknown_records_never_mean_current ... ok\ntest observation::tests::pause_is_current_and_results_are_independent ... ok\ntest tests::changed_truncated_missing_and_renamed_installers_rejected ... ok\ntest discovery::tests::real_http_stream_preserves_original_length_and_rejects_truncation ... ok\ntest tests::even_authentic_incomplete_or_unsupported_metadata_is_rejected ... ok\ntest tests::modified_metadata_signature_wrong_key_and_candidate_tag_rejected ... ok\ntest tests::official_minisign_interoperability ... ok\ntest tests::production_key_cannot_be_overridden_by_fixture_key ... ok\ntest tests::release_tag_and_input_limits ... ok\ntest tests::valid_signed_release_and_both_installers ... ok\ntest windows_install::tests::nsis_exit_contract_never_assumes_msi_success ... ok\ntest tests::encrypted_release_signing_and_wrong_password_fail_closed ... ok\n\ntest result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 11.15s\n\n",
+      "stderr": "   Compiling sde-update-trust v0.1.0 (/workspace/Tactics-Strategy-Dev-Environments/work/issue72-app-only-core/updater)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.00s\n     Running unittests src/lib.rs (/workspace/Tactics-Strategy-Dev-Environments/updater/target/debug/deps/sde_update_trust-e81cb02e8c52a2ef)\n"
+    }
+  ],
+  "windows_execution": "NotRun",
+  "windows_msvc_compilation": "NotRun",
+  "native_updates": "NotRun",
+  "native_desktop_uat": "NotRun",
+  "production_readiness": false,
+  "all_checks_pass": true,
+  "source_sha256": {
+    "updater/src/lib.rs": "dfa132f022bd147b37c1783179806b2c8e4d5143890be6b67fdd40df510b2584",
+    "updater/src/install_core.rs": "9dd32381028bebe379cd937f84683ff4c889298ecf11caa3c23bf428597e20e2",
+    "updater/src/linux_install.rs": "d7ecda6632f5943bbfa83621a64274c03c63ccaa04faa68b1a0e5316200d7d1d",
+    "updater/src/windows_install.rs": "0a694971b8314eccb54502d4e188fb55fb5f69e582e7b286ad78359256175ec8"
+  }
+}
