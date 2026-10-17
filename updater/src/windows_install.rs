@@ -452,19 +452,19 @@ mod native {
         report: &mut Report,
     ) -> Result<()> {
         system()?;
-        report.tool_exit = crate::install_core::tools_for(
-            crate::install_core::Scope::AppOnly,
-            tool_maintenance,
-        )?;
+        report.tool_exit =
+            crate::install_core::tools_for(crate::install_core::Scope::AppOnly, tool_maintenance)?;
         install_in_context(
             crate::install_core::Context::app_only(lease),
             directory,
             candidate,
             report,
             crate::authenticate,
-            || host::installed()
-                .map(|i| i.version)
-                .map_err(|_| "Installed identity unavailable".into()),
+            || {
+                host::installed()
+                    .map(|i| i.version)
+                    .map_err(|_| "Installed identity unavailable".into())
+            },
         )
     }
 
@@ -532,7 +532,9 @@ mod native {
             authenticate_staged(
                 self.directory,
                 self.candidate,
-                self.authenticate.take().ok_or("Authentication already consumed")?,
+                self.authenticate
+                    .take()
+                    .ok_or("Authentication already consumed")?,
             )
         }
         fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
@@ -597,7 +599,9 @@ mod native {
             self.report.application_version = self.candidate.version.clone();
             self.report.outcome = "updated".into();
             if !self.report.recovery_available {
-                self.report.detail = "Verified previous-version installer unavailable; reduced recovery capability".into();
+                self.report.detail =
+                    "Verified previous-version installer unavailable; reduced recovery capability"
+                        .into();
             }
         }
     }

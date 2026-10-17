@@ -288,10 +288,8 @@ fn install_app_only(
     if unsafe { libc::geteuid() } != 0 {
         return Err("Root maintenance required".into());
     }
-    report.tool_exit = crate::install_core::tools_for(
-        crate::install_core::Scope::AppOnly,
-        tool_maintenance,
-    )?;
+    report.tool_exit =
+        crate::install_core::tools_for(crate::install_core::Scope::AppOnly, tool_maintenance)?;
     install_in_context(
         crate::install_core::Context::app_only(lease),
         directory,
@@ -364,7 +362,9 @@ where
         authenticate_staged(
             self.directory,
             self.candidate,
-            self.authenticate.take().ok_or("Authentication already consumed")?,
+            self.authenticate
+                .take()
+                .ok_or("Authentication already consumed")?,
         )
     }
     fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
@@ -388,7 +388,9 @@ where
             .output()
             .map_err(|_| "Package health check unavailable")?;
         if !audit.status.success() || !audit.stdout.is_empty() || !audit.stderr.is_empty() {
-            return Err("Existing package state needs mentor repair before self-installation".into());
+            return Err(
+                "Existing package state needs mentor repair before self-installation".into(),
+            );
         }
         Ok(true)
     }
@@ -448,7 +450,8 @@ where
         self.report.application_version = self.candidate.version.clone();
         self.report.outcome = "updated".into();
         if !self.report.recovery_available {
-            self.report.detail = "Previous signed installer unavailable; reduced recovery capability".into();
+            self.report.detail =
+                "Previous signed installer unavailable; reduced recovery capability".into();
         }
     }
 }
