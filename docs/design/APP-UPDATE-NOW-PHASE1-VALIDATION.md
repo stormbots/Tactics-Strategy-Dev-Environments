@@ -826,3 +826,18 @@ healthy admission are separate later evidence gates. No code, tests, compilation
 or experiments occurred. W2m remains Fail, W2h remains an authentication
 counterexample, and B01–B06 and all deferrals remain unchanged. No publication or
 PR belongs to this review.
+
+
+#### W2n D1 interface/layout closure — documentation only
+
+The [ABI v1 addendum](APP-UPDATE-NOW-W2N-ABI.md) resolves revision 2's D1 gap
+with exact C/ctypes exports, statuses, lifecycle, capability/status/provider
+blocks, 1536-byte frozen capture offsets, masks, three 512-byte chunks and bounded
+export framing. Consistency review updates the main specification/review to
+revision 3, distinguishing the 4096-byte arena from the serialized capture and
+requiring freeze/sanitization before any read. D1 is closed only as documentation;
+implementation/linkage/local-check review and actual healthy interception before
+N2 remain unverified. No code, compilation, test suite or experiments occurred.
+W2m remains Fail, W2h remains a counterexample, authentication safety remains
+Unproven, production readiness false, and all B01–B06/deferrals remain intact.
+No publication or PR belongs to this task.

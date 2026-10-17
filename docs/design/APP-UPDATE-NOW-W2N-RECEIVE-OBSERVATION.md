@@ -1,10 +1,13 @@
-# #72 W2n receive-observation specification — reviewed draft revision 2
+# #72 W2n receive-observation specification — reviewed draft revision 3
 
 Status: **documentation only; not implemented, compiled or executed**.
 A separate implementation/execution authorization is required after review.
 This draft does not authorize rerunning W2m or any other experiment.
 Review baseline: `51a038e`. See the [review disposition](APP-UPDATE-NOW-W2N-REVIEW.md)
-for resolved design gaps and remaining validation gates.
+for resolved design gaps and remaining validation gates. D1's exact interface
+and record layout are now specified in the [ABI v1 addendum](APP-UPDATE-NOW-W2N-ABI.md),
+which is normative for function signatures, wire values, offsets and lifecycle.
+This supersedes revision 2's statement that those details were unspecified.
 
 ## 1. Question and preserved baseline
 
@@ -138,17 +141,19 @@ expected acceptance bits. Captured kernel credentials are diagnostic evidence.
 There is no arbitrary-path logging API. Python loads the already-preloaded
 observer by its verified identity; a second independent library instance is not
 acceptable. Exported status identifies the library instance and its storage.
-Use explicit ctypes argtypes/restype matching the recorded C ABI; default ctypes
-integer/pointer conversions are not acceptable.
+Use the exact ctypes argtypes/restype and C signatures in the ABI v1 addendum;
+default integer/pointer conversions are not acceptable. The fixed operations are
+setup, ABI query, provider query, status, arm, freeze and capture read; no extra
+control export is authorized by ABI v1.
 
 The fixed interface has no generic memory-read or executor operation:
 
 | Operation | Contract |
 | --- | --- |
 | Setup/status | Return bounded version/ABI/provider/instance data and saturating entry/exit/error counters; no recvmsg and no state reset. Initialization happens once before ready. |
-| Arm | Accept only the accepted socket FD, bounded run/case token and phase sequence; reject rearm, malformed input or wrong lifecycle state. Store the current global entry count. No expected result, capacity override or descriptor attachment parameter. |
-| Snapshot metadata | Return immutable record size, validity state, sequence and snapshot generation; before completion return NotReady without polling the socket. |
-| Snapshot chunk | Copy at most 512 bytes into a caller-owned, length-declared buffer using checked offset/length arithmetic. Reject invalid ranges; never permit arbitrary addresses or return observer-internal pointers. All chunks bind to one generation and call ID. |
+| Arm | Accept only the selected socket FD and expected existing entry count; bind them to the already-established run/case/phase from setup. Reject rearm, malformed input, stale count or wrong state. No expected result, capacity override or attachment parameter. |
+| Snapshot metadata / freeze | status supplies bounded lifecycle/size information. After the allowed pipeline stages, freeze sanitizes into the immutable 1536-byte record; OK means export available, not safe/valid. Before call completion freeze returns NotReady without polling. |
+| Snapshot chunk | Copy exactly 512 bytes from offsets 0, 512 or 1024 of frozen generation 1, using a declared 512-byte caller buffer. Reject every other range/generation; never return internal pointers. All chunks bind to the same run/case/call. |
 
 The in-process caller is trusted test Python, not a hostile-pointer C API. Setup
 loads must prove their instance equals the interposed instance: a fixture-only
@@ -178,8 +183,8 @@ acceptance.
    receiver after-inventory, export the snapshot/status through the fixed setup
    interface. No snapshot retrieval/allocation occurs between validation and
    immediate EBADF checks. Export is non-consuming local memory access, not a new
-   probe. The parent compares call counts and identities. Once exported, freeze
-   the record permanently; post-capture status may add a separate coverage-error
+   probe. The parent compares call counts and identities. The freeze operation
+   sanitizes and fixes the record before the first chunk is exported; post-capture status may add a separate coverage-error
    indicator, never rewrite the captured bytes or counters.
 
 Seeing a loaded library alone does not prove interception. N1 requires successful
@@ -189,10 +194,12 @@ show the captured call is the action, not Hello, a reply, or a control read.
 
 ## 5. Capture format, bounds and storage
 
-Per server process, reserve one static record of at most **4096 bytes**, plus
+Per server process, reserve at most **4096 bytes** for the capture arena plus
 at most **512 bytes** of scalar state, for a maximum **4608 bytes** of observer
-capture/state storage per server. The 4096-byte record budget includes raw and
-sanitized arrays plus masks; it is not 4096 bytes per copy. This does not bound
+capture/state storage per server. The arena contains the immutable **1536-byte**
+serialized capture, raw/sanitized arrays, masks, fixed query blocks and bounded
+scratch; the ABI addendum accounts for 3584 bytes within this 4096-byte ceiling.
+It is not 4096 bytes per copy. This does not bound
 Python, loader or total process memory. No ring growth or overwrite. The record
 contains:
 
@@ -268,8 +275,8 @@ remains an instrumentation obligation. Neither parser closes FDs or authorizes
 action. Never accept a mask that hides known header/data inconsistencies.
 
 Keep setup/status/capture exports bounded so each existing private control line
-remains at most **4096 bytes**. Native snapshots are retrieved and serialized in
-fixed bounded chunks if needed, with call ID, offset and total length; no
+remains at most **4096 bytes**. The 1536-byte frozen native snapshot is retrieved in three exact 512-byte
+chunks, with run/case/call/generation, sample index, offset and total length; no
 unbounded base64/hex line or dynamic queue. Chunk retrieval must be repeatable
 and immutable, not trigger another capture. Verify all expected ranges are
 present exactly once, non-overlapping and at the same generation/size; reject
@@ -439,19 +446,20 @@ proceed to native schedules when a gate is still unmet.
 
 | Gate | Current evidence / required disposition |
 | --- | --- |
-| Documentation / interface gate | This review defines exceptional abort behavior, caller-memory assumptions, bounded API operations, sanitization/export and finalization. Concrete C function prototypes and serialized field offsets are still not specified: they must be documented and reviewed before implementation authorization, not improvised in code. |
+| Documentation / interface gate | D1 resolved in the reviewed ABI v1 addendum: exact C/ctypes signatures, statuses, lifecycle, fixed blocks/offsets, masks, chunk framing and resource accounting. This is a specification decision, not empirical implementation or native evidence. |
 | Toolchain / provider feasibility | Not checked by this documentation task. Later authorized setup must demonstrate the supported ABI, existing toolchain, intended libc target and same-instance interception through the existing Hello; otherwise Blocked, not an alternate receiver. |
 | Observer implementation review | Not implemented. Source/linkage review must establish no hidden allocation/lazy binding/locks/I/O inside the valid receive path, single-call forwarding and errno preservation. Local mock checks alone cannot prove native interception. |
 | Memory/export integrity | Not implemented. Later local checks must cover pointer/length changes, final unpadded headers, integer overflow, unsupported control types, masks, chunk consistency, bounded errors and preservation of acceptance/effect on failure. |
 | Failure/ownership handling | Not implemented. Export must not move into the immediate-close interval; original failures and coverage invalidation must survive whenever the actor remains alive. Crash snapshot loss stays explicit. Native fault injection is not included in N1/N2. |
 | Native observation | Not run. N1 must meet all healthy conditions before N2. Capturing N2 is not a repair or permission for another diagnostic. Authentication safety and production readiness stay unproven/false. |
 
-Recommendation: publish this review, then close the remaining C-ABI/record-layout
-specification gap in documentation before requesting implementation. These are
-concrete missing details, not proof that the observer is infeasible. Once the
-interface is reviewable, the smallest implementation scope is the isolated
-observer plus local checks with native execution still deferred. Authorize N1/N2
-only after reviewing that implementation and its remaining prerequisites.
+Recommendation: publish the reviewed documentation if requested. D1 is closed
+at documentation level; no additional interface decision is deferred to code.
+The next smallest implementation scope, only with separate authorization, is the
+isolated observer plus local checks with native execution still deferred.
+Authorize N1/N2 only after reviewing that implementation and its remaining
+prerequisites. Runtime/compiler/provider feasibility has not been checked by
+closing D1.
 
 W2h's counterexample, W2i–W2l's limited results and W2m's stopped cleanup failure
 remain unchanged. B01–B06 remain open. All other W2/W3, production implementation,
