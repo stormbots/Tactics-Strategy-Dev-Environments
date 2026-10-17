@@ -417,6 +417,8 @@ impl Installation {
             .and_then(|_| file.sync_all())
             .map_err(|_| Error::Unavailable)?;
         sync_directory(&self.directory)?;
+        #[cfg(windows)]
+        let file = windows::seal_journal(file, &path)?;
         Ok(Transaction {
             _installation: self,
             file: Some(file),
@@ -428,11 +430,13 @@ impl Transaction<'_> {
     /// Call only after the native installer and all package children end with a
     /// known outcome. Unknown completion must retain the record.
     pub fn complete(mut self) -> Result<()> {
-        self.file
-            .take()
-            .ok_or(Error::Unavailable)?
-            .sync_all()
-            .map_err(|_| Error::Unavailable)?;
+        let file = self.file.take().ok_or(Error::Unavailable)?;
+        // Windows retains a read-only handle after the creation writer is
+        // durably flushed. FlushFileBuffers requires write access; there are no
+        // subsequent journal writes to flush. Close before terminal deletion.
+        #[cfg(not(windows))]
+        file.sync_all().map_err(|_| Error::Unavailable)?;
+        drop(file);
         std::fs::remove_file(&self.path).map_err(|_| Error::Unavailable)?;
         sync_directory(self.path.parent().ok_or(Error::Unavailable)?)
     }
@@ -710,6 +714,22 @@ mod tests {
         transaction.complete().unwrap();
         drop(install);
         drop(session_at(&f.path).unwrap());
+    }
+    #[cfg(windows)]
+    #[test]
+    fn published_intent_allows_hook_readers_but_rejects_writers_and_deletion() {
+        let Some(f) = Fixture::new() else { return };
+        let install = installation_at(&f.path).unwrap();
+        let transaction = install.begin_transaction().unwrap();
+        let path = f.path.join("transaction.json");
+        assert!(!std::fs::read(&path).unwrap().is_empty());
+        assert!(std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .is_err());
+        assert!(std::fs::remove_file(&path).is_err());
+        transaction.complete().unwrap();
+        assert!(!path.exists());
     }
     #[test]
     fn process_probe() {
