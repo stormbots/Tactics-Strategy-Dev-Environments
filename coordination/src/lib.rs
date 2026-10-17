@@ -51,9 +51,10 @@ pub fn root() -> PathBuf {
 pub struct Lease {
     _file: File,
 }
-/// Retains both gates; dropping either after a failed acquisition leaves no lock.
+/// Retains installation ownership through postchecks and durable completion.
 #[derive(Debug)]
 pub struct Installation {
+    _admission: Option<Lease>,
     _operation: Lease,
     _sessions: Lease,
     directory: PathBuf,
@@ -73,7 +74,95 @@ pub fn initialize() -> Result<()> {
     initialize_at(&root())
 }
 pub fn session() -> Result<Lease> {
-    acquire_at(&root(), "sessions.gate", true)
+    session_at(&root())
+}
+/// Preparation owns O without blocking existing or new sessions.
+#[derive(Debug)]
+pub struct Preparation {
+    operation: Lease,
+    directory: PathBuf,
+}
+/// Admission is closed. Busy session acquisition retains O and A for the caller's
+/// bounded wait; dropping this value safely releases both before commitment.
+#[derive(Debug)]
+pub struct Admission {
+    preparation: Preparation,
+    admission: Lease,
+}
+/// Coordination prerequisite only, not full Update Now feature enablement.
+/// Platform bootstrap, request, deadline and package-hook validation remain gates.
+pub fn prepare_app_only() -> Result<Preparation> {
+    let dir = root();
+    let preparation = prepare_at(&dir)?;
+    compatible_maintenance_marker("# SDE_COORDINATION_ADMISSION_V2")?;
+    // Missing admission support is not silently repaired or treated as legacy-safe.
+    drop(acquire_at(&dir, "admission.gate", true)?);
+    Ok(preparation)
+}
+fn prepare_at(dir: &Path) -> Result<Preparation> {
+    let operation = acquire_at(dir, "operations.gate", false)?;
+    no_interruption(dir)?;
+    Ok(Preparation {
+        operation,
+        directory: dir.to_path_buf(),
+    })
+}
+impl Preparation {
+    pub fn close_admission(self) -> Result<Admission> {
+        let admission = acquire_at(&self.directory, "admission.gate", false)?;
+        no_interruption(&self.directory)?;
+        Ok(Admission {
+            preparation: self,
+            admission,
+        })
+    }
+}
+impl Admission {
+    /// Consuming transition returns ownership on failure, including Busy. No
+    /// lease is reacquired and no caller may accidentally lose admission while
+    /// polling existing sessions. The future worker must enforce its deadline.
+    pub fn try_installation(self) -> std::result::Result<Installation, (Error, Self)> {
+        let sessions = match no_interruption(&self.preparation.directory)
+            .and_then(|()| acquire_at(&self.preparation.directory, "sessions.gate", false))
+        {
+            Ok(lease) => lease,
+            Err(error) => return Err((error, self)),
+        };
+        Ok(Installation {
+            _operation: self.preparation.operation,
+            _admission: Some(self.admission),
+            _sessions: sessions,
+            directory: self.preparation.directory,
+        })
+    }
+}
+fn startup<L>(
+    mut intent: impl FnMut() -> Result<()>,
+    mut gate: impl FnMut(bool) -> Result<L>,
+) -> Result<L> {
+    intent()?;
+    let admission = gate(true)?;
+    intent()?;
+    let session = gate(false)?;
+    intent()?;
+    drop(admission);
+    Ok(session)
+}
+fn session_at(dir: &Path) -> Result<Lease> {
+    startup(
+        || no_interruption(dir),
+        |admission| {
+            acquire_at(
+                dir,
+                if admission {
+                    "admission.gate"
+                } else {
+                    "sessions.gate"
+                },
+                true,
+            )
+        },
+    )
 }
 pub fn operation() -> Result<Lease> {
     let dir = root();
@@ -109,6 +198,9 @@ pub fn status() -> Status {
 /// installation readiness until its existing entry point has been migrated by
 /// an explicit mentor baseline Repair; app installation does not apply a baseline.
 fn compatible_maintenance() -> Result<()> {
+    compatible_maintenance_marker("# SDE_COORDINATION_V1")
+}
+fn compatible_maintenance_marker(marker: &str) -> Result<()> {
     #[cfg(unix)]
     let paths = [
         "/usr/local/sbin/skyview-student-dev-update",
@@ -146,8 +238,7 @@ fn compatible_maintenance() -> Result<()> {
         File::open(path)
             .and_then(|file| file.take(65537).read_to_end(&mut bytes))
             .map_err(|_| Error::NeedsRepair)?;
-        if bytes.len() > 65536 || !String::from_utf8_lossy(&bytes).contains("# SDE_COORDINATION_V1")
-        {
+        if bytes.len() > 65536 || !String::from_utf8_lossy(&bytes).contains(marker) {
             return Err(Error::NeedsRepair);
         }
     }
@@ -170,6 +261,7 @@ fn installation_at(dir: &Path) -> Result<Installation> {
     no_interruption(dir)?;
     let sessions = acquire_at(dir, "sessions.gate", false)?;
     Ok(Installation {
+        _admission: None,
         _operation: operation,
         _sessions: sessions,
         directory: dir.to_path_buf(),
@@ -201,7 +293,7 @@ fn initialize_at(dir: &Path) -> Result<()> {
         Err(_) => return Err(Error::Unavailable),
     }
     validate_dir(dir)?;
-    for name in ["sessions.gate", "operations.gate"] {
+    for name in ["sessions.gate", "operations.gate", "admission.gate"] {
         match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -385,6 +477,100 @@ mod tests {
         fn drop(&mut self) {
             std::fs::remove_dir_all(&self.path).unwrap();
         }
+    }
+    #[test]
+    fn startup_checks_each_boundary_and_releases_every_temporary_lease() {
+        use std::cell::{Cell, RefCell};
+        use std::rc::Rc;
+        struct Token(Rc<Cell<usize>>);
+        impl Drop for Token {
+            fn drop(&mut self) {
+                self.0.set(self.0.get() - 1);
+            }
+        }
+        for blocked_check in 0..=3 {
+            let checks = Cell::new(0);
+            let live = Rc::new(Cell::new(0));
+            let order = RefCell::new(Vec::new());
+            let result = startup(
+                || {
+                    checks.set(checks.get() + 1);
+                    order.borrow_mut().push("I");
+                    if checks.get() == blocked_check {
+                        Err(Error::Interrupted)
+                    } else {
+                        Ok(())
+                    }
+                },
+                |admission| {
+                    order.borrow_mut().push(if admission { "A" } else { "S" });
+                    live.set(live.get() + 1);
+                    Ok(Token(live.clone()))
+                },
+            );
+            if blocked_check == 0 {
+                assert!(result.is_ok());
+                assert_eq!(*order.borrow(), ["I", "A", "I", "S", "I"]);
+                assert_eq!(live.get(), 1);
+            } else {
+                assert!(matches!(result, Err(Error::Interrupted)));
+                assert_eq!(checks.get(), blocked_check);
+                assert_eq!(live.get(), 0);
+            }
+            drop(result);
+            assert_eq!(live.get(), 0);
+        }
+    }
+    #[test]
+    fn startup_propagates_gate_failures_without_admitting_session() {
+        for failed_gate in [true, false] {
+            let result = startup(
+                || Ok(()),
+                |admission| {
+                    if admission == failed_gate {
+                        Err(Error::Busy)
+                    } else {
+                        Ok(())
+                    }
+                },
+            );
+            assert_eq!(result.unwrap_err(), Error::Busy);
+        }
+    }
+    #[test]
+    fn admission_retains_ownership_and_intent_blocks_reopen() {
+        let Some(f) = Fixture::new() else { return };
+        let gui = session_at(&f.path).unwrap();
+        let preparation = prepare_at(&f.path).unwrap();
+        drop(session_at(&f.path).unwrap()); // preparation permits startup
+        let admission = preparation.close_admission().unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Busy);
+        let (error, admission) = admission.try_installation().unwrap_err();
+        assert_eq!(error, Error::Busy);
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Busy);
+        drop(gui);
+        let installation = admission.try_installation().unwrap();
+        // Package initialization must preserve the live identities/locks.
+        initialize_at(&f.path).unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Busy);
+        drop(installation.begin_transaction().unwrap());
+        drop(installation);
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Interrupted);
+        assert_eq!(prepare_at(&f.path).unwrap_err(), Error::Interrupted);
+    }
+    #[test]
+    fn admission_deferral_reopens_without_replacing_gates() {
+        let Some(f) = Fixture::new() else { return };
+        let admission = prepare_at(&f.path).unwrap().close_admission().unwrap();
+        drop(admission);
+        drop(session_at(&f.path).unwrap());
+        drop(prepare_at(&f.path).unwrap());
+        std::fs::remove_file(f.path.join("admission.gate")).unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Unavailable);
     }
     #[test]
     fn process_probe() {

@@ -200,7 +200,7 @@ pub(super) fn initialize(dir: &Path) -> Result<()> {
     validate_acl(Path::new(r"C:\ProgramData"), true)?;
     create(dir, true)?;
     validate_parents(dir)?;
-    for name in ["sessions.gate", "operations.gate"] {
+    for name in ["sessions.gate", "operations.gate", "admission.gate"] {
         create(&dir.join(name), false)?;
         drop(open_checked(
             dir,
