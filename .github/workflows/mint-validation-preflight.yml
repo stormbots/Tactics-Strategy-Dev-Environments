@@ -47,6 +47,12 @@ jobs:
                                     'guest-execution-authorization'])
           Path('host-preflight.json').write_text(json.dumps(report, indent=2) + '\n')
           print(json.dumps(report, indent=2))
+          # Publish the same small, non-secret report through the Checks API too.
+          # Artifact/log storage can be unavailable to restricted API clients.
+          notice = json.dumps(report, separators=(',', ':'))
+          assert len(notice.encode('utf-8')) <= 4096
+          notice = notice.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::notice title=Mint host preflight JSON::' + notice)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
