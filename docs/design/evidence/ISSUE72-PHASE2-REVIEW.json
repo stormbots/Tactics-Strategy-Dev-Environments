@@ -1,0 +1,61 @@
+{
+  "source_commit": "2224d64797f715a49c8f9e50c52d4b00b03c1338",
+  "date_utc": "2026-10-17",
+  "qa": {
+    "linux_coordination_root": {
+      "passed": 14,
+      "failed": 0,
+      "filtered": 0,
+      "protected_tests": 9,
+      "evidence": "ISSUE72-PHASE2-REVIEW-PROTECTED.json"
+    },
+    "updater_local_library": {
+      "passed": 40,
+      "filtered": 4,
+      "command": "cargo test --manifest-path updater/Cargo.toml --offline --locked --lib -- --skip signed_upgrade_on_native_mint --skip signed_upgrade_under_system --skip e2e:: --skip staging::tests::authenticated_stage_and_failed_download_cleanup --skip staging::tests::pinned_key_does_not_accept_test_signature_or_leave_files",
+      "includes_shared_core_tests": 19
+    },
+    "python": {
+      "package_hook_mocked": 7,
+      "linux_runtime": 3,
+      "schedule_local": 9,
+      "schedule_protected_skipped": 4,
+      "commands": [
+        "python3 -m unittest discover -s tests -p test_app_update_package_hooks.py -v",
+        "python3 -m unittest discover -s tests -p test_linux_runtime.py -v",
+        "python3 -m unittest discover -s tests -p test_schedule.py -v"
+      ]
+    },
+    "powershell": {
+      "version": "7.6.7 Linux portable",
+      "official_archive_sha256": "6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431",
+      "scope_cases_passed": 15,
+      "hook_syntax": "Pass",
+      "command": "pwsh -NoLogo -NoProfile -NonInteractive -File tests/Test-AppUpdatePackageHooksLocal.ps1",
+      "windows_powershell_5_1": "NotRun",
+      "windows_acl_handles_scheduler_nsis": "NotRun"
+    },
+    "rustfmt": "Pass: coordination and updater manifests",
+    "clippy": "Pass: updater all-targets Linux, updater and coordination all-targets Windows GNU; coordination Linux all-targets also passed during review",
+    "shell_syntax": "Pass: sh -n installer/src-tauri/hooks/postinst",
+    "python_compile": "Pass: bootstrap.py and new local tests",
+    "diff_check": "Pass"
+  },
+  "remaining_gates": [
+    "Full deployed bootstrap/startup/launcher/schema/package-hook capability validation; V2 maintenance support is not deployed or enabled.",
+    "Windows runtime root/admin/SYSTEM fixture tests and Windows PowerShell 5.1 hook checks.",
+    "Installed DEB/NSIS app-only upgrade proving unchanged tool baseline, schedules and pause policy under retained O/A/S/I.",
+    "Privilege launch, request lifetime/deadlines/boot semantics and recovery durability.",
+    "Owner desktop UAT on Linux Mint and Windows 11."
+  ],
+  "restrictions": {
+    "installed_updates": "NotRun",
+    "task_service_registration": "NotRun",
+    "native_package_operations": "NotRun",
+    "application_build_dispatch": "NotRun",
+    "release_preparation": "NotRun",
+    "pr_creation": "NotRun"
+  },
+  "historical_results": "W2h remains counterexample; W2m immediate cleanup Fail remains; W2n native N1/N2 NotRun. Diagnostic completion, cleanup correctness and authentication safety are distinct.",
+  "production_readiness": false
+}
