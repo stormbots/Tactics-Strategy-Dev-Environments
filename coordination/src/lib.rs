@@ -260,7 +260,10 @@ fn no_interruption(dir: &Path) -> Result<()> {
         if count > 32 {
             return Err(Error::Untrusted);
         }
-        if entry.map_err(|_| Error::Unavailable)?.file_name() == "transaction.json" {
+        if matches!(
+            entry.map_err(|_| Error::Unavailable)?.file_name().to_str(),
+            Some("transaction.json" | "installation-scope.json")
+        ) {
             return Err(Error::Interrupted);
         }
     }
@@ -376,7 +379,29 @@ pub struct Transaction<'a> {
     _installation: &'a Installation,
     file: Option<File>,
     path: PathBuf,
+    scope_path: Option<PathBuf>,
 }
+fn create_intent(path: &Path) -> Result<File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        if unsafe { libc::geteuid() } != 0 {
+            return Err(Error::Untrusted);
+        }
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(path)
+            .map_err(|_| Error::Interrupted)
+    }
+    #[cfg(windows)]
+    {
+        windows::journal(path)
+    }
+}
+
 impl Installation {
     pub fn begin_transaction(&self) -> Result<Transaction<'_>> {
         self.begin_transaction_with_scope(false)
@@ -392,22 +417,7 @@ impl Installation {
     fn begin_transaction_with_scope(&self, app_only: bool) -> Result<Transaction<'_>> {
         use std::io::Write;
         let path = self.directory.join("transaction.json");
-        #[cfg(unix)]
-        let mut file = {
-            use std::os::unix::fs::OpenOptionsExt;
-            if unsafe { libc::geteuid() } != 0 {
-                return Err(Error::Untrusted);
-            }
-            std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .mode(0o600)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
-                .open(&path)
-                .map_err(|_| Error::Interrupted)?
-        };
-        #[cfg(windows)]
-        let mut file = windows::journal(&path)?;
+        let mut file = create_intent(&path)?;
         let mut record =
             serde_json::json!({"schema": 1, "pid": std::process::id(), "kind": "installation"});
         if app_only {
@@ -419,10 +429,26 @@ impl Installation {
         sync_directory(&self.directory)?;
         #[cfg(windows)]
         let file = windows::seal_journal(file, &path)?;
+        // A separate closed hint is readable by packaging even when an older
+        // updater retains its legacy exclusive journal handle. No legacy worker
+        // publishes this hint. Native launch occurs only after both are durable.
+        let scope_path = if app_only {
+            let path = self.directory.join("installation-scope.json");
+            let mut hint = create_intent(&path)?;
+            hint.write_all(br#"{"schema":1,"kind":"installation","scope":"app_only"}"#)
+                .and_then(|_| hint.sync_all())
+                .map_err(|_| Error::Unavailable)?;
+            drop(hint);
+            sync_directory(&self.directory)?;
+            Some(path)
+        } else {
+            None
+        };
         Ok(Transaction {
             _installation: self,
             file: Some(file),
             path,
+            scope_path,
         })
     }
 }
@@ -430,6 +456,12 @@ impl Transaction<'_> {
     /// Call only after the native installer and all package children end with a
     /// known outcome. Unknown completion must retain the record.
     pub fn complete(mut self) -> Result<()> {
+        // Remove the hint first, while the journal still blocks legacy/new
+        // workers. A failure must never remove the recovery barrier first.
+        if let Some(path) = &self.scope_path {
+            std::fs::remove_file(path).map_err(|_| Error::Unavailable)?;
+            sync_directory(path.parent().ok_or(Error::Unavailable)?)?;
+        }
         let file = self.file.take().ok_or(Error::Unavailable)?;
         // Windows retains a read-only handle after the creation writer is
         // durably flushed. FlushFileBuffers requires write access; there are no
@@ -736,6 +768,48 @@ mod tests {
         assert!(std::fs::remove_file(&path).is_err());
         transaction.complete().unwrap();
         assert!(!path.exists());
+    }
+    #[test]
+    fn scoped_hint_is_durable_and_clears_before_journal() {
+        let Some(f) = Fixture::new() else { return };
+        let install = prepare_at(&f.path)
+            .unwrap()
+            .close_admission()
+            .unwrap()
+            .try_installation()
+            .unwrap();
+        let transaction = install.begin_app_only_transaction().unwrap();
+        let hint = f.path.join("installation-scope.json");
+        let content: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&hint).unwrap()).unwrap();
+        assert_eq!(content["scope"], "app_only");
+        transaction.complete().unwrap();
+        assert!(!hint.exists());
+        assert!(!f.path.join("transaction.json").exists());
+        let transaction = install.begin_app_only_transaction().unwrap();
+        drop(transaction);
+        drop(install);
+        assert!(hint.exists());
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Interrupted);
+        // A retained/orphan hint is itself a startup barrier.
+        std::fs::remove_file(f.path.join("transaction.json")).unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Interrupted);
+    }
+    #[test]
+    fn failed_scoped_hint_cleanup_retains_journal() {
+        let Some(f) = Fixture::new() else { return };
+        let install = prepare_at(&f.path)
+            .unwrap()
+            .close_admission()
+            .unwrap()
+            .try_installation()
+            .unwrap();
+        let transaction = install.begin_app_only_transaction().unwrap();
+        let hint = f.path.join("installation-scope.json");
+        std::fs::remove_file(&hint).unwrap();
+        std::fs::create_dir(&hint).unwrap();
+        assert!(transaction.complete().is_err());
+        assert!(f.path.join("transaction.json").exists());
     }
     #[test]
     fn process_probe() {

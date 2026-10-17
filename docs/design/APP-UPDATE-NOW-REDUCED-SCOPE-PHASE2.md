@@ -162,3 +162,36 @@ Engineering can proceed with Phase 3's bounded worker implementation once
 separately scoped; native gates above remain required before feature enablement.
 No new product decision is needed for these corrections. No PR, application build,
 release, stable promotion or rollout was initiated.
+
+## PR #73 review corrections
+
+Windows now seals a flushed transaction writer into a read-only handle that
+permits hook readers while excluding writes/deletion. Do not flush that reader
+at completion: Windows FlushFileBuffers requires write access and the immutable
+record was already flushed at publication. A Windows fixture verifies reader
+access and denied write/delete before terminal closure.
+
+Older deployed Windows workers still hold their original no-sharing journal
+handles. Package hooks therefore must not read `transaction.json` to choose scope.
+The manual transaction also publishes a separate protected, bounded
+`installation-scope.json` hint, closes its writer and syncs before begin returns.
+Only then can shared-core native launch occur. Scheduled transactions never
+create this hint. Its absence retains legacy scheduled packaging behavior without
+trying to read an older worker's locked journal. A present hint must have exactly
+the supported app-only scope/kind/schema; malformed or unknown content fails closed.
+This is preservation metadata, not installation or recovery authority.
+
+Both journal and scope hint are startup/preparation recovery barriers. Drop or
+failed publication leaves evidence; initialization never removes it. Known terminal
+completion removes/syncs the hint FIRST, while the journal still blocks legacy
+workers, then closes/removes/syncs the journal. Hint cleanup failure retains the
+journal. Owned recovery must account for both records; absence of a PID or elapsed
+deadline never authorizes clearing either. Windows power-loss ordering remains a
+native stop gate; no durability proof is claimed by this code.
+
+The review also fixed CI's stale exact dependency-list assertion, fail-fast
+Windows Rust validation (later lint success must not hide test failure), and
+Windows capability fixture ownership (runner-personal-SID files correctly fail the
+production trust check). Bounded failure annotations make diagnostics available
+without requiring raw-log storage access. Original historical evidence is retained;
+subsequent exact-head native CI results are recorded in the PR review.

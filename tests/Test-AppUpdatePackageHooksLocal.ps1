@@ -10,16 +10,12 @@ if (-not $function) { throw 'Scope parser missing.' }
 # Load only the pure parser, not the privileged packaging entry point.
 . ([scriptblock]::Create($function.Extent.Text))
 $utf8 = New-Object Text.UTF8Encoding($false,$true)
-$cases = @(
-    @('{"schema":1,"kind":"installation","scope":"app_only"}', $true),
-    @('{"schema":1,"kind":"installation"}', $false),
-    @('{"schema":1,"kind":"system","token":"legacy"}', $false)
-)
-foreach ($case in $cases) {
-    $actual = ConvertFrom-AppOnlyIntentBytes ($utf8.GetBytes($case[0]))
-    if ($actual -isnot [bool] -or $actual -ne $case[1]) { throw 'Wrong scope decision.' }
+foreach ($case in @(@{ Text = '{"schema":1,"kind":"installation","scope":"app_only"}'; Expected = $true })) {
+    $actual = ConvertFrom-AppOnlyIntentBytes ($utf8.GetBytes($case.Text))
+    if ($actual -isnot [bool] -or $actual -ne $case.Expected) { throw 'Wrong scope decision.' }
 }
 $rejections = @(
+    '{"schema":1,"kind":"installation"}', '{"schema":1,"kind":"system","token":"legacy"}',
     '[]', 'null', '{', '{"schema":true}', '{"schema":"1"}', '{"schema":2}',
     '{"schema":1,"scope":"future"}',
     '{"schema":1,"scope":"APP_ONLY","kind":"installation"}',

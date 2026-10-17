@@ -24,14 +24,15 @@ class PackageHooks(unittest.TestCase):
                     patch.object(bootstrap, 'trusted') as trust, \
                     patch.object(bootstrap.os, 'open', return_value=os.dup(stream.fileno())) as opened:
                 result = bootstrap.app_only_installation()
-                trust.assert_called_once_with(Path('/var/lib/skyview-robotics-coordination/transaction.json'))
+                trust.assert_called_once_with(Path('/var/lib/skyview-robotics-coordination/installation-scope.json'))
                 self.assertEqual(opened.call_args.args[1], os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
                 return result
 
     def test_app_only_scope_and_legacy_scheduled_record(self):
         self.assertTrue(self.read_intent(b'{"schema":1,"kind":"installation","scope":"app_only"}'))
-        self.assertFalse(self.read_intent(b'{"schema":1,"kind":"installation"}'))
-        self.assertFalse(self.read_intent(b'{"schema":1,"kind":"system","token":"legacy"}'))
+        for raw in [b'{"schema":1,"kind":"installation"}', b'{"schema":1,"kind":"system","token":"legacy"}']:
+            with self.assertRaises(RuntimeError):
+                self.read_intent(raw)
 
     def test_bad_or_future_scope_never_silently_becomes_scheduled(self):
         for record in [[], None, {'schema': True}, {'schema': 2},
@@ -45,8 +46,10 @@ class PackageHooks(unittest.TestCase):
 
     def test_missing_intent_keeps_existing_install_behavior(self):
         with patch.object(Path, 'lstat', side_effect=FileNotFoundError), \
+                patch.object(bootstrap, 'Path', wraps=Path) as paths, \
                 patch.object(bootstrap, 'trusted') as trust:
             self.assertFalse(bootstrap.app_only_installation())
+            paths.assert_called_once_with('/var/lib/skyview-robotics-coordination/installation-scope.json')
             trust.assert_not_called()
 
     def test_untrusted_or_nonregular_intent_stops(self):

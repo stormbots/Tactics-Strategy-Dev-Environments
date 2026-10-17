@@ -67,7 +67,7 @@ def receipt(path, value):
 
 def app_only_installation():
     """Protected scope is a preservation hint, never installation authority."""
-    journal = Path('/var/lib/skyview-robotics-coordination/transaction.json')
+    journal = Path('/var/lib/skyview-robotics-coordination/installation-scope.json')
     try:
         journal.lstat()
     except FileNotFoundError:
@@ -84,8 +84,6 @@ def app_only_installation():
     if not isinstance(record, dict) or type(record.get('schema')) is not int or record['schema'] != 1:
         raise RuntimeError('Unsupported installation intent')
     scope = record.get('scope')
-    if scope is None:
-        return False  # Preserve existing scheduled/schema-1 packaging behavior.
     if scope != 'app_only' or record.get('kind') != 'installation':
         raise RuntimeError('Unsupported installation scope')
     return True

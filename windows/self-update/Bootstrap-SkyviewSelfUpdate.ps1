@@ -193,7 +193,7 @@ function Test-AppOnlyInstallation {
     Assert-SkyviewProtectedPath 'C:\' -Anchor
     Assert-SkyviewProtectedPath 'C:\ProgramData' -Anchor
     Assert-SkyviewProtectedPath $directory
-    $journal = Join-Path $directory 'transaction.json'
+    $journal = Join-Path $directory 'installation-scope.json'
     try { $null = Get-Item -LiteralPath $journal -Force -ErrorAction Stop }
     catch [Management.Automation.ItemNotFoundException] { return $false }
     Assert-TrustedItem $journal
@@ -217,7 +217,6 @@ function ConvertFrom-AppOnlyIntentBytes([byte[]]$Bytes) {
     if (-not $text.TrimStart().StartsWith('{')) { throw 'Invalid installation intent.' }
     $record = $text | ConvertFrom-Json
     if ($null -eq $record -or ($record.schema -isnot [int] -and $record.schema -isnot [long]) -or $record.schema -ne 1) { throw 'Unsupported installation intent.' }
-    if ($null -eq $record.scope) { return $false }
     if ($record.scope -isnot [string] -or $record.kind -isnot [string] -or $record.scope -cne 'app_only' -or $record.kind -cne 'installation') { throw 'Unsupported installation scope.' }
     return $true
 }
