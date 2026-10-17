@@ -60,18 +60,14 @@ covered by cross-compilation.
 Two added protected-fixture tests cover preparation allowing startup, admission
 blocking startup, Busy retaining O/A, consuming ownership into Installation,
 initialization preserving live exclusion, intent surviving owner loss, safe
-pre-commit deferral and missing-admission rejection. They have NOT been run as
-root. Existing tests silently skip protected fixtures when unprivileged, so a
+pre-commit deferral and missing-admission rejection. They subsequently passed as root; see the dated validation sections below. Existing tests silently skip protected fixtures when unprivileged, so a
 whole-suite unprivileged green result would not close this gate.
 
 ## Next stop gates
 
-Run the coordination tests with SDE_REQUIRE_COORDINATION=1 against disposable
-root-owned /var/lib/coordination-test-* fixtures, including cross-process tests.
-Only fixture directories may be created/deleted; no installed updates, package
-operations, tasks or services. Then prove Windows ACL/share semantics and both
-platform package hooks under retained ownership before claiming Phase 2 native
-completion. Missing compatibility must remain disabled until reviewed migration.
+The Linux protected coordination fixture gate passed. Prove Windows ACL/share
+semantics and both platform installed package hooks under retained ownership
+before claiming complete native validation. Missing compatibility must remain disabled until reviewed migration.
 Phase 3 must integrate deadline/boot/pause validation at the actual shared-core
 commit boundary after native preflight, not merely before calling the core.
 
@@ -102,3 +98,67 @@ validate installed package hooks, capability migration, Windows share/ACL runtim
 behavior, desktop UAT, privileged bootstrap or request deadlines. No changes to
 production code were needed during this run. The earlier statements that fixture
 tests had not yet run describe the preceding local-review stage.
+
+## Phase 2 review — 2026-10-17
+
+Reviewed source and prior protected evidence; fixed these findings:
+
+- Readiness queries previously released O before checking S and compatibility.
+  They now retain O/S throughout, with a protected regression test.
+- A missing entry point previously hid orphan helpers or dangling links. Only
+  true absence of both files counts as no maintenance. Partial/untrusted state
+  fails closed. Markers must be complete UTF-8 lines, not substring matches.
+- Shared-core intent creation now forwards its explicit scope. Publishing
+  app-only intent requires an Installation retaining admission ownership. A
+  scheduled O/S-only owner cannot publish it; scheduled journal shape is unchanged.
+- DEB and NSIS bootstrap code now reads a bounded protected schema-1 intent. Its
+  app_only scope suppresses service drop-in/task action/maintenance-ACL migration;
+  it never grants install authority or bypasses trust checks. Malformed, oversized
+  or unsupported present intent fails rather than falling back to scheduled mode.
+  Existing schema-1 records without scope retain scheduled behavior. Engine and
+  protected application receipts still activate normally. No environment boolean
+  chooses packaging scope.
+- Windows lookup reuses the existing anchor-aware coordination checks, avoiding
+  rejection of ordinary ProgramData creation grants. It pins a regular, singly
+  linked record and bounds reads to 4097 bytes, rejects beyond 4096, uses strict
+  UTF-8 and exact string/type validation. This has local syntax/parser coverage;
+  native ACL/handle proof is still pending.
+- The compatibility error no longer promises that today's baseline Repair can
+  deploy the new V2 capability. Current V1 helpers remain deliberately ineligible
+  for manual preparation; no scripts were relabeled or silently migrated.
+
+A new protected test runs initialization in a separate process while the parent
+retains O/A/S and scoped intent, verifies all three gates remain excluded and the
+intent bytes unchanged, then completes and reopens normally. This executes the
+coordination initializer, NOT the installed DEB/NSIS packaging hooks.
+
+The initial expanded run failed because the new test closed the child's stdout
+before the child harness finished reporting. Five later entries failed from the
+poisoned fixture mutex. The test now captures child output through completion.
+Both the failed output and the final passing evidence are preserved under
+`evidence/ISSUE72-PHASE2-REVIEW-*`. The initial failure is not represented as six
+independent product failures or erased by eventual cleanup.
+
+Final QA: 14 root coordination entries pass (nine protected fixtures and one
+helper entry); fixtures empty before/after and temporary container/image removed.
+Forty updater library tests pass, including nineteen shared-core tests; four
+native/protected tests are filtered. Python local checks pass: seven mocked hook,
+three runtime and nine schedule tests; four unrelated protected schedule cases
+remain skipped. PowerShell 7.6.7 on Linux parses the Windows hook and passes fifteen
+scope cases. Formatting, Linux/Windows-GNU clippy, Python compilation and shell
+syntax pass. Details and source commit are in `evidence/ISSUE72-PHASE2-REVIEW.json`.
+
+### Remaining native gates and safe continuation
+
+| Gate | Required proof / stop condition |
+| --- | --- |
+| Windows coordination and hooks | Run development tests under real Windows, including PowerShell 5.1, standard-user admission, protected ACL/share checks and initialization while O/A/S/I are held. Stop on hook conflict or unsupported parent ownership. GNU cross-compilation and Linux PowerShell are insufficient. |
+| Installed package behavior | In disposable native upgrade tests, verify actual DEB/NSIS hooks preserve tool baseline, timer/task configuration, enabled state and pause policy, while activating the expected engine and retaining intent on failure. Stop on schedule/tool mutation or premature intent removal. No package operation was executed in this review. |
+| Compatibility deployment | Establish protected bootstrap/startup/launcher/schema/package-hook capabilities for both current and candidate packages; validate external entry points. V2 marker checks here are only a prerequisite. Do not enable on old hooks or relabel V1 helpers without migration review and native proof. |
+| Worker integration | Phase 3 must supply fixed authorization/request claiming, supervisor lifetime, suspend-aware deadlines/boot checks, final commit validation after preflight, and recovery handling. Stop if any authority or ownership guarantee cannot be established. |
+| Desktop UAT | Owner uses owned Mint and Windows 11 PCs after a separately authorized test build; no UAT is due from the owner at this code-only stage. |
+
+Engineering can proceed with Phase 3's bounded worker implementation once
+separately scoped; native gates above remain required before feature enablement.
+No new product decision is needed for these corrections. No PR, application build,
+release, stable promotion or rollout was initiated.
