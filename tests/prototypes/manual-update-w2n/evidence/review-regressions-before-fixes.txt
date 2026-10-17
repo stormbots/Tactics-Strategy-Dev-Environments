@@ -1,0 +1,8 @@
+failed-resolution: inconsistent final status accepted as Consistent
+invalid-quality: inconsistent final status accepted as Consistent
+foreign-selected-fd: inconsistent final status accepted as Consistent
+wrong-arm-baseline: inconsistent final status accepted as Consistent
+wrong-window-entry-count: inconsistent final status accepted as Consistent
+wrong-window-exit-count: inconsistent final status accepted as Consistent
+wrong-last-fd: inconsistent final status accepted as Consistent
+overflow: bounded original counterexample/outcome discarded by finish

@@ -144,3 +144,48 @@ instrumented non-reproduction cannot invalidate W2m, and teardown cannot repair
 its missing immediate closure proof. All production implementation, other W2/W3,
 elevation, registration, package operations, build dispatch and release
 preparation remain deferred.
+
+## Isolated implementation and local-evidence review
+
+Reviewed baseline `12f3f0b` against ABI-v1 and the receive-observation specification.
+Source review covered forwarding and errno preservation, bounded copies and
+sanitization, immutable export, lifecycle/error handling, and ctypes/serialized
+record agreement. No change to the C observer, transport, receive capacity or
+validator was required by this review. This is source and mock evidence, not
+native interception or authentication validation.
+
+Two local evidence-helper defects were reproduced before correction:
+
+* Final consistency accepted seven status/capture disagreements: resolution,
+  quality, selected FD, arm baseline, window entry count, window exit count and
+  last FD. Decoding now checks lifecycle/process/counter invariants and final
+  consistency binds those status fields to the capture. The synthetic status
+  fixtures now encode the actual final FD and unselected `-1` sentinels.
+* Report overflow silently discarded the caller's final outcome. Finalization
+  now retains a bounded original outcome under the explicit Incomplete overflow
+  result, preserves the first terminal record, and rejects an oversized terminal
+  outcome rather than silently discarding a failure or counterexample. A future
+  driver must handle that explicit failure; this helper does not persist reports.
+
+`evidence/review-regressions-before-fixes.txt` records the eight baseline
+reproductions (seven inconsistent-status acceptances and one discarded outcome).
+They are local evidence-integrity failures, not native authorization results.
+`evidence/local-checks.json` is preserved unchanged as historical evidence.
+`evidence/reviewed-local-checks.json` records the corrected source hashes and
+**57 passing checks: 26 memory-only C checks and 31 Python checks**. ASan/UBSan
+repeat the same C checks successfully; LeakSanitizer remains unavailable and is
+not claimed passing. The 18-record C-generated synthetic capture corpus is
+unchanged. The private build root was removed and settings were unchanged.
+
+Remaining ABI coverage limits: fake ctypes binding and synthetic bytes do not
+prove calls through a dynamically loaded library, real constructor/resolver or
+provider metadata, runtime native structure compatibility, or the native Python
+recvmsg path. Actual process aborts, native FD ownership/closure and secure
+stop-aware report persistence also remain untested. The existing remaining gates
+above still apply; this review closes neither native N1/N2 nor B01–B06.
+
+Diagnostic native completion: **NotRun**. W2m immediate cleanup: **Fail,
+unchanged**. Current native authorization and owned-actor cleanup: **NotRun**.
+Authentication safety: **Unproven**. Production readiness: **false**. W2h's
+counterexample and W2i–W2l's limited results remain intact. No native experiment,
+preload, W2m rerun, production change, publication or build dispatch occurred.

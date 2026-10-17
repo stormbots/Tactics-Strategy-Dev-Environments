@@ -137,15 +137,31 @@ def decode(block, raw):
         require(state in (0,1,2,3,4,5,7) and resolution in (0,1,2) and not issue & ~ISSUES, 'status enums/bits')
         require(not any(raw[36:40]+raw[140:]), 'status reserved bytes')
         require(u32(raw, 136) in (0,1,2,3) and u32(raw, 124) == (1536 if state == 5 else 0), 'status quality/size')
+        require(u32(raw,64)>0 and i32(raw,68)>=-1 and i32(raw,120)>=-1, 'status process/FD')
+        require(u64(raw,88)<=u64(raw,80) and u64(raw,112)<=u64(raw,104), 'status counter ordering')
+        if state in (1,2,3,4,5):
+            require(resolution==1, 'configured status has no resolved target')
+        if state==7:
+            require(resolution==2 and issue & 3, 'failed initialization status')
+        if state in (0,1,7):
+            require(i32(raw,68)==-1 and u64(raw,96)==u64(raw,104)==u64(raw,112)==0 and u32(raw,136)==0,
+                    'unarmed status carries armed fields')
+        else:
+            require(i32(raw,68)>=0 and u64(raw,96)==1, 'armed status endpoint/baseline')
+            require(u32(raw,136) in ((0,) if state in (2,3) else ((2,3) if state==4 else (1,2,3))),
+                    'status lifecycle/quality')
         generation, case = u64(raw, 72), u32(raw, 32)
         if state in (0,7) and case == 0:
             require(raw[48:64] == bytes(16) and u64(raw, 40) == 0, 'unconfigured identity')
         else:
             require(case in (1,2) and any(raw[48:64]) and u64(raw, 40) == 1, 'status fixture identity')
         require(generation == (1 if state in (2,3,4,5) else 0), 'status generation')
+        if state in (0,7):require(case==0, 'initialization state has fixture identity')
         return dict(state=state, issues=issue, generation=generation, call=u64(raw, 128),
                     run=raw[48:64].hex(), case=case, pid=u32(raw, 64),
-                    entries=u64(raw, 80), exits=u64(raw, 88))
+                    entries=u64(raw, 80), exits=u64(raw, 88), resolution=resolution,
+                    quality=u32(raw,136), selected_fd=i32(raw,68), last_fd=i32(raw,120),
+                    arm_base=u64(raw,96), window_entries=u64(raw,104), window_exits=u64(raw,112))
     require(u32(raw, 16) == 512 and not any(raw[36:40]+raw[248:512]), 'capture reserved/header bytes')
     quality, issues, availability, equality = u32(raw, 20), u64(raw, 24), u64(raw, 240), u32(raw, 208)
     require(quality in (1,2,3) and not issues & ~ISSUES and not availability & ~255 and not equality & ~31,
@@ -258,6 +274,10 @@ def require_observer_consistency(capture, status):
     require((c['run'],c['case'],c['pid'],c['generation'],c['call']) ==
             (s['run'],s['case'],s['pid'],s['generation'],s['call']), 'status/capture identity')
     require(s['entries']==s['exits']==2, 'post-freeze entry')
+    require(s['quality']==c['quality']==1 and s['resolution']==1, 'final status capture quality/resolution')
+    require(s['selected_fd']==s['last_fd']==i32(capture,68)==i32(capture,232), 'status/capture endpoint')
+    require(s['arm_base']==u64(capture,88) and s['window_entries']==u64(capture,112) and
+            s['window_exits']==u64(capture,120), 'status/capture window counts')
     return dict(observer_integrity='Consistent', authentication_safety='Unproven', production_readiness=False)
 
 
@@ -267,14 +287,13 @@ class BoundedReport:
     RESERVE=4096
 
     def __init__(self):
-        self.records=[];self.size=0;self.stopped=False;self.terminal=None
+        self.records=[];self.size=0;self.stopped=False;self.terminal=None;self.overflow=False
 
     def append(self, record):
         require(not self.stopped, 'report already stopped')
         encoded=(json.dumps(record,separators=(',',':'),allow_nan=False)+'\n').encode()
         if self.size+len(encoded)>self.LIMIT-self.RESERVE:
-            self.stopped=True
-            self.terminal=b'{"observation_result":"Incomplete","reason":"report overflow"}\n'
+            self.stopped=True;self.overflow=True
             return False
         self.records.append(encoded);self.size+=len(encoded)
         return True
@@ -282,7 +301,9 @@ class BoundedReport:
     def finish(self, outcome):
         require(self.terminal is None or self.stopped, 'terminal already recorded')
         if self.terminal is None:
-            encoded=(json.dumps(outcome,separators=(',',':'),allow_nan=False)+'\n').encode()
+            final=(dict(observation_result='Incomplete',reason='report overflow',original_outcome=outcome)
+                   if self.overflow else outcome)
+            encoded=(json.dumps(final,separators=(',',':'),allow_nan=False)+'\n').encode()
             require(len(encoded)<=self.RESERVE, 'terminal reserve exceeded')
             self.terminal=encoded;self.stopped=True
         require(self.size+len(self.terminal)<=self.LIMIT, 'report bound')

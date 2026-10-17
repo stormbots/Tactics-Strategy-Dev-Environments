@@ -19,7 +19,7 @@ def put(raw,offset,value,fmt='<I'):struct.pack_into(fmt,raw,offset,value)
 
 def synthetic_status(capture):
     b=bytearray(256);b[:8]=b'W2NSTAT1'
-    for off,value in [(8,1),(12,256),(16,5),(20,1),(32,2),(64,101),(68,41),(124,1536),(136,1)]:put(b,off,value)
+    for off,value in [(8,1),(12,256),(16,5),(20,1),(32,2),(64,101),(68,41),(120,41),(124,1536),(136,1)]:put(b,off,value)
     for off,value in [(40,1),(72,1),(80,2),(88,2),(96,1),(104,1),(112,1),(128,2)]:put(b,off,value,'<Q')
     b[48:64]=capture[48:64];return b
 
@@ -112,6 +112,16 @@ class Checks(unittest.TestCase):
         status=synthetic_status(self.raw);put(status,24,8,'<Q')
         with self.assertRaises(ValueError):e.require_observer_consistency(self.raw,bytes(status))
 
+    def test_every_final_status_endpoint_window_quality_and_resolution_must_match(self):
+        for off,value,fmt in [(20,2,'<I'),(136,2,'<I'),(68,42,'<I'),(96,0,'<Q'),(104,0,'<Q'),(112,0,'<Q'),(120,42,'<I')]:
+            b=synthetic_status(self.raw);put(b,off,value,fmt)
+            with self.subTest(offset=off),self.assertRaises(ValueError):e.require_observer_consistency(self.raw,bytes(b))
+
+    def test_status_rejects_impossible_process_lifecycle_and_counter_fields(self):
+        for off,value,fmt in [(64,0,'<I'),(88,3,'<Q'),(136,0,'<I'),(16,0,'<I')]:
+            b=synthetic_status(self.raw);put(b,off,value,fmt)
+            with self.subTest(offset=off),self.assertRaises(ValueError):e.decode('status',bytes(b))
+
     def test_foreign_status_identity_and_late_calls_rejected(self):
         for off,value,fmt in [(64,102,'<I'),(80,3,'<Q'),(128,3,'<Q')]:
             b=synthetic_status(self.raw);put(b,off,value,fmt)
@@ -152,7 +162,7 @@ class Checks(unittest.TestCase):
         with self.assertRaises(ValueError):e.assemble([x.rstrip('\n') for x in e.envelope(self.raw,'capture',RUN,2,19)])
 
     def test_pre_setup_status_exception_not_allowed_for_capture(self):
-        b=bytearray(256);b[:8]=b'W2NSTAT1';put(b,8,1);put(b,12,256);put(b,64,101)
+        b=bytearray(256);b[:8]=b'W2NSTAT1';put(b,8,1);put(b,12,256);put(b,64,101);put(b,68,0xffffffff);put(b,120,0xffffffff)
         self.assertEqual(e.assemble(e.envelope(bytes(b),'status',RUN,1,0)),bytes(b))
         with self.assertRaises(ValueError):e.envelope(self.raw,'capture',bytes([2])+bytes(15),2,1)
 
@@ -179,6 +189,21 @@ class Checks(unittest.TestCase):
         result=report.finish({'ignored':'must not replace overflow'})
         self.assertLessEqual(len(result),128*1024);self.assertIn(b'"Incomplete"',result)
         self.assertNotIn(b'oversize',result)
+
+    def test_overflow_preserves_bounded_original_counterexample_and_failure(self):
+        report=e.BoundedReport();self.assertTrue(report.append({'fill':'x'*(report.LIMIT-report.RESERVE-100)}))
+        self.assertFalse(report.append({'overflow':'x'*200}))
+        outcome=dict(authorization_result='CounterexampleDetected',authorized_actions=1,failure='original failure')
+        result=report.finish(outcome);terminal=json.loads(result.splitlines()[-1])
+        self.assertEqual(terminal['observation_result'],'Incomplete')
+        self.assertEqual(terminal['original_outcome'],outcome)
+        self.assertLessEqual(len(result),report.LIMIT)
+        self.assertEqual(result,report.finish({'authorization_result':'Safe'}))
+
+    def test_overflow_cannot_silently_discard_an_oversized_outcome(self):
+        report=e.BoundedReport();self.assertFalse(report.append({'large':'x'*report.LIMIT}))
+        with self.assertRaises(ValueError):report.finish({'failure':'x'*report.RESERVE})
+        self.assertIsNone(report.terminal)
 
     def test_report_terminal_is_immutable_and_bounded(self):
         report=e.BoundedReport();report.append({'source':'mock'})

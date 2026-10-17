@@ -872,3 +872,28 @@ native observation completion, correct FD cleanup or authentication safety.
 Production readiness remains false. All other W2/W3, production implementation,
 elevation, registration, packages, build dispatch and release preparation stay
 deferred. No publication or PR belongs to this step.
+
+
+### W2n isolated implementation/local-evidence review
+
+Reviewed baseline `12f3f0b`; details and reproducible evidence are in the
+[isolated W2n review record](../../tests/prototypes/manual-update-w2n/README.md#isolated-implementation-and-local-evidence-review).
+Fixed only Python local evidence helpers: final status/capture consistency now
+binds endpoint, resolution, quality and window counters; bounded report overflow
+retains the original bounded outcome and explicitly rejects oversized terminal
+outcomes. Seven inconsistent-status acceptances and one outcome-loss reproduction
+are recorded as local evidence-integrity failures, not native counterexamples.
+
+The reviewed report records 57 passing checks (26 C memory-only + 31 Python),
+ASan/UBSan passing the same C checks, unchanged 18-record synthetic corpus and
+removed private build root. LeakSanitizer remains unavailable. The original
+report is preserved. C observer/ABI/transport/validator are unchanged. Actual
+loader/constructor/provider/ctypes calls, native record delivery, process abort,
+secure report persistence and native ownership/cleanup remain unvalidated.
+
+Native N1/N2 and current native cleanup/authorization are NotRun; W2m cleanup
+remains Fail; authentication safety remains Unproven and production readiness
+false. W2h's counterexample, W2i–W2l limits and all B01–B06 remain. All other W2/W3,
+production implementation, elevation, registration, package operations, build
+dispatch and release preparation remain deferred. No native experiments or W2m
+rerun occurred. Publication is a separate step.
