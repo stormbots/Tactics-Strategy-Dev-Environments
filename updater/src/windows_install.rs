@@ -456,8 +456,16 @@ mod native {
             crate::install_core::Scope::AppOnly,
             tool_maintenance,
         )?;
-        install_in_context(crate::install_core::Context::app_only(lease), directory, candidate, report,
-            crate::authenticate, || host::installed().map(|i| i.version).map_err(|_| "Installed identity unavailable".into()))
+        install_in_context(
+            crate::install_core::Context::app_only(lease),
+            directory,
+            candidate,
+            report,
+            crate::authenticate,
+            || host::installed()
+                .map(|i| i.version)
+                .map_err(|_| "Installed identity unavailable".into()),
+        )
     }
 
     fn install_in_context(
@@ -509,8 +517,10 @@ mod native {
             self.report.outcome = "paused".into();
         }
         fn record_paused_intent(&mut self) -> Result<()> {
-            atomic_json(&Path::new(ROOT).join("installation.json"),
-                &serde_json::json!({"schemaVersion":1,"stage":"paused","candidateVersion":self.candidate.version}))
+            atomic_json(
+                &Path::new(ROOT).join("installation.json"),
+                &serde_json::json!({"schemaVersion":1,"stage":"paused","candidateVersion":self.candidate.version}),
+            )
         }
         fn mark_current(&mut self) {
             self.report.outcome = "current".into();
@@ -519,7 +529,11 @@ mod native {
             self.report.outcome = "failed".into();
         }
         fn authenticate(&mut self) -> Result<AuthenticatedManifest> {
-            authenticate_staged(self.directory, self.candidate, self.authenticate.take().ok_or("Authentication already consumed")?)
+            authenticate_staged(
+                self.directory,
+                self.candidate,
+                self.authenticate.take().ok_or("Authentication already consumed")?,
+            )
         }
         fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
             Ok(true)
@@ -536,8 +550,11 @@ mod native {
             system_environment(&mut command);
             command.current_dir(self.directory).args(["/S", "/UPDATE"]);
             // No timeout/kill: unknown child completion retains coordination intent.
-            command.status().map_err(|_| "Native installer completion unknown; mentor review required")?
-                .code().ok_or_else(|| "Native installer completion unknown".into())
+            command
+                .status()
+                .map_err(|_| "Native installer completion unknown; mentor review required")?
+                .code()
+                .ok_or_else(|| "Native installer completion unknown".into())
         }
         fn native_finished(&mut self, before: &str, code: i32) -> Result<()> {
             self.report.native_exit = Some(code);
@@ -547,7 +564,9 @@ mod native {
                 &serde_json::json!({"schemaVersion":1,"stage":"postcheck","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code,"transaction":self.directory.file_name().and_then(|s|s.to_str())}),
             )?;
             if native_outcome(code) != NativeOutcome::Success {
-                return Err(format!("Native installer returned {code}; mentor review required"));
+                return Err(format!(
+                    "Native installer returned {code}; mentor review required"
+                ));
             }
             Ok(())
         }
@@ -560,14 +579,19 @@ mod native {
         fn record_success(&mut self, before: &str, code: i32) -> Result<()> {
             let recovery = Path::new(ROOT).join("recovery.json");
             if recovery.exists() {
-                let previous: serde_json::Value = serde_json::from_slice(&crate::read_bounded(&recovery, 4096)?)
-                    .map_err(|_| "Recovery state invalid")?;
+                let previous: serde_json::Value =
+                    serde_json::from_slice(&crate::read_bounded(&recovery, 4096)?)
+                        .map_err(|_| "Recovery state invalid")?;
                 atomic_json(&Path::new(ROOT).join("previous-recovery.json"), &previous)?;
             }
-            atomic_json(&recovery,
-                &serde_json::json!({"schemaVersion":1,"version":self.candidate.version,"transaction":self.directory.file_name().and_then(|s|s.to_str())}))?;
-            atomic_json(&Path::new(ROOT).join("installation.json"),
-                &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}))
+            atomic_json(
+                &recovery,
+                &serde_json::json!({"schemaVersion":1,"version":self.candidate.version,"transaction":self.directory.file_name().and_then(|s|s.to_str())}),
+            )?;
+            atomic_json(
+                &Path::new(ROOT).join("installation.json"),
+                &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}),
+            )
         }
         fn mark_updated(&mut self) {
             self.report.application_version = self.candidate.version.clone();

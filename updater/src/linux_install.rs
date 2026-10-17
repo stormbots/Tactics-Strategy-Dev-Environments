@@ -344,7 +344,9 @@ where
         paused()
     }
     fn installed_version(&mut self) -> Result<String> {
-        Ok(host::installed_linux_identity().map_err(|_| "Installed identity unavailable")?.version)
+        Ok(host::installed_linux_identity()
+            .map_err(|_| "Installed identity unavailable")?
+            .version)
     }
     fn mark_paused(&mut self) {
         self.report.outcome = "paused".into();
@@ -359,7 +361,11 @@ where
         self.report.outcome = "failed".into();
     }
     fn authenticate(&mut self) -> Result<AuthenticatedManifest> {
-        authenticate_staged(self.directory, self.candidate, self.authenticate.take().ok_or("Authentication already consumed")?)
+        authenticate_staged(
+            self.directory,
+            self.candidate,
+            self.authenticate.take().ok_or("Authentication already consumed")?,
+        )
     }
     fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
         deb_identity(self.directory, &self.candidate.version)?;
@@ -372,11 +378,14 @@ where
                 crate::install_core::Scope::AppOnly => {
                     "Package manager is busy; start a new authorized update attempt later"
                 }
-            }.into();
+            }
+            .into();
             return Ok(false);
         }
         self.report.phase = crate::observation::Phase::Packagehealth;
-        let audit = command("/usr/bin/dpkg").arg("--audit").output()
+        let audit = command("/usr/bin/dpkg")
+            .arg("--audit")
+            .output()
             .map_err(|_| "Package health check unavailable")?;
         if !audit.status.success() || !audit.stdout.is_empty() || !audit.stderr.is_empty() {
             return Err("Existing package state needs mentor repair before self-installation".into());
@@ -393,9 +402,11 @@ where
     fn launch(&mut self) -> Result<i32> {
         self.report.outcome = "failed".into();
         // Wait for actual completion; never kill APT/DPKG, remove locks or force reboot.
-        apt_command(self.directory).status()
+        apt_command(self.directory)
+            .status()
             .map_err(|_| "Native completion unknown; mentor review required")?
-            .code().ok_or_else(|| "Native completion unknown; mentor review required".into())
+            .code()
+            .ok_or_else(|| "Native completion unknown; mentor review required".into())
     }
     fn native_finished(&mut self, before: &str, code: i32) -> Result<()> {
         self.report.native_exit = Some(code);
@@ -405,7 +416,9 @@ where
             false,
         )?;
         if code != 0 {
-            return Err(format!("APT returned {code}; mentor review required before retry"));
+            return Err(format!(
+                "APT returned {code}; mentor review required before retry"
+            ));
         }
         Ok(())
     }
@@ -414,15 +427,21 @@ where
     }
     fn record_success(&mut self, before: &str, code: i32) -> Result<()> {
         if Path::new(ROOT).join("recovery.json").exists() {
-            atomic(&Path::new(ROOT).join("previous-recovery.json"), &read_receipt("recovery.json")?, false)?;
+            atomic(
+                &Path::new(ROOT).join("previous-recovery.json"),
+                &read_receipt("recovery.json")?,
+                false,
+            )?;
         }
         atomic(
             &Path::new(ROOT).join("recovery.json"),
-            &serde_json::json!({"schemaVersion":1,"version":self.candidate.version,"transaction":self.directory.file_name().and_then(|s|s.to_str())}), false,
+            &serde_json::json!({"schemaVersion":1,"version":self.candidate.version,"transaction":self.directory.file_name().and_then(|s|s.to_str())}),
+            false,
         )?;
         atomic(
             &Path::new(ROOT).join("installation.json"),
-            &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}), false,
+            &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}),
+            false,
         )
     }
     fn mark_updated(&mut self) {

@@ -61,7 +61,11 @@ completion before reporting Paused. App-only performs its final read **before**
 intent, matching the approved commitment decision. There is no post-intent manual
 pause read, network/user interaction or new preparation step in the core. The
 15-minute/two-minute lifecycle/deadline enforcement is **not implemented here**;
-the later worker must check it before entering this boundary.
+later integration must validate request lifetime at the final commitment point
+after preflight. Checking only before calling the core is insufficient: preflight
+can consume the remaining lifetime. The private app-only entry remains unwired;
+a final commitment-validation integration point is a later prerequisite, not
+implemented or validated in Phase 1.
 
 ## Local QA and review
 
@@ -113,3 +117,48 @@ before advancing Phase 2. Do not infer permission for native package operations,
 elevation, bootstrap/task registration, application builds, PR creation, release
 preparation or further W2n/W2/W3 work. W2h/W2m findings remain preserved, native
 N1/N2 remain NotRun, authentication safety Unproven and production readiness false.
+
+
+## Phase 1 source/coverage review
+
+Reviewed baseline `56ca0a1` for trust preservation, lease ownership, pause order,
+report/receipt order and regressions. No production correctness regression was
+identified in the extraction. Signature/hash/native identity helpers remain
+unchanged from before extraction. The core borrows existing installation ownership;
+scheduled wrappers alone retain the previous acquisition boundary. App-only and
+scheduled modes retain their deliberately different approved pause placement.
+No new privilege/CLI/admission or native execution path was connected.
+
+The review adds three memory-only coverage cases that were missing: a failure on
+the second policy read (pre-intent for app-only, post-intent for scheduled), a
+failed scheduled paused-intent receipt, and proof that app-only pause never calls
+that legacy receipt hook. Failures retain uncertainty and do not launch/complete
+or falsely report Paused. Native adapter edits in this review are readability
+formatting only; token comparison allowing whitespace and optional trailing call
+commas matches baseline. The core's production section is byte-for-byte unchanged.
+Deadline integration wording above is corrected: a pre-entry-only check is not
+sufficient for the later worker.
+
+[Reviewed local evidence](evidence/ISSUE72-SHARED-CORE-REVIEW.json) pins final sources
+and exact commands. **40 tests pass**, comprising 19 core tests plus 21 existing
+local regressions. Four privileged/native/protected-staging cases remain explicitly
+filtered. Linux all-target check passes; `cargo rustc --lib -- -D warnings` passes.
+The latter checks compiler diagnostics and is **not Clippy**. Existing loopback
+HTTP regression uses local socket permission, not a live update endpoint. No
+installed updater/package process or native update was executed.
+
+Formatter/lint status remains blocked. An attempt to add only rustfmt and clippy
+to the workspace toolchain was rejected by automatic approval review, which
+classified it as a deferred package/toolchain operation. No installation occurred,
+no alternate installation route was attempted, and no native/system package
+operation was performed. Manual readability cleanup and whitespace checks do not
+establish `cargo fmt --check` success. Explicit authorization for those development
+components is required before completing formatter/Clippy QA.
+
+Windows compilation is separately **NotRun**: the Windows Rust standard-library
+target is absent, no target was installed, and no Windows host is attached.
+Source review and Linux's pure Windows exit-code test are not Windows backend
+compilation, SYSTEM validation, native installation or desktop UAT. Formatting,
+Clippy and Windows compilation remain merge-readiness gaps. No Phase 2, elevation,
+registration, package operations, PR, build dispatch, publication or release work
+was undertaken. Historical findings and original evidence remain unchanged.
