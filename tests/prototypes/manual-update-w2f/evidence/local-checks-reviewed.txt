@@ -1,0 +1,23 @@
+test_cleanup_preserves_replaced_entry (__main__.Checks.test_cleanup_preserves_replaced_entry) ... ok
+test_cleanup_preserves_replaced_root (__main__.Checks.test_cleanup_preserves_replaced_root) ... ok
+test_cleanup_preserves_unknown_entry (__main__.Checks.test_cleanup_preserves_unknown_entry) ... ok
+test_creation_change_closes_pidfd (__main__.Checks.test_creation_change_closes_pidfd) ... ok
+test_exited_peer_denied (__main__.Checks.test_exited_peer_denied) ... ok
+test_gid_mismatch (__main__.Checks.test_gid_mismatch) ... ok
+test_invalid_enrollment_types_denied (__main__.Checks.test_invalid_enrollment_types_denied) ... ok
+test_kernel_error_denied (__main__.Checks.test_kernel_error_denied) ... ok
+test_missing_enrollment_denied (__main__.Checks.test_missing_enrollment_denied) ... ok
+test_oracle_rejects_inconsistent_native_evidence (__main__.Checks.test_oracle_rejects_inconsistent_native_evidence) ... ok
+test_partial_actor_startup_still_reaped (__main__.Checks.test_partial_actor_startup_still_reaped) ... ok
+test_pidfd_open_failure_is_denial (__main__.Checks.test_pidfd_open_failure_is_denial) ... ok
+test_rejected_client_does_not_authorize_spoofed_request (__main__.Checks.test_rejected_client_does_not_authorize_spoofed_request) ... ok
+test_rejected_server_does_not_issue_request_or_trust_ack (__main__.Checks.test_rejected_server_does_not_issue_request_or_trust_ack) ... ok
+test_same_uid_unexpected_pid_denied_before_proc_access (__main__.Checks.test_same_uid_unexpected_pid_denied_before_proc_access) ... ok
+test_short_kernel_record (__main__.Checks.test_short_kernel_record) ... ok
+test_uid_mismatch (__main__.Checks.test_uid_mismatch) ... ok
+test_unknown_scenario_creates_no_resources (__main__.Checks.test_unknown_scenario_creates_no_resources) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.007s
+
+OK

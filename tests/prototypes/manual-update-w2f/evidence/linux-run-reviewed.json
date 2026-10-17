@@ -1,0 +1,568 @@
+{
+  "scope": "W2f only; no production authentication claim",
+  "enrollment": "Trusted parent control pipes; independent child creation identities; not production bootstrap",
+  "timing": "Five-second per-operation test watchdog; no production deadline claim",
+  "environment": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "privilege": {
+      "uid": 1000,
+      "euid": 1000,
+      "effective_capabilities": "0000000000000000"
+    },
+    "gid": 1000
+  },
+  "source_hashes": {
+    "manual-update-w2f/run_experiment.py": "4de7a6b85b4436192bb5bbc81bd279ae542f643f0ccbba709427fbb695faa985",
+    "manual-update-w2f/test_checks.py": "bac506cfe2abaf408291ce78426c5d8876f7fb352a0d774127de062ad94cf256",
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2"
+  },
+  "cases": [
+    {
+      "case": "intended",
+      "root": "/tmp/PROTOTYPE-W2f-ywkm7n_7",
+      "failures": [],
+      "root_removed": true,
+      "root_metadata": {
+        "device": 33,
+        "inode": 4917,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o700",
+        "socket": false,
+        "directory": true
+      },
+      "ownership": [
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28361,
+            "ppid": 28359,
+            "start_ticks": 4795040,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28362,
+            "ppid": 28359,
+            "start_ticks": 4795044,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        }
+      ],
+      "sockets": {
+        "/tmp/PROTOTYPE-W2f-ywkm7n_7/real.sock": {
+          "device": 33,
+          "inode": 4918,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true,
+          "directory": false
+        }
+      },
+      "server_verifies_client": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 28362,
+            "ppid": 28359,
+            "start_ticks": 4795044,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47950.475524041,
+          "kernel": {
+            "pid": 28362,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 28362,
+            "ppid": 28359,
+            "start_ticks": 4795044,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 28362,
+            "ppid": 28359,
+            "start_ticks": 4795044,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 47950.475693027
+        }
+      },
+      "client_verifies_server": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 28361,
+            "ppid": 28359,
+            "start_ticks": 4795040,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47950.475471211,
+          "kernel": {
+            "pid": 28361,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 28361,
+            "ppid": 28359,
+            "start_ticks": 4795040,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 28361,
+            "ppid": 28359,
+            "start_ticks": 4795040,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 47950.475583892
+        }
+      },
+      "exchange_released_at": 47950.477011948,
+      "server_result": {
+        "event": "result",
+        "authorized_actions": 1,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "probe_bytes_discarded": 0,
+        "spoofed_ack_sent": false,
+        "request_claim_pid": null,
+        "claimed_ack_pid": null,
+        "completed_at": 47950.477410922
+      },
+      "client_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 1,
+        "trusted_status": 1,
+        "probe_bytes_discarded": 0,
+        "spoofed_ack_sent": false,
+        "request_claim_pid": 28362,
+        "claimed_ack_pid": null,
+        "completed_at": 47950.477464948
+      },
+      "passed": true,
+      "cleanup": [
+        {
+          "pid": 28361,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        },
+        {
+          "pid": 28362,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        }
+      ]
+    },
+    {
+      "case": "unexpected-client",
+      "root": "/tmp/PROTOTYPE-W2f-el1tu3n5",
+      "failures": [],
+      "root_removed": true,
+      "root_metadata": {
+        "device": 33,
+        "inode": 4919,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o700",
+        "socket": false,
+        "directory": true
+      },
+      "ownership": [
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28363,
+            "ppid": 28359,
+            "start_ticks": 4795048,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28364,
+            "ppid": 28359,
+            "start_ticks": 4795051,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28365,
+            "ppid": 28359,
+            "start_ticks": 4795054,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        }
+      ],
+      "sockets": {
+        "/tmp/PROTOTYPE-W2f-el1tu3n5/real.sock": {
+          "device": 33,
+          "inode": 4920,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true,
+          "directory": false
+        }
+      },
+      "server_verifies_client": {
+        "event": "verified",
+        "verification": {
+          "accepted": false,
+          "reason": "pid-mismatch",
+          "enrolled": {
+            "pid": 28364,
+            "ppid": 28359,
+            "start_ticks": 4795051,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47950.585905528,
+          "kernel": {
+            "pid": 28365,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "verified_at": 47950.585922835
+        }
+      },
+      "client_verifies_server": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 28363,
+            "ppid": 28359,
+            "start_ticks": 4795048,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47950.585680137,
+          "kernel": {
+            "pid": 28363,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 28363,
+            "ppid": 28359,
+            "start_ticks": 4795048,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 28363,
+            "ppid": 28359,
+            "start_ticks": 4795048,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 47950.585828282
+        }
+      },
+      "exchange_released_at": 47950.58687481,
+      "server_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "probe_bytes_discarded": 48,
+        "spoofed_ack_sent": false,
+        "request_claim_pid": null,
+        "claimed_ack_pid": null,
+        "discarded_probe": "{\"claimed_pid\":28364,\"test_request\":\"fixed-ack\"}",
+        "completed_at": 47950.587064332
+      },
+      "client_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 1,
+        "trusted_status": 0,
+        "probe_bytes_discarded": 0,
+        "spoofed_ack_sent": false,
+        "request_claim_pid": 28364,
+        "claimed_ack_pid": null,
+        "completed_at": 47950.587112265
+      },
+      "passed": true,
+      "cleanup": [
+        {
+          "pid": 28363,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        },
+        {
+          "pid": 28364,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        },
+        {
+          "pid": 28365,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        }
+      ]
+    },
+    {
+      "case": "unexpected-server",
+      "root": "/tmp/PROTOTYPE-W2f-6fjqh63s",
+      "failures": [],
+      "root_removed": true,
+      "root_metadata": {
+        "device": 33,
+        "inode": 4921,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o700",
+        "socket": false,
+        "directory": true
+      },
+      "ownership": [
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28366,
+            "ppid": 28359,
+            "start_ticks": 4795060,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28367,
+            "ppid": 28359,
+            "start_ticks": 4795063,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        },
+        {
+          "event": "ready",
+          "identity": {
+            "pid": 28368,
+            "ppid": 28359,
+            "start_ticks": 4795067,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          }
+        }
+      ],
+      "sockets": {
+        "/tmp/PROTOTYPE-W2f-6fjqh63s/real.sock": {
+          "device": 33,
+          "inode": 4922,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true,
+          "directory": false
+        },
+        "/tmp/PROTOTYPE-W2f-6fjqh63s/fake.sock": {
+          "device": 33,
+          "inode": 4923,
+          "uid": 1000,
+          "gid": 1000,
+          "mode": "0o600",
+          "socket": true,
+          "directory": false
+        }
+      },
+      "server_verifies_client": {
+        "event": "verified",
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 28367,
+            "ppid": 28359,
+            "start_ticks": 4795063,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47950.707637214,
+          "kernel": {
+            "pid": 28367,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 28367,
+            "ppid": 28359,
+            "start_ticks": 4795063,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 28367,
+            "ppid": 28359,
+            "start_ticks": 4795063,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 47950.707794362
+        }
+      },
+      "client_verifies_server": {
+        "event": "verified",
+        "verification": {
+          "accepted": false,
+          "reason": "pid-mismatch",
+          "enrolled": {
+            "pid": 28366,
+            "ppid": 28359,
+            "start_ticks": 4795060,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 47950.707601405,
+          "kernel": {
+            "pid": 28368,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "verified_at": 47950.707621465
+        }
+      },
+      "exchange_released_at": 47950.708815102,
+      "server_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "probe_bytes_discarded": 0,
+        "spoofed_ack_sent": true,
+        "request_claim_pid": null,
+        "claimed_ack_pid": 28366,
+        "completed_at": 47950.708992145
+      },
+      "client_result": {
+        "event": "result",
+        "authorized_actions": 0,
+        "requests_sent": 0,
+        "trusted_status": 0,
+        "probe_bytes_discarded": 37,
+        "spoofed_ack_sent": false,
+        "request_claim_pid": null,
+        "claimed_ack_pid": null,
+        "discarded_probe": "{\"claimed_pid\":28366,\"test_ack\":true}",
+        "completed_at": 47950.708959951
+      },
+      "passed": true,
+      "cleanup": [
+        {
+          "pid": 28366,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        },
+        {
+          "pid": 28367,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        },
+        {
+          "pid": 28368,
+          "exit_code": 0,
+          "stderr": "",
+          "reaped": true,
+          "forced": false,
+          "pidfd_registered": true
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "remaining_children": [],
+  "passed": true
+}

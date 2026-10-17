@@ -485,14 +485,19 @@ workflow/build/release deferrals remain unchanged.
 
 The [W2f record](../../tests/prototypes/manual-update-w2f/README.md) documents
 mutual SO_PEERCRED checks bound to explicitly enrolled live process instances.
-Three native Linux schedules pass: intended peers authorize one fixed action;
-an unexpected same-UID client and an unexpected same-UID server are each rejected
-for PID mismatch, with zero authorized actions or trusted acknowledgments.
-Eight focused synthetic fail-closed checks pass. Both verification directions,
-process/socket ownership, source hashes and complete cleanup are recorded; an
-initial sandbox bind denial is preserved separately. Trusted parent enrollment
-and barrier-controlled exchange are fixture assumptions. This is only a narrow
-E06/B02 subset, without privileged namespace, production bootstrap, continuous
-session identity or Windows proof. All six blockers and all other W2/W3,
-elevation, registration, production implementation, package operations and
-workflow/build/release deferrals remain unchanged.
+Three reviewed native Linux schedules pass: intended peers authorize one fixed
+action; an unexpected same-UID client and an unexpected same-UID server are each
+rejected for PID mismatch. The unexpected client actually sends a request with
+the enrolled client's claimed PID; it receives no authorized acknowledgment.
+The unexpected server sends a spoofed acknowledgment; the client discards it and
+sends no request. Both negative cases record zero authorized actions and zero
+trusted acknowledgments without a parent allow/deny bit. Eighteen focused local
+checks pass. Both verification directions, process/socket ownership, source
+hashes and complete cleanup are recorded. Original parent-suppressed evidence
+and an initial sandbox bind denial are retained as historical records.
+Trusted parent enrollment, fixed probes and process-lifetime barriers remain
+fixture assumptions. This is only a narrow E06/B02 subset, without privileged
+namespace, production bootstrap, continuous session identity or Windows proof.
+All six blockers and all other W2/W3, elevation, registration, production
+implementation, package operations and workflow/build/release deferrals remain
+unchanged.
