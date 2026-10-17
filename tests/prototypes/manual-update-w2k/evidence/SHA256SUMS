@@ -1,0 +1,6 @@
+42615f0847bcedecd0468d46c95da43aa7b019ed05c2892637031fa8cb22e711  tests/prototypes/manual-update-w2i/run_experiment.py
+7fe09e55c964c105f300c82b0aa2827682c61633760ce24e28009e954e518409  tests/prototypes/manual-update-w2k/README.md
+274671068637d82a404ab31f56f38c1472055ec9f454370b2704de2ae18ee1e2  tests/prototypes/manual-update-w2k/evidence/checks.txt
+5f7f19a6a7f5274a0c392d0ab6a3051704c7c7402da07559d986213477cce9fa  tests/prototypes/manual-update-w2k/evidence/linux-run.json
+a229ae4db229aa470128fd82a033174c7091a9d60e9cf996b2548a5ade3a4eb9  tests/prototypes/manual-update-w2k/run_experiment.py
+954b8fd5be66b509b4fbcc23fca4ecd2733e02636d473532ae54fb6afd45e27a  tests/prototypes/manual-update-w2k/test_checks.py

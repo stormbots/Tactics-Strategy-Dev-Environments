@@ -650,3 +650,29 @@ Truncation and partial-delivery experiments were not run. Diagnostic success is
 not authentication safety; W2h/W2i limits and B01–B06 remain unchanged, as do all
 other W2/W3, production, elevation, registration, package, build and release
 deferrals. No publication or PR is part of this review.
+
+
+### Separately authorized W2k payload-truncation execution
+
+The [W2k record](../../tests/prototypes/manual-update-w2k/README.md) documents only
+a healthy control and a complete valid credential-bearing record attaching one
+run-owned pipe FD, received with a test-only eight-byte payload buffer. Ancillary
+capacity remains 256 bytes and the W2i transport/validator guards are unchanged.
+The healthy control accepts one action. K2 sends 53 bytes, receives eight with
+actual MSG_TRUNC and no MSG_CTRUNC, rejects specifically for truncation, authorizes
+zero actions and closes one kernel-installed CLOEXEC FD. Immediate fstat/F_GETFD
+return EBADF before any allocation can reuse the FD. Inventories stay unchanged
+and original sender pipe descriptors remain valid. Full-sent-fixture and prefix
+hashes bind the controlled sender's canonical complete message to the received
+prefix; this is not general validation of an arbitrary unseen suffix.
+
+The final native report records 38 barrier events, four direct actors normally
+exited/reaped, both fixture roots removed, runner inventories unchanged and
+subreaper 0→0 without settings mutation. Twenty-eight focused checks pass; local
+synthetic/mocked flags, corrupted evidence and saved-report audits are not extra
+native schedules. No ancillary-truncation/partial-delivery experiment, other
+W2/W3, production, elevation, registration, package, workflow/build or release
+work occurred. Diagnostic success and narrow primitive feasibility do not
+establish authentication safety. W2h's counterexample, W2i/W2j limits and all
+B01–B06 blocker statuses remain unchanged. No publication or PR belongs to this
+execution; remaining work requires separate authorization.
