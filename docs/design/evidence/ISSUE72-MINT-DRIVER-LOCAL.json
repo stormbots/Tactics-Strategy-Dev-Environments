@@ -1,0 +1,90 @@
+{
+  "date_utc": "2026-10-17",
+  "base_production_commit": "a2a518684a77a5fc86287144f932c1510f1971e8",
+  "scope": "Isolated disposable-Mint driver/preflight preparation; mocked local QA only",
+  "qa": {
+    "mocked_driver_and_host_checks": {
+      "passed": 28,
+      "failed": 0,
+      "command": "python3 -m unittest discover -s tests -p test_mint_update_validation.py"
+    },
+    "workflow_boundary_static_checks": {
+      "passed": 9,
+      "failed": 0,
+      "command": "python3 -m unittest discover -s tests -p test_ci_boundaries.py"
+    },
+    "python_ast_parse": {
+      "files": 5,
+      "result": "Pass"
+    },
+    "git_diff_check": "Pass"
+  },
+  "review_fixes": [
+    "One-shot phase journal and stop after pending/failure states",
+    "Ownership/path/child-set checks before deletion under held broker gate",
+    "No real or fake enablement receipt; only invalid capabilities",
+    "Explicit root-staged isolated entry, VM/boot/media/artifact binding",
+    "Bounded read-only probe output while reading; no installer in termination path",
+    "Atomic sentinel probe plus explicit released receipt",
+    "Actual PolicyKit bus-owner UID/PID attribution rather than assuming daemon UID root",
+    "Direct kernel ACL and public-progress-CLI probes as separate future checks",
+    "Wait for independently spawned worker evidence before capture",
+    "Keep root-fixture cleanup distinct from VM/account disposal"
+  ],
+  "mock_coverage": [
+    "each host prerequisite and mocked KVM ioctl success/failure descriptor closure",
+    "media fingerprint/checksum duplicate/wrong-edition/digest rejection (synthetic GPG status only)",
+    "approval VM/boot/action/artifact/account/expiry rejection",
+    "default native-execution guards",
+    "all partial-prepare failure positions and failed journal before mutation",
+    "collision/ambiguous package state rejection",
+    "out-of-scope/duplicate/tampered/unknown-child cleanup rejection",
+    "successful reverse owned cleanup in memory only",
+    "pid-instance/FD/session mismatch and pidfd resource closure",
+    "normal and abrupt sentinel schedules using mocked process adapters",
+    "production deferral capture and rejected replay using mocked adapters",
+    "polkit audit provenance/action/subject/count rejection",
+    "bounded stop-aware evidence and read-only output"
+  ],
+  "not_executed": [
+    "host preflight and /dev/kvm access",
+    "ISO download/hash/GPG authentication",
+    "VM provisioning or console/SSH access",
+    "guest root fixtures/accounts/policy/launcher installation",
+    "native polkit, ACL, pidfd or process signaling tests",
+    "native worker/replay/sentinel execution",
+    "application compilation/build dispatch, package workflow dispatch, signing or releases",
+    "W2/W3 experiments, N1/N2 or W2m rerun"
+  ],
+  "remaining_gates": [
+    "designated KVM host access and separately reviewed dispatch path if hosted runner chosen",
+    "authenticated Cinnamon ISO digest",
+    "guest provisioning and secure real console/controller",
+    "native logind mapping, polkit audit shape/service owner and permission behavior",
+    "native process/FD/cleanup behavior; actual Tauri/cgroup teardown not automated by this driver",
+    "positive admitted installation, package-child/recovery/migration and Windows evidence"
+  ],
+  "outcomes": {
+    "mocked_local_diagnostic": "Pass",
+    "native_diagnostic_completion": "NotRun",
+    "native_cleanup_correctness": "Unproven",
+    "native_authentication_safety": "Unproven",
+    "production_ready": false,
+    "feature_enabled": false
+  },
+  "historical": {
+    "managed_filesystem_acl": "EOPNOTSUPP failure preserved; not rerun",
+    "W2h": "Counterexample preserved",
+    "W2i-W2l": "Limited results preserved",
+    "W2m": "Immediate cleanup Fail preserved",
+    "W2n_N1_N2": "NotRun"
+  },
+  "source_sha256": {
+    "tests/mint_validation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/mint_validation/driver.py": "cb468d13a4eac576874faca732993351f5d392bdf6b7a8301cb0fd4447b15a91",
+    "tests/mint_validation/host_preflight.py": "61f172bd6e528585e1968ddc1c08d37038e8e42d6a3b1ca45f8f0121fa645bd2",
+    "tests/mint_validation/sentinel.py": "9c96e9b41f525c4e7e981ef5d022d50065dbac349c4c64fb3547269624ce5b01",
+    "tests/test_mint_update_validation.py": "9c6c7367b8aa5a8bc67d241121891ad34877e8d8281bbca9d4d34f676e57cfec",
+    "docs/design/ISSUE72-MINT-VALIDATION-RUNBOOK.md": "140d4c24e78cf76ac674f7a3abde60c35e65f41223b13f4fa80832682f1b6e86"
+  }
+}
