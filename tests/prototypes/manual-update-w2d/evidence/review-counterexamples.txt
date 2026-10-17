@@ -1,0 +1,49 @@
+test_conflicting_normal_decision_cannot_hide_oracle_violation (test_checks.Checks.test_conflicting_normal_decision_cannot_hide_oracle_violation) ... FAIL
+test_inconsistent_held_lock_evidence_is_rejected (test_checks.Checks.test_inconsistent_held_lock_evidence_is_rejected) ... ok
+test_live_actor_without_bound_handle_is_not_signaled_or_disposed (test_checks.Checks.test_live_actor_without_bound_handle_is_not_signaled_or_disposed) ... ok
+test_oracle_uses_actual_intent_not_skipped_actor_check (test_checks.Checks.test_oracle_uses_actual_intent_not_skipped_actor_check) ... ok
+test_quiescent_known_empty_case_teardown_succeeds (test_checks.Checks.test_quiescent_known_empty_case_teardown_succeeds) ... ok
+test_recorded_but_invalid_fixture_is_preserved (test_checks.Checks.test_recorded_but_invalid_fixture_is_preserved) ... FAIL
+test_recovery_rejection_is_not_unsafe_admission (test_checks.Checks.test_recovery_rejection_is_not_unsafe_admission) ... ok
+test_reply_from_wrong_variant_is_rejected (test_checks.Checks.test_reply_from_wrong_variant_is_rejected) ... FAIL
+test_startup_wins_requires_evidence_of_second_check (test_checks.Checks.test_startup_wins_requires_evidence_of_second_check) ... FAIL
+test_unregistered_fixture_preserved_at_teardown (test_checks.Checks.test_unregistered_fixture_preserved_at_teardown) ... ok
+
+======================================================================
+FAIL: test_conflicting_normal_decision_cannot_hide_oracle_violation (test_checks.Checks.test_conflicting_normal_decision_cannot_hide_oracle_violation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2d/test_checks.py", line 121, in test_conflicting_normal_decision_cannot_hide_oracle_violation
+    self.assertTrue(admission_violation(dict(decision='NormalSession', entered_normal=False), dict(present=True)))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_recorded_but_invalid_fixture_is_preserved (test_checks.Checks.test_recorded_but_invalid_fixture_is_preserved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2d/test_checks.py", line 87, in test_recorded_but_invalid_fixture_is_preserved
+    self.assertTrue((root / 'intent.json').exists())
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_reply_from_wrong_variant_is_rejected (test_checks.Checks.test_reply_from_wrong_variant_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2d/test_checks.py", line 101, in test_reply_from_wrong_variant_is_rejected
+    with self.assertRaisesRegex(RuntimeError, 'variant mismatch'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_startup_wins_requires_evidence_of_second_check (test_checks.Checks.test_startup_wins_requires_evidence_of_second_check)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2d/test_checks.py", line 117, in test_startup_wins_requires_evidence_of_second_check
+    with self.assertRaisesRegex(RuntimeError, 'second check'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.005s
+
+FAILED (failures=4)

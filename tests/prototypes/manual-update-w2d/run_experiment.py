@@ -106,7 +106,8 @@ def actor(role, variant, root):
 
 def admission_violation(reply, actual_intent):
     """Independent of actor's second-check claim (the mutant deliberately skips it)."""
-    return reply.get('entered_normal') is True and actual_intent.get('present') is True
+    normal_claim = reply.get('entered_normal') is True or reply.get('decision') == 'NormalSession'
+    return normal_claim and actual_intent.get('present') is True
 
 
 class Case:
@@ -131,6 +132,8 @@ class Case:
                'lock inventory changed')
         observed = fixture.inspect_intent(self.root)
         if self.intent is not None:
+            ensure(self.intent.get('present') is True and self.intent.get('reason') == 'unresolved_fixture',
+                   'recorded fixture not valid unresolved intent; preserve root')
             ensure(observed == self.intent, 'unresolved fixture changed/removed')
         else:
             ensure(not observed['present'], 'unexpected fixture publication')
@@ -138,7 +141,7 @@ class Case:
     def launch(self, role, variant='guarded'):
         process = subprocess.Popen([sys.executable, '-I', str(SCRIPT), '--actor', role, variant, str(self.root)],
             close_fds=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        entry = dict(role=role, process=process, pidfd=None, expected_exit=0)
+        entry = dict(role=role, variant=variant, process=process, pidfd=None, expected_exit=0)
         self.actors.append(entry)
         identity = support.process_identity(process.pid)
         ensure(identity['ppid'] == os.getpid() and identity['uid'] == os.geteuid(), 'actor not runner-owned')
@@ -154,9 +157,10 @@ class Case:
         reply = support.read_message(process.stdout.fileno())
         self.event('barrier_reply', role=entry['role'], reply=reply)
         ensure(reply['identity'] == entry['identity'] and reply['role'] == entry['role'], 'reply identity mismatch')
+        ensure(reply.get('variant') == entry['variant'], 'actor variant mismatch')
         ensure(reply['privilege']['euid'] == os.geteuid() and not int(reply['privilege']['effective_capabilities'], 16),
                'actor not unprivileged')
-        ensure(set(reply['held']) == set(reply['held_identities']), 'held-lock evidence inconsistent')
+        ensure(reply['held'] == sorted(reply['held_identities']), 'held-lock evidence inconsistent')
         ensure(all(value == self.baseline[name] for name, value in reply['held_identities'].items()),
                'actor opened different lock inode')
         if not exiting:
@@ -170,9 +174,10 @@ class Case:
         ensure(reply['event'] == expected, f'expected {expected}, got {reply}')
         # Capture publication only after independently inspecting the same fixture.
         if expected == 'published':
-            self.intent = reply['publication']['observed']
-            ensure(self.intent['reason'] == 'unresolved_fixture' and fixture.inspect_intent(self.root) == self.intent,
-                   'fixture publication not independently confirmed')
+            observed = reply['publication']['observed']
+            ensure(observed.get('present') is True and observed.get('reason') == 'unresolved_fixture'
+                   and fixture.inspect_intent(self.root) == observed, 'fixture publication not independently confirmed')
+            self.intent = observed
         self.verify()
         return reply
 
@@ -219,8 +224,12 @@ class Case:
         ensure(first['held'] == ['A'] and not first['first']['present'], 'startup precheck state incorrect')
         if self.name == 'startup_wins':
             decision = self.command(startup, 'postcheck', 'decision')
-            ensure(decision['decision'] == 'NormalSession' and decision['entered_normal'] and decision['held'] == ['S'],
+            ensure(decision['decision'] == 'NormalSession' and decision['entered_normal'] is True and decision['held'] == ['S'],
                    'healthy startup failed')
+            actual = fixture.inspect_intent(self.root)
+            ensure(decision.get('first') == first['first'] == {'present': False, 'reason': 'absent'}
+                   and decision.get('second') == actual == {'present': False, 'reason': 'absent'},
+                   'healthy second check missing/changed')
             attempt = self.command(legacy, 'attempt', 'deferred')
             ensure(attempt['publication'] is None and attempt['mutation_starts'] == 0 and not attempt['held'],
                    'blocked legacy actor published/retained work')
@@ -237,6 +246,7 @@ class Case:
             self.terminate_publisher(legacy)
             decision = self.command(startup, 'postcheck', 'decision')
             actual = fixture.inspect_intent(self.root)
+            ensure(decision.get('first') == first['first'], 'first intent-check evidence changed')
             violation = admission_violation(decision, actual)
             self.report['oracle'] = dict(actual_intent=actual, violation=violation,
                 finding='normal_admission_with_unresolved_intent' if violation else None)

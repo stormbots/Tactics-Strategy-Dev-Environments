@@ -30,7 +30,7 @@ and diagnostic read/write watchdogs. There are no sleep-based race assertions.
 
 ## Results and independent oracle
 
-[Native run](evidence/linux-run.json): **two guarded schedules Pass; negative
+[Reviewed native run](evidence/reviewed-linux-run.json): **two guarded schedules Pass; negative
 control Detected**, with 56 total trace events (19, 18 and 19 respectively).
 The overall Pass means this expected combination, not that the defective control
 was safe. The report separates guarded_passes=2 and negative_control_detected=true.
@@ -76,7 +76,7 @@ source hash. The argument-count check was corrected. The final native run has
 no unexpected failures or cleanup fallback; the detected negative control is an
 expected finding, not an undisclosed baseline failure.
 
-[Six focused checks](evidence/local-checks.txt) pass: the oracle uses actual intent
+[Original six focused checks](evidence/local-checks.txt) pass: the oracle uses actual intent
 even when the actor skips inspection; recovery rejection is not unsafe admission;
 unknown fixtures are preserved at teardown; no signal/disposal occurs for an
 unbound live actor; inconsistent held-lock evidence is rejected; known quiescent
@@ -100,3 +100,41 @@ protected ownership/ACLs, real legacy packages, production GUI/startup, installe
 quiescence, recovery clearance, persistent-storage/power-loss, Windows/Mint desktop,
 service lifetime or accessibility validation occurred. Test helpers remain test
 code; no production implementation-readiness or blocker closure follows.
+
+
+## W2d implementation and evidence review
+
+Reviewed initial commit `b9c173a`. The [original native run](evidence/linux-run.json),
+[original six-check output](evidence/local-checks.txt) and development invocation
+failure remain unchanged historical evidence, bound to their earlier source hashes.
+
+| Finding | W2d-only correction |
+| --- | --- |
+| Healthy startup could pass without evidence that its second check ran | Require the guarded healthy decision's first/second observations to match the recorded clear state and independent fixture inspection; preserve first-check evidence in the legacy-winning/control cases too |
+| Replies were not bound to the requested guarded/mutant variant | Record the expected variant at launch and reject a mismatching reply; require exact held-lock evidence without duplicate entries |
+| Teardown could delete malformed intent if that invalid snapshot had been recorded | Only independently confirmed valid unresolved snapshots become publication authority; verification refuses invalid snapshots and preserves their roots |
+| A NormalSession decision conflicting with entered_normal=false escaped the isolated oracle | With actual intent present, either an affirmative normal decision or entered-normal flag triggers the oracle; schedule-specific checks still require consistent decisions/locks |
+
+[Pre-fix output](evidence/review-counterexamples.txt) records four failing new
+regressions among ten focused tests. The [reviewed ten-check output](evidence/review-checks.txt)
+passes. Added regressions simulate omitted healthy-check evidence, wrong actor
+variant, malformed recorded intent and conflicting decision fields. They exercise
+harness validation with mocks/private files, not four extra native race schedules.
+The initial native traces were consistent; these findings address missing checks
+and unsafe exceptional teardown, not a released-application defect.
+
+The [reviewed report](evidence/reviewed-linux-run.json) again records two guarded
+Pass outcomes and one Detected negative control, 56 trace events, unchanged lock
+and intent identities, expected exits, no remaining direct children and all three
+roots removed. No unexpected native failure or fallback cleanup occurred.
+Both W2d files and the unchanged W2b/W2c helper dependencies match their recorded
+hashes. Original artifacts were verified unchanged.
+
+Coverage still consists of two directed guarded schedules and one deliberate
+mutant on the recorded same-UID Linux/tmpfs environment. Validation regressions
+are not adversarial IPC/process authentication tests. No native failure injection,
+repeated launch/multiple worker matrix, interrupted publication/storage failure,
+privileged recovery, real old updater/installer, production integration, persistent
+storage or power-loss, Windows/Mint desktop or exhaustive liveness proof was added.
+All six blockers remain open. All other W2/W3, elevation, registration, production,
+package and build/release work remain deferred.
