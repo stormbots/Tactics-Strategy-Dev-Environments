@@ -80,8 +80,11 @@ def publish_intent(root):
         events.append('fsync_temporary_file')
     finally:
         os.close(fd)
-    os.replace(root / 'intent.tmp', root / 'intent.json')
-    events.append('replace_into_intent_name')
+    # Atomic no-replace publication: a racing existing intent must survive.
+    os.link(root / 'intent.tmp', root / 'intent.json', follow_symlinks=False)
+    events.append('link_into_intent_name_without_replacement')
+    (root / 'intent.tmp').unlink()
+    events.append('remove_temporary_name')
     directory_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
         os.fsync(directory_fd)
@@ -353,7 +356,10 @@ class Experiment:
                 errors.append(f'adopted child: {type(exc).__name__}: {exc}')
             finally:
                 if fd is not None:
-                    os.close(fd)
+                    try:
+                        os.close(fd)
+                    except BaseException as exc:
+                        errors.append(f'orphan pidfd close: {type(exc).__name__}: {exc}')
         for fd in [actor['pidfd'] for actor in self.actors] + [self.child_pidfd]:
             if fd is not None:
                 try:
@@ -369,6 +375,8 @@ class Experiment:
                    and self.child_reaped, 'termination uncertain; preserve root')
             current = support.inode(self.root.stat(follow_symlinks=False))
             ensure(all(current[k] == self.root_before[k] for k in ('device', 'inode', 'uid', 'mode')), 'root changed')
+            ensure(self.fixture is not None and self.fixture.get('reason') == 'unresolved_fixture',
+                   'no recorded unresolved fixture identity; preserve root')
             self.verify_files()
             ensure({p.name for p in self.root.iterdir()} == set(LOCKS) | {'intent.json'}, 'unknown root entries')
             self.report['locks_after'] = {name: support.inode((self.root / name).stat()) for name in LOCKS}
@@ -395,6 +403,7 @@ def main():
                 'Single pre-existing-intent schedule; no concurrent journal-publication race. B01-B06 remain open.'])
     original = None
     experiment = None
+    root = None
     try:
         ensure(sys.platform == 'linux' and hasattr(signal, 'pidfd_send_signal'), 'Linux pidfds required')
         report['environment']['privilege'] = support.privilege()
@@ -410,7 +419,7 @@ def main():
         experiment = Experiment(root, report)
         experiment.run()
     except BaseException as exc:
-        report['result'] = 'Fail' if experiment is not None else 'Blocked'
+        report['result'] = 'Fail' if root is not None else 'Blocked'
         report['failures'].append(f'{type(exc).__name__}: {exc}')
     finally:
         if experiment is not None:
@@ -419,6 +428,9 @@ def main():
             except BaseException as exc:
                 report['result'] = 'Fail'
                 report['failures'].append(f'cleanup: {type(exc).__name__}: {exc}')
+        if experiment is None and root is not None:
+            report['cleanup'] = dict(root_removed=False, root_preserved=True,
+                                     reason='initialization failed; ownership/inventory not fully established')
         if original is not None:
             try:
                 support.subreaper(original)

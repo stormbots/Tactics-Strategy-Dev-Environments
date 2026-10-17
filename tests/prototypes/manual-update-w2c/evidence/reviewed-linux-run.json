@@ -1,0 +1,610 @@
+{
+  "cleanup": {
+    "actors": [
+      {
+        "exitcode": 0,
+        "expected_exitcode": 0,
+        "pid": 24226,
+        "role": "startup_healthy"
+      },
+      {
+        "exitcode": -15,
+        "expected_exitcode": -15,
+        "pid": 24227,
+        "role": "supervisor"
+      },
+      {
+        "exitcode": 0,
+        "expected_exitcode": 0,
+        "pid": 24229,
+        "role": "startup_child_survives"
+      },
+      {
+        "exitcode": 0,
+        "expected_exitcode": 0,
+        "pid": 24230,
+        "role": "startup_child_exited"
+      }
+    ],
+    "errors": [],
+    "remaining_direct_children": [],
+    "root_removed": true,
+    "sentinel_reaped": true
+  },
+  "environment": {
+    "kernel": "6.18.44",
+    "os_release": "Debian GNU/Linux 13 (trixie)",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux test-only subset",
+  "experiment": "W2c unresolved test intent startup guard",
+  "failures": [],
+  "fixture_after_child_exit": {
+    "body": {
+      "fixture": "W2c-only",
+      "schema": 1,
+      "state": "unresolved",
+      "transaction": "PROTOTYPE-W2c-4qojo96_"
+    },
+    "identity": {
+      "device": 33,
+      "inode": 3315,
+      "mode": "0o600",
+      "regular": true,
+      "size": 101,
+      "uid": 1000
+    },
+    "present": true,
+    "reason": "unresolved_fixture",
+    "sha256": "6af16fdf681c5139aab1d13e78ed2741e5170ff2d819dedd4341192189bbd1fd"
+  },
+  "fixture_before_teardown": {
+    "body": {
+      "fixture": "W2c-only",
+      "schema": 1,
+      "state": "unresolved",
+      "transaction": "PROTOTYPE-W2c-4qojo96_"
+    },
+    "identity": {
+      "device": 33,
+      "inode": 3315,
+      "mode": "0o600",
+      "regular": true,
+      "size": 101,
+      "uid": 1000
+    },
+    "present": true,
+    "reason": "unresolved_fixture",
+    "sha256": "6af16fdf681c5139aab1d13e78ed2741e5170ff2d819dedd4341192189bbd1fd"
+  },
+  "limits": [
+    "No production journal/recovery, durability, power-loss, package or installer validation.",
+    "Same-UID cooperating actors and trusted IPC; no native privileged authentication.",
+    "Single pre-existing-intent schedule; no concurrent journal-publication race. B01-B06 remain open."
+  ],
+  "locks_after": {
+    "A": {
+      "device": 33,
+      "inode": 3313,
+      "mode": "0o600",
+      "regular": true,
+      "size": 0,
+      "uid": 1000
+    },
+    "O": {
+      "device": 33,
+      "inode": 3312,
+      "mode": "0o600",
+      "regular": true,
+      "size": 0,
+      "uid": 1000
+    },
+    "S": {
+      "device": 33,
+      "inode": 3314,
+      "mode": "0o600",
+      "regular": true,
+      "size": 0,
+      "uid": 1000
+    }
+  },
+  "locks_before": {
+    "A": {
+      "device": 33,
+      "inode": 3313,
+      "mode": "0o600",
+      "regular": true,
+      "size": 0,
+      "uid": 1000
+    },
+    "O": {
+      "device": 33,
+      "inode": 3312,
+      "mode": "0o600",
+      "regular": true,
+      "size": 0,
+      "uid": 1000
+    },
+    "S": {
+      "device": 33,
+      "inode": 3314,
+      "mode": "0o600",
+      "regular": true,
+      "size": 0,
+      "uid": 1000
+    }
+  },
+  "mount_entries": [
+    {
+      "filesystem": "tmpfs",
+      "mount_id": "91",
+      "mount_point": "/tmp",
+      "options": "ro,nosuid,nodev,relatime"
+    },
+    {
+      "filesystem": "tmpfs",
+      "mount_id": "106",
+      "mount_point": "/tmp",
+      "options": "rw,nosuid,nodev,relatime"
+    }
+  ],
+  "publication": {
+    "observed": {
+      "body": {
+        "fixture": "W2c-only",
+        "schema": 1,
+        "state": "unresolved",
+        "transaction": "PROTOTYPE-W2c-4qojo96_"
+      },
+      "identity": {
+        "device": 33,
+        "inode": 3315,
+        "mode": "0o600",
+        "regular": true,
+        "size": 101,
+        "uid": 1000
+      },
+      "present": true,
+      "reason": "unresolved_fixture",
+      "sha256": "6af16fdf681c5139aab1d13e78ed2741e5170ff2d819dedd4341192189bbd1fd"
+    },
+    "operations": [
+      "exclusive_create_temporary_0600",
+      "write_complete",
+      "fsync_temporary_file",
+      "link_into_intent_name_without_replacement",
+      "remove_temporary_name",
+      "fsync_parent_directory"
+    ]
+  },
+  "result": "Pass",
+  "root_identity": {
+    "device": 33,
+    "inode": 3311,
+    "mode": "0o700",
+    "regular": false,
+    "size": 40,
+    "uid": 1000
+  },
+  "source_hashes": {
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2",
+    "manual-update-w2c/run_experiment.py": "b2f92e67c77011ce6d0b7bccffdeaf7e0b9449cae4f335df6782a1ac961d095d",
+    "manual-update-w2c/test_checks.py": "8b1c8f230628986ac46b01875e0613884050fca08aba60278f67ed1ddada97ea"
+  },
+  "started_at_utc": "2026-10-17T05:22:31.849121+00:00",
+  "subreaper": {
+    "during": 1,
+    "original": 0,
+    "restored": 0
+  },
+  "temporary_root": "/tmp/PROTOTYPE-W2c-4qojo96_",
+  "trace": [
+    {
+      "elapsed_seconds": 0.0008535419983672909,
+      "event": "pidfd_bound",
+      "identity": {
+        "pid": 24226,
+        "ppid": 24225,
+        "start_ticks": 4621463,
+        "uid": 1000
+      },
+      "sequence": 1
+    },
+    {
+      "elapsed_seconds": 0.03954661099851364,
+      "event": "startup_decision",
+      "phase": "healthy",
+      "reply": {
+        "attempted_s": true,
+        "decision": "NormalSession",
+        "entered_normal": true,
+        "held": [
+          "S"
+        ],
+        "identity": {
+          "pid": 24226,
+          "ppid": 24225,
+          "start_ticks": 4621463,
+          "uid": 1000
+        },
+        "intent": {
+          "present": false,
+          "reason": "absent"
+        },
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "trace": [
+          "A_shared_acquired",
+          "pre_session_intent_check",
+          "S_shared_acquired",
+          "post_session_intent_check",
+          "A_released_S_retained"
+        ]
+      },
+      "sequence": 2
+    },
+    {
+      "elapsed_seconds": 0.03961728799913544,
+      "event": "healthy_S_exclusion_observed",
+      "sequence": 3
+    },
+    {
+      "elapsed_seconds": 0.04696844399586553,
+      "event": "startup_reaped",
+      "exitcode": 0,
+      "phase": "healthy",
+      "pid": 24226,
+      "sequence": 4
+    },
+    {
+      "elapsed_seconds": 0.04778675199486315,
+      "event": "pidfd_bound",
+      "identity": {
+        "pid": 24227,
+        "ppid": 24225,
+        "start_ticks": 4621467,
+        "uid": 1000
+      },
+      "sequence": 5
+    },
+    {
+      "elapsed_seconds": 0.08069788300053915,
+      "event": "supervisor_ready",
+      "reply": {
+        "child_identity": {
+          "pid": 24228,
+          "ppid": 24227,
+          "start_ticks": 4621470,
+          "uid": 1000
+        },
+        "close_fds": true,
+        "event": "supervisor_ready",
+        "identity": {
+          "pid": 24227,
+          "ppid": 24225,
+          "start_ticks": 4621467,
+          "uid": 1000
+        },
+        "locks": {
+          "A": {
+            "device": 33,
+            "inode": 3313,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "O": {
+            "device": 33,
+            "inode": 3312,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "S": {
+            "device": 33,
+            "inode": 3314,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          }
+        },
+        "passed_lock_descriptors": false,
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "publication": {
+          "observed": {
+            "body": {
+              "fixture": "W2c-only",
+              "schema": 1,
+              "state": "unresolved",
+              "transaction": "PROTOTYPE-W2c-4qojo96_"
+            },
+            "identity": {
+              "device": 33,
+              "inode": 3315,
+              "mode": "0o600",
+              "regular": true,
+              "size": 101,
+              "uid": 1000
+            },
+            "present": true,
+            "reason": "unresolved_fixture",
+            "sha256": "6af16fdf681c5139aab1d13e78ed2741e5170ff2d819dedd4341192189bbd1fd"
+          },
+          "operations": [
+            "exclusive_create_temporary_0600",
+            "write_complete",
+            "fsync_temporary_file",
+            "link_into_intent_name_without_replacement",
+            "remove_temporary_name",
+            "fsync_parent_directory"
+          ]
+        }
+      },
+      "sequence": 6
+    },
+    {
+      "elapsed_seconds": 0.08085467999626417,
+      "event": "pidfd_bound",
+      "identity": {
+        "pid": 24228,
+        "ppid": 24227,
+        "start_ticks": 4621470,
+        "uid": 1000
+      },
+      "sequence": 7
+    },
+    {
+      "elapsed_seconds": 0.11449462799646426,
+      "event": "sentinel_ready",
+      "reply": {
+        "event": "sentinel_ready",
+        "identity": {
+          "pid": 24228,
+          "ppid": 24227,
+          "start_ticks": 4621470,
+          "uid": 1000
+        },
+        "inheritable": null,
+        "lock_fd": -1,
+        "lock_identity": null,
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "regular_descriptors": []
+      },
+      "sequence": 8
+    },
+    {
+      "elapsed_seconds": 0.11458737799694063,
+      "event": "independent_lock_probe",
+      "expected": "busy_O",
+      "outcome": "busy_O",
+      "pid": 24225,
+      "sequence": 9
+    },
+    {
+      "elapsed_seconds": 0.11583114699897124,
+      "event": "supervisor_reaped",
+      "exitcode": -15,
+      "pid": 24227,
+      "sequence": 10
+    },
+    {
+      "elapsed_seconds": 0.11618818599527003,
+      "event": "sentinel_alive",
+      "reply": {
+        "event": "alive",
+        "identity": {
+          "pid": 24228,
+          "ppid": 24225,
+          "start_ticks": 4621470,
+          "uid": 1000
+        },
+        "lock_fd": -1
+      },
+      "sequence": 11
+    },
+    {
+      "elapsed_seconds": 0.11648322199471295,
+      "event": "independent_lock_probe",
+      "expected": "acquired_all",
+      "outcome": "acquired_all",
+      "pid": 24225,
+      "sequence": 12
+    },
+    {
+      "elapsed_seconds": 0.11713000899908366,
+      "event": "pidfd_bound",
+      "identity": {
+        "pid": 24229,
+        "ppid": 24225,
+        "start_ticks": 4621474,
+        "uid": 1000
+      },
+      "sequence": 13
+    },
+    {
+      "elapsed_seconds": 0.1480010029990808,
+      "event": "startup_decision",
+      "phase": "child_survives",
+      "reply": {
+        "attempted_s": false,
+        "decision": "RecoveryRequired",
+        "entered_normal": false,
+        "held": [],
+        "identity": {
+          "pid": 24229,
+          "ppid": 24225,
+          "start_ticks": 4621474,
+          "uid": 1000
+        },
+        "intent": {
+          "body": {
+            "fixture": "W2c-only",
+            "schema": 1,
+            "state": "unresolved",
+            "transaction": "PROTOTYPE-W2c-4qojo96_"
+          },
+          "identity": {
+            "device": 33,
+            "inode": 3315,
+            "mode": "0o600",
+            "regular": true,
+            "size": 101,
+            "uid": 1000
+          },
+          "present": true,
+          "reason": "unresolved_fixture",
+          "sha256": "6af16fdf681c5139aab1d13e78ed2741e5170ff2d819dedd4341192189bbd1fd"
+        },
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "trace": [
+          "A_shared_acquired",
+          "pre_session_intent_check"
+        ]
+      },
+      "sequence": 14
+    },
+    {
+      "elapsed_seconds": 0.14809400299418485,
+      "event": "independent_lock_probe",
+      "expected": "acquired_all",
+      "outcome": "acquired_all",
+      "pid": 24225,
+      "sequence": 15
+    },
+    {
+      "elapsed_seconds": 0.15556370999547653,
+      "event": "startup_reaped",
+      "exitcode": 0,
+      "phase": "child_survives",
+      "pid": 24229,
+      "sequence": 16
+    },
+    {
+      "elapsed_seconds": 0.15624873499473324,
+      "event": "sentinel_alive",
+      "reply": {
+        "event": "alive",
+        "identity": {
+          "pid": 24228,
+          "ppid": 24225,
+          "start_ticks": 4621470,
+          "uid": 1000
+        },
+        "lock_fd": -1
+      },
+      "sequence": 17
+    },
+    {
+      "code": 1,
+      "elapsed_seconds": 0.1628630479972344,
+      "event": "sentinel_reaped",
+      "pid": 24228,
+      "sequence": 18,
+      "status": 0
+    },
+    {
+      "elapsed_seconds": 0.16342174199962756,
+      "event": "pidfd_bound",
+      "identity": {
+        "pid": 24230,
+        "ppid": 24225,
+        "start_ticks": 4621479,
+        "uid": 1000
+      },
+      "sequence": 19
+    },
+    {
+      "elapsed_seconds": 0.19481360299687367,
+      "event": "startup_decision",
+      "phase": "child_exited",
+      "reply": {
+        "attempted_s": false,
+        "decision": "RecoveryRequired",
+        "entered_normal": false,
+        "held": [],
+        "identity": {
+          "pid": 24230,
+          "ppid": 24225,
+          "start_ticks": 4621479,
+          "uid": 1000
+        },
+        "intent": {
+          "body": {
+            "fixture": "W2c-only",
+            "schema": 1,
+            "state": "unresolved",
+            "transaction": "PROTOTYPE-W2c-4qojo96_"
+          },
+          "identity": {
+            "device": 33,
+            "inode": 3315,
+            "mode": "0o600",
+            "regular": true,
+            "size": 101,
+            "uid": 1000
+          },
+          "present": true,
+          "reason": "unresolved_fixture",
+          "sha256": "6af16fdf681c5139aab1d13e78ed2741e5170ff2d819dedd4341192189bbd1fd"
+        },
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "uid": 1000
+        },
+        "trace": [
+          "A_shared_acquired",
+          "pre_session_intent_check"
+        ]
+      },
+      "sequence": 20
+    },
+    {
+      "elapsed_seconds": 0.19490641399897868,
+      "event": "independent_lock_probe",
+      "expected": "acquired_all",
+      "outcome": "acquired_all",
+      "pid": 24225,
+      "sequence": 21
+    },
+    {
+      "elapsed_seconds": 0.2023525240001618,
+      "event": "startup_reaped",
+      "exitcode": 0,
+      "phase": "child_exited",
+      "pid": 24230,
+      "sequence": 22
+    },
+    {
+      "actors_exited": true,
+      "elapsed_seconds": 0.2048042979949969,
+      "event": "teardown_only_fixture_removal",
+      "not_recovery": true,
+      "sequence": 23
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+test_dangling_symlink_is_not_absence (test_checks.FixtureChecks.test_dangling_symlink_is_not_absence) ... ok
+test_duplicate_fields_block (test_checks.FixtureChecks.test_duplicate_fields_block) ... ok
+test_initialization_failure_after_root_creation_is_not_blocked (test_checks.FixtureChecks.test_initialization_failure_after_root_creation_is_not_blocked) ... FAIL
+test_malformed_unknown_boolean_and_oversized_fixtures_block (test_checks.FixtureChecks.test_malformed_unknown_boolean_and_oversized_fixtures_block) ... ok
+test_only_absence_has_no_intent (test_checks.FixtureChecks.test_only_absence_has_no_intent) ... ok
+test_orphan_handle_close_error_does_not_skip_known_handles (test_checks.FixtureChecks.test_orphan_handle_close_error_does_not_skip_known_handles) ... ERROR
+test_publication_does_not_overwrite_intent_created_during_flush (test_checks.FixtureChecks.test_publication_does_not_overwrite_intent_created_during_flush) ... FAIL
+test_published_fixture_remains_unresolved_on_repeated_inspection (test_checks.FixtureChecks.test_published_fixture_remains_unresolved_on_repeated_inspection) ... ok
+test_teardown_preserves_fixture_without_recorded_identity (test_checks.FixtureChecks.test_teardown_preserves_fixture_without_recorded_identity) ... FAIL
+
+======================================================================
+ERROR: test_orphan_handle_close_error_does_not_skip_known_handles (test_checks.FixtureChecks.test_orphan_handle_close_error_does_not_skip_known_handles)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2c/test_checks.py", line 114, in test_orphan_handle_close_error_does_not_skip_known_handles
+    e.cleanup()
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2c/run_experiment.py", line 356, in cleanup
+    os.close(fd)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1204, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2c/test_checks.py", line 106, in close
+    raise OSError('injected orphan close failure')
+OSError: injected orphan close failure
+
+======================================================================
+FAIL: test_initialization_failure_after_root_creation_is_not_blocked (test_checks.FixtureChecks.test_initialization_failure_after_root_creation_is_not_blocked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2c/test_checks.py", line 132, in test_initialization_failure_after_root_creation_is_not_blocked
+    self.assertEqual(report['result'], 'Fail')
+AssertionError: 'Blocked' != 'Fail'
+- Blocked
++ Fail
+
+
+======================================================================
+FAIL: test_publication_does_not_overwrite_intent_created_during_flush (test_checks.FixtureChecks.test_publication_does_not_overwrite_intent_created_during_flush)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2c/test_checks.py", line 68, in test_publication_does_not_overwrite_intent_created_during_flush
+    with self.assertRaises(FileExistsError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: FileExistsError not raised
+
+======================================================================
+FAIL: test_teardown_preserves_fixture_without_recorded_identity (test_checks.FixtureChecks.test_teardown_preserves_fixture_without_recorded_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2c/test_checks.py", line 90, in test_teardown_preserves_fixture_without_recorded_identity
+    self.assertTrue((e.root / 'intent.json').exists())
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.007s
+
+FAILED (failures=3, errors=1)

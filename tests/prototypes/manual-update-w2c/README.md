@@ -25,7 +25,7 @@ the source-hash evidence. Existing W1/W2a/W2b code and evidence are unchanged.
 
 ## Recorded native schedule
 
-[Machine-readable evidence](evidence/linux-run.json): **Pass**, with 23 ordered
+[Reviewed machine-readable evidence](evidence/reviewed-linux-run.json): **Pass**, with 23 ordered
 trace events and the following three observed decisions:
 
 | Phase | Observed result | Additional native observation |
@@ -60,8 +60,10 @@ The supervisor records successful calls in this order:
 1. Exclusive creation of intent.tmp with mode 0600.
 2. Complete write of the fixture bytes.
 3. fsync of the temporary file.
-4. Replace into intent.json.
-5. fsync of the parent directory.
+4. Atomically hard-link the temporary inode into intent.json without replacing
+   an existing name.
+5. Remove the temporary name.
+6. fsync of the parent directory.
 
 The parent independently observes the fixture and preserves its inode metadata,
 body and SHA-256 through all subsequent decisions. Every probe/startup completion
@@ -89,7 +91,7 @@ reviewed helper's message bounds and diagnostic watchdogs.
 
 **Failures:** none in the recorded native run. Expected contention and
 RecoveryRequired are successful test outcomes, not failures. There was no fallback
-cleanup. The [five focused checks](evidence/local-checks.txt) cover absence, repeated
+cleanup. The [initial five focused checks](evidence/local-checks.txt) cover absence, repeated
 inspection/publication refusal, malformed/unsupported/boolean/oversize fixtures,
 duplicate fields and dangling symlinks. They are fixture checks, not five further
 native process-loss schedules.
@@ -120,3 +122,49 @@ W2c establishes that this surrogate can reject startup on an unchanged unresolve
 fixture even though locks are free and the sentinel later exits. It does not prove
 that real SDE startup does so, or that real installation is quiescent. All six
 blockers remain open and later native/integration work needs its own scope.
+
+
+## W2c implementation and evidence review
+
+Reviewed initial commit `c134f30`. The [original native run](evidence/linux-run.json)
+and [five-check output](evidence/local-checks.txt) remain unchanged historical
+evidence bound to that implementation. The reviewed run uses the no-replace
+publication sequence described above; the original run used replacement.
+
+| Finding | W2c-only correction |
+| --- | --- |
+| Existence check followed by replace could overwrite an intent appearing during file flush | Atomic no-replace link publication preserves the existing name; a deterministic flush-hook regression preserves its original bytes |
+| Teardown could delete an intent with no recorded fixture identity | Require the recorded unresolved fixture snapshot before any fixture deletion; absent or changed snapshots preserve the root and fail |
+| An orphan pidfd close error could interrupt later handle cleanup | Record the close failure and continue to known actor handles and cleanup reporting |
+| Constructor failure after creating a root was labeled Blocked without retention evidence | Report Fail after allocation and explicitly record the preserved root; preflight Blocked remains reserved for before root creation |
+
+[Pre-fix regression output](evidence/review-counterexamples.txt) records three
+failures and one error among nine focused checks. The
+[reviewed 11-check output](evidence/review-checks.txt) passes. Added checks cover
+publication collision, unrecorded/changed fixture preservation, continued handle
+cleanup, initialization failure reporting and valid quiescent teardown. These
+use controlled hooks/mocks and private test files; they are not additional native
+process-loss schedules or a concurrent multi-process publication race.
+
+The [reviewed native report](evidence/reviewed-linux-run.json) still records all
+three expected startup decisions, 23 events, unchanged intent content/identity,
+unchanged O/A/S identities, expected actor exits, sentinel reaping, no remaining
+direct children, private-root removal and subreaper restoration. No unexpected
+failures or cleanup fallbacks occurred. Source hashes match W2c's reviewed files
+and the unchanged W2b helper. The original artifacts were verified unchanged.
+
+The no-replace operation requires hard-link support on this local filesystem.
+It is a test-only publication choice, not a production Windows/Linux journal
+migration decision. A failure before completing publication may leave a private
+temporary fixture for investigation; no sentinel is launched before publication
+returns. No power-loss or production durability guarantee follows from tmpfs
+flush calls or this process-loss run.
+
+Remaining gaps: native invalid-fixture startup cases (focused checks call the
+inspection helper), publication between the pre/post-session checks, adversarial
+path/permission races, actual startup/cleanup/fsync fault injection, privileged
+ownership, persistent storage/power loss, actual installer quiescence and recovery
+clearance. Cleanup fault checks use simulated actor metadata; they do not prove
+recovery from unkillable processes or hostile IPC. All previously stated platform
+and integration limits remain, all six blockers stay open, and no other W2/W3 or
+production/build scope was exercised.
