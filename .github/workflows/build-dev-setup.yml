@@ -92,6 +92,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_schedule.py'
           python3 -m unittest discover -s tests -p 'test_app_update_package_hooks.py'
           python3 -m unittest discover -s tests -p 'test_ci_boundaries.py'
+          python3 -m unittest discover -s tests -p 'test_ci_failure_report.py'
           python3 -m unittest discover -s tests -p 'test_native_ci_evidence.py'
           cd linux
           sha256sum --check SHA256SUMS
@@ -130,7 +131,10 @@ jobs:
         env:
           SDE_REQUIRE_COORDINATION: ${{ runner.os == 'Windows' && '1' || '' }}
         run: |
-          cargo test --locked --manifest-path coordination/Cargo.toml
+          if ! cargo test --locked --manifest-path coordination/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/coordination-tests.log"; then
+            python3 tests/report_ci_failure.py "$RUNNER_TEMP/coordination-tests.log"
+            exit 1
+          fi
           cargo fmt --manifest-path coordination/Cargo.toml --check
           cargo clippy --locked --manifest-path coordination/Cargo.toml --all-targets -- -D warnings
       - name: Root-owned coordination contracts
