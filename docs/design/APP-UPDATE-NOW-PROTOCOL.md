@@ -1,10 +1,12 @@
 # #72: App-only update and close/install protocol
 
-**Status:** review draft, revision 3. Not implementation-ready; blockers B01–B06 remain. No implementation or build authorization.
+**Status:** review draft, revision 4 (B02 proposal based on W2h). Not implementation-ready; blockers B01–B06 remain. No implementation or build authorization.
 **Design:** Option A inline Schedule card with Option C preparation progress.
 **Issue:** https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/72
 **Inspected implementation:** `ff2ff50c768663ef3dd22bd640859102d5978c34`.
 This revision reviews the proposed protocol, not alleged defects in shipped v1.2.9.
+Revision 4 is documentation-only; its Linux record adapter and next validation
+gate are proposed and unexecuted. No application version changes.
 All proposed names, schemas and deadlines below are design decisions for review,
 not claims about functionality shipped in v1.2.9. No release version is allocated.
 
@@ -271,6 +273,76 @@ the endpoint after snapshot startup; do not authenticate a bootstrap then transf
 the connected endpoint to a different process identity. No automatic reconnection or
 replay after disconnect; a new attempt uses a new rendezvous and authorization.
 
+### Revision-4 review scope and W2h finding
+
+Revision 4 changes only the B02 design and its validation gate. It is a proposed
+specification, not a validated adapter, shipping feature or authorization to run
+an experiment. The existing revision-3 transaction, timing, lock, journal and
+close-grant rules remain in force. W1 results remain selected revision-3 model
+evidence; they do not become revision-4 transport conformance evidence.
+
+The [reviewed W2h diagnostic](../../tests/prototypes/manual-update-w2h/README.md)
+shows a distinct holder writing through an explicitly inherited connected socket
+while the original client remains alive. SO_PEERCRED still names the original
+client and its retained pidfd remains live; the tested guard permits the holder's
+request. Diagnostic success is CounterexampleDetected, not authentication safety.
+The diagnostic omits the full production handshake/capability/authorization chain.
+It disproves sufficiency of connection credentials plus liveness for the tested
+sender requirement, not the full protocol or a released SDE implementation.
+
+### Threat boundary and meaning of sender identity
+
+| Actor / ability | Proposed boundary |
+| --- | --- |
+| Independent unprivileged process, including the same desktop UID | In scope: endpoint spoofing, replay, hostile records, and possession of a connected descriptor without execution inside the enrolled native bridge. Descriptor possession must not confer the enrolled process's sender identity. |
+| Enrolled native bridge and protected supervisor | Trusted to execute their intended code. They own their IPC descriptors and private native-memory capability. Their identity and enrollment must originate in authenticated OS/privileged bootstrap context. |
+| Same-UID memory reading, ptrace/code injection, or arbitrary execution inside an enrolled actor | A UID is not an isolation boundary. Protection against these abilities is not established by this IPC design. Either prove the required OS isolation or explicitly retain uncompromised native actors as the threat assumption. Do not advertise general same-user-malware resistance. |
+| Compromised webview | Untrusted requests are constrained by the fixed native API and independent administrator authorization. IPC does not prove that an allowed request reflects a physical click. Native-memory secrets must remain inaccessible to JavaScript. |
+| Malicious root/administrator, compromised kernel, or capabilities permitting credential impersonation in relevant namespaces | Outside this installation privilege boundary. Reject unsupported namespace/credential contexts; tests with zero capabilities cannot certify broader contexts. |
+
+**Proposed requirement:** before treating a received command as authoritative,
+the receiver must establish that the kernel attributes the complete command to
+the enrolled peer process instance. Before accepting a pre-commit state-changing
+request, the original GUI instance must also be live at validation. The GUI must
+apply equivalent sender checks before trusting supervisor responses or close
+authority. A connection PID, payload PID, descriptor, process path, nonce or
+capability alone is insufficient evidence of the submitting process.
+
+Here, sender means the process the kernel attributes to the data submission. It
+does not mean the person, JavaScript component or causal origin that induced that
+process to send. Initial executable checks and retained process handles do not
+prove ongoing code integrity, prevent exec, or make validation and later action
+atomic. Known credential/executable/namespace changes invalidate the attempt;
+stronger exec-continuity or memory-isolation guarantees remain explicit proof
+obligations, not implied properties of pidfds.
+
+Authenticate every accepted command, including Hello and GetStatus, and every
+accepted authoritative response. Invalid input must not enter mutation replay
+slots, consume a logical action, create Ready, authorize close or trigger an
+effect. Bounded transport decoding needed to extract credentials is not authority
+to interpret the payload as an accepted command.
+
+Once CommitInstall's effect is accepted, sender/transport loss does not revoke
+that effect or make installation depend on GUI survival. Drop the failed channel
+and continue the existing authoritative state machine, drain/launch deadlines,
+lease and intent rules. Do not clear intent, restart, or cancel a committed native
+child because later IPC fails. Before accepted commit, authentication failure
+ends the attempt with only proven safe owned staging cleanup.
+
+### Design alternatives and required review decision
+
+| Alternative | Assessment |
+| --- | --- |
+| Linux record transport plus per-record kernel credentials | Preferred candidate below: a complete command and its sender evidence have one record boundary. Feasibility remains unproven. |
+| Retain SOCK_STREAM with SO_PASSCRED/recvmsg | Possible alternative only with a reviewed proof that every byte of a complete envelope is attributed correctly across split/coalesced reads and mixed writers. Checking credentials on one fragment is insufficient. |
+| Explicitly delegable channel/capability authority | Different security contract. It may constrain an administrator-authorized fixed action, but cannot promise original-process submission. Requires an explicit threat-model/specification decision; it is not an automatic fallback. |
+
+Retain attempt capability, signed package authentication and OS consent under
+all alternatives. Those checks can reject an FD-only holder lacking the secret,
+but a transferable secret does not independently establish nondelegable process
+identity. W2h does not evaluate the full capability protocol. No alternative is
+accepted as production-ready by this draft.
+
 ### Common handshake and message rules
 
 - Protocol major/minor negotiation; unknown major or required capability rejects
@@ -278,10 +350,11 @@ replay after disconnect; a new attempt uses a new rendezvous and authorization.
 - The privileged side verifies the connecting GUI using OS peer identity and a
   process-instance identity (kernel PID plus creation identity/retained process
   handle, not PID alone), expected desktop user/session, and the trusted installed
-  executable. Retain process identity through preparation and recheck that the
-  original GUI instance is alive for each pre-commit state-changing request.
-  Do not accept a passed socket/pipe handle as evidence that a different process
-  is the original caller. Rendezvous arguments alone do not authenticate identity.
+  executable. Retain process identity through preparation. Initial connection
+  identity and liveness do not authenticate each writer: require kernel-attributed
+  sender evidence for each complete accepted command and recheck the original GUI
+  instance at pre-commit state changes. Do not accept a passed descriptor as sender
+  authority. Rendezvous arguments alone do not authenticate identity.
 - The GUI authenticates the privileged endpoint before trusting status or closing.
   The supervisor also authenticates the GUI; a UUID/nonce is not a substitute for
   OS peer authentication. Reject remote and cross-session connection attempts.
@@ -292,10 +365,15 @@ replay after disconnect; a new attempt uses a new rendezvous and authorization.
   A Hello before discovery cannot already authenticate a nonexistent candidate. Capability is scoped to this one live connection and
   remains in native memory; never put it in command-line arguments, logs, public
   status, environment variables or JavaScript/localStorage.
-- Length-prefixed UTF-8 JSON, maximum 16 KiB per message; strict tagged types,
-  bounded strings and integers, unknown fields, duplicate JSON keys, invalid UTF-8,
-  excessive nesting and out-of-range values rejected before command execution. Logs/notes are not raw
-  control messages; sanitize public text and use official validated links only.
+- Envelope: four-byte unsigned network-order JSON byte length followed by exactly
+  that many UTF-8 JSON bytes; maximum 16,384 bytes including the four-byte prefix
+  (JSON payload at most 16,380 bytes). Reject zero-length JSON, length mismatch,
+  unknown fields/tags, duplicate keys, invalid UTF-8, excessive nesting and
+  out-of-range values before command execution. The Linux candidate sends exactly
+  one envelope per record; this is a required profile change, not a compatible
+  stream-only fallback. Windows framing/credential association remains a separate
+  proof obligation. Logs/notes are not raw control messages; sanitize public text
+  and use official validated links only.
 - Keep **event sequence**, immutable **Ready epoch**, mutation **commandId** and
   read-only **queryId** separate. Event sequence orders authoritative state/progress;
   polling does not advance it or invalidate consent. Responses identify the attempt,
@@ -399,21 +477,147 @@ native queries cannot be made under the intended DACL, revise the Windows IPC de
 server authentication or rely on a public nonce. A squatted endpoint must cause
 bootstrap failure while SDE stays open, never a connection to the squatter.
 
-### Linux proposed profile
+#### Windows requirements still unresolved after W2h
 
-Use a root-owned Unix-domain socket beneath a fixed protected `/run` directory.
-Only root can create/remove the per-request directory/socket name; grant connect
-rights to the initiating desktop UID via a narrow ACL. No socket under `/tmp`, the
-user's home or removable media. The client verifies root-owned protected ancestors,
-socket metadata and SO_PEERCRED identifying the server as root. The server checks
-SO_PEERCRED against the expected GUI UID/PID and process creation identity and
-validates the installed executable. Reject foreign peers/namespaces and PID reuse.
+Linux SCM_CREDENTIALS provides no Windows proof. The current named-pipe owner,
+DACL, impersonation/token and GetNamedPipeClientProcessId/server-process checks
+are proposed connection/enrollment controls. Their ability to identify the writer
+of every complete command across inherited/duplicated handles is not established.
+Do not infer per-message process identity from their names or a retained live GUI.
 
-Polkit authenticates the fixed bootstrap action; it does not authorize arbitrary
-paths or commands. Use OS peer credentials as the authority for the original GUI
-user, not HOME/USER or an unverified PKEXEC_UID-style environment variable. The
-root supervisor must survive closing the GUI and terminal; prove one-shot process
-lifetime/reaping on Mint without requiring the weekly service or a permanent daemon.
+B02 Windows remains blocked until a reviewed native mechanism demonstrates:
+
+- Complete-command sender association and both directions of authentication under
+  inherited/duplicated handles, token/impersonation changes and partial/message
+  boundaries. The default guarantee may not silently become delegable authority.
+- Original SID, logon/session and process-instance binding through same-user and
+  alternate-administrator UAC without substituting the elevated account or broker
+  for the enrolled desktop bridge or final SYSTEM supervisor.
+- Necessary query/read/write rights under the exact DACL, impersonation reversion
+  before privileged work, denial on failed queries, and no unauthorized creation,
+  squatting or replacement of an extra server instance.
+- Preservation of native-only capabilities, command/replay bounds, sender failure
+  before commit, post-commit independence and the full current close-grant checks.
+
+If an equivalent guarantee is infeasible, propose a separate documented security
+contract or transport/broker revision and review it before Windows implementation.
+The Linux candidate is neither a Windows solution nor permission to weaken the
+common requirement. No Windows experiment or elevation is authorized by revision 4.
+
+### Linux proposed record profile: linux-record-v1
+
+**Status:** review candidate; native semantics and deployment support are not yet
+validated. `linux-record-v1` is a symbolic transport-profile name, not an app or
+release version. Both endpoints must explicitly support this required profile.
+Reject unsupported profile/version before preparation or close. There is no
+silent downgrade to the connection-credential/liveness-only guard or a legacy
+stream adapter. How installer-carried capabilities advertise support remains B04;
+do not extend the signed schema-1 manifest to negotiate it.
+
+Use an AF_UNIX SOCK_SEQPACKET connection at a root-owned pathname beneath the
+fixed protected `/run` namespace. Only root creates/removes the per-attempt
+namespace and socket; grant the initiating desktop UID narrowly scoped connect
+rights. No production endpoint under `/tmp`, home or removable media. Validate
+protected ancestors, ownership, ACLs, socket type and run/attempt association;
+reject links, squatting, foreign namespaces and replacement. Test-only private
+roots do not validate this production namespace policy.
+
+#### Enrollment and first exchange
+
+1. The fixed privileged bootstrap must establish the original GUI's process
+   instance, desktop identity/session and relevant namespace context from trusted
+   OS evidence. The native bridge must obtain the expected final supervisor
+   instance through an authenticated bootstrap handoff. Caller arguments,
+   HOME/USER/PKEXEC_UID-style strings, a public status file, or the first packet's
+   claimed PID cannot create enrollment. The exact privileged enrollment/handoff
+   mechanism remains B02-unproven and needs its own later validation.
+2. Retain OS process-instance handles/pidfds and validated creation identities for
+   enrolled peers. Define UID/GID policy from trusted kernel credential sets, not
+   directory ownership or self-reported credentials. Default SCM_CREDENTIALS uses
+   real UID/GID; explicit credentials can use permitted real/effective/saved IDs.
+   The supported profile must pin the intended non-transitioning credential sets
+   and PID/user namespace interpretation. Thread/PID semantics, namespace changes
+   and exec are later proof obligations; a numeric PID alone is never enrollment.
+3. Enable SO_PASSCRED before receiving any application data on both endpoints.
+   Configure the listener and accepted endpoint as required; verify actual option
+   state and accepted-socket behavior instead of assuming inheritance. Prequeued
+   data without valid credentials must fail, not acquire authority retroactively.
+   All reads use recvmsg with bounded payload/control buffers; ordinary read/recv
+   must not discard ancillary evidence on this channel.
+4. The first Hello is a bounded credential-bearing record. Verify kernel sender
+   identity against pre-established enrollment before accepting negotiation fields.
+   Hello carries no installation authority or secret that an unauthenticated peer
+   may obtain. After validating the client, the supervisor returns HelloAccepted;
+   the bridge validates that record's kernel-attributed sender against the enrolled
+   root supervisor before accepting its attempt/incarnation/capability. Discovery
+   and Ready candidate binding follow the existing sequence. No circular trust in
+   a first packet's self-declared identity is permitted.
+
+SO_PEERCRED remains a connection snapshot and is not per-record authority.
+Its availability on the candidate socket type is not assumed. It may be recorded
+as additional diagnostic evidence but cannot replace mandatory per-record
+credentials or the authenticated enrollment mechanism. A candidate implementation
+must not depend on undocumented SOCK_SEQPACKET query behavior.
+
+#### Complete-record validation
+
+One successful sendmsg submits exactly one complete common envelope in one
+record. On a short send, fail the channel; do not concatenate later sends into an
+apparently authenticated command. On EAGAIN, retain only bounded pending output
+and retry the whole unsent record under the existing deadline/queue rules.
+Receive one record at a time; never combine fragments/records or credential sets.
+
+For every record, before payload dispatch:
+
+- Require exactly one well-formed SOL_SOCKET/SCM_CREDENTIALS item of the expected
+  native ucred size. Require its PID/UID/GID to match the enrolled peer policy;
+  check the retained process instance/liveness where required. A live original
+  process does not excuse a record attributed to another process. Apply the same
+  rule to server replies, including progress and CommitAccepted.
+- Reject MSG_TRUNC or MSG_CTRUNC, absent/duplicate/ambiguous credentials, unknown
+  ancillary types, unsupported identity/namespace context, zero-length records,
+  envelope length mismatch, multiple envelopes in a record, malformed JSON and
+  unsupported versions/capabilities. Do not recover by reading a suffix, using a
+  previous packet's credentials or trusting a payload identity claim.
+- This protocol accepts no SCM_RIGHTS or other descriptor-transfer messages.
+  Receive with MSG_CMSG_CLOEXEC where supported so unexpected installed FDs cannot
+  leak through exec before rejection. Inventory and close every actually delivered
+  descriptor even on rejection/truncation, and close no descriptor named only in
+  untrusted payload bytes. Bounded ancillary storage and verified no-leak cleanup
+  are adapter proof obligations; unsupported safe handling blocks the adapter.
+- Credential success does not authorize an effect. Validate the existing attempt
+  capability, phase, immutable Ready binding, candidate/installed identity,
+  command/query namespace, replay rules, administrator authorization and policy
+  before any accepted state transition. Validate close authority separately in
+  the native bridge; public status and progress remain unable to grant close.
+
+The Linux manual documents SO_PASSCRED/SCM_CREDENTIALS and kernel checking of
+explicit credentials, including privileges that can permit identity substitution.
+This draft is an API candidate, not native proof of those properties on the target
+platform. See [unix(7)](https://man7.org/linux/man-pages/man7/unix.7.html).
+
+#### Failure, resource and transaction behavior
+
+Before accepted commit, sender/profile/record-authentication failure invalidates
+the attempt: no new Prepare/Commit effect, no close grant and no automatic reconnect.
+Retain historical accepted-effect/replay records; terminal failure does not make
+an already accepted command repeatable.
+Release only proven pre-install reservations and owned safe staging; keep the GUI
+open with a bounded explanation. Preserve uncertain intent and recovery rules.
+After accepted commit, discard the channel on failure and continue installation
+from protected state; never make native work depend on the reader or original GUI.
+
+Record and control buffer sizes, pending output and ancillary-FD inventory are
+bounded before parsing. Existing rate limits, one outstanding query, coalesced
+progress and mutation reservations remain unchanged. Blocking send/receive or a
+full record queue cannot extend Ready/drain/launch deadlines or stall supervision.
+The native GUI exposes sanitized progress to the webview, not credentials,
+capabilities, raw IPC records or new arbitrary privileged commands.
+
+The [next isolated B02 gate](APP-UPDATE-NOW-B02-RECORD-VALIDATION.md) proposes only
+unprivileged primitive validation after specification review and separate execution
+authorization. A passing gate would not clear protected enrollment/namespace,
+Windows, desktop, capability integration or the remaining B01–B06 obligations.
 
 The challenge is correlation, not home-grown cryptography. Use maintained OS/crypto
 primitives; no new signing keys, custom signatures or network authentication scheme.
@@ -584,9 +788,9 @@ remain explicit acceptance work, not inferred from container/Server CI.
 | F03 | Pause observed before prepare, during Ready, or at final policy read | No install or implicit resume; clear pause explanation. Test after-read race separately in F44. |
 | F04 | UAC/polkit denied or canceled | GUI stays open; no protected staging/commit left active. |
 | F05 | Same-user versus alternate-admin elevation | Correct original GUI peer binding; no root/admin profile substitution or GUI relaunch. |
-| F06 | Wrong UID/SID/session, PID reuse, foreign executable | Reject channel/command without changing policy or package state. |
+| F06 | Wrong UID/SID/session, PID reuse, foreign executable, live-client delegated writer | Reject channel/command without changing policy or package state. |
 | F07 | Pipe/socket squatting or linked directory/receipt | Fail closed; GUI never accepts spoofed supervisor status or close instruction. |
-| F08 | Oversized/unknown/version-mismatched/truncated IPC | Bounded rejection and safe cleanup; no parser-controlled paths or execution. |
+| F08 | Oversized/unknown/version-mismatched/truncated IPC, missing/ambiguous record credentials or unexpected descriptor attachments | Bounded rejection and safe cleanup; no parser-controlled paths or execution. |
 | F09 | Replayed capability, conflicting command ID or stale Ready epoch | Reject; one transition/native launch. Benign event-sequence advancement does not invalidate valid consent. |
 | F10 | Signature/hash/size/package-identity mismatch | No Ready or install; GUI remains usable with accurate failure. |
 | F11 | Candidate becomes ineligible, changes version, or installed version advances | Revalidate; no downgrade or silent replacement of reviewed target. |
@@ -667,11 +871,12 @@ mean platform feasibility, race freedom or security has been experimentally prov
 | R09: Target-package compatibility and cleanup after successful receipts unspecified | High | Require target capability evidence; define final write/journal-clear order and conservative crash outcomes. B04/B05 remain blocking. |
 | R10: App-only wording implied no runtime dependency changes | Medium | Permit required app runtime dependencies within existing native no-remove policy, excluding tool/baseline upgrades. |
 | R11: New capability fields could break strict schema-1 fleet verifiers | High | Keep signed manifest schema unchanged; propose inspectable declarations inside signed-installer bytes. Representation/parser feasibility remains B04. |
+| R12: A live enrolled process can delegate its connected socket without changing connection credentials | High | W2h detects the tested guard accepting holder data. Require complete-command kernel sender attribution; proposed Linux record profile needs native proof, Windows remains unresolved. |
 
 | Blocker | Evidence needed to clear it | Owner / current state |
 | --- | --- | --- |
 | B01 Windows SYSTEM launch broker | Reviewed fixed-action task/request/ACL/restart/cleanup design and native proof under standard-user, same-user and alternate-admin UAC. No dependency on provisioned weekly task. | Codex; design proposed, no prototype/validation authorized or performed. |
-| B02 Mutual IPC authentication | Exact Windows DACL/pipe access masks and both peer checks; Linux ACL/SO_PEERCRED/process-instance policy; impersonation/squatting/replay and bounded-I/O evidence. Resolve original-client binding without trusting caller identity strings. | Codex; requirements specified, native feasibility unproven. |
+| B02 Mutual IPC authentication | Trusted original-peer enrollment; kernel-attributed complete-command sender proof; Linux protected namespace and proposed per-record credentials; Windows DACL/identity/writer association under handle delegation; replay and bounded-I/O evidence. | Codex; W2h counterexample to connection-identity-plus-liveness sufficiency. Revision-4 Linux redesign proposed, not validated; Windows mechanism unresolved. B02 remains open. |
 | B03 Independent supervisor lifetime | Windows task and Linux root process survive GUI/terminal/logoff transitions appropriately; retained journal protects orphan package children; Linux one-shot supervision/cgroup ownership chosen and proven. | Codex; mechanism must be finalized, no daemon assumption. |
 | B04 Package-hook and target/migration compatibility | New and legacy-parent hook authentication rule; no reentrant locks; supported old-source upgrade matrix; trusted target capability evidence; rollback/uninstall/gate-identity behavior. | Codex; legacy hook proof and proposed installer-carried capability representation unproven. |
 | B05 Durability and restricted recovery startup | Windows/Unix ordered receipt/journal durability including reboot/power loss, native child-quiescence reconciliation and user-readable recovery notice without acquiring a normal GUI session. | Codex; no automatic uncertain-state clearance authorized. |

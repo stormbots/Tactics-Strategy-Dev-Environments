@@ -138,6 +138,19 @@ is still required to clear the desktop portion of B01.
 **Question:** Can both peers authenticate the intended process instance and retain
 safe authority under alternate accounts, endpoint races and hostile traffic?
 
+### Revision-4 proposal after W2h (not executed)
+
+The [protocol revision-4 B02 proposal](APP-UPDATE-NOW-PROTOCOL.md#6-authenticated-ipc-protocol-and-platform-profile)
+clarifies the threat boundary and requires kernel-attributed complete-command
+sender evidence. It proposes a Linux record/credential profile while retaining
+transaction authorization and close-grant protections. W2h's counterexample is
+not converted into a safety pass, and Windows writer identity remains unresolved.
+The [next isolated record-credential gate](APP-UPDATE-NOW-B02-RECORD-VALIDATION.md)
+requires specification review first, then separate execution authorization. It
+proposes three unprivileged schedules plus labeled local decoder checks; none
+were implemented or run as part of this documentation revision. Existing E04–E07
+remain the broader targets, and all six blockers remain open.
+
 ### Experiments
 
 - **E04 (L1):** strict frame parsing with length limit, duplicate JSON keys, depth,
@@ -151,8 +164,9 @@ safe authority under alternate accounts, endpoint races and hostile traffic?
   alternate-admin credentials, wrong SID/PID/image, server spoofing, extra pipe
   instance, pre-squatted name and descriptor alteration. Query denial must reject
   rather than silently skip server authentication.
-- **E06 (L2 Linux):** root-owned socket path/ACL and SO_PEERCRED with separate
-  unprivileged users and process instances. Attempt endpoint replacement, inherited/
+- **E06 (L2 Linux):** root-owned socket path/ACL, trusted process enrollment and
+  revision-4 complete-record sender credentials, with separate unprivileged users
+  and process instances. SO_PEERCRED/liveness alone is insufficient (W2h). Attempt endpoint replacement, inherited/
   passed FD reuse, PID reuse, process exit/exec, namespace/session mismatch and
   private-root traversal. Verify the original desktop UID comes from authenticated
   peer context, not untrusted environment or request identity strings.
