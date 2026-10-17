@@ -1,7 +1,7 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** W1 executed locally (L1); the separately authorized W2a–W2e unprivileged
-Linux lock subsets were executed (narrow L2 evidence). Remaining W2/W3 and
+**Status:** W1 executed locally (L1); the separately authorized W2a–W2g unprivileged
+Linux coordination and IPC subsets were executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.
 See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
 **Baseline:** [protocol revision 2](APP-UPDATE-NOW-PROTOCOL.md), commit
@@ -501,3 +501,23 @@ namespace, production bootstrap, continuous session identity or Windows proof.
 All six blockers and all other W2/W3, elevation, registration, production
 implementation, package operations and workflow/build/release deferrals remain
 unchanged.
+
+
+## Separately authorized W2g execution
+
+The [W2g record](../../tests/prototypes/manual-update-w2g/README.md) documents
+pre-commit request evaluation after successful peer authentication. An original
+client explicitly passes its connected Unix socket to a holder child, then exits.
+The holder survives/adopts to the runner and actually sends a fixed request while
+SO_PEERCRED still names the original client. The guarded server retains the
+original client's pidfd and rejects the request on observed exit, with zero
+authorized actions. The healthy control authorizes one action; a test-only
+omitted-liveness variant authorizes one unsafe test action and is Detected.
+Overall success requires Pass / Pass / Detected, not three safe protocol passes.
+Fourteen focused local checks pass. Kernel credentials, retained pidfds, process
+and socket identities, barriers, requests/actions, failures, cleanup and restored
+child-subreaper state are recorded. This is only an E06/B02 lifetime subset: no
+continuous message-origin, live-client delegation, reverse server-loss, production
+enrollment/privilege, package, post-commit or desktop proof. B01–B06 remain open;
+all other W2/W3, elevation, registration, production implementation, package
+operations, workflow/build dispatch and release preparation remain deferred.

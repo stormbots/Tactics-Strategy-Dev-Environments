@@ -1,0 +1,19 @@
+test_bind_rejects_exited_peer (__main__.Checks.test_bind_rejects_exited_peer) ... ok
+test_descriptor_identity_includes_inode (__main__.Checks.test_descriptor_identity_includes_inode) ... ok
+test_exited_original_denied_despite_matching_credentials (__main__.Checks.test_exited_original_denied_despite_matching_credentials) ... ok
+test_healthy_action (__main__.Checks.test_healthy_action) ... ok
+test_identity_change_closes_bound_handle (__main__.Checks.test_identity_change_closes_bound_handle) ... ok
+test_missing_request_is_failure (__main__.Checks.test_missing_request_is_failure) ... ok
+test_mutant_exposes_stale_peer_action (__main__.Checks.test_mutant_exposes_stale_peer_action) ... ok
+test_native_snapshot_oracle_rejects_corruption (__main__.Checks.test_native_snapshot_oracle_rejects_corruption) ... ok
+test_partial_startup_without_pidfd_is_reaped (__main__.Checks.test_partial_startup_without_pidfd_is_reaped) ... ok
+test_payload_claim_cannot_choose_different_identity (__main__.Checks.test_payload_claim_cannot_choose_different_identity) ... ok
+test_pidfd_query_error_cannot_authorize (__main__.Checks.test_pidfd_query_error_cannot_authorize) ... ok
+test_unknown_case_creates_no_root (__main__.Checks.test_unknown_case_creates_no_root) ... ok
+test_unknown_variant_stops_before_read (__main__.Checks.test_unknown_variant_stops_before_read) ... ok
+test_wrong_kernel_pid_still_denied_in_mutant (__main__.Checks.test_wrong_kernel_pid_still_denied_in_mutant) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.010s
+
+OK

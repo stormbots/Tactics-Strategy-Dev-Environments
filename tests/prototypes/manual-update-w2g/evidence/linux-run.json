@@ -1,0 +1,2865 @@
+{
+  "scope": "W2g only; pre-commit test authority; no package action",
+  "started_utc": "2026-10-17T06:02:08.555264+00:00",
+  "environment": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "privilege": {
+      "uid": 1000,
+      "euid": 1000,
+      "effective_capabilities": "0000000000000000"
+    },
+    "gid": 1000
+  },
+  "timing": "Five-second diagnostic watchdogs only",
+  "source_hashes": {
+    "manual-update-w2g/run_experiment.py": "7fdf2599f1dcd75461cbc8a7df9f7dc4cad0ddc12838f340dbeee1c691105c7f",
+    "manual-update-w2g/test_checks.py": "995acd74fd412e6b112e6ce41552a280aca55aafb3aa2160c9e6726afc995270",
+    "manual-update-w2f/run_experiment.py": "4de7a6b85b4436192bb5bbc81bd279ae542f643f0ccbba709427fbb695faa985",
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2"
+  },
+  "cases": [
+    {
+      "case": "healthy",
+      "result": "Pass",
+      "failures": [],
+      "trace": [
+        {
+          "sequence": 1,
+          "elapsed": 0.033144944995001424,
+          "event": "server-ready",
+          "reply": {
+            "event": "ready",
+            "identity": {
+              "pid": 29909,
+              "ppid": 29906,
+              "start_ticks": 4859133,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 2,
+          "elapsed": 0.06549192300008144,
+          "event": "client-ready",
+          "reply": {
+            "event": "ready",
+            "identity": {
+              "pid": 29910,
+              "ppid": 29906,
+              "start_ticks": 4859137,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 3,
+          "elapsed": 0.0655127749996609,
+          "event": "connect-barrier",
+          "enrolled_client": {
+            "pid": 29910,
+            "ppid": 29906,
+            "start_ticks": 4859137,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "enrolled_server": {
+            "pid": 29909,
+            "ppid": 29906,
+            "start_ticks": 4859133,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "variant": "guarded"
+        },
+        {
+          "sequence": 4,
+          "elapsed": 0.06838993899873458,
+          "event": "mutual-authentication",
+          "server": {
+            "event": "authenticated",
+            "identity": {
+              "pid": 29909,
+              "ppid": 29906,
+              "start_ticks": 4859133,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "verification": {
+              "accepted": true,
+              "reason": "enrolled-live-process-instance",
+              "enrolled": {
+                "pid": 29910,
+                "ppid": 29906,
+                "start_ticks": 4859137,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "checked_at": 48591.403668429,
+              "kernel": {
+                "pid": 29910,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "before": {
+                "pid": 29910,
+                "ppid": 29906,
+                "start_ticks": 4859137,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "after": {
+                "pid": 29910,
+                "ppid": 29906,
+                "start_ticks": 4859137,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "verified_at": 48591.403905688
+            },
+            "retained_pidfd": 5,
+            "pidfd_live": true,
+            "pidfd_inheritable": false,
+            "descriptor": {
+              "fd": 4,
+              "device": 8,
+              "inode": 198562,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            }
+          },
+          "client": {
+            "event": "authenticated",
+            "identity": {
+              "pid": 29910,
+              "ppid": 29906,
+              "start_ticks": 4859137,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "verification": {
+              "accepted": true,
+              "reason": "enrolled-live-process-instance",
+              "enrolled": {
+                "pid": 29909,
+                "ppid": 29906,
+                "start_ticks": 4859133,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "checked_at": 48591.40356317,
+              "kernel": {
+                "pid": 29909,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "before": {
+                "pid": 29909,
+                "ppid": 29906,
+                "start_ticks": 4859133,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "after": {
+                "pid": 29909,
+                "ppid": 29906,
+                "start_ticks": 4859133,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "verified_at": 48591.403701859
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 200342,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            }
+          }
+        },
+        {
+          "sequence": 5,
+          "elapsed": 0.06839840099564753,
+          "event": "actor-command",
+          "pid": 29910,
+          "op": "spawn-holder"
+        },
+        {
+          "sequence": 6,
+          "elapsed": 0.07085421800002223,
+          "event": "actor-reply",
+          "pid": 29910,
+          "reply": {
+            "event": "holder-spawned",
+            "identity": {
+              "pid": 29910,
+              "ppid": 29906,
+              "start_ticks": 4859137,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_identity": {
+              "pid": 29911,
+              "ppid": 29910,
+              "start_ticks": 4859140,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 200342,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            },
+            "pass_fds": [
+              3,
+              8
+            ],
+            "close_fds": true
+          }
+        },
+        {
+          "sequence": 7,
+          "elapsed": 0.10381948099529836,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-ready",
+            "identity": {
+              "pid": 29911,
+              "ppid": 29910,
+              "start_ticks": 4859140,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 200342,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "kernel_server": {
+              "pid": 29909,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29911,
+                "ppid": 29910,
+                "start_ticks": 4859140,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.441626132
+            }
+          }
+        },
+        {
+          "sequence": 8,
+          "elapsed": 0.10395047899510246,
+          "event": "holder-command",
+          "op": "ping"
+        },
+        {
+          "sequence": 9,
+          "elapsed": 0.10457797900016885,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-alive",
+            "identity": {
+              "pid": 29911,
+              "ppid": 29910,
+              "start_ticks": 4859140,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 200342,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29911,
+                "ppid": 29910,
+                "start_ticks": 4859140,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.442323477
+            }
+          }
+        },
+        {
+          "sequence": 10,
+          "elapsed": 0.1046349550015293,
+          "event": "actor-command",
+          "pid": 29910,
+          "op": "send"
+        },
+        {
+          "sequence": 11,
+          "elapsed": 0.10548030399513664,
+          "event": "actor-reply",
+          "pid": 29910,
+          "reply": {
+            "event": "request-sent",
+            "identity": {
+              "pid": 29910,
+              "ppid": 29906,
+              "start_ticks": 4859137,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "requests_sent": 1,
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 200342,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            },
+            "sent_at": 48591.442531136
+          }
+        },
+        {
+          "sequence": 12,
+          "elapsed": 0.10548687399568735,
+          "event": "actor-command",
+          "pid": 29909,
+          "op": "evaluate"
+        },
+        {
+          "sequence": 13,
+          "elapsed": 0.10625761999835959,
+          "event": "actor-reply",
+          "pid": 29909,
+          "reply": {
+            "event": "evaluation",
+            "variant": "guarded",
+            "request": {
+              "claimed_pid": 29910,
+              "request": "one-fixed-action",
+              "test_only": "W2g-precommit"
+            },
+            "requests_received": 1,
+            "kernel": {
+              "pid": 29910,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "original_client_live": true,
+            "retained_pidfd": 5,
+            "retained_pidfd_inheritable": false,
+            "authorized_actions": 1,
+            "reason": "enrolled-client-live",
+            "evaluated_at": 48591.443429726
+          }
+        },
+        {
+          "sequence": 14,
+          "elapsed": 0.10625965299550444,
+          "event": "holder-command",
+          "op": "ping"
+        },
+        {
+          "sequence": 15,
+          "elapsed": 0.10682898500090232,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-alive",
+            "identity": {
+              "pid": 29911,
+              "ppid": 29910,
+              "start_ticks": 4859140,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 200342,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29911,
+                "ppid": 29910,
+                "start_ticks": 4859140,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.444569215
+            }
+          }
+        },
+        {
+          "sequence": 16,
+          "elapsed": 0.10692207599640824,
+          "event": "holder-command",
+          "op": "stop"
+        },
+        {
+          "sequence": 17,
+          "elapsed": 0.11060680199443595,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-exiting",
+            "identity": {
+              "pid": 29911,
+              "ppid": 29910,
+              "start_ticks": 4859140,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 18,
+          "elapsed": 0.11061074800090864,
+          "event": "actor-command",
+          "pid": 29910,
+          "op": "reap-holder"
+        },
+        {
+          "sequence": 19,
+          "elapsed": 0.1144385349980439,
+          "event": "actor-reply",
+          "pid": 29910,
+          "reply": {
+            "event": "holder-reaped",
+            "identity": {
+              "pid": 29910,
+              "ppid": 29906,
+              "start_ticks": 4859137,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_pid": 29911,
+            "exit_code": 0
+          }
+        },
+        {
+          "sequence": 20,
+          "elapsed": 0.11444876099994872,
+          "event": "actor-command",
+          "pid": 29910,
+          "op": "stop"
+        },
+        {
+          "sequence": 21,
+          "elapsed": 0.11507397199602565,
+          "event": "actor-reply",
+          "pid": 29910,
+          "reply": {
+            "event": "client-exiting",
+            "identity": {
+              "pid": 29910,
+              "ppid": 29906,
+              "start_ticks": 4859137,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_running": false
+          }
+        }
+      ],
+      "root": "/tmp/PROTOTYPE-W2g-xiyjqr7e",
+      "root_removed": true,
+      "runner_identity": {
+        "pid": 29906,
+        "ppid": 29902,
+        "start_ticks": 4859129,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "root_identity": {
+        "device": 33,
+        "inode": 5483,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o700",
+        "socket": false,
+        "directory": true
+      },
+      "socket_path_identity": {
+        "device": 33,
+        "inode": 5484,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o600",
+        "socket": true,
+        "directory": false
+      },
+      "server_auth": {
+        "event": "authenticated",
+        "identity": {
+          "pid": 29909,
+          "ppid": 29906,
+          "start_ticks": 4859133,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 29910,
+            "ppid": 29906,
+            "start_ticks": 4859137,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 48591.403668429,
+          "kernel": {
+            "pid": 29910,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 29910,
+            "ppid": 29906,
+            "start_ticks": 4859137,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 29910,
+            "ppid": 29906,
+            "start_ticks": 4859137,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 48591.403905688
+        },
+        "retained_pidfd": 5,
+        "pidfd_live": true,
+        "pidfd_inheritable": false,
+        "descriptor": {
+          "fd": 4,
+          "device": 8,
+          "inode": 198562,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        }
+      },
+      "client_auth": {
+        "event": "authenticated",
+        "identity": {
+          "pid": 29910,
+          "ppid": 29906,
+          "start_ticks": 4859137,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 29909,
+            "ppid": 29906,
+            "start_ticks": 4859133,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 48591.40356317,
+          "kernel": {
+            "pid": 29909,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 29909,
+            "ppid": 29906,
+            "start_ticks": 4859133,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 29909,
+            "ppid": 29906,
+            "start_ticks": 4859133,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 48591.403701859
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 200342,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        }
+      },
+      "enrolled_client": {
+        "pid": 29910,
+        "ppid": 29906,
+        "start_ticks": 4859137,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "enrolled_server": {
+        "pid": 29909,
+        "ppid": 29906,
+        "start_ticks": 4859133,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "client_socket": {
+        "fd": 3,
+        "device": 8,
+        "inode": 200342,
+        "uid": 1000,
+        "gid": 1000,
+        "socket": true,
+        "inheritable": false,
+        "type": 1
+      },
+      "inheritance": {
+        "spawned": {
+          "event": "holder-spawned",
+          "identity": {
+            "pid": 29910,
+            "ppid": 29906,
+            "start_ticks": 4859137,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          },
+          "child_identity": {
+            "pid": 29911,
+            "ppid": 29910,
+            "start_ticks": 4859140,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 200342,
+            "uid": 1000,
+            "gid": 1000,
+            "socket": true,
+            "inheritable": false,
+            "type": 1
+          },
+          "pass_fds": [
+            3,
+            8
+          ],
+          "close_fds": true
+        },
+        "holder_ready": {
+          "event": "holder-ready",
+          "identity": {
+            "pid": 29911,
+            "ppid": 29910,
+            "start_ticks": 4859140,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 200342,
+            "uid": 1000,
+            "gid": 1000,
+            "socket": true,
+            "inheritable": true,
+            "type": 1
+          },
+          "kernel_server": {
+            "pid": 29909,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "runner_observed": {
+            "identity": {
+              "pid": 29911,
+              "ppid": 29910,
+              "start_ticks": 4859140,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "pidfd_live": true,
+            "observed_at": 48591.441626132
+          }
+        }
+      },
+      "original_client_before": {
+        "identity": {
+          "pid": 29910,
+          "ppid": 29906,
+          "start_ticks": 4859137,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "pidfd_live": true,
+        "observed_at": 48591.44164463,
+        "exit_code": null
+      },
+      "holder_before": {
+        "event": "holder-alive",
+        "identity": {
+          "pid": 29911,
+          "ppid": 29910,
+          "start_ticks": 4859140,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 200342,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "runner_observed": {
+          "identity": {
+            "pid": 29911,
+            "ppid": 29910,
+            "start_ticks": 4859140,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "observed_at": 48591.442323477
+        }
+      },
+      "request_sender": {
+        "event": "request-sent",
+        "identity": {
+          "pid": 29910,
+          "ppid": 29906,
+          "start_ticks": 4859137,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "requests_sent": 1,
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 200342,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        },
+        "sent_at": 48591.442531136
+      },
+      "evaluation": {
+        "event": "evaluation",
+        "variant": "guarded",
+        "request": {
+          "claimed_pid": 29910,
+          "request": "one-fixed-action",
+          "test_only": "W2g-precommit"
+        },
+        "requests_received": 1,
+        "kernel": {
+          "pid": 29910,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "original_client_live": true,
+        "retained_pidfd": 5,
+        "retained_pidfd_inheritable": false,
+        "authorized_actions": 1,
+        "reason": "enrolled-client-live",
+        "evaluated_at": 48591.443429726
+      },
+      "holder_after": {
+        "event": "holder-alive",
+        "identity": {
+          "pid": 29911,
+          "ppid": 29910,
+          "start_ticks": 4859140,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 200342,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "runner_observed": {
+          "identity": {
+            "pid": 29911,
+            "ppid": 29910,
+            "start_ticks": 4859140,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "observed_at": 48591.444569215
+        }
+      },
+      "original_client_after": {
+        "identity": {
+          "pid": 29910,
+          "ppid": 29906,
+          "start_ticks": 4859137,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "pidfd_live": true,
+        "observed_at": 48591.444576116,
+        "exit_code": null
+      },
+      "holder_reap": {
+        "pid": 29911,
+        "exit_code": 0,
+        "by": "original-client",
+        "reaped": true
+      },
+      "actor_cleanup": [
+        {
+          "pid": 29909,
+          "reaped": true,
+          "forced": false,
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "pid": 29910,
+          "reaped": true,
+          "forced": false,
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ]
+    },
+    {
+      "case": "client-exit",
+      "result": "Pass",
+      "failures": [],
+      "trace": [
+        {
+          "sequence": 1,
+          "elapsed": 0.03365647000464378,
+          "event": "server-ready",
+          "reply": {
+            "event": "ready",
+            "identity": {
+              "pid": 29912,
+              "ppid": 29906,
+              "start_ticks": 4859146,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 2,
+          "elapsed": 0.06865600200399058,
+          "event": "client-ready",
+          "reply": {
+            "event": "ready",
+            "identity": {
+              "pid": 29914,
+              "ppid": 29906,
+              "start_ticks": 4859150,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 3,
+          "elapsed": 0.06867287700151792,
+          "event": "connect-barrier",
+          "enrolled_client": {
+            "pid": 29914,
+            "ppid": 29906,
+            "start_ticks": 4859150,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "enrolled_server": {
+            "pid": 29912,
+            "ppid": 29906,
+            "start_ticks": 4859146,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "variant": "guarded"
+        },
+        {
+          "sequence": 4,
+          "elapsed": 0.07154983000509674,
+          "event": "mutual-authentication",
+          "server": {
+            "event": "authenticated",
+            "identity": {
+              "pid": 29912,
+              "ppid": 29906,
+              "start_ticks": 4859146,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "verification": {
+              "accepted": true,
+              "reason": "enrolled-live-process-instance",
+              "enrolled": {
+                "pid": 29914,
+                "ppid": 29906,
+                "start_ticks": 4859150,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "checked_at": 48591.538219714,
+              "kernel": {
+                "pid": 29914,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "before": {
+                "pid": 29914,
+                "ppid": 29906,
+                "start_ticks": 4859150,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "after": {
+                "pid": 29914,
+                "ppid": 29906,
+                "start_ticks": 4859150,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "verified_at": 48591.538407778
+            },
+            "retained_pidfd": 5,
+            "pidfd_live": true,
+            "pidfd_inheritable": false,
+            "descriptor": {
+              "fd": 4,
+              "device": 8,
+              "inode": 200359,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            }
+          },
+          "client": {
+            "event": "authenticated",
+            "identity": {
+              "pid": 29914,
+              "ppid": 29906,
+              "start_ticks": 4859150,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "verification": {
+              "accepted": true,
+              "reason": "enrolled-live-process-instance",
+              "enrolled": {
+                "pid": 29912,
+                "ppid": 29906,
+                "start_ticks": 4859146,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "checked_at": 48591.538118441,
+              "kernel": {
+                "pid": 29912,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "before": {
+                "pid": 29912,
+                "ppid": 29906,
+                "start_ticks": 4859146,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "after": {
+                "pid": 29912,
+                "ppid": 29906,
+                "start_ticks": 4859146,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "verified_at": 48591.53826326
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198587,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            }
+          }
+        },
+        {
+          "sequence": 5,
+          "elapsed": 0.07155916400370188,
+          "event": "actor-command",
+          "pid": 29914,
+          "op": "spawn-holder"
+        },
+        {
+          "sequence": 6,
+          "elapsed": 0.07557489100145176,
+          "event": "actor-reply",
+          "pid": 29914,
+          "reply": {
+            "event": "holder-spawned",
+            "identity": {
+              "pid": 29914,
+              "ppid": 29906,
+              "start_ticks": 4859150,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_identity": {
+              "pid": 29915,
+              "ppid": 29914,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198587,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            },
+            "pass_fds": [
+              3,
+              8
+            ],
+            "close_fds": true
+          }
+        },
+        {
+          "sequence": 7,
+          "elapsed": 0.11051509400567738,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-ready",
+            "identity": {
+              "pid": 29915,
+              "ppid": 29914,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198587,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "kernel_server": {
+              "pid": 29912,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29915,
+                "ppid": 29914,
+                "start_ticks": 4859154,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.579832078
+            }
+          }
+        },
+        {
+          "sequence": 8,
+          "elapsed": 0.11081127200304763,
+          "event": "actor-command",
+          "pid": 29914,
+          "op": "exit"
+        },
+        {
+          "sequence": 9,
+          "elapsed": 0.11157193300459767,
+          "event": "actor-reply",
+          "pid": 29914,
+          "reply": {
+            "event": "client-exiting",
+            "identity": {
+              "pid": 29914,
+              "ppid": 29906,
+              "start_ticks": 4859150,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_running": true
+          }
+        },
+        {
+          "sequence": 10,
+          "elapsed": 0.11888922499929322,
+          "event": "original-client-exited",
+          "identity": {
+            "pid": 29914,
+            "ppid": 29906,
+            "start_ticks": 4859150,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "exit_code": 0,
+          "pidfd_live": false
+        },
+        {
+          "sequence": 11,
+          "elapsed": 0.11889827900449745,
+          "event": "holder-command",
+          "op": "ping"
+        },
+        {
+          "sequence": 12,
+          "elapsed": 0.11956214400561294,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-alive",
+            "identity": {
+              "pid": 29915,
+              "ppid": 29906,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198587,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29915,
+                "ppid": 29906,
+                "start_ticks": 4859154,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.588673857
+            }
+          }
+        },
+        {
+          "sequence": 13,
+          "elapsed": 0.11964339700352866,
+          "event": "holder-command",
+          "op": "send",
+          "claim_pid": 29914
+        },
+        {
+          "sequence": 14,
+          "elapsed": 0.12029901899950346,
+          "event": "holder-reply",
+          "reply": {
+            "event": "request-sent",
+            "identity": {
+              "pid": 29915,
+              "ppid": 29906,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "requests_sent": 1,
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198587,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "sent_at": 48591.588808281
+          }
+        },
+        {
+          "sequence": 15,
+          "elapsed": 0.12030583900195779,
+          "event": "actor-command",
+          "pid": 29912,
+          "op": "evaluate"
+        },
+        {
+          "sequence": 16,
+          "elapsed": 0.12106381600460736,
+          "event": "actor-reply",
+          "pid": 29912,
+          "reply": {
+            "event": "evaluation",
+            "variant": "guarded",
+            "request": {
+              "claimed_pid": 29914,
+              "request": "one-fixed-action",
+              "test_only": "W2g-precommit"
+            },
+            "requests_received": 1,
+            "kernel": {
+              "pid": 29914,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "original_client_live": false,
+            "retained_pidfd": 5,
+            "retained_pidfd_inheritable": false,
+            "authorized_actions": 0,
+            "reason": "original-client-exited",
+            "evaluated_at": 48591.589589738
+          }
+        },
+        {
+          "sequence": 17,
+          "elapsed": 0.12106624000443844,
+          "event": "holder-command",
+          "op": "ping"
+        },
+        {
+          "sequence": 18,
+          "elapsed": 0.12168372399901273,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-alive",
+            "identity": {
+              "pid": 29915,
+              "ppid": 29906,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198587,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29915,
+                "ppid": 29906,
+                "start_ticks": 4859154,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.590811532
+            }
+          }
+        },
+        {
+          "sequence": 19,
+          "elapsed": 0.12182137200579746,
+          "event": "holder-command",
+          "op": "stop"
+        },
+        {
+          "sequence": 20,
+          "elapsed": 0.1272449090029113,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-exiting",
+            "identity": {
+              "pid": 29915,
+              "ppid": 29906,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        }
+      ],
+      "root": "/tmp/PROTOTYPE-W2g-vl07p1i1",
+      "root_removed": true,
+      "runner_identity": {
+        "pid": 29906,
+        "ppid": 29902,
+        "start_ticks": 4859129,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "root_identity": {
+        "device": 33,
+        "inode": 5485,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o700",
+        "socket": false,
+        "directory": true
+      },
+      "socket_path_identity": {
+        "device": 33,
+        "inode": 5486,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o600",
+        "socket": true,
+        "directory": false
+      },
+      "server_auth": {
+        "event": "authenticated",
+        "identity": {
+          "pid": 29912,
+          "ppid": 29906,
+          "start_ticks": 4859146,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 29914,
+            "ppid": 29906,
+            "start_ticks": 4859150,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 48591.538219714,
+          "kernel": {
+            "pid": 29914,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 29914,
+            "ppid": 29906,
+            "start_ticks": 4859150,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 29914,
+            "ppid": 29906,
+            "start_ticks": 4859150,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 48591.538407778
+        },
+        "retained_pidfd": 5,
+        "pidfd_live": true,
+        "pidfd_inheritable": false,
+        "descriptor": {
+          "fd": 4,
+          "device": 8,
+          "inode": 200359,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        }
+      },
+      "client_auth": {
+        "event": "authenticated",
+        "identity": {
+          "pid": 29914,
+          "ppid": 29906,
+          "start_ticks": 4859150,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 29912,
+            "ppid": 29906,
+            "start_ticks": 4859146,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 48591.538118441,
+          "kernel": {
+            "pid": 29912,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 29912,
+            "ppid": 29906,
+            "start_ticks": 4859146,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 29912,
+            "ppid": 29906,
+            "start_ticks": 4859146,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 48591.53826326
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198587,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        }
+      },
+      "enrolled_client": {
+        "pid": 29914,
+        "ppid": 29906,
+        "start_ticks": 4859150,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "enrolled_server": {
+        "pid": 29912,
+        "ppid": 29906,
+        "start_ticks": 4859146,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "client_socket": {
+        "fd": 3,
+        "device": 8,
+        "inode": 198587,
+        "uid": 1000,
+        "gid": 1000,
+        "socket": true,
+        "inheritable": false,
+        "type": 1
+      },
+      "inheritance": {
+        "spawned": {
+          "event": "holder-spawned",
+          "identity": {
+            "pid": 29914,
+            "ppid": 29906,
+            "start_ticks": 4859150,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          },
+          "child_identity": {
+            "pid": 29915,
+            "ppid": 29914,
+            "start_ticks": 4859154,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 198587,
+            "uid": 1000,
+            "gid": 1000,
+            "socket": true,
+            "inheritable": false,
+            "type": 1
+          },
+          "pass_fds": [
+            3,
+            8
+          ],
+          "close_fds": true
+        },
+        "holder_ready": {
+          "event": "holder-ready",
+          "identity": {
+            "pid": 29915,
+            "ppid": 29914,
+            "start_ticks": 4859154,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 198587,
+            "uid": 1000,
+            "gid": 1000,
+            "socket": true,
+            "inheritable": true,
+            "type": 1
+          },
+          "kernel_server": {
+            "pid": 29912,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "runner_observed": {
+            "identity": {
+              "pid": 29915,
+              "ppid": 29914,
+              "start_ticks": 4859154,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "pidfd_live": true,
+            "observed_at": 48591.579832078
+          }
+        }
+      },
+      "original_client_before": {
+        "identity": {
+          "pid": 29914,
+          "ppid": 29906,
+          "start_ticks": 4859150,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "pidfd_live": false,
+        "observed_at": 48591.587933797,
+        "exit_code": 0
+      },
+      "holder_before": {
+        "event": "holder-alive",
+        "identity": {
+          "pid": 29915,
+          "ppid": 29906,
+          "start_ticks": 4859154,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198587,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "runner_observed": {
+          "identity": {
+            "pid": 29915,
+            "ppid": 29906,
+            "start_ticks": 4859154,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "observed_at": 48591.588673857
+        }
+      },
+      "request_sender": {
+        "event": "request-sent",
+        "identity": {
+          "pid": 29915,
+          "ppid": 29906,
+          "start_ticks": 4859154,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "requests_sent": 1,
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198587,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "sent_at": 48591.588808281
+      },
+      "evaluation": {
+        "event": "evaluation",
+        "variant": "guarded",
+        "request": {
+          "claimed_pid": 29914,
+          "request": "one-fixed-action",
+          "test_only": "W2g-precommit"
+        },
+        "requests_received": 1,
+        "kernel": {
+          "pid": 29914,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "original_client_live": false,
+        "retained_pidfd": 5,
+        "retained_pidfd_inheritable": false,
+        "authorized_actions": 0,
+        "reason": "original-client-exited",
+        "evaluated_at": 48591.589589738
+      },
+      "holder_after": {
+        "event": "holder-alive",
+        "identity": {
+          "pid": 29915,
+          "ppid": 29906,
+          "start_ticks": 4859154,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198587,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "runner_observed": {
+          "identity": {
+            "pid": 29915,
+            "ppid": 29906,
+            "start_ticks": 4859154,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "observed_at": 48591.590811532
+        }
+      },
+      "original_client_after": {
+        "identity": {
+          "pid": 29914,
+          "ppid": 29906,
+          "start_ticks": 4859150,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "pidfd_live": false,
+        "observed_at": 48591.590819194,
+        "exit_code": 0
+      },
+      "holder_reap": {
+        "pid": 29915,
+        "exit_code": 0,
+        "by": "runner",
+        "reaped": true
+      },
+      "actor_cleanup": [
+        {
+          "pid": 29912,
+          "reaped": true,
+          "forced": false,
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "pid": 29914,
+          "reaped": true,
+          "forced": false,
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ]
+    },
+    {
+      "case": "TEST-ONLY-omitted-liveness",
+      "result": "Detected",
+      "failures": [],
+      "trace": [
+        {
+          "sequence": 1,
+          "elapsed": 0.03315179600031115,
+          "event": "server-ready",
+          "reply": {
+            "event": "ready",
+            "identity": {
+              "pid": 29916,
+              "ppid": 29906,
+              "start_ticks": 4859160,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 2,
+          "elapsed": 0.06920659499883186,
+          "event": "client-ready",
+          "reply": {
+            "event": "ready",
+            "identity": {
+              "pid": 29918,
+              "ppid": 29906,
+              "start_ticks": 4859163,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        },
+        {
+          "sequence": 3,
+          "elapsed": 0.06922045599640114,
+          "event": "connect-barrier",
+          "enrolled_client": {
+            "pid": 29918,
+            "ppid": 29906,
+            "start_ticks": 4859163,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "enrolled_server": {
+            "pid": 29916,
+            "ppid": 29906,
+            "start_ticks": 4859160,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "variant": "TEST-ONLY-omitted-liveness"
+        },
+        {
+          "sequence": 4,
+          "elapsed": 0.0720933829943533,
+          "event": "mutual-authentication",
+          "server": {
+            "event": "authenticated",
+            "identity": {
+              "pid": 29916,
+              "ppid": 29906,
+              "start_ticks": 4859160,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "verification": {
+              "accepted": true,
+              "reason": "enrolled-live-process-instance",
+              "enrolled": {
+                "pid": 29918,
+                "ppid": 29906,
+                "start_ticks": 4859163,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "checked_at": 48591.675191552,
+              "kernel": {
+                "pid": 29918,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "before": {
+                "pid": 29918,
+                "ppid": 29906,
+                "start_ticks": 4859163,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "after": {
+                "pid": 29918,
+                "ppid": 29906,
+                "start_ticks": 4859163,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "verified_at": 48591.675375691
+            },
+            "retained_pidfd": 5,
+            "pidfd_live": true,
+            "pidfd_inheritable": false,
+            "descriptor": {
+              "fd": 4,
+              "device": 8,
+              "inode": 200374,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            }
+          },
+          "client": {
+            "event": "authenticated",
+            "identity": {
+              "pid": 29918,
+              "ppid": 29906,
+              "start_ticks": 4859163,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "verification": {
+              "accepted": true,
+              "reason": "enrolled-live-process-instance",
+              "enrolled": {
+                "pid": 29916,
+                "ppid": 29906,
+                "start_ticks": 4859160,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "checked_at": 48591.674987494,
+              "kernel": {
+                "pid": 29916,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "before": {
+                "pid": 29916,
+                "ppid": 29906,
+                "start_ticks": 4859160,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "after": {
+                "pid": 29916,
+                "ppid": 29906,
+                "start_ticks": 4859160,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "verified_at": 48591.675139574
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198614,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            }
+          }
+        },
+        {
+          "sequence": 5,
+          "elapsed": 0.07210224599839421,
+          "event": "actor-command",
+          "pid": 29918,
+          "op": "spawn-holder"
+        },
+        {
+          "sequence": 6,
+          "elapsed": 0.07529470699955709,
+          "event": "actor-reply",
+          "pid": 29918,
+          "reply": {
+            "event": "holder-spawned",
+            "identity": {
+              "pid": 29918,
+              "ppid": 29906,
+              "start_ticks": 4859163,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_identity": {
+              "pid": 29919,
+              "ppid": 29918,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198614,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": false,
+              "type": 1
+            },
+            "pass_fds": [
+              3,
+              8
+            ],
+            "close_fds": true
+          }
+        },
+        {
+          "sequence": 7,
+          "elapsed": 0.10597032599616796,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-ready",
+            "identity": {
+              "pid": 29919,
+              "ppid": 29918,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198614,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "kernel_server": {
+              "pid": 29916,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29919,
+                "ppid": 29918,
+                "start_ticks": 4859167,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.711475883
+            }
+          }
+        },
+        {
+          "sequence": 8,
+          "elapsed": 0.10608871499425732,
+          "event": "actor-command",
+          "pid": 29918,
+          "op": "exit"
+        },
+        {
+          "sequence": 9,
+          "elapsed": 0.10674688099970808,
+          "event": "actor-reply",
+          "pid": 29918,
+          "reply": {
+            "event": "client-exiting",
+            "identity": {
+              "pid": 29918,
+              "ppid": 29906,
+              "start_ticks": 4859163,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "child_running": true
+          }
+        },
+        {
+          "sequence": 10,
+          "elapsed": 0.11404883099748986,
+          "event": "original-client-exited",
+          "identity": {
+            "pid": 29918,
+            "ppid": 29906,
+            "start_ticks": 4859163,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "exit_code": 0,
+          "pidfd_live": false
+        },
+        {
+          "sequence": 11,
+          "elapsed": 0.1140607689958415,
+          "event": "holder-command",
+          "op": "ping"
+        },
+        {
+          "sequence": 12,
+          "elapsed": 0.11480385300092166,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-alive",
+            "identity": {
+              "pid": 29919,
+              "ppid": 29906,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198614,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29919,
+                "ppid": 29906,
+                "start_ticks": 4859167,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.720303141
+            }
+          }
+        },
+        {
+          "sequence": 13,
+          "elapsed": 0.11491088500042679,
+          "event": "holder-command",
+          "op": "send",
+          "claim_pid": 29918
+        },
+        {
+          "sequence": 14,
+          "elapsed": 0.1156535689951852,
+          "event": "holder-reply",
+          "reply": {
+            "event": "request-sent",
+            "identity": {
+              "pid": 29919,
+              "ppid": 29906,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "requests_sent": 1,
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198614,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "sent_at": 48591.72042128
+          }
+        },
+        {
+          "sequence": 15,
+          "elapsed": 0.11566008899535518,
+          "event": "actor-command",
+          "pid": 29916,
+          "op": "evaluate"
+        },
+        {
+          "sequence": 16,
+          "elapsed": 0.11648035999678541,
+          "event": "actor-reply",
+          "pid": 29916,
+          "reply": {
+            "event": "evaluation",
+            "variant": "TEST-ONLY-omitted-liveness",
+            "request": {
+              "claimed_pid": 29918,
+              "request": "one-fixed-action",
+              "test_only": "W2g-precommit"
+            },
+            "requests_received": 1,
+            "kernel": {
+              "pid": 29918,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "original_client_live": false,
+            "retained_pidfd": 5,
+            "retained_pidfd_inheritable": false,
+            "authorized_actions": 1,
+            "reason": "TEST-ONLY-stale-peer-authorized",
+            "evaluated_at": 48591.72131734
+          }
+        },
+        {
+          "sequence": 17,
+          "elapsed": 0.11648282399983145,
+          "event": "holder-command",
+          "op": "ping"
+        },
+        {
+          "sequence": 18,
+          "elapsed": 0.11703043199668173,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-alive",
+            "identity": {
+              "pid": 29919,
+              "ppid": 29906,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 198614,
+              "uid": 1000,
+              "gid": 1000,
+              "socket": true,
+              "inheritable": true,
+              "type": 1
+            },
+            "runner_observed": {
+              "identity": {
+                "pid": 29919,
+                "ppid": 29906,
+                "start_ticks": 4859167,
+                "uid": 1000,
+                "gid": 1000
+              },
+              "pidfd_live": true,
+              "observed_at": 48591.722484742
+            }
+          }
+        },
+        {
+          "sequence": 19,
+          "elapsed": 0.1171278900001198,
+          "event": "holder-command",
+          "op": "stop"
+        },
+        {
+          "sequence": 20,
+          "elapsed": 0.11894058300094912,
+          "event": "holder-reply",
+          "reply": {
+            "event": "holder-exiting",
+            "identity": {
+              "pid": 29919,
+              "ppid": 29906,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "privilege": {
+              "uid": 1000,
+              "euid": 1000,
+              "effective_capabilities": "0000000000000000"
+            }
+          }
+        }
+      ],
+      "root": "/tmp/PROTOTYPE-W2g-ip9otvra",
+      "root_removed": true,
+      "runner_identity": {
+        "pid": 29906,
+        "ppid": 29902,
+        "start_ticks": 4859129,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "root_identity": {
+        "device": 33,
+        "inode": 5487,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o700",
+        "socket": false,
+        "directory": true
+      },
+      "socket_path_identity": {
+        "device": 33,
+        "inode": 5488,
+        "uid": 1000,
+        "gid": 1000,
+        "mode": "0o600",
+        "socket": true,
+        "directory": false
+      },
+      "server_auth": {
+        "event": "authenticated",
+        "identity": {
+          "pid": 29916,
+          "ppid": 29906,
+          "start_ticks": 4859160,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 29918,
+            "ppid": 29906,
+            "start_ticks": 4859163,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 48591.675191552,
+          "kernel": {
+            "pid": 29918,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 29918,
+            "ppid": 29906,
+            "start_ticks": 4859163,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 29918,
+            "ppid": 29906,
+            "start_ticks": 4859163,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 48591.675375691
+        },
+        "retained_pidfd": 5,
+        "pidfd_live": true,
+        "pidfd_inheritable": false,
+        "descriptor": {
+          "fd": 4,
+          "device": 8,
+          "inode": 200374,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        }
+      },
+      "client_auth": {
+        "event": "authenticated",
+        "identity": {
+          "pid": 29918,
+          "ppid": 29906,
+          "start_ticks": 4859163,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "verification": {
+          "accepted": true,
+          "reason": "enrolled-live-process-instance",
+          "enrolled": {
+            "pid": 29916,
+            "ppid": 29906,
+            "start_ticks": 4859160,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "checked_at": 48591.674987494,
+          "kernel": {
+            "pid": 29916,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "before": {
+            "pid": 29916,
+            "ppid": 29906,
+            "start_ticks": 4859160,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "after": {
+            "pid": 29916,
+            "ppid": 29906,
+            "start_ticks": 4859160,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "verified_at": 48591.675139574
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198614,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": false,
+          "type": 1
+        }
+      },
+      "enrolled_client": {
+        "pid": 29918,
+        "ppid": 29906,
+        "start_ticks": 4859163,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "enrolled_server": {
+        "pid": 29916,
+        "ppid": 29906,
+        "start_ticks": 4859160,
+        "uid": 1000,
+        "gid": 1000
+      },
+      "client_socket": {
+        "fd": 3,
+        "device": 8,
+        "inode": 198614,
+        "uid": 1000,
+        "gid": 1000,
+        "socket": true,
+        "inheritable": false,
+        "type": 1
+      },
+      "inheritance": {
+        "spawned": {
+          "event": "holder-spawned",
+          "identity": {
+            "pid": 29918,
+            "ppid": 29906,
+            "start_ticks": 4859163,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          },
+          "child_identity": {
+            "pid": 29919,
+            "ppid": 29918,
+            "start_ticks": 4859167,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 198614,
+            "uid": 1000,
+            "gid": 1000,
+            "socket": true,
+            "inheritable": false,
+            "type": 1
+          },
+          "pass_fds": [
+            3,
+            8
+          ],
+          "close_fds": true
+        },
+        "holder_ready": {
+          "event": "holder-ready",
+          "identity": {
+            "pid": 29919,
+            "ppid": 29918,
+            "start_ticks": 4859167,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "privilege": {
+            "uid": 1000,
+            "euid": 1000,
+            "effective_capabilities": "0000000000000000"
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 198614,
+            "uid": 1000,
+            "gid": 1000,
+            "socket": true,
+            "inheritable": true,
+            "type": 1
+          },
+          "kernel_server": {
+            "pid": 29916,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "runner_observed": {
+            "identity": {
+              "pid": 29919,
+              "ppid": 29918,
+              "start_ticks": 4859167,
+              "uid": 1000,
+              "gid": 1000
+            },
+            "pidfd_live": true,
+            "observed_at": 48591.711475883
+          }
+        }
+      },
+      "original_client_before": {
+        "identity": {
+          "pid": 29918,
+          "ppid": 29906,
+          "start_ticks": 4859163,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "pidfd_live": false,
+        "observed_at": 48591.719455789,
+        "exit_code": 0
+      },
+      "holder_before": {
+        "event": "holder-alive",
+        "identity": {
+          "pid": 29919,
+          "ppid": 29906,
+          "start_ticks": 4859167,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198614,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "runner_observed": {
+          "identity": {
+            "pid": 29919,
+            "ppid": 29906,
+            "start_ticks": 4859167,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "observed_at": 48591.720303141
+        }
+      },
+      "request_sender": {
+        "event": "request-sent",
+        "identity": {
+          "pid": 29919,
+          "ppid": 29906,
+          "start_ticks": 4859167,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "requests_sent": 1,
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198614,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "sent_at": 48591.72042128
+      },
+      "evaluation": {
+        "event": "evaluation",
+        "variant": "TEST-ONLY-omitted-liveness",
+        "request": {
+          "claimed_pid": 29918,
+          "request": "one-fixed-action",
+          "test_only": "W2g-precommit"
+        },
+        "requests_received": 1,
+        "kernel": {
+          "pid": 29918,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "original_client_live": false,
+        "retained_pidfd": 5,
+        "retained_pidfd_inheritable": false,
+        "authorized_actions": 1,
+        "reason": "TEST-ONLY-stale-peer-authorized",
+        "evaluated_at": 48591.72131734
+      },
+      "holder_after": {
+        "event": "holder-alive",
+        "identity": {
+          "pid": 29919,
+          "ppid": 29906,
+          "start_ticks": 4859167,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "privilege": {
+          "uid": 1000,
+          "euid": 1000,
+          "effective_capabilities": "0000000000000000"
+        },
+        "descriptor": {
+          "fd": 3,
+          "device": 8,
+          "inode": 198614,
+          "uid": 1000,
+          "gid": 1000,
+          "socket": true,
+          "inheritable": true,
+          "type": 1
+        },
+        "runner_observed": {
+          "identity": {
+            "pid": 29919,
+            "ppid": 29906,
+            "start_ticks": 4859167,
+            "uid": 1000,
+            "gid": 1000
+          },
+          "pidfd_live": true,
+          "observed_at": 48591.722484742
+        }
+      },
+      "original_client_after": {
+        "identity": {
+          "pid": 29918,
+          "ppid": 29906,
+          "start_ticks": 4859163,
+          "uid": 1000,
+          "gid": 1000
+        },
+        "pidfd_live": false,
+        "observed_at": 48591.722491532,
+        "exit_code": 0
+      },
+      "holder_reap": {
+        "pid": 29919,
+        "exit_code": 0,
+        "by": "runner",
+        "reaped": true
+      },
+      "actor_cleanup": [
+        {
+          "pid": 29916,
+          "reaped": true,
+          "forced": false,
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "pid": 29918,
+          "reaped": true,
+          "forced": false,
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "subreaper": {
+    "before": 0,
+    "during": 1,
+    "after": 0
+  },
+  "remaining_children": [],
+  "passed": true
+}
