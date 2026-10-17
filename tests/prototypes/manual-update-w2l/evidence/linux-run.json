@@ -1,0 +1,2144 @@
+{
+  "started": "2026-10-17T07:35:42.277041+00:00",
+  "environment": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "kernel": "6.18.44",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "runner": {
+      "pid": 42128,
+      "ppid": 42126,
+      "start_ticks": 5420502,
+      "uids": [
+        1000,
+        1000,
+        1000,
+        1000
+      ],
+      "gids": [
+        1000,
+        1000,
+        1000,
+        1000
+      ],
+      "caps": {
+        "CapInh": "0000000000000000",
+        "CapPrm": "0000000000000000",
+        "CapEff": "0000000000000000",
+        "CapBnd": "0000000000000000",
+        "CapAmb": "0000000000000000"
+      },
+      "threads": 1,
+      "namespaces": {
+        "pid": "pid:[4026532200]",
+        "user": "user:[4026532246]"
+      }
+    }
+  },
+  "source_sha256": "994be14cd1eec7892bec50782a2d918977dc7baabb87cb5f4c8bc48e3189290b",
+  "helper_sha256": "42615f0847bcedecd0468d46c95da43aa7b019ed05c2892637031fa8cb22e711",
+  "limits": {
+    "record": 16384,
+    "l2_ancillary_receive": 0,
+    "ancillary": 256,
+    "control": 4096,
+    "watchdog_seconds": 5
+  },
+  "cases": [
+    {
+      "case": "L1",
+      "trace": [
+        {
+          "index": 0,
+          "barrier": "server-ready-before-connect",
+          "at": 54205.097007506,
+          "evidence": {
+            "identity": {
+              "pid": 42132,
+              "ppid": 42128,
+              "start_ticks": 5420505,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "listener": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278415,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 1,
+          "barrier": "client-ready-before-connect",
+          "at": 54205.132166369,
+          "evidence": {
+            "identity": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 2,
+          "barrier": "trusted-client-enrollment",
+          "at": 54205.133573518,
+          "evidence": {
+            "enrolled": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd": 4,
+            "pidfd_live": true,
+            "inheritable": false
+          }
+        },
+        {
+          "index": 3,
+          "barrier": "trusted-server-enrollment",
+          "at": 54205.135017273,
+          "evidence": {
+            "enrolled": {
+              "pid": 42132,
+              "ppid": 42128,
+              "start_ticks": 5420505,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd": 4,
+            "pidfd_live": true,
+            "inheritable": false
+          }
+        },
+        {
+          "index": 4,
+          "barrier": "connect-permitted",
+          "at": 54205.135867029,
+          "evidence": {
+            "identity": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0
+          }
+        },
+        {
+          "index": 5,
+          "barrier": "accepted-passcred-verified",
+          "at": 54205.136815525,
+          "evidence": {
+            "identity": {
+              "pid": 42132,
+              "ppid": 42128,
+              "start_ticks": 5420505,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 5,
+              "device": 8,
+              "inode": 278416,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0
+          }
+        },
+        {
+          "index": 6,
+          "barrier": "hello-send-permitted",
+          "at": 54205.137681025,
+          "evidence": {
+            "sender": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "tag": "hello",
+            "requested_credentials": null,
+            "requested_bytes": 52,
+            "calls": 1,
+            "return_value": 52,
+            "errno": null
+          }
+        },
+        {
+          "index": 7,
+          "barrier": "client-credentials-and-server-reply",
+          "at": 54205.139489983,
+          "evidence": {
+            "verification": {
+              "accepted": true,
+              "reason": null,
+              "credentials": [
+                [
+                  42133,
+                  1000,
+                  1000
+                ]
+              ],
+              "flags": 1073741824,
+              "record_bytes": 52,
+              "delivered_fds_closed": 0,
+              "ancillary": [
+                {
+                  "level": 1,
+                  "type": 2,
+                  "bytes": 12,
+                  "credentials": [
+                    42133,
+                    1000,
+                    1000
+                  ]
+                }
+              ],
+              "retained_pidfd": 4,
+              "pidfd_live": true,
+              "descriptor": {
+                "fd": 5,
+                "device": 8,
+                "inode": 278416,
+                "inheritable": false,
+                "type": 5,
+                "passcred": 1
+              }
+            },
+            "reply": {
+              "sender": {
+                "pid": 42132,
+                "ppid": 42128,
+                "start_ticks": 5420505,
+                "uids": [
+                  1000,
+                  1000,
+                  1000,
+                  1000
+                ],
+                "gids": [
+                  1000,
+                  1000,
+                  1000,
+                  1000
+                ],
+                "caps": {
+                  "CapInh": "0000000000000000",
+                  "CapPrm": "0000000000000000",
+                  "CapEff": "0000000000000000",
+                  "CapBnd": "0000000000000000",
+                  "CapAmb": "0000000000000000"
+                },
+                "threads": 1,
+                "namespaces": {
+                  "pid": "pid:[4026532200]",
+                  "user": "user:[4026532246]"
+                }
+              },
+              "descriptor": {
+                "fd": 5,
+                "device": 8,
+                "inode": 278416,
+                "inheritable": false,
+                "type": 5,
+                "passcred": 1
+              },
+              "tag": "reply",
+              "requested_credentials": null,
+              "requested_bytes": 52,
+              "calls": 1,
+              "return_value": 52,
+              "errno": null
+            }
+          }
+        },
+        {
+          "index": 8,
+          "barrier": "server-reply-verified",
+          "at": 54205.140116401,
+          "evidence": {
+            "accepted": true,
+            "reason": null,
+            "credentials": [
+              [
+                42132,
+                1000,
+                1000
+              ]
+            ],
+            "flags": 1073741824,
+            "record_bytes": 52,
+            "delivered_fds_closed": 0,
+            "ancillary": [
+              {
+                "level": 1,
+                "type": 2,
+                "bytes": 12,
+                "credentials": [
+                  42132,
+                  1000,
+                  1000
+                ]
+              }
+            ],
+            "retained_pidfd": 4,
+            "pidfd_live": true,
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 9,
+          "barrier": "receiver-before-send",
+          "at": 54205.141062193,
+          "evidence": {
+            "identity": {
+              "pid": 42132,
+              "ppid": 42128,
+              "start_ticks": 5420505,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 5,
+              "device": 8,
+              "inode": 278416,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0,
+            "transfer_fds": [],
+            "authorized_actions": 0,
+            "requests_received": 0
+          }
+        },
+        {
+          "index": 10,
+          "barrier": "sender-before",
+          "at": 54205.142059001,
+          "evidence": {
+            "identity": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0,
+            "transfer_fds": [],
+            "authorized_actions": 0,
+            "requests_received": 0
+          }
+        },
+        {
+          "index": 11,
+          "barrier": "action-send-permitted",
+          "at": 54205.143170153,
+          "evidence": {
+            "identity": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "requested_credentials": [
+              42133,
+              1000,
+              1000
+            ],
+            "attached_fds": [],
+            "record_bytes": 53,
+            "payload_sha256": "b51967432e46cee2d7ec1d82c6e067c17e72f9c8a603983f3042d2e12aca2404",
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "return_value": 53,
+            "errno": null,
+            "requests_sent": 1
+          }
+        },
+        {
+          "index": 12,
+          "barrier": "kernel-receive-and-truncation-check",
+          "at": 54205.145808786,
+          "evidence": {
+            "decision": {
+              "accepted": true,
+              "reason": null,
+              "credentials": [
+                [
+                  42133,
+                  1000,
+                  1000
+                ]
+              ],
+              "flags": 1073741824,
+              "record_bytes": 53,
+              "delivered_fds_closed": 0
+            },
+            "recvmsg_flags_argument": 1073741824,
+            "payload_capacity": 16384,
+            "ancillary_capacity": 256,
+            "received_bytes": 53,
+            "declared_json_bytes": 49,
+            "expected_record_bytes": 53,
+            "received_flags": 1073741824,
+            "before": [
+              {
+                "fd": 0,
+                "dev": 12,
+                "ino": 280872,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 0
+              },
+              {
+                "fd": 1,
+                "dev": 12,
+                "ino": 280873,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 2,
+                "dev": 12,
+                "ino": 280874,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 3,
+                "dev": 8,
+                "ino": 278415,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              },
+              {
+                "fd": 4,
+                "dev": 5,
+                "ino": 44069,
+                "mode": 448,
+                "fdflags": 1,
+                "flags": 2
+              },
+              {
+                "fd": 5,
+                "dev": 8,
+                "ino": 278416,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              }
+            ],
+            "installed": [],
+            "immediately_closed": [],
+            "after": [
+              {
+                "fd": 0,
+                "dev": 12,
+                "ino": 280872,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 0
+              },
+              {
+                "fd": 1,
+                "dev": 12,
+                "ino": 280873,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 2,
+                "dev": 12,
+                "ino": 280874,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 3,
+                "dev": 8,
+                "ino": 278415,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              },
+              {
+                "fd": 4,
+                "dev": 5,
+                "ino": 44069,
+                "mode": 448,
+                "fdflags": 1,
+                "flags": 2
+              },
+              {
+                "fd": 5,
+                "dev": 8,
+                "ino": 278416,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              }
+            ],
+            "observation_errors": [],
+            "raw_credentials": [
+              [
+                42133,
+                1000,
+                1000
+              ]
+            ],
+            "ancillary": [
+              {
+                "level": 1,
+                "type": 2,
+                "bytes": 12
+              }
+            ],
+            "fixture_payload_matches": true,
+            "payload_sha256": "b51967432e46cee2d7ec1d82c6e067c17e72f9c8a603983f3042d2e12aca2404",
+            "retained_pidfd": 4,
+            "pidfd_live": true,
+            "descriptor": {
+              "fd": 5,
+              "device": 8,
+              "inode": 278416,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "authorized_actions": 1,
+            "requests_received": 1
+          }
+        },
+        {
+          "index": 13,
+          "barrier": "healthy-action-reply-verified",
+          "at": 54205.146471309,
+          "evidence": {
+            "accepted": true,
+            "reason": null,
+            "credentials": [
+              [
+                42132,
+                1000,
+                1000
+              ]
+            ],
+            "flags": 1073741824,
+            "record_bytes": 52,
+            "delivered_fds_closed": 0,
+            "ancillary": [
+              {
+                "level": 1,
+                "type": 2,
+                "bytes": 12,
+                "credentials": [
+                  42132,
+                  1000,
+                  1000
+                ]
+              }
+            ],
+            "retained_pidfd": 4,
+            "pidfd_live": true,
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 14,
+          "barrier": "sender-after",
+          "at": 54205.147311301,
+          "evidence": {
+            "identity": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279864,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 1,
+            "transfer_fds": [],
+            "authorized_actions": 0,
+            "requests_received": 0
+          }
+        },
+        {
+          "index": 15,
+          "barrier": "runner-instance-after-42132",
+          "at": 54205.147452344,
+          "evidence": {
+            "identity": {
+              "pid": 42132,
+              "ppid": 42128,
+              "start_ticks": 5420505,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd_live": true
+          }
+        },
+        {
+          "index": 16,
+          "barrier": "runner-instance-after-42133",
+          "at": 54205.14756195,
+          "evidence": {
+            "identity": {
+              "pid": 42133,
+              "ppid": 42128,
+              "start_ticks": 5420509,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd_live": true
+          }
+        },
+        {
+          "index": 17,
+          "barrier": "stop-42133",
+          "at": 54205.148045151,
+          "evidence": {
+            "exiting_pid": 42133,
+            "actions": 0,
+            "requests_sent": 1,
+            "transfer_fds": []
+          }
+        },
+        {
+          "index": 18,
+          "barrier": "stop-42132",
+          "at": 54205.148251374,
+          "evidence": {
+            "exiting_pid": 42132,
+            "actions": 1,
+            "requests_sent": 0,
+            "transfer_fds": []
+          }
+        }
+      ],
+      "failures": [],
+      "cleanup": {
+        "actors": [
+          {
+            "pid": 42133,
+            "exit_code": 0,
+            "reaped": true,
+            "forced": false
+          },
+          {
+            "pid": 42132,
+            "exit_code": 0,
+            "reaped": true,
+            "forced": false
+          }
+        ],
+        "root_removed": true
+      },
+      "fixture": {
+        "root": "/tmp/w2l-2ekd28m4",
+        "dev": 33,
+        "ino": 9595,
+        "mode": "0o700"
+      },
+      "socket_fixture": {
+        "dev": 33,
+        "ino": 9596,
+        "mode": "0o600"
+      },
+      "action_count": 1,
+      "result": "Pass",
+      "initializations": [
+        {
+          "identity": {
+            "pid": 42132,
+            "ppid": 42128,
+            "start_ticks": 5420505,
+            "uids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "gids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "caps": {
+              "CapInh": "0000000000000000",
+              "CapPrm": "0000000000000000",
+              "CapEff": "0000000000000000",
+              "CapBnd": "0000000000000000",
+              "CapAmb": "0000000000000000"
+            },
+            "threads": 1,
+            "namespaces": {
+              "pid": "pid:[4026532200]",
+              "user": "user:[4026532246]"
+            }
+          },
+          "listener": {
+            "fd": 3,
+            "device": 8,
+            "inode": 278415,
+            "inheritable": false,
+            "type": 5,
+            "passcred": 1
+          }
+        },
+        {
+          "identity": {
+            "pid": 42133,
+            "ppid": 42128,
+            "start_ticks": 5420509,
+            "uids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "gids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "caps": {
+              "CapInh": "0000000000000000",
+              "CapPrm": "0000000000000000",
+              "CapEff": "0000000000000000",
+              "CapBnd": "0000000000000000",
+              "CapAmb": "0000000000000000"
+            },
+            "threads": 1,
+            "namespaces": {
+              "pid": "pid:[4026532200]",
+              "user": "user:[4026532246]"
+            }
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 279864,
+            "inheritable": false,
+            "type": 5,
+            "passcred": 1
+          }
+        }
+      ]
+    },
+    {
+      "case": "L2",
+      "trace": [
+        {
+          "index": 0,
+          "barrier": "server-ready-before-connect",
+          "at": 54205.192825455,
+          "evidence": {
+            "identity": {
+              "pid": 42134,
+              "ppid": 42128,
+              "start_ticks": 5420515,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "listener": {
+              "fd": 3,
+              "device": 8,
+              "inode": 279877,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 1,
+          "barrier": "client-ready-before-connect",
+          "at": 54205.232297506,
+          "evidence": {
+            "identity": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 2,
+          "barrier": "trusted-client-enrollment",
+          "at": 54205.233718426,
+          "evidence": {
+            "enrolled": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd": 4,
+            "pidfd_live": true,
+            "inheritable": false
+          }
+        },
+        {
+          "index": 3,
+          "barrier": "trusted-server-enrollment",
+          "at": 54205.235070933,
+          "evidence": {
+            "enrolled": {
+              "pid": 42134,
+              "ppid": 42128,
+              "start_ticks": 5420515,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd": 4,
+            "pidfd_live": true,
+            "inheritable": false
+          }
+        },
+        {
+          "index": 4,
+          "barrier": "connect-permitted",
+          "at": 54205.235914259,
+          "evidence": {
+            "identity": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0
+          }
+        },
+        {
+          "index": 5,
+          "barrier": "accepted-passcred-verified",
+          "at": 54205.237039863,
+          "evidence": {
+            "identity": {
+              "pid": 42134,
+              "ppid": 42128,
+              "start_ticks": 5420515,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 5,
+              "device": 8,
+              "inode": 279878,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0
+          }
+        },
+        {
+          "index": 6,
+          "barrier": "hello-send-permitted",
+          "at": 54205.23836601,
+          "evidence": {
+            "sender": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "tag": "hello",
+            "requested_credentials": null,
+            "requested_bytes": 52,
+            "calls": 1,
+            "return_value": 52,
+            "errno": null
+          }
+        },
+        {
+          "index": 7,
+          "barrier": "client-credentials-and-server-reply",
+          "at": 54205.239972221,
+          "evidence": {
+            "verification": {
+              "accepted": true,
+              "reason": null,
+              "credentials": [
+                [
+                  42135,
+                  1000,
+                  1000
+                ]
+              ],
+              "flags": 1073741824,
+              "record_bytes": 52,
+              "delivered_fds_closed": 0,
+              "ancillary": [
+                {
+                  "level": 1,
+                  "type": 2,
+                  "bytes": 12,
+                  "credentials": [
+                    42135,
+                    1000,
+                    1000
+                  ]
+                }
+              ],
+              "retained_pidfd": 4,
+              "pidfd_live": true,
+              "descriptor": {
+                "fd": 5,
+                "device": 8,
+                "inode": 279878,
+                "inheritable": false,
+                "type": 5,
+                "passcred": 1
+              }
+            },
+            "reply": {
+              "sender": {
+                "pid": 42134,
+                "ppid": 42128,
+                "start_ticks": 5420515,
+                "uids": [
+                  1000,
+                  1000,
+                  1000,
+                  1000
+                ],
+                "gids": [
+                  1000,
+                  1000,
+                  1000,
+                  1000
+                ],
+                "caps": {
+                  "CapInh": "0000000000000000",
+                  "CapPrm": "0000000000000000",
+                  "CapEff": "0000000000000000",
+                  "CapBnd": "0000000000000000",
+                  "CapAmb": "0000000000000000"
+                },
+                "threads": 1,
+                "namespaces": {
+                  "pid": "pid:[4026532200]",
+                  "user": "user:[4026532246]"
+                }
+              },
+              "descriptor": {
+                "fd": 5,
+                "device": 8,
+                "inode": 279878,
+                "inheritable": false,
+                "type": 5,
+                "passcred": 1
+              },
+              "tag": "reply",
+              "requested_credentials": null,
+              "requested_bytes": 52,
+              "calls": 1,
+              "return_value": 52,
+              "errno": null
+            }
+          }
+        },
+        {
+          "index": 8,
+          "barrier": "server-reply-verified",
+          "at": 54205.241078175,
+          "evidence": {
+            "accepted": true,
+            "reason": null,
+            "credentials": [
+              [
+                42134,
+                1000,
+                1000
+              ]
+            ],
+            "flags": 1073741824,
+            "record_bytes": 52,
+            "delivered_fds_closed": 0,
+            "ancillary": [
+              {
+                "level": 1,
+                "type": 2,
+                "bytes": 12,
+                "credentials": [
+                  42134,
+                  1000,
+                  1000
+                ]
+              }
+            ],
+            "retained_pidfd": 4,
+            "pidfd_live": true,
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            }
+          }
+        },
+        {
+          "index": 9,
+          "barrier": "receiver-before-send",
+          "at": 54205.242578115,
+          "evidence": {
+            "identity": {
+              "pid": 42134,
+              "ppid": 42128,
+              "start_ticks": 5420515,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 5,
+              "device": 8,
+              "inode": 279878,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0,
+            "transfer_fds": [],
+            "authorized_actions": 0,
+            "requests_received": 0
+          }
+        },
+        {
+          "index": 10,
+          "barrier": "sender-before",
+          "at": 54205.243611519,
+          "evidence": {
+            "identity": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 0,
+            "transfer_fds": [],
+            "authorized_actions": 0,
+            "requests_received": 0
+          }
+        },
+        {
+          "index": 11,
+          "barrier": "action-send-permitted",
+          "at": 54205.24493993,
+          "evidence": {
+            "identity": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "requested_credentials": [
+              42135,
+              1000,
+              1000
+            ],
+            "attached_fds": [],
+            "record_bytes": 53,
+            "payload_sha256": "966801f08afb616c25247ff774cca2d753292c0ab7ab6f09e8468bcbbd63b626",
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "return_value": 53,
+            "errno": null,
+            "requests_sent": 1
+          }
+        },
+        {
+          "index": 12,
+          "barrier": "kernel-receive-and-truncation-check",
+          "at": 54205.247283386,
+          "evidence": {
+            "decision": {
+              "accepted": false,
+              "reason": "truncated record/control",
+              "credentials": [],
+              "flags": 1073741832,
+              "record_bytes": 53,
+              "delivered_fds_closed": 0
+            },
+            "recvmsg_flags_argument": 1073741824,
+            "payload_capacity": 16384,
+            "ancillary_capacity": 0,
+            "received_bytes": 53,
+            "declared_json_bytes": 49,
+            "expected_record_bytes": 53,
+            "received_flags": 1073741832,
+            "before": [
+              {
+                "fd": 0,
+                "dev": 12,
+                "ino": 280890,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 0
+              },
+              {
+                "fd": 1,
+                "dev": 12,
+                "ino": 280891,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 2,
+                "dev": 12,
+                "ino": 280892,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 3,
+                "dev": 8,
+                "ino": 279877,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              },
+              {
+                "fd": 4,
+                "dev": 5,
+                "ino": 44071,
+                "mode": 448,
+                "fdflags": 1,
+                "flags": 2
+              },
+              {
+                "fd": 5,
+                "dev": 8,
+                "ino": 279878,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              }
+            ],
+            "installed": [],
+            "immediately_closed": [],
+            "after": [
+              {
+                "fd": 0,
+                "dev": 12,
+                "ino": 280890,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 0
+              },
+              {
+                "fd": 1,
+                "dev": 12,
+                "ino": 280891,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 2,
+                "dev": 12,
+                "ino": 280892,
+                "mode": 4480,
+                "fdflags": 0,
+                "flags": 1
+              },
+              {
+                "fd": 3,
+                "dev": 8,
+                "ino": 279877,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              },
+              {
+                "fd": 4,
+                "dev": 5,
+                "ino": 44071,
+                "mode": 448,
+                "fdflags": 1,
+                "flags": 2
+              },
+              {
+                "fd": 5,
+                "dev": 8,
+                "ino": 279878,
+                "mode": 49663,
+                "fdflags": 1,
+                "flags": 2050
+              }
+            ],
+            "observation_errors": [],
+            "raw_credentials": [],
+            "ancillary": [],
+            "fixture_payload_matches": true,
+            "payload_sha256": "966801f08afb616c25247ff774cca2d753292c0ab7ab6f09e8468bcbbd63b626",
+            "retained_pidfd": 4,
+            "pidfd_live": true,
+            "descriptor": {
+              "fd": 5,
+              "device": 8,
+              "inode": 279878,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "authorized_actions": 0,
+            "requests_received": 1
+          }
+        },
+        {
+          "index": 13,
+          "barrier": "sender-after",
+          "at": 54205.248308578,
+          "evidence": {
+            "identity": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "descriptor": {
+              "fd": 3,
+              "device": 8,
+              "inode": 278434,
+              "inheritable": false,
+              "type": 5,
+              "passcred": 1
+            },
+            "requests_sent": 1,
+            "transfer_fds": [],
+            "authorized_actions": 0,
+            "requests_received": 0
+          }
+        },
+        {
+          "index": 14,
+          "barrier": "runner-instance-after-42134",
+          "at": 54205.248467238,
+          "evidence": {
+            "identity": {
+              "pid": 42134,
+              "ppid": 42128,
+              "start_ticks": 5420515,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd_live": true
+          }
+        },
+        {
+          "index": 15,
+          "barrier": "runner-instance-after-42135",
+          "at": 54205.248568982,
+          "evidence": {
+            "identity": {
+              "pid": 42135,
+              "ppid": 42128,
+              "start_ticks": 5420519,
+              "uids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "gids": [
+                1000,
+                1000,
+                1000,
+                1000
+              ],
+              "caps": {
+                "CapInh": "0000000000000000",
+                "CapPrm": "0000000000000000",
+                "CapEff": "0000000000000000",
+                "CapBnd": "0000000000000000",
+                "CapAmb": "0000000000000000"
+              },
+              "threads": 1,
+              "namespaces": {
+                "pid": "pid:[4026532200]",
+                "user": "user:[4026532246]"
+              }
+            },
+            "pidfd_live": true
+          }
+        },
+        {
+          "index": 16,
+          "barrier": "stop-42135",
+          "at": 54205.24898392,
+          "evidence": {
+            "exiting_pid": 42135,
+            "actions": 0,
+            "requests_sent": 1,
+            "transfer_fds": []
+          }
+        },
+        {
+          "index": 17,
+          "barrier": "stop-42134",
+          "at": 54205.249302062,
+          "evidence": {
+            "exiting_pid": 42134,
+            "actions": 0,
+            "requests_sent": 0,
+            "transfer_fds": []
+          }
+        }
+      ],
+      "failures": [],
+      "cleanup": {
+        "actors": [
+          {
+            "pid": 42135,
+            "exit_code": 0,
+            "reaped": true,
+            "forced": false
+          },
+          {
+            "pid": 42134,
+            "exit_code": 0,
+            "reaped": true,
+            "forced": false
+          }
+        ],
+        "root_removed": true
+      },
+      "fixture": {
+        "root": "/tmp/w2l-877u_6d3",
+        "dev": 33,
+        "ino": 9597,
+        "mode": "0o700"
+      },
+      "socket_fixture": {
+        "dev": 33,
+        "ino": 9598,
+        "mode": "0o600"
+      },
+      "action_count": 0,
+      "result": "Pass",
+      "initializations": [
+        {
+          "identity": {
+            "pid": 42134,
+            "ppid": 42128,
+            "start_ticks": 5420515,
+            "uids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "gids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "caps": {
+              "CapInh": "0000000000000000",
+              "CapPrm": "0000000000000000",
+              "CapEff": "0000000000000000",
+              "CapBnd": "0000000000000000",
+              "CapAmb": "0000000000000000"
+            },
+            "threads": 1,
+            "namespaces": {
+              "pid": "pid:[4026532200]",
+              "user": "user:[4026532246]"
+            }
+          },
+          "listener": {
+            "fd": 3,
+            "device": 8,
+            "inode": 279877,
+            "inheritable": false,
+            "type": 5,
+            "passcred": 1
+          }
+        },
+        {
+          "identity": {
+            "pid": 42135,
+            "ppid": 42128,
+            "start_ticks": 5420519,
+            "uids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "gids": [
+              1000,
+              1000,
+              1000,
+              1000
+            ],
+            "caps": {
+              "CapInh": "0000000000000000",
+              "CapPrm": "0000000000000000",
+              "CapEff": "0000000000000000",
+              "CapBnd": "0000000000000000",
+              "CapAmb": "0000000000000000"
+            },
+            "threads": 1,
+            "namespaces": {
+              "pid": "pid:[4026532200]",
+              "user": "user:[4026532246]"
+            }
+          },
+          "descriptor": {
+            "fd": 3,
+            "device": 8,
+            "inode": 278434,
+            "inheritable": false,
+            "type": 5,
+            "passcred": 1
+          }
+        }
+      ]
+    }
+  ],
+  "authentication_safety": "Unproven",
+  "production_readiness": false,
+  "finalization_failures": [],
+  "runner_before": {
+    "fds": [
+      {
+        "fd": 0,
+        "dev": 31,
+        "ino": 9,
+        "mode": 8630,
+        "fdflags": 0,
+        "flags": 32768
+      },
+      {
+        "fd": 1,
+        "dev": 12,
+        "ino": 279816,
+        "mode": 4480,
+        "fdflags": 0,
+        "flags": 1
+      },
+      {
+        "fd": 2,
+        "dev": 12,
+        "ino": 279817,
+        "mode": 4480,
+        "fdflags": 0,
+        "flags": 1
+      }
+    ],
+    "subreaper": 0
+  },
+  "runner_after": {
+    "fds": [
+      {
+        "fd": 0,
+        "dev": 31,
+        "ino": 9,
+        "mode": 8630,
+        "fdflags": 0,
+        "flags": 32768
+      },
+      {
+        "fd": 1,
+        "dev": 12,
+        "ino": 279816,
+        "mode": 4480,
+        "fdflags": 0,
+        "flags": 1
+      },
+      {
+        "fd": 2,
+        "dev": 12,
+        "ino": 279817,
+        "mode": 4480,
+        "fdflags": 0,
+        "flags": 1
+      }
+    ],
+    "subreaper": 0
+  },
+  "diagnostic_success": true,
+  "primitive_result": "Pass"
+}

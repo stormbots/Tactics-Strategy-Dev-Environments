@@ -1,0 +1,27 @@
+test_corrupted_readiness_enrollment_and_post_observation_order_rejected (test_checks.EvidenceChecks.test_corrupted_readiness_enrollment_and_post_observation_order_rejected) ... ok
+test_native_cases_have_expected_counts_and_full_payload (test_checks.EvidenceChecks.test_native_cases_have_expected_counts_and_full_payload) ... ok
+test_owned_cleanup_and_unchanged_settings (test_checks.EvidenceChecks.test_owned_cleanup_and_unchanged_settings) ... ok
+test_source_hashes_and_result_scope (test_checks.EvidenceChecks.test_source_hashes_and_result_scope) ... ok
+test_accepting_matching_payload_without_credentials_is_counterexample (test_checks.LocalChecks.test_accepting_matching_payload_without_credentials_is_counterexample) ... ok
+test_changed_receiver_inventory_fails (test_checks.LocalChecks.test_changed_receiver_inventory_fails) ... ok
+test_complete_canonical_payload_and_successful_send_required (test_checks.LocalChecks.test_complete_canonical_payload_and_successful_send_required) ... ok
+test_complete_payload_with_ancillary_truncation_is_expected_rejection (test_checks.LocalChecks.test_complete_payload_with_ancillary_truncation_is_expected_rejection) ... ok
+test_delivered_or_cached_credentials_cannot_pass_zero_capacity_case (test_checks.LocalChecks.test_delivered_or_cached_credentials_cannot_pass_zero_capacity_case) ... ok
+test_descriptor_evidence_forbidden (test_checks.LocalChecks.test_descriptor_evidence_forbidden) ... ok
+test_duplicate_inventory_fd_fails (test_checks.LocalChecks.test_duplicate_inventory_fd_fails) ... ok
+test_failed_healthy_is_not_a_security_counterexample (test_checks.LocalChecks.test_failed_healthy_is_not_a_security_counterexample) ... ok
+test_failed_healthy_stops_dependent_native_case (test_checks.LocalChecks.test_failed_healthy_stops_dependent_native_case) ... ok
+test_healthy_control (test_checks.LocalChecks.test_healthy_control) ... ok
+test_integer_sizes_and_counts_are_required (test_checks.LocalChecks.test_integer_sizes_and_counts_are_required) ... ok
+test_missing_actual_ctrunc_or_unexpected_payload_truncation_stops (test_checks.LocalChecks.test_missing_actual_ctrunc_or_unexpected_payload_truncation_stops) ... ok
+test_missing_credentials_reason_alone_is_not_truncation_evidence (test_checks.LocalChecks.test_missing_credentials_reason_alone_is_not_truncation_evidence) ... ok
+test_receiver_calls_guard_with_actual_flags_and_empty_ancillary (test_checks.LocalChecks.test_receiver_calls_guard_with_actual_flags_and_empty_ancillary) ... ok
+test_sender_submits_only_explicit_credentials_and_no_rights (test_checks.LocalChecks.test_sender_submits_only_explicit_credentials_and_no_rights) ... ok
+test_unchanged_validator_never_uses_complete_payload_as_identity (test_checks.LocalChecks.test_unchanged_validator_never_uses_complete_payload_as_identity) ... ok
+test_validator_flags_and_length_must_match_receive (test_checks.LocalChecks.test_validator_flags_and_length_must_match_receive) ... ok
+test_zero_ancillary_and_normal_payload_capacities_required (test_checks.LocalChecks.test_zero_ancillary_and_normal_payload_capacities_required) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.007s
+
+OK

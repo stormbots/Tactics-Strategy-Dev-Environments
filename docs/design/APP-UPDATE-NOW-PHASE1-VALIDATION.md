@@ -695,3 +695,27 @@ ancillary-truncation or partial-delivery experiment was run. W2h/W2i/W2j limits,
 all six blockers, and all other W2/W3, production, elevation, registration,
 package, build and release deferrals remain unchanged. No publication or PR
 belongs to this review.
+
+
+### Separately authorized W2l credential-only ancillary truncation
+
+The [W2l record](../../tests/prototypes/manual-update-w2l/README.md) documents only
+a healthy control and a complete credential-bearing record received with normal
+16,384-byte payload capacity and a test-only zero-byte ancillary buffer. No
+descriptor is attached. The healthy control authorizes one fixed action with
+verified credentials; L2 sends/receives all 53 payload bytes with actual
+MSG_CTRUNC and no MSG_TRUNC, delivers no ancillary items, rejects specifically
+for truncation and authorizes zero actions. The unchanged validator never uses
+the matching complete payload, claimed PID, previous Hello or retained liveness
+as a substitute for missing per-record kernel credentials. L2 sender identity is
+fixture evidence, not an authenticated received-command identity.
+
+The native report records 37 events, four direct actors normally exited/reaped,
+both private roots removed, stable receiver/runner inventories and subreaper
+0→0 without mutation. Twenty-two focused checks pass: local synthetic/mocked
+checks and saved-evidence audits are not extra native schedules. No unexpected
+native failure occurs. Descriptor partial delivery, all other W2/W3, production
+implementation, elevation, registration, package operations, build dispatch and
+release preparation remain deferred. W2h's counterexample, W2i–W2k's narrow
+results and B01–B06 statuses are unchanged. Diagnostic success is not
+authentication safety; no publication or PR belongs to this execution.
