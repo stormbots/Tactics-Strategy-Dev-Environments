@@ -1,0 +1,10 @@
+test_backpressure_coalesces_latest_in_one_bounded_slot (test_checks.ProgressChecks.test_backpressure_coalesces_latest_in_one_bounded_slot) ... ok
+test_broken_reader_is_not_misreported_as_backpressure (test_checks.ProgressChecks.test_broken_reader_is_not_misreported_as_backpressure) ... ok
+test_nonblocking_mode_is_required (test_checks.ProgressChecks.test_nonblocking_mode_is_required) ... ok
+test_partial_atomic_write_fails (test_checks.ProgressChecks.test_partial_atomic_write_fails) ... ok
+test_successful_write_releases_pending_slot (test_checks.ProgressChecks.test_successful_write_releases_pending_slot) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.135s
+
+OK
