@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import platform
 import sys
+import stat
 import tempfile
 import time
 
@@ -18,10 +19,13 @@ TIMEOUT = 5
 LOCKS = ('O', 'A', 'S')
 
 
-def identity(path):
-    st = path.stat(follow_symlinks=False)
+def file_identity(st):
     return dict(device=st.st_dev, inode=st.st_ino, uid=st.st_uid,
-                mode=oct(st.st_mode & 0o777), size=st.st_size)
+                mode=oct(st.st_mode & 0o777), size=st.st_size, regular=stat.S_ISREG(st.st_mode))
+
+
+def identity(path):
+    return file_identity(path.stat(follow_symlinks=False))
 
 
 def privilege():
@@ -30,7 +34,7 @@ def privilege():
     return dict(uid=os.getuid(), euid=os.geteuid(), gid=os.getgid(), effective_capabilities=effective)
 
 
-def worker(connection, root):
+def worker(connection, root, baseline):
     import fcntl
     held = {}
     def acquire(name, mode):
@@ -38,6 +42,8 @@ def worker(connection, root):
             raise ValueError('invalid lock action / upgrade forbidden')
         fd = os.open(Path(root) / name, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
         try:
+            if file_identity(os.fstat(fd)) != baseline[name]:
+                raise RuntimeError('opened descriptor identity differs from test inventory')
             fcntl.flock(fd, (fcntl.LOCK_SH if mode == 'shared' else fcntl.LOCK_EX) | fcntl.LOCK_NB)
         except BlockingIOError:
             os.close(fd)
@@ -107,6 +113,7 @@ class Experiment:
     def __init__(self, root, report):
         self.root, self.report = root, report
         self.actors = {}
+        self.expected_exits = {}
         self.started = time.monotonic()
         self.baseline = {name: identity(root / name) for name in LOCKS}
         report['initial_files'] = self.baseline
@@ -132,10 +139,12 @@ class Experiment:
     def start(self, label):
         context = multiprocessing.get_context('spawn')  # no inherited open lock descriptions
         parent, child = context.Pipe()
-        process = context.Process(target=worker, args=(child, str(self.root)), name=f'W2a-{label}')
-        process.start()
-        child.close()
+        process = context.Process(target=worker, args=(child, str(self.root), self.baseline), name=f'W2a-{label}')
         self.actors[label] = process, parent
+        try:
+            process.start()
+        finally:
+            child.close()
         reply = self.receive(label)
         if reply['result'] != 'ready' or reply['privilege']['euid'] != os.geteuid() or int(reply['privilege']['effective_capabilities'], 16):
             raise RuntimeError('worker not ready/unprivileged')
@@ -173,6 +182,7 @@ class Experiment:
         self.expect('peer', 'busy', action='acquire', lock='O', mode='exclusive')
         self.check('drain_allows_S_with_O_A_retained_and_competitor_excluded')
         process = self.actors['updater'][0]
+        self.expected_exits['updater'] = -15
         process.terminate()  # ONLY this run-owned sentinel; no mutation/journal exists
         process.join(TIMEOUT)
         if process.is_alive() or process.exitcode != -15:
@@ -192,43 +202,84 @@ class Experiment:
 
     def cleanup(self):
         outcomes = []
+        errors = []
         for label, (process, connection) in self.actors.items():
             fallback = False
-            if process.is_alive():
+            actor_errors = []
+            try:
+                if not process.is_alive() and label not in self.expected_exits:
+                    actor_errors.append("actor exited before cleanup without a planned exit")
+                if process.is_alive():
+                    try:
+                        self.expect(label, 'exiting', action='exit')
+                        process.join(TIMEOUT)
+                    except Exception as exc:
+                        fallback = True
+                        actor_errors.append(f'exit exchange: {type(exc).__name__}: {exc}')
+                    if process.is_alive():
+                        fallback = True
+                        process.terminate()
+                        process.join(TIMEOUT)
+                    if process.is_alive():
+                        process.kill()
+                        process.join(TIMEOUT)
+                if not process.is_alive():
+                    process.join(TIMEOUT)  # also reap actors already dead on entry
+            except Exception as exc:
+                actor_errors.append(f'process cleanup: {type(exc).__name__}: {exc}')
+            finally:
                 try:
-                    self.expect(label, 'exiting', action='exit')
-                    process.join(TIMEOUT)
-                except (EOFError, BrokenPipeError, OSError, RuntimeError, TimeoutError):
-                    fallback = True
-                if process.is_alive():
-                    fallback = True
-                    process.terminate()
-                    process.join(TIMEOUT)
-                if process.is_alive():
-                    process.kill()
-                    process.join(TIMEOUT)
-            connection.close()
-            outcomes.append(dict(actor=label, pid=process.pid, alive=process.is_alive(),
-                                 exitcode=process.exitcode, forced_cleanup=fallback))
+                    connection.close()
+                except Exception as exc:
+                    actor_errors.append(f'connection close: {type(exc).__name__}: {exc}')
+            alive = process.is_alive()
+            expected = self.expected_exits.get(label, 0)
+            if alive or fallback or process.exitcode != expected:
+                actor_errors.append(f'alive={alive}, fallback={fallback}, exit={process.exitcode}, expected={expected}')
+            outcomes.append(dict(actor=label, pid=process.pid, alive=alive,
+                                 exitcode=process.exitcode, expected_exitcode=expected,
+                                 forced_cleanup=fallback, errors=actor_errors))
+            errors.extend(f'{label}: {error}' for error in actor_errors)
         self.report['cleanup']['children'] = outcomes
-        self.report['final_files_before_cleanup'] = {name: identity(self.root / name) for name in LOCKS}
-        if any(x['alive'] or x['forced_cleanup'] for x in outcomes):
-            raise RuntimeError('child cleanup failed or needed fallback')
-        if self.report['final_files_before_cleanup'] != self.baseline:
-            raise RuntimeError('file inventory changed')
+        try:
+            self.report['final_files_before_cleanup'] = {name: identity(self.root / name) for name in LOCKS}
+            if self.report['final_files_before_cleanup'] != self.baseline:
+                errors.append('file inventory changed')
+        except Exception as exc:
+            errors.append(f'inventory: {type(exc).__name__}: {exc}')
+        if errors:
+            raise RuntimeError('; '.join(errors))
+
+
+def remove_root(root, original, files, children):
+    """Refuse deletion with surviving actors or unknown/replaced test objects."""
+    if any(child['alive'] for child in children):
+        raise RuntimeError('test actors still alive; preserve root')
+    current = identity(root)
+    if any(current[k] != original[k] for k in ('device', 'inode', 'uid', 'mode')):
+        raise RuntimeError('test root identity changed; preserve root')
+    if {path.name for path in root.iterdir()} != set(files):
+        raise RuntimeError('unknown test-root entries; preserve root')
+    for name, expected in files.items():
+        if name not in LOCKS or not expected['regular'] or identity(root / name) != expected:
+            raise RuntimeError('test file changed; preserve root')
+    for name in files:
+        (root / name).unlink()
+    root.rmdir()
 
 
 def main():
     report = dict(experiment='W2a Linux cross-process flock subset of E20/B06',
                   evidence_level='L2 Linux primitives only', result='Not run', checks=[], trace=[],
                   failures=[], cleanup={}, started_at_utc=datetime.now(timezone.utc).isoformat(), source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                  source_hashes={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path(__file__).parent.glob('*.py'))},
                   environment=dict(kernel=platform.release(), system=platform.system(), python=platform.python_version()),
                   limits=['No Mint/Windows desktop, privilege, authentication, service or package validation.',
                           'Same-UID cooperating actors; IPC is trusted test plumbing, not production authenticated IPC.',
                           'No native child, intent/journal, durable recovery, close grant or updater implementation.',
                           'One explicit schedule; no universal race/liveness proof; B01-B06 remain open.'])
-    temporary = None
     root = None
+    created_files = {}
     experiment = None
     try:
         if sys.platform != 'linux':
@@ -240,8 +291,7 @@ def main():
                 report['result'] = 'Blocked'
                 report['failures'].append('Unprivileged UID with zero effective capabilities required')
             else:
-                temporary = tempfile.TemporaryDirectory(prefix='PROTOTYPE-W2a-')
-                root = Path(temporary.name)
+                root = Path(tempfile.mkdtemp(prefix='PROTOTYPE-W2a-'))
                 report['temporary_root'] = str(root)
                 report['temporary_root_identity'] = identity(root)
                 if identity(root)['mode'] != '0o700' or identity(root)['uid'] != os.geteuid():
@@ -252,6 +302,7 @@ def main():
                 for name in LOCKS:
                     fd = os.open(root / name, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW, 0o600)
                     os.close(fd)
+                    created_files[name] = identity(root / name)
                 experiment = Experiment(root, report)
                 experiment.run()
                 report['result'] = 'Pass'
@@ -265,9 +316,12 @@ def main():
             except BaseException as exc:
                 report['result'] = 'Fail'
                 report['failures'].append(f'cleanup: {type(exc).__name__}: {exc}')
-        if temporary:
+        if root is not None:
             try:
-                temporary.cleanup()
+                children = report['cleanup'].get('children', [])
+                if experiment and any(process.is_alive() for process, _ in experiment.actors.values()):
+                    raise RuntimeError('test actors still alive; preserve root')
+                remove_root(root, report['temporary_root_identity'], created_files, children)
                 report['cleanup']['temporary_root_removed'] = not root.exists()
                 if root.exists():
                     raise RuntimeError('temporary root remains')

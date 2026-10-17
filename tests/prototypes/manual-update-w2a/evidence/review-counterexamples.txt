@@ -1,0 +1,43 @@
+test_dead_actor_is_joined (test_review.CleanupChecks.test_dead_actor_is_joined) ... FAIL
+test_one_cleanup_error_does_not_skip_other_actors (test_review.CleanupChecks.test_one_cleanup_error_does_not_skip_other_actors) ... ERROR
+test_unexpected_dead_actor_exit_is_failure (test_review.CleanupChecks.test_unexpected_dead_actor_exit_is_failure) ... FAIL
+
+======================================================================
+ERROR: test_one_cleanup_error_does_not_skip_other_actors (test_review.CleanupChecks.test_one_cleanup_error_does_not_skip_other_actors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2a/test_review.py", line 52, in test_one_cleanup_error_does_not_skip_other_actors
+    e.cleanup()
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2a/run_experiment.py", line 199, in cleanup
+    self.expect(label, 'exiting', action='exit')
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+ValueError: injected malformed reply
+
+======================================================================
+FAIL: test_dead_actor_is_joined (test_review.CleanupChecks.test_dead_actor_is_joined)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2a/test_review.py", line 63, in test_dead_actor_is_joined
+    self.assertGreater(actor.joins, 0)
+AssertionError: 0 not greater than 0
+
+======================================================================
+FAIL: test_unexpected_dead_actor_exit_is_failure (test_review.CleanupChecks.test_unexpected_dead_actor_exit_is_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2a/test_review.py", line 42, in test_unexpected_dead_actor_exit_is_failure
+    with self.assertRaises(RuntimeError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+FAILED (failures=2, errors=1)

@@ -1,0 +1,14 @@
+test_dead_actor_is_joined (test_review.CleanupChecks.test_dead_actor_is_joined) ... ok
+test_one_cleanup_error_does_not_skip_other_actors (test_review.CleanupChecks.test_one_cleanup_error_does_not_skip_other_actors) ... ok
+test_remove_root_known_inventory_after_all_actors_exit (test_review.CleanupChecks.test_remove_root_known_inventory_after_all_actors_exit) ... ok
+test_remove_root_refuses_changed_file (test_review.CleanupChecks.test_remove_root_refuses_changed_file) ... ok
+test_remove_root_refuses_surviving_actor (test_review.CleanupChecks.test_remove_root_refuses_surviving_actor) ... ok
+test_remove_root_refuses_unknown_entries (test_review.CleanupChecks.test_remove_root_refuses_unknown_entries) ... ok
+test_unexpected_dead_actor_exit_is_failure (test_review.CleanupChecks.test_unexpected_dead_actor_exit_is_failure) ... ok
+test_unplanned_zero_exit_is_failure (test_review.CleanupChecks.test_unplanned_zero_exit_is_failure) ... ok
+test_worker_rejects_opened_descriptor_identity_mismatch (test_review.CleanupChecks.test_worker_rejects_opened_descriptor_identity_mismatch) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.003s
+
+OK

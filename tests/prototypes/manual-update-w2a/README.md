@@ -28,7 +28,9 @@ implementation or test of authenticated production IPC.
 
 ## Schedules and recorded results
 
-[Machine-readable run](evidence/linux-run.json) records **Pass: five checks**:
+[Reviewed machine-readable run](evidence/reviewed-linux-run.json) records **Pass: five checks**.
+The [original run](evidence/linux-run.json) is preserved as historical evidence
+for commit `ad72e7e`:
 
 | Schedule | Expected and observed result |
 | --- | --- |
@@ -45,7 +47,12 @@ Every reply checks the lock-file device/inode/owner/mode/size inventory. Checks
 fail immediately on unexpected acquisition or identity change. Only the run-owned
 surrogate may be terminated; no real installer, descendant or uncertain intent
 exists in this experiment. Cleanup may terminate only its own test actors if
-needed and marks such fallback a failure.
+needed and marks such fallback a failure. It attempts every actor even if another
+cleanup fails, joins already-dead actors and rejects unplanned exits (including
+exit 0). Unknown/replaced objects or surviving actors cause root removal to be
+refused, leaving the reported private root for investigation instead of deleting
+it automatically. This is an inspection safeguard, not protection against an
+adversarial same-UID race.
 
 ## Environment, traces, failures and cleanup
 
@@ -61,10 +68,12 @@ initial/final lock-file identities and cleanup outcomes. Mountinfo exposes stack
 `/tmp` entries with differing flags; both are recorded rather than claiming a
 single selected mount. Actual creation, locking and deletion succeeded.
 
-**Failures:** none in the recorded final run. Busy/admission-denied outcomes are
+**Failures:** none in the recorded native schedule. Review failure-path checks
+and reproduced pre-fix failures are recorded separately below. Busy/admission-denied outcomes are
 expected contention observations, not hidden failures. A metadata-review rerun
 added private-root verification and all matching mount entries; it did not change
-the lock schedule. No deliberately defective actor was run in W2a.
+the lock schedule. No deliberately defective native actor was run in W2a; cleanup-failure tests
+use simulated processes rather than intentionally leaving a real actor alive.
 
 **Cleanup:** GUI and peer exited 0; the intentionally terminated updater exited
 -15. All three actors were joined and not alive. No cleanup fallback was needed.
@@ -88,3 +97,41 @@ no claim about production lock-object compatibility. W1's fault ledger remains
 historical; this evidence does not relabel all its native cases Pass. B01–B06
 remain open. Review this result and define any next native slice before executing
 remaining W2/W3 work.
+
+
+## W2a implementation/evidence review
+
+Review found the successful lock schedule supported by the original trace, but
+failure-path claims were too broad. The following W2a-only changes were made:
+
+| Finding | Fix and evidence |
+| --- | --- |
+| Unexpected actor exits could be accepted during cleanup | Track planned updater SIGTERM separately; reject unplanned zero/nonzero exits; join actors already dead |
+| One unexpected cleanup exception could skip later actors | Collect actor-specific errors and continue cleanup for all run-owned actors; fallback remains a failed run |
+| TemporaryDirectory finalization could delete files despite a surviving actor or altered inventory | Explicit owned-root removal refuses live actors, unknown entries and changed identities; no automatic finalizer removes a preserved root |
+| Path inventory alone did not establish which inode a worker opened | Validate each opened descriptor with fstat against baseline before flock; a focused mismatch regression rejects it |
+
+[Initial regression output](evidence/review-counterexamples.txt) records two
+failures and one error from the first three added checks against the original
+implementation. [Reviewed tests](evidence/review-tests.txt) records **nine passing
+focused checks**: unexpected nonzero/zero exit, continued cleanup, joining a dead
+actor, removal refusal with survivors/unknown entries/changed files, successful
+known-root removal, and opened-descriptor mismatch. Simulated process objects
+exercise exceptional cleanup branches; they do not prove behavior of real
+unkillable tasks, a wedged kernel, hostile IPC or OS power loss. Temporary file
+checks remain inside private test roots.
+
+The reviewed native schedule still records five Pass results, 49 barrier events,
+zero unexpected failures, unchanged lock-file identities, three exited/joined
+actors and removal of the run root without fallback. The reviewed JSON binds both
+Python files by SHA-256; it does not combine nine unit checks with five native
+checks into a single native coverage claim. Earlier reports are unchanged.
+
+Remaining gaps: only one directed schedule, no systematic reversed-order or
+repeated-launch exploration, no threaded/legacy/hostile actors, no inherited-FD
+surviving-child scenario, and no real timeout/cleanup-failure injection. Trusted
+multiprocessing framing and parent sends are not hardened against adversarial
+partial messages or blocked writers. The watchdog is a test diagnostic, not a
+universal IPC termination bound. Native platform and integration gaps listed
+above remain. B01–B06 remain open; no remaining W2/W3 or production/build scope
+was exercised by this review.
