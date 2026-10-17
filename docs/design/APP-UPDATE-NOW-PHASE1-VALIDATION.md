@@ -631,3 +631,22 @@ W2i remains limited primitive feasibility. Diagnostic success is not general
 authentication/adapter safety; B01–B06 stay open. All other W2/W3, production
 implementation, elevation, registration, package operations, build dispatch and
 release preparation remain deferred. No PR or publication is part of this step.
+
+
+#### W2j implementation/evidence review
+
+The W2j-only review of `17d61bc` replaced silent inventory EBADF filtering with
+a live scandir identity check, rejected duplicate FD and ambiguous closed-count
+evidence, required exact ancillary types/counts/sizes, and added an independent
+case audit for readiness, enrolled identities, kernel credentials, pipe ownership,
+counts and barrier order before Pass. Socket ownership is captured immediately
+after server readiness. The [reviewed W2j record](../../tests/prototypes/manual-update-w2j/README.md#implementationevidence-review)
+preserves the baseline report/checks and adds a separately source-pinned native
+report. Twenty-four focused checks pass; five before-fix local regressions record
+eight failed assertions, not new native security counterexamples. The same two
+native cases retain 1/0 actions, one installed CLOEXEC descriptor immediately
+closed with EBADF, stable inventories, 38 events and complete owned cleanup.
+Truncation and partial-delivery experiments were not run. Diagnostic success is
+not authentication safety; W2h/W2i limits and B01–B06 remain unchanged, as do all
+other W2/W3, production, elevation, registration, package, build and release
+deferrals. No publication or PR is part of this review.

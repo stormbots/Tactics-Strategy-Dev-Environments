@@ -1,0 +1,29 @@
+test_boolean_counts_rejected (test_checks.LocalChecks.test_boolean_counts_rejected) ... ok
+test_closure_must_be_observed_by_both_immediate_checks (test_checks.LocalChecks.test_closure_must_be_observed_by_both_immediate_checks) ... ok
+test_closure_probe_uses_no_fd_allocating_inventory (test_checks.LocalChecks.test_closure_probe_uses_no_fd_allocating_inventory) ... ok
+test_descriptor_rejection (test_checks.LocalChecks.test_descriptor_rejection) ... ok
+test_failed_healthy_is_not_counterexample (test_checks.LocalChecks.test_failed_healthy_is_not_counterexample) ... ok
+test_healthy_control (test_checks.LocalChecks.test_healthy_control) ... ok
+test_inventory_change_rejected (test_checks.LocalChecks.test_inventory_change_rejected) ... ok
+test_no_cloexec_rejected (test_checks.LocalChecks.test_no_cloexec_rejected) ... ok
+test_observation_failure_still_runs_unchanged_cleanup (test_checks.LocalChecks.test_observation_failure_still_runs_unchanged_cleanup) ... ok
+test_pipe_identity_and_baseline_fd_collision_rejected (test_checks.LocalChecks.test_pipe_identity_and_baseline_fd_collision_rejected) ... ok
+test_receive_closure_precedes_after_inventory (test_checks.LocalChecks.test_receive_closure_precedes_after_inventory) ... ok
+test_unexpected_acceptance_is_counterexample (test_checks.LocalChecks.test_unexpected_acceptance_is_counterexample) ... ok
+test_wrong_kernel_credentials_rejected (test_checks.LocalChecks.test_wrong_kernel_credentials_rejected) ... ok
+test_actual_installed_fd_and_sender_validity (test_checks.NativeEvidenceChecks.test_actual_installed_fd_and_sender_validity) ... ok
+test_counts_and_both_credential_directions (test_checks.NativeEvidenceChecks.test_counts_and_both_credential_directions) ... ok
+test_owned_cleanup_and_barriers (test_checks.NativeEvidenceChecks.test_owned_cleanup_and_barriers) ... ok
+test_source_hashes_and_result_scope (test_checks.NativeEvidenceChecks.test_source_hashes_and_result_scope) ... ok
+test_boolean_closed_count_rejected (test_checks.ReviewRegressions.test_boolean_closed_count_rejected) ... ok
+test_duplicate_inventory_fd_rejected (test_checks.ReviewRegressions.test_duplicate_inventory_fd_rejected) ... ok
+test_guard_and_identity_evidence_corruption_rejected (test_checks.ReviewRegressions.test_guard_and_identity_evidence_corruption_rejected) ... ok
+test_inventory_excludes_only_observed_live_directory (test_checks.ReviewRegressions.test_inventory_excludes_only_observed_live_directory) ... ok
+test_inventory_missing_baseline_fd_is_not_silently_ignored (test_checks.ReviewRegressions.test_inventory_missing_baseline_fd_is_not_silently_ignored) ... ok
+test_trace_reordering_and_duplicate_barriers_rejected (test_checks.ReviewRegressions.test_trace_reordering_and_duplicate_barriers_rejected) ... ok
+test_unknown_duplicate_wrong_size_ancillary_rejected (test_checks.ReviewRegressions.test_unknown_duplicate_wrong_size_ancillary_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.013s
+
+OK

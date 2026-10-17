@@ -22,6 +22,7 @@ def fixture(case='J2'):
     evaluation=dict(authorized_actions=0 if case=='J2' else 1,requests_received=1,observation_errors=[],received_flags=0,
                     recvmsg_flags_argument=socket.MSG_CMSG_CLOEXEC,raw_credentials=[[100,1000,1000]],pidfd_live=True,
                     fixture_payload_matches=True,payload_sha256='dummy',before=[dict(fd=0,dev=1)],after=[dict(fd=0,dev=1)],
+                    ancillary=[dict(level=socket.SOL_SOCKET,type=socket.SCM_CREDENTIALS,bytes=12)]+([dict(level=socket.SOL_SOCKET,type=socket.SCM_RIGHTS,bytes=4)] if case=='J2' else []),
                     decision=dict(accepted=case=='J1',reason='unexpected ancillary/descriptor' if case=='J2' else None,delivered_fds_closed=1 if case=='J2' else 0),
                     installed=[installed] if case=='J2' else [],immediately_closed=[dict(fd=10,fstat_errno=errno.EBADF,getfd_errno=errno.EBADF)] if case=='J2' else [])
     return evaluation,sender
@@ -98,7 +99,8 @@ class NativeEvidenceChecks(unittest.TestCase):
     """Audit saved results without running native actors."""
     @classmethod
     def setUpClass(cls):
-        cls.report=json.loads(Path(__file__).with_name('evidence').joinpath('linux-run.json').read_text())
+        root=Path(__file__).with_name('evidence');path=root/'reviewed-linux-run.json'
+        cls.report=json.loads((path if path.exists() else root/'linux-run.json').read_text())
 
     def event(self,c,name):return next(e['evidence'] for e in c['trace'] if e['barrier']==name)
 
@@ -127,6 +129,7 @@ class NativeEvidenceChecks(unittest.TestCase):
         self.assertEqual(self.report['runner_before'],self.report['runner_after'])
         self.assertFalse(self.report['finalization_failures'])
         for c in self.report['cases']:
+            self.assertTrue(w.verify_case_evidence(c))
             self.assertFalse(c['failures']);self.assertTrue(c['cleanup']['root_removed'])
             self.assertFalse(Path(c['fixture']['root']).exists())
             self.assertEqual(len(c['cleanup']['actors']),2)
@@ -136,6 +139,72 @@ class NativeEvidenceChecks(unittest.TestCase):
             self.assertLess(names.index('sender-before'),names.index('action-send-permitted'))
             self.assertLess(names.index('action-send-permitted'),names.index('kernel-receive-validation-and-immediate-close'))
             self.assertLess(names.index('kernel-receive-validation-and-immediate-close'),names.index('sender-after'))
+
+
+class ReviewRegressions(unittest.TestCase):
+    """Synthetic/mocked audit checks only; no truncation or extra native cases."""
+    def test_inventory_missing_baseline_fd_is_not_silently_ignored(self):
+        from types import SimpleNamespace
+        scan=Mock();scan.__enter__=Mock(return_value=iter([SimpleNamespace(name='0'),SimpleNamespace(name='99')]))
+        scan.__exit__=Mock(return_value=False)
+        with patch.object(w.os,'scandir',return_value=scan),patch.object(w.os,'stat',return_value=SimpleNamespace(st_dev=10,st_ino=20)),patch.object(w.os,'listdir',return_value=['0','99']),patch.object(w,'fd_info',side_effect=[dict(fd=0,dev=1,ino=2,mode=stat.S_IFCHR),OSError(errno.EBADF,'missing baseline')]):
+            with self.assertRaises(OSError):w.fd_inventory()
+
+    def test_inventory_excludes_only_observed_live_directory(self):
+        from types import SimpleNamespace
+        directory=dict(fd=7,dev=10,ino=20,mode=stat.S_IFDIR)
+        baseline=dict(fd=0,dev=1,ino=2,mode=stat.S_IFCHR)
+        scan=Mock();scan.__enter__=Mock(return_value=iter([SimpleNamespace(name='0'),SimpleNamespace(name='7')]))
+        scan.__exit__=Mock(return_value=False)
+        with patch.object(w.os,'scandir',return_value=scan),patch.object(w.os,'stat',return_value=SimpleNamespace(st_dev=10,st_ino=20)),patch.object(w.os,'listdir',return_value=['0','7']),patch.object(w,'fd_info',side_effect=[baseline,directory]):
+            self.assertEqual(w.fd_inventory(),[baseline])
+
+    def test_unknown_duplicate_wrong_size_ancillary_rejected(self):
+        for corruption in ('extra','duplicate','size','missing'):
+            e,s=fixture()
+            if corruption=='extra':e['ancillary'].append(dict(level=999,type=999,bytes=4))
+            elif corruption=='duplicate':e['ancillary'].append(copy.deepcopy(e['ancillary'][0]))
+            elif corruption=='size':e['ancillary'][1]['bytes']=8
+            else:e['ancillary']=e['ancillary'][:1]
+            with self.subTest(corruption=corruption),self.assertRaisesRegex(RuntimeError,'ancillary'):w.verify_evaluation('J2',e,s)
+
+    def test_boolean_closed_count_rejected(self):
+        e,s=fixture();e['decision']['delivered_fds_closed']=True
+        with self.assertRaisesRegex(RuntimeError,'closed-FD count'):w.verify_evaluation('J2',e,s)
+
+    def case(self):
+        root=Path(__file__).with_name('evidence');path=root/'reviewed-linux-run.json'
+        return copy.deepcopy(json.loads((path if path.exists() else root/'linux-run.json').read_text())['cases'][1])
+
+    def test_guard_and_identity_evidence_corruption_rejected(self):
+        for corruption in ('option','enrollment','hello','namespace','explicit','counter','endpoint','pipe'):
+            c=self.case()
+            def ev(name):return next(t['evidence'] for t in c['trace'] if t['barrier']==name)
+            if corruption=='option':ev('client-ready-before-connect')['descriptor']['passcred']=0
+            elif corruption=='enrollment':ev('trusted-client-enrollment')['enrolled']['pid']+=1
+            elif corruption=='hello':ev('server-reply-verified')['credentials'][0][0]+=1
+            elif corruption=='namespace':ev('client-ready-before-connect')['identity']['namespaces']['user']='foreign'
+            elif corruption=='explicit':ev('action-send-permitted')['requested_credentials']=None
+            elif corruption=='counter':ev('sender-after')['requests_sent']=False
+            elif corruption=='endpoint':ev('sender-after')['descriptor']['device']+=1
+            else:ev('owned-pipe-created')['pipe'][1]['flags']=0
+            with self.subTest(corruption=corruption),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_trace_reordering_and_duplicate_barriers_rejected(self):
+        for duplicate in (False,True):
+            c=self.case()
+            if duplicate:c['trace'].append(copy.deepcopy(c['trace'][0]))
+            else:
+                first=next(n for n,t in enumerate(c['trace']) if t['barrier']=='action-send-permitted')
+                second=next(n for n,t in enumerate(c['trace']) if t['barrier']=='sender-after')
+                times=sorted(t['at'] for t in c['trace'])
+                c['trace'][first],c['trace'][second]=c['trace'][second],c['trace'][first]
+                for n,t in enumerate(c['trace']):t.update(index=n,at=times[n])
+            with self.subTest(duplicate=duplicate),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_duplicate_inventory_fd_rejected(self):
+        e,s=fixture();e['before']*=2;e['after']=copy.deepcopy(e['before'])
+        with self.assertRaisesRegex(RuntimeError,'duplicate inventory'):w.verify_evaluation('J2',e,s)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

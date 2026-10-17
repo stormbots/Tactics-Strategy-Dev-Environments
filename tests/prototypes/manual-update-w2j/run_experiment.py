@@ -35,15 +35,23 @@ def fd_info(fd):
 
 
 def fd_inventory():
-    """Single-threaded snapshot; exclude only the already-closed listdir handle."""
-    result = []
-    for name in sorted(os.listdir('/proc/self/fd'), key=int):
-        try:
-            result.append(fd_info(int(name)))
-        except OSError as exc:
-            if exc.errno != errno.EBADF:
-                raise
-    return result
+    """Keep the scan handle live; exclude only its observed directory identity.
+
+    Single-threaded actors must expose exactly one matching /proc/self/fd handle.
+    A vanished baseline descriptor is an error, never an ignored EBADF entry.
+    """
+    directory = os.stat('/proc/self/fd')
+    result, scan_handles = [], []
+    with os.scandir('/proc/self/fd') as entries:
+        for entry in entries:
+            info = fd_info(int(entry.name))
+            if (stat.S_ISDIR(info['mode']) and
+                    (info['dev'], info['ino']) == (directory.st_dev, directory.st_ino)):
+                scan_handles.append(info['fd'])
+            else:
+                result.append(info)
+    require(len(scan_handles) == 1, 'Blocked: ambiguous/missing live inventory handle')
+    return sorted(result, key=lambda fd: fd['fd'])
 
 
 def rights_from(ancillary):
@@ -229,6 +237,7 @@ class Actor(i.Actor):
 
 def verify_evaluation(case, evaluation, sender):
     """Pure evidence checks; expected result cannot control receiver authority."""
+    require(case in CASES, 'unknown W2j case')
     i.check_count(evaluation['authorized_actions'], 'invalid action count')
     i.check_count(evaluation['requests_received'], 'invalid request count')
     require(evaluation['requests_received'] == 1, 'wrong request count')
@@ -239,11 +248,20 @@ def verify_evaluation(case, evaluation, sender):
     require(evaluation['raw_credentials'] == [[expected['pid'], expected['uids'][0], expected['gids'][0]]], 'wrong kernel sender credentials')
     require(evaluation['pidfd_live'] is True and evaluation['fixture_payload_matches'] is True, 'invalid otherwise-eligible fixture')
     require(evaluation['payload_sha256'] == sender['payload_sha256'], 'different payload')
+    for inventory in (evaluation['before'], evaluation['after']):
+        numbers = [fd['fd'] for fd in inventory]
+        require(all(type(n) is int and n >= 0 for n in numbers) and len(numbers) == len(set(numbers)), 'invalid/duplicate inventory FD')
     require(evaluation['before'] == evaluation['after'], 'receiver FD inventory changed')
+    expected_ancillary = [(socket.SOL_SOCKET, socket.SCM_CREDENTIALS, struct.calcsize('3i'))]
+    if case == 'J2':
+        expected_ancillary.append((socket.SOL_SOCKET, socket.SCM_RIGHTS, array.array('i').itemsize))
+    actual_ancillary = [(c['level'], c['type'], c['bytes']) for c in evaluation['ancillary']]
+    require(sorted(actual_ancillary) == sorted(expected_ancillary), 'wrong ancillary type/count/size')
     d = evaluation['decision']
+    i.check_count(d['delivered_fds_closed'], 'invalid closed-FD count')
     if case == 'J1':
         require(evaluation['authorized_actions'] == 1 and d['accepted'] is True, 'failed healthy control')
-        require(not evaluation['installed'] and not evaluation['immediately_closed'] and sender['attached_fds'] == [], 'unexpected healthy descriptor')
+        require(not evaluation['installed'] and not evaluation['immediately_closed'] and sender['attached_fds'] == [] and d['delivered_fds_closed'] == 0, 'unexpected healthy descriptor')
     else:
         if evaluation['authorized_actions'] > 0 or d['accepted'] is True:
             return 'CounterexampleDetected'
@@ -251,12 +269,74 @@ def verify_evaluation(case, evaluation, sender):
         require(d['delivered_fds_closed'] == 1 and len(evaluation['installed']) == len(evaluation['immediately_closed']) == 1, 'missing installed/closed descriptor evidence')
         installed, closed = evaluation['installed'][0], evaluation['immediately_closed'][0]
         require(installed['fd'] == closed['fd'] and installed['fd'] not in [fd['fd'] for fd in evaluation['before']], 'installed descriptor identity')
-        require(installed['fdflags'] & fcntl.FD_CLOEXEC != 0, 'received FD lacks CLOEXEC')
+        require(type(installed['fd']) is int and type(installed['fdflags']) is int and installed['fdflags'] & fcntl.FD_CLOEXEC != 0, 'received FD lacks CLOEXEC')
         require(closed['fstat_errno'] == errno.EBADF and closed['getfd_errno'] == errno.EBADF, 'received descriptor still open/ambiguous')
         original = sender['sent_pipe']
         require(stat.S_ISFIFO(installed['mode']) and all(installed[k] == original[k] for k in ('dev','ino','mode','flags')), 'received FD differs from sender pipe')
         require(sender['attached_fds'] == [original['fd']], 'not exactly one owned attachment')
     return 'Expected'
+
+
+def verify_case_evidence(report):
+    """Audit trace relationships before Pass; never supplies receiver authority."""
+    require(report['case'] in CASES, 'unknown case evidence')
+    names = [event['barrier'] for event in report['trace']]
+    require(len(names) == len(set(names)), 'duplicate barrier evidence')
+    require([t['index'] for t in report['trace']] == list(range(len(names))), 'invalid trace index')
+    require([t['at'] for t in report['trace']] == sorted(t['at'] for t in report['trace']), 'nonmonotonic barrier evidence')
+    def ev(name):
+        require(name in names, 'missing barrier: '+name)
+        return report['trace'][names.index(name)]['evidence']
+    server = ev('server-ready-before-connect')['identity']
+    client = ev('client-ready-before-connect')['identity']
+    require(server['pid'] != client['pid'] and server['ppid'] == client['ppid'], 'actor ownership evidence')
+    for who in (server, client):
+        i.unprivileged(who)
+        require(who['namespaces'] == client['namespaces'], 'actor namespace evidence')
+        after = ev('runner-instance-after-'+str(who['pid']))
+        require(after['identity'] == who and after['pidfd_live'] is True, 'retained actor instance evidence')
+    for enrollment, peer in [('trusted-client-enrollment', client), ('trusted-server-enrollment', server)]:
+        record = ev(enrollment)
+        require(record['enrolled'] == peer and record['pidfd_live'] is True and record['inheritable'] is False, 'enrollment evidence')
+    for name, key in [('server-ready-before-connect','listener'), ('client-ready-before-connect','descriptor'), ('accepted-passcred-verified','descriptor')]:
+        d = ev(name)[key]
+        require(d['passcred'] == 1 and d['type'] == socket.SOCK_SEQPACKET, 'socket readiness evidence')
+    for decision, peer in [(ev('client-credentials-and-server-reply')['verification'],client), (ev('server-reply-verified'),server)]:
+        require(decision['accepted'] is True and decision['pidfd_live'] is True, 'hello authentication evidence')
+        require(decision['credentials'] == [[peer['pid'],peer['uids'][0],peer['gids'][0]]], 'hello sender evidence')
+    before, after = ev('sender-before'), ev('sender-after')
+    sent = ev('action-send-permitted')
+    require(before['identity'] == after['identity'] == sent['identity'] == client, 'sender instance evidence')
+    for count, wanted in [(before['requests_sent'],0),(after['requests_sent'],1),(sent['requests_sent'],1)]:
+        i.check_count(count, 'invalid sender count')
+        require(count == wanted, 'sender count evidence')
+    require(type(sent['return_value']) is int and sent['return_value'] == sent['record_bytes'] and sent['errno'] is None, 'send result evidence')
+    require(sent['requested_credentials'] == [client['pid'],client['uids'][0],client['gids'][0]], 'explicit credential evidence')
+    require(i.same_endpoint(before['descriptor'],sent['descriptor']) and i.same_endpoint(sent['descriptor'],after['descriptor']), 'sender endpoint evidence')
+    require(before['pipe'] == after['pipe'], 'sender pipe changed')
+    if report['case'] == 'J2':
+        pipe = ev('owned-pipe-created')
+        require(pipe['identity'] == client and pipe['pipe'] == before['pipe'] and len(pipe['pipe']) == 2, 'pipe ownership evidence')
+        read, write = pipe['pipe']
+        require(read == sent['sent_pipe'] and read['fd'] != write['fd'], 'attached pipe identity')
+        require(stat.S_ISFIFO(read['mode']) and all(read[k] == write[k] for k in ('dev','ino','mode')), 'pipe endpoint identity')
+        require(read['flags'] & os.O_ACCMODE == os.O_RDONLY and write['flags'] & os.O_ACCMODE == os.O_WRONLY, 'pipe access mode')
+    else:
+        require(before['pipe'] == [], 'unexpected healthy pipe')
+        reply = ev('healthy-action-reply-verified')
+        require(reply['accepted'] is True and reply['credentials'] == [[server['pid'],server['uids'][0],server['gids'][0]]], 'action reply evidence')
+    evaluation = ev('kernel-receive-validation-and-immediate-close')
+    require(report['action_count'] == evaluation['authorized_actions'], 'case/evaluation count mismatch')
+    require(verify_evaluation(report['case'],evaluation,sent) == 'Expected', 'unexpected authorization')
+    order = ['server-ready-before-connect','client-ready-before-connect','trusted-client-enrollment','trusted-server-enrollment',
+             'connect-permitted','accepted-passcred-verified','hello-send-permitted','client-credentials-and-server-reply','server-reply-verified']
+    if report['case'] == 'J2': order.append('owned-pipe-created')
+    order += ['receiver-before-send','sender-before','action-send-permitted','kernel-receive-validation-and-immediate-close']
+    if report['case'] == 'J1': order.append('healthy-action-reply-verified')
+    order += ['sender-after']
+    indices = [names.index(name) for name in order]
+    require(indices == sorted(indices), 'barrier ordering evidence')
+    return True
 
 
 def run_case(case):
@@ -276,6 +356,8 @@ def run_case(case):
             i.unprivileged(a.info)
             require(a.info['namespaces'] == i.identity()['namespaces'], 'Blocked: namespace mismatch')
             event(role+'-ready-before-connect', a.initial)
+            if role == 'server':
+                original_socket = endpoint.stat()
         server, client = actors
         original_socket = endpoint.stat()
         report['socket_fixture'] = dict(dev=original_socket.st_dev, ino=original_socket.st_ino, mode=oct(original_socket.st_mode & 0o777))
@@ -318,6 +400,7 @@ def run_case(case):
         for a in actors:
             event('runner-instance-after-'+str(a.info['pid']),dict(identity=i.identity(a.info['pid']), pidfd_live=i.live(a.fd)))
             require(i.identity(a.info['pid']) == a.info and i.live(a.fd), 'actor changed/exited')
+        verify_case_evidence(report)
         for a in reversed(actors): command(a,'stop-'+str(a.info['pid']),'stop')
         report['result'] = 'Pass'
     except BaseException as exc:

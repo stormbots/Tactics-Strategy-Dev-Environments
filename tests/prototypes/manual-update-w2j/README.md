@@ -15,7 +15,7 @@ this experiment does not replace or expand their historical claims.
 
 `run_experiment.py` imports definitions from the reviewed W2i harness at baseline
 `1fc228e`; neither its scenario runner nor its entrypoint executes. W2i files are
-unchanged. Both source SHA-256 hashes are in [the report](evidence/linux-run.json).
+unchanged. Both source SHA-256 hashes are in [the reviewed report](evidence/reviewed-linux-run.json).
 This harness launches only its own server/client script in independent processes.
 
 Each fresh 0700 private root contains a 0600 pathname AF_UNIX SOCK_SEQPACKET
@@ -43,8 +43,9 @@ populated. This diagnostic extraction does not authorize a command.
 
 The receiver's before/after inventory records FD numbers, device/inode, mode,
 F_GETFD and F_GETFL, detecting unexpected closures, replacements, leaks or flag
-changes. The single-threaded snapshot excludes the directory handle already
-closed by listdir, not a live actor descriptor. Sender pipe metadata is checked
+changes. The single-threaded snapshot keeps its scandir handle live while observing
+entries, excludes exactly one matching directory identity, and fails on any
+vanished baseline FD. Missing or ambiguous inventory handles block the run. Sender pipe metadata is checked
 before and after evaluation; fstat and F_GETFD/F_GETFL prove both original pipe
 ends remain valid. No pipe data is read or written.
 
@@ -55,16 +56,16 @@ missing-credential fallback, alternate transport or disabled guard is used.
 
 ## Observed results
 
-[Native run](evidence/linux-run.json): **J1 Pass / J2 Pass**, 38 ordered barrier
+[Reviewed native run](evidence/reviewed-linux-run.json): **J1 Pass / J2 Pass**, 38 ordered barrier
 events, no unexpected native failures or cleanup fallback.
 
 | Case | Native observation | Actions |
 | --- | --- | --- |
-| J1 healthy | Complete valid record, kernel credentials `[38541,1000,1000]`, no received FD, credential-verified fixed reply | 1 |
-| J2 one unexpected pipe FD | Complete otherwise-valid record, kernel credentials `[38543,1000,1000]`; receiver rejects `unexpected ancillary/descriptor` | 0 |
+| J1 healthy | Complete valid record, kernel credentials `[39169,1000,1000]`, no received FD, credential-verified fixed reply | 1 |
+| J2 one unexpected pipe FD | Complete otherwise-valid record, kernel credentials `[39171,1000,1000]`; receiver rejects `unexpected ancillary/descriptor` | 0 |
 
 J2 sender FD **5** and kernel-installed receiver FD **6** share device **12**, inode
-**256854**, FIFO mode **4480**, and read-only F_GETFL **0**. Receiver F_GETFD **1**
+**261101**, FIFO mode **4480**, and read-only F_GETFL **0**. Receiver F_GETFD **1**
 confirms FD_CLOEXEC. Its FD 6 was absent from the receiver baseline and was closed
 by validation: immediate fstat errno **9 / EBADF** and F_GETFD errno **9 / EBADF**.
 Receiver inventory is identical before/after: **6 live descriptors**. Sender
@@ -76,12 +77,18 @@ MSG_TRUNC nor MSG_CTRUNC. Ancillary types/sizes, raw kernel credentials, payload
 hash/match, actual syscall returns, pidfd state, instance metadata and ownership
 are in the report. Truncation would stop this run, not become W2j coverage.
 
-[Focused local checks](evidence/checks.txt): **17 pass** — 13 synthetic/mocked
-validation and ordering checks plus 4 saved-native-evidence audits. These are not
-17 native cases or native fault injections. They cover evidence corruption,
-missing CLOEXEC/closure observations, inventory changes, identity mismatches,
-healthy-failure versus counterexample classification, cleanup despite a metadata
-observation error, and closure-before-inventory ordering.
+[Reviewed focused checks](evidence/review-checks.txt): **24 pass** — the original
+13 synthetic/mocked checks and 4 saved-evidence audits, plus 7 review regressions.
+They are not native fault injections. The added checks cover live inventory
+handle exclusion, vanished baseline entries, exact ancillary shape, strict closed
+FD counts, duplicate inventory entries, identity/readiness corruption and barrier
+ordering. Existing checks continue to verify cleanup-after-observation-error and
+closure-before-inventory ordering.
+
+The [original native run](evidence/linux-run.json) and
+[17-check output](evidence/checks.txt) remain unchanged as baseline evidence at
+`17d61bc`. Their source hash identifies that baseline, not the reviewed harness.
+The reviewed report separately pins current W2j and unchanged W2i source hashes.
 
 ## Environment, ownership and cleanup
 
@@ -125,6 +132,30 @@ bootstrap or a protected root-owned namespace. Full capability/replay/consent,
 Ready/close/install/recovery, Windows and desktop/service behavior are untested.
 A local metadata-failure mock is not native error-path coverage. A clean finite
 run does not establish general leak freedom or mutual authentication safety.
+
+## Implementation/evidence review
+
+Reviewed baseline `17d61bc`; fixes are confined to W2j and its evidence ledger.
+
+| Finding | Correction | Validation scope |
+| --- | --- | --- |
+| Inventory silently ignored any EBADF entry, assuming it belonged to listdir | Observe entries while scandir stays live; exclude exactly one matching proc directory; propagate all baseline observation errors | Mocked disappearing baseline and live-directory checks; native J1/J2 rerun |
+| Equal before/after lists could contain duplicate FD entries | Require unique nonnegative integer FD numbers | Synthetic evidence corruption |
+| Ancillary rejection could pass without verifying the exact intended attachment shape | Require one correctly sized SCM_CREDENTIALS and, only in J2, one single-FD SCM_RIGHTS; reject extra/duplicate/missing/incorrect-sized evidence | Synthetic evidence corruption plus the same native schedules |
+| A boolean closed-FD count compared equal to 1 | Require a nonnegative integer closed count and zero for healthy control | Synthetic evidence corruption |
+| Readiness, enrollment, hello and barrier evidence was not independently related before Pass | Audit both enrolled instances, retained liveness, namespace/privilege, socket options, credential directions, explicit sends, pipe ownership/access modes, counts and barrier order | Corrupted saved-evidence checks; audit also runs before native case Pass |
+| Client initialization failure could obscure a socket already created by the known server | Capture socket identity immediately after server readiness | Code correction only; no new native startup-fault injection |
+
+[Five before-fix regressions](evidence/review-regressions-before-fixes.txt) against
+the baseline produce **eight failed assertions**. They exercise existing public
+functions with mocked/synthetic observations, not missing-new-helper errors or
+new native authentication counterexamples. The complete reviewed suite passes
+24 checks. The native rerun retains J1/J2 = 1/0, one installed CLOEXEC FD closed
+with immediate EBADF, unchanged inventories, 38 events and normal owned cleanup.
+
+No authentication counterexample appeared in the reviewed native run. Diagnostic
+success remains separate from unproven authentication safety. Original W2h/W2i
+evidence and all B01–B06 blocker statuses remain unchanged.
 
 ## Reproduction within separately authorized W2j scope
 
