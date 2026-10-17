@@ -1,6 +1,7 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** W1 authorized and executed locally; L1 evidence only. W2/W3 and
+**Status:** W1 executed locally (L1); the separately authorized W2a unprivileged
+Linux lock subset was executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.
 See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
 **Baseline:** [protocol revision 2](APP-UPDATE-NOW-PROTOCOL.md), commit
@@ -415,3 +416,14 @@ ran; this historical instruction does not authorize W2/W3 or integration.
 See [W1 protocol review](APP-UPDATE-NOW-W1-REVIEW.md) for resolved timing, close-grant and query-cache rules. The pinned baseline and recorded W1 results above remain revision-2 evidence. W2/W3, production implementation and build dispatch remain deferred.
 
 Selected revision-3 W1 checks were subsequently authorized and executed: [44-test local record](../../tests/prototypes/manual-update/EVIDENCE.md#revision-3-alignment-execution). This does not clear the native blockers or advance to W2/W3.
+
+
+## Separately authorized W2a execution
+
+The [W2a record](../../tests/prototypes/manual-update-w2a/README.md) documents five
+passing unprivileged Linux lock checks, 49 barrier events, unchanged lock-file
+identities, actor exit and temporary-root removal. This is only the E20/B06
+cross-process O/A/S subset on the recorded Debian/Linux/tmpfs environment. It does
+not clear B06, replace W1 evidence, validate Mint/Windows desktops or authorize any
+remaining W2/W3 work. No elevation, registration, production implementation,
+package operation, workflow/build dispatch or release work occurred.

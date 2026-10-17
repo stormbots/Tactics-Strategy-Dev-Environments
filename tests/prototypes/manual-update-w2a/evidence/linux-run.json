@@ -1,0 +1,700 @@
+{
+  "checks": [
+    {
+      "name": "existing_GUI_shared_S_excludes_updater_exclusive_S",
+      "result": "Pass"
+    },
+    {
+      "name": "reopen_rejected_at_A_without_attempting_S",
+      "result": "Pass"
+    },
+    {
+      "name": "drain_allows_S_with_O_A_retained_and_competitor_excluded",
+      "result": "Pass"
+    },
+    {
+      "name": "process_exit_releases_locks_on_unchanged_files",
+      "result": "Pass"
+    },
+    {
+      "name": "positive_GUI_admission_after_updater_exit",
+      "result": "Pass"
+    }
+  ],
+  "cleanup": {
+    "children": [
+      {
+        "actor": "gui",
+        "alive": false,
+        "exitcode": 0,
+        "forced_cleanup": false,
+        "pid": 20616
+      },
+      {
+        "actor": "updater",
+        "alive": false,
+        "exitcode": -15,
+        "forced_cleanup": false,
+        "pid": 20617
+      },
+      {
+        "actor": "peer",
+        "alive": false,
+        "exitcode": 0,
+        "forced_cleanup": false,
+        "pid": 20618
+      }
+    ],
+    "parent_pid": 20614,
+    "temporary_root_removed": true
+  },
+  "environment": {
+    "filesystem": {
+      "matching_mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_options": "ro,nosuid,nodev,relatime",
+          "mount_point": "/tmp"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_options": "rw,nosuid,nodev,relatime",
+          "mount_point": "/tmp"
+        }
+      ],
+      "note": "All longest-path mountinfo matches recorded; stacked mounts may differ in flags. Writes were tested directly."
+    },
+    "kernel": "6.18.44",
+    "os_release": "Debian GNU/Linux 13 (trixie)",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "gid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux primitives only",
+  "experiment": "W2a Linux cross-process flock subset of E20/B06",
+  "failures": [],
+  "final_files_before_cleanup": {
+    "A": {
+      "device": 33,
+      "inode": 1879,
+      "mode": "0o600",
+      "size": 0,
+      "uid": 1000
+    },
+    "O": {
+      "device": 33,
+      "inode": 1878,
+      "mode": "0o600",
+      "size": 0,
+      "uid": 1000
+    },
+    "S": {
+      "device": 33,
+      "inode": 1880,
+      "mode": "0o600",
+      "size": 0,
+      "uid": 1000
+    }
+  },
+  "initial_files": {
+    "A": {
+      "device": 33,
+      "inode": 1879,
+      "mode": "0o600",
+      "size": 0,
+      "uid": 1000
+    },
+    "O": {
+      "device": 33,
+      "inode": 1878,
+      "mode": "0o600",
+      "size": 0,
+      "uid": 1000
+    },
+    "S": {
+      "device": 33,
+      "inode": 1880,
+      "mode": "0o600",
+      "size": 0,
+      "uid": 1000
+    }
+  },
+  "limits": [
+    "No Mint/Windows desktop, privilege, authentication, service or package validation.",
+    "Same-UID cooperating actors; IPC is trusted test plumbing, not production authenticated IPC.",
+    "No native child, intent/journal, durable recovery, close grant or updater implementation.",
+    "One explicit schedule; no universal race/liveness proof; B01-B06 remain open."
+  ],
+  "result": "Pass",
+  "source_sha256": "ceb6cafadb1c6856781371b4e4b37c4aaa6a7c6d5bd3aba1194750b89f9a2d57",
+  "started_at_utc": "2026-10-17T04:41:51.281680+00:00",
+  "temporary_root": "/tmp/PROTOTYPE-W2a-i8i9dhok",
+  "temporary_root_identity": {
+    "device": 33,
+    "inode": 1877,
+    "mode": "0o700",
+    "size": 40,
+    "uid": 1000
+  },
+  "trace": [
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.05812157299806131,
+      "event": "barrier_reply",
+      "pid": 20616,
+      "reply": {
+        "pid": 20616,
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "gid": 1000,
+          "uid": 1000
+        },
+        "result": "ready"
+      },
+      "sequence": 1
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.10053654600051232,
+      "event": "barrier_reply",
+      "pid": 20617,
+      "reply": {
+        "pid": 20617,
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "gid": 1000,
+          "uid": 1000
+        },
+        "result": "ready"
+      },
+      "sequence": 2
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.14910076599335298,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "pid": 20618,
+        "privilege": {
+          "effective_capabilities": "0000000000000000",
+          "euid": 1000,
+          "gid": 1000,
+          "uid": 1000
+        },
+        "result": "ready"
+      },
+      "sequence": 3
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.14929428799950983,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "A",
+        "mode": "shared"
+      },
+      "sequence": 4
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.14955983999971068,
+      "event": "barrier_reply",
+      "pid": 20616,
+      "reply": {
+        "held": [
+          "A"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 5
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.14962596999976085,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "S",
+        "mode": "shared"
+      },
+      "sequence": 6
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.1498795239967876,
+      "event": "barrier_reply",
+      "pid": 20616,
+      "reply": {
+        "held": [
+          "A",
+          "S"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 7
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.14991672099858988,
+      "event": "barrier_request",
+      "request": {
+        "action": "release",
+        "lock": "A"
+      },
+      "sequence": 8
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.15000171899737325,
+      "event": "barrier_reply",
+      "pid": 20616,
+      "reply": {
+        "held": [
+          "S"
+        ],
+        "result": "released"
+      },
+      "sequence": 9
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.1500278389939922,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "O",
+        "mode": "exclusive"
+      },
+      "sequence": 10
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15031662599358242,
+      "event": "barrier_reply",
+      "pid": 20617,
+      "reply": {
+        "held": [
+          "O"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 11
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15036912499635946,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "A",
+        "mode": "exclusive"
+      },
+      "sequence": 12
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15047493499878328,
+      "event": "barrier_reply",
+      "pid": 20617,
+      "reply": {
+        "held": [
+          "A",
+          "O"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 13
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15050498100026743,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "S",
+        "mode": "exclusive"
+      },
+      "sequence": 14
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15066233899415238,
+      "event": "barrier_reply",
+      "pid": 20617,
+      "reply": {
+        "held": [
+          "A",
+          "O"
+        ],
+        "result": "busy"
+      },
+      "sequence": 15
+    },
+    {
+      "elapsed_seconds": 0.15069440799561562,
+      "event": "check_pass",
+      "name": "existing_GUI_shared_S_excludes_updater_exclusive_S",
+      "sequence": 16
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1506957399979001,
+      "event": "barrier_request",
+      "request": {
+        "action": "admit"
+      },
+      "sequence": 17
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1508526269972208,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "attempted_s": false,
+        "held": [],
+        "result": "admission_rejected"
+      },
+      "sequence": 18
+    },
+    {
+      "elapsed_seconds": 0.15088350400037598,
+      "event": "check_pass",
+      "name": "reopen_rejected_at_A_without_attempting_S",
+      "sequence": 19
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.15088482599821873,
+      "event": "barrier_request",
+      "request": {
+        "action": "release",
+        "lock": "S"
+      },
+      "sequence": 20
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.1509564939988195,
+      "event": "barrier_reply",
+      "pid": 20616,
+      "reply": {
+        "held": [],
+        "result": "released"
+      },
+      "sequence": 21
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15097931899799732,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "S",
+        "mode": "exclusive"
+      },
+      "sequence": 22
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15110890499636298,
+      "event": "barrier_reply",
+      "pid": 20617,
+      "reply": {
+        "held": [
+          "A",
+          "O",
+          "S"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 23
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1511388199942303,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "O",
+        "mode": "exclusive"
+      },
+      "sequence": 24
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15129908299422823,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [],
+        "result": "busy"
+      },
+      "sequence": 25
+    },
+    {
+      "elapsed_seconds": 0.1513198039974668,
+      "event": "check_pass",
+      "name": "drain_allows_S_with_O_A_retained_and_competitor_excluded",
+      "sequence": 26
+    },
+    {
+      "actor": "updater",
+      "elapsed_seconds": 0.15188582099654013,
+      "event": "sentinel_terminated",
+      "exitcode": -15,
+      "pid": 20617,
+      "sequence": 27
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15188878499611747,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "O",
+        "mode": "exclusive"
+      },
+      "sequence": 28
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1520412559984834,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [
+          "O"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 29
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1520795639953576,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "A",
+        "mode": "exclusive"
+      },
+      "sequence": 30
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15215953499864554,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [
+          "A",
+          "O"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 31
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15218262999405852,
+      "event": "barrier_request",
+      "request": {
+        "action": "acquire",
+        "lock": "S",
+        "mode": "exclusive"
+      },
+      "sequence": 32
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1522343379983795,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [
+          "A",
+          "O",
+          "S"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 33
+    },
+    {
+      "elapsed_seconds": 0.15225391800049692,
+      "event": "check_pass",
+      "name": "process_exit_releases_locks_on_unchanged_files",
+      "sequence": 34
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15225703299802262,
+      "event": "barrier_request",
+      "request": {
+        "action": "release",
+        "lock": "S"
+      },
+      "sequence": 35
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1522965429976466,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [
+          "A",
+          "O"
+        ],
+        "result": "released"
+      },
+      "sequence": 36
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15231525099807186,
+      "event": "barrier_request",
+      "request": {
+        "action": "release",
+        "lock": "A"
+      },
+      "sequence": 37
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15235073499934515,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [
+          "O"
+        ],
+        "result": "released"
+      },
+      "sequence": 38
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1523792579973815,
+      "event": "barrier_request",
+      "request": {
+        "action": "release",
+        "lock": "O"
+      },
+      "sequence": 39
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1524145809962647,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [],
+        "result": "released"
+      },
+      "sequence": 40
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15243296900007408,
+      "event": "barrier_request",
+      "request": {
+        "action": "admit"
+      },
+      "sequence": 41
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15248788199824048,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "attempted_s": true,
+        "held": [
+          "S"
+        ],
+        "result": "acquired"
+      },
+      "sequence": 42
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15250616999401245,
+      "event": "barrier_request",
+      "request": {
+        "action": "release",
+        "lock": "S"
+      },
+      "sequence": 43
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.15254138299496844,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [],
+        "result": "released"
+      },
+      "sequence": 44
+    },
+    {
+      "elapsed_seconds": 0.15255880000040634,
+      "event": "check_pass",
+      "name": "positive_GUI_admission_after_updater_exit",
+      "sequence": 45
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.15257054699759465,
+      "event": "barrier_request",
+      "request": {
+        "action": "exit"
+      },
+      "sequence": 46
+    },
+    {
+      "actor": "gui",
+      "elapsed_seconds": 0.15268914699845482,
+      "event": "barrier_reply",
+      "pid": 20616,
+      "reply": {
+        "held": [],
+        "result": "exiting"
+      },
+      "sequence": 47
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.16172744600044098,
+      "event": "barrier_request",
+      "request": {
+        "action": "exit"
+      },
+      "sequence": 48
+    },
+    {
+      "actor": "peer",
+      "elapsed_seconds": 0.1619086399950902,
+      "event": "barrier_reply",
+      "pid": 20618,
+      "reply": {
+        "held": [],
+        "result": "exiting"
+      },
+      "sequence": 49
+    }
+  ]
+}
