@@ -1,6 +1,6 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** W1 executed locally (L1); the separately authorized W2a/W2b unprivileged
+**Status:** W1 executed locally (L1); the separately authorized W2a/W2b/W2c unprivileged
 Linux lock subsets were executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.
 See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
@@ -439,3 +439,16 @@ is preserved. This is a narrow process/descriptor subset relevant to B03/B06,
 not journal, real-installer, privileged-service or desktop proof. All six blockers
 remain open and all other W2/W3, elevation, registration, production implementation,
 package operations and workflow/build/release work remain deferred.
+
+
+## Separately authorized W2c execution
+
+The [W2c record](../../tests/prototypes/manual-update-w2c/README.md) documents healthy
+admission, rejection on unresolved intent after supervisor loss while a sentinel
+survives with released O/A/S, and continued rejection after sentinel exit. The
+single native schedule passes; five focused fixture checks also pass. Fixture
+publication calls, inode/content preservation, process ownership, decisions,
+exits and teardown are recorded. This is only a Linux test-surrogate subset of
+E18/B05/B06, not production startup/recovery or power-loss durability. All six
+blockers and all other W2/W3, elevation, registration, production implementation,
+package operations and workflow/build/release deferrals remain unchanged.
