@@ -4,6 +4,7 @@ pub mod discovery;
 #[cfg(test)]
 mod e2e;
 pub mod host;
+mod install_core;
 #[cfg(target_os = "linux")]
 mod linux_install;
 pub mod observation;
