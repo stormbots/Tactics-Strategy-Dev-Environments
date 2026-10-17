@@ -1,5 +1,12 @@
 # #72 Phase 1: protocol feasibility validation plan
 
+> **Historical research/design context (2026-10-17):** The owner approved the
+> [reduced-scope fixed-request decision](APP-UPDATE-NOW-REDUCED-SCOPE-DECISION.md)
+> as the active product direction for #72. Conflicting consent/commit/cancel
+> requirements below are historical. Original research/results remain intact;
+> no blocker is declared validated. Further custom-protocol work is deferred.
+> This notice authorizes no implementation, experiments or builds.
+
 **Status:** W1 executed locally (L1); the separately authorized W2a–W2h unprivileged
 Linux coordination and IPC subsets were executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.

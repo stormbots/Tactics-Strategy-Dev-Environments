@@ -1,5 +1,12 @@
 # #72: App-only update and close/install protocol
 
+> **Historical research/design context (2026-10-17):** The owner approved the
+> [reduced-scope fixed-request decision](APP-UPDATE-NOW-REDUCED-SCOPE-DECISION.md)
+> as the active product direction for #72. Conflicting consent/commit/cancel
+> requirements below are historical. Original research/results remain intact;
+> no blocker is declared validated. Further custom-protocol work is deferred.
+> This notice authorizes no implementation, experiments or builds.
+
 **Status:** review draft, revision 4 (B02 proposal based on W2h). Not implementation-ready; blockers B01–B06 remain. No implementation or build authorization.
 **Design:** Option A inline Schedule card with Option C preparation progress.
 **Issue:** https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/72
