@@ -176,6 +176,52 @@ function Protect-LegacyMaintenanceParent {
         $guard.Dispose()
     }
 }
+function Test-AppOnlyInstallation {
+    # A protected scope can suppress maintenance reconfiguration, never authorize
+    # an installer. Do not trust environment flags or caller-supplied paths.
+    $directory = 'C:\ProgramData\SkyviewRoboticsCoordination'
+    if (-not (Test-Path -LiteralPath $directory)) { return $false }
+    # System anchors intentionally permit normal Windows creation grants. Reuse
+    # the existing anchor-aware validator rather than treating ProgramData as a
+    # private application directory (which rejects default Windows ACLs).
+    $windowsBundle = Split-Path $PSScriptRoot -Parent
+    $chocolatey = Join-Path $windowsBundle 'chocolatey'
+    $tools = Join-Path $chocolatey 'tools'
+    $helper = Join-Path $tools 'Coordination.ps1'
+    foreach ($path in @($windowsBundle,$chocolatey,$tools,$helper)) { Assert-TrustedItem $path }
+    . $helper
+    Assert-SkyviewProtectedPath 'C:\' -Anchor
+    Assert-SkyviewProtectedPath 'C:\ProgramData' -Anchor
+    Assert-SkyviewProtectedPath $directory
+    $journal = Join-Path $directory 'transaction.json'
+    try { $null = Get-Item -LiteralPath $journal -Force -ErrorAction Stop }
+    catch [Management.Automation.ItemNotFoundException] { return $false }
+    Assert-TrustedItem $journal
+    # Pin and check regular-file identity/link count using the existing native
+    # metadata helper; its generic validation also applies to this private file.
+    $handle = Open-LegacyLogGuard $journal
+    try {
+        $stream = New-Object IO.FileStream($handle,[IO.FileAccess]::Read)
+        try {
+            if ($stream.Length -gt 4096) { throw 'Oversized installation intent.' }
+            $reader = New-Object IO.BinaryReader($stream)
+            try { $bytes = $reader.ReadBytes(4097) } finally { $reader.Dispose() }
+        } finally { $stream.Dispose() }
+    } finally { $handle.Dispose() }
+    return ConvertFrom-AppOnlyIntentBytes $bytes
+}
+function ConvertFrom-AppOnlyIntentBytes([byte[]]$Bytes) {
+    if ($Bytes.Length -gt 4096) { throw 'Oversized installation intent.' }
+    $utf8 = New-Object Text.UTF8Encoding($false,$true)
+    $text = $utf8.GetString($Bytes)
+    if (-not $text.TrimStart().StartsWith('{')) { throw 'Invalid installation intent.' }
+    $record = $text | ConvertFrom-Json
+    if ($null -eq $record -or ($record.schema -isnot [int] -and $record.schema -isnot [long]) -or $record.schema -ne 1) { throw 'Unsupported installation intent.' }
+    if ($null -eq $record.scope) { return $false }
+    if ($record.scope -isnot [string] -or $record.kind -isnot [string] -or $record.scope -cne 'app_only' -or $record.kind -cne 'installation') { throw 'Unsupported installation scope.' }
+    return $true
+}
+
 function New-ProtectedDirectory([string]$Path,[switch]$Readable) {
     if (Test-Path -LiteralPath $Path) { Assert-TrustedItem $Path; return }
     # Create with private security atomically, without a writable inheritance gap.
@@ -212,8 +258,10 @@ foreach ($path in @($install,$app,$PSScriptRoot,(Join-Path $PSScriptRoot 'sde-up
 $version = (Get-Item $app).VersionInfo.ProductVersion
 if ($version -match '^\d+\.\d+\.\d+\.0$') { $version = $version.Substring(0,$version.Length-2) }
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid application version.' }
-# Migrate only the known legacy parent grant; never trust writable descendants.
-Protect-LegacyMaintenanceParent
+$appOnly = Test-AppOnlyInstallation
+# An app-only attempt does not repair an unrelated legacy maintenance tree.
+# Unsupported legacy ACLs fail the ordinary trust checks below instead.
+if (-not $appOnly) { Protect-LegacyMaintenanceParent }
 # Parent directories must already be machine-protected or freshly created here.
 New-ProtectedDirectory 'C:\ProgramData\SkyviewRobotics' -Readable
 New-ProtectedDirectory $root -Readable
@@ -251,7 +299,7 @@ Write-AtomicReceipt $active @{schemaVersion=1;version=$version;generation=$gener
 # enabled state, principal and standard-user read access; never start it here.
 $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
 $taskName = 'Skyview Robotics - Dev Tool Updates'
-if (Test-Path $baseline) {
+if (-not $appOnly -and (Test-Path $baseline)) {
     Assert-TrustedItem $baseline
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if ($task -and (Get-Content $baseline -Raw) -match '# SDE_COORDINATION_V1') {
