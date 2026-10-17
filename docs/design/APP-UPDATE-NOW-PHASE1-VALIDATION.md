@@ -148,7 +148,11 @@ not converted into a safety pass, and Windows writer identity remains unresolved
 The [next isolated record-credential gate](APP-UPDATE-NOW-B02-RECORD-VALIDATION.md)
 requires specification review first, then separate execution authorization. It
 proposes three unprivileged schedules plus labeled local decoder checks; none
-were implemented or run as part of this documentation revision. Existing E04–E07
+were implemented or run as part of this documentation revision. Review corrections
+require pre-send credential setup, trusted pre-enrollment and an explicit valid
+credential control; native ancillary/FD safety and hostile reverse-direction
+authentication remain later mandatory gates. A primitive feasibility pass would
+not establish adapter or authentication safety. Existing E04–E07
 remain the broader targets, and all six blockers remain open.
 
 ### Experiments

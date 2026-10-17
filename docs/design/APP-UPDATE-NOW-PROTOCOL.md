@@ -538,10 +538,13 @@ roots do not validate this production namespace policy.
    The supported profile must pin the intended non-transitioning credential sets
    and PID/user namespace interpretation. Thread/PID semantics, namespace changes
    and exec are later proof obligations; a numeric PID alone is never enrollment.
-3. Enable SO_PASSCRED before receiving any application data on both endpoints.
-   Configure the listener and accepted endpoint as required; verify actual option
-   state and accepted-socket behavior instead of assuming inheritance. Prequeued
-   data without valid credentials must fail, not acquire authority retroactively.
+3. Enable and verify SO_PASSCRED on the listener before connect is permitted,
+   and on each receiving endpoint before the peer may send application data.
+   Verify accepted-socket state and inheritance; do not assume that enabling the
+   option just before recvmsg authenticates already queued data. The production
+   bootstrap/readiness ordering remains a proof obligation; the isolated gate uses
+   trusted barriers. Early data or data without valid credentials must fail, not
+   acquire authority retroactively.
    All reads use recvmsg with bounded payload/control buffers; ordinary read/recv
    must not discard ancillary evidence on this channel.
 4. The first Hello is a bounded credential-bearing record. Verify kernel sender
@@ -580,9 +583,10 @@ For every record, before payload dispatch:
   unsupported versions/capabilities. Do not recover by reading a suffix, using a
   previous packet's credentials or trusting a payload identity claim.
 - This protocol accepts no SCM_RIGHTS or other descriptor-transfer messages.
-  Receive with MSG_CMSG_CLOEXEC where supported so unexpected installed FDs cannot
-  leak through exec before rejection. Inventory and close every actually delivered
-  descriptor even on rejection/truncation, and close no descriptor named only in
+  Require recvmsg with MSG_CMSG_CLOEXEC so unexpected installed FDs cannot
+  leak through exec before rejection. Missing support blocks this candidate; an
+  alternative needs separate review, not an unprotected receive-then-fcntl fallback.
+  Inventory and close every actually delivered descriptor even on rejection/truncation, and close no descriptor named only in
   untrusted payload bytes. Bounded ancillary storage and verified no-leak cleanup
   are adapter proof obligations; unsupported safe handling blocks the adapter.
 - Credential success does not authorize an effect. Validate the existing attempt
@@ -618,6 +622,9 @@ The [next isolated B02 gate](APP-UPDATE-NOW-B02-RECORD-VALIDATION.md) proposes o
 unprivileged primitive validation after specification review and separate execution
 authorization. A passing gate would not clear protected enrollment/namespace,
 Windows, desktop, capability integration or the remaining B01–B06 obligations.
+Its synthetic malformed-metadata checks do not validate native ancillary parsing,
+FD installation/cleanup, truncation or hostile-traffic resource safety. Those
+remain mandatory adapter gates even if the three core schedules pass.
 
 The challenge is correlation, not home-grown cryptography. Use maintained OS/crypto
 primitives; no new signing keys, custom signatures or network authentication scheme.
