@@ -1,0 +1,1640 @@
+{
+  "cases": [
+    {
+      "cleanup": {
+        "actors": [
+          {
+            "exitcode": 0,
+            "expected_exitcode": 0,
+            "pid": 25040,
+            "role": "startup"
+          },
+          {
+            "exitcode": -15,
+            "expected_exitcode": -15,
+            "pid": 25041,
+            "role": "legacy"
+          }
+        ],
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true
+      },
+      "failures": [],
+      "intent_after_schedule": {
+        "body": {
+          "fixture": "W2c-only",
+          "schema": 1,
+          "state": "unresolved",
+          "transaction": "PROTOTYPE-W2d-legacy_wins-e4m61_p1"
+        },
+        "identity": {
+          "device": 33,
+          "inode": 3598,
+          "mode": "0o600",
+          "regular": true,
+          "size": 113,
+          "uid": 1000
+        },
+        "present": true,
+        "reason": "unresolved_fixture",
+        "sha256": "f9d1490bbec7064321f0f6a1ad3b1caa3a3a2395f92acff423f90a81477977b2"
+      },
+      "intent_before_teardown": {
+        "body": {
+          "fixture": "W2c-only",
+          "schema": 1,
+          "state": "unresolved",
+          "transaction": "PROTOTYPE-W2d-legacy_wins-e4m61_p1"
+        },
+        "identity": {
+          "device": 33,
+          "inode": 3598,
+          "mode": "0o600",
+          "regular": true,
+          "size": 113,
+          "uid": 1000
+        },
+        "present": true,
+        "reason": "unresolved_fixture",
+        "sha256": "f9d1490bbec7064321f0f6a1ad3b1caa3a3a2395f92acff423f90a81477977b2"
+      },
+      "locks_after": {
+        "A": {
+          "device": 33,
+          "inode": 3596,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3595,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3597,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "locks_before": {
+        "A": {
+          "device": 33,
+          "inode": 3596,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3595,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3597,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "name": "legacy_wins",
+      "oracle": {
+        "actual_intent": {
+          "body": {
+            "fixture": "W2c-only",
+            "schema": 1,
+            "state": "unresolved",
+            "transaction": "PROTOTYPE-W2d-legacy_wins-e4m61_p1"
+          },
+          "identity": {
+            "device": 33,
+            "inode": 3598,
+            "mode": "0o600",
+            "regular": true,
+            "size": 113,
+            "uid": 1000
+          },
+          "present": true,
+          "reason": "unresolved_fixture",
+          "sha256": "f9d1490bbec7064321f0f6a1ad3b1caa3a3a2395f92acff423f90a81477977b2"
+        },
+        "finding": null,
+        "violation": false
+      },
+      "result": "Pass",
+      "root": "/tmp/PROTOTYPE-W2d-legacy_wins-e4m61_p1",
+      "root_identity": {
+        "device": 33,
+        "inode": 3594,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0008036569997784682,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 25040,
+            "ppid": 25038,
+            "start_ticks": 4654203,
+            "uid": 1000
+          },
+          "role": "startup",
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.036467123994953,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "history": [],
+            "identity": {
+              "pid": 25040,
+              "ppid": 25038,
+              "start_ticks": 4654203,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.03731411599437706,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 25041,
+            "ppid": 25038,
+            "start_ticks": 4654207,
+            "uid": 1000
+          },
+          "role": "legacy",
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.07127766499615973,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "history": [],
+            "identity": {
+              "pid": 25041,
+              "ppid": 25038,
+              "start_ticks": 4654207,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 4
+        },
+        {
+          "command": "precheck",
+          "elapsed_seconds": 0.07130083999800263,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.07230689199786866,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "precheck_clear",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "A"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 3596,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired"
+            ],
+            "identity": {
+              "pid": 25040,
+              "ppid": 25038,
+              "start_ticks": 4654203,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 6
+        },
+        {
+          "command": "attempt",
+          "elapsed_seconds": 0.07245647899981122,
+          "event": "barrier_request",
+          "role": "legacy",
+          "sequence": 7
+        },
+        {
+          "elapsed_seconds": 0.07422125999437412,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "published",
+            "held": [
+              "O",
+              "S"
+            ],
+            "held_identities": {
+              "O": {
+                "device": 33,
+                "inode": 3595,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "S": {
+                "device": 33,
+                "inode": 3597,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "O_exclusive_acquired",
+              "S_exclusive_acquired"
+            ],
+            "identity": {
+              "pid": 25041,
+              "ppid": 25038,
+              "start_ticks": 4654207,
+              "uid": 1000
+            },
+            "mutation_starts": 0,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "publication": {
+              "observed": {
+                "body": {
+                  "fixture": "W2c-only",
+                  "schema": 1,
+                  "state": "unresolved",
+                  "transaction": "PROTOTYPE-W2d-legacy_wins-e4m61_p1"
+                },
+                "identity": {
+                  "device": 33,
+                  "inode": 3598,
+                  "mode": "0o600",
+                  "regular": true,
+                  "size": 113,
+                  "uid": 1000
+                },
+                "present": true,
+                "reason": "unresolved_fixture",
+                "sha256": "f9d1490bbec7064321f0f6a1ad3b1caa3a3a2395f92acff423f90a81477977b2"
+              },
+              "operations": [
+                "exclusive_create_temporary_0600",
+                "write_complete",
+                "fsync_temporary_file",
+                "link_into_intent_name_without_replacement",
+                "remove_temporary_name",
+                "fsync_parent_directory"
+              ]
+            },
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 8
+        },
+        {
+          "elapsed_seconds": 0.07443393200082937,
+          "event": "independent_probe",
+          "expected": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "pid": 25038,
+          "sequence": 9
+        },
+        {
+          "command": "postcheck",
+          "elapsed_seconds": 0.07447436299844412,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 10
+        },
+        {
+          "elapsed_seconds": 0.07546104599896353,
+          "event": "barrier_reply",
+          "reply": {
+            "entered_normal": false,
+            "event": "session_busy",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "A"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 3596,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired",
+              "S_shared_busy"
+            ],
+            "identity": {
+              "pid": 25040,
+              "ppid": 25038,
+              "start_ticks": 4654203,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 11
+        },
+        {
+          "elapsed_seconds": 0.07681068899546517,
+          "event": "publisher_reaped",
+          "exitcode": -15,
+          "pid": 25041,
+          "sequence": 12
+        },
+        {
+          "command": "postcheck",
+          "elapsed_seconds": 0.07689779099746374,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 13
+        },
+        {
+          "elapsed_seconds": 0.07818654099537525,
+          "event": "barrier_reply",
+          "reply": {
+            "decision": "RecoveryRequired",
+            "entered_normal": false,
+            "event": "decision",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [],
+            "held_identities": {},
+            "history": [
+              "A_shared_acquired",
+              "S_shared_busy",
+              "S_shared_acquired",
+              "S_released",
+              "A_released"
+            ],
+            "identity": {
+              "pid": 25040,
+              "ppid": 25038,
+              "start_ticks": 4654203,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "second": {
+              "body": {
+                "fixture": "W2c-only",
+                "schema": 1,
+                "state": "unresolved",
+                "transaction": "PROTOTYPE-W2d-legacy_wins-e4m61_p1"
+              },
+              "identity": {
+                "device": 33,
+                "inode": 3598,
+                "mode": "0o600",
+                "regular": true,
+                "size": 113,
+                "uid": 1000
+              },
+              "present": true,
+              "reason": "unresolved_fixture",
+              "sha256": "f9d1490bbec7064321f0f6a1ad3b1caa3a3a2395f92acff423f90a81477977b2"
+            },
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 14
+        },
+        {
+          "elapsed_seconds": 0.07842633399559418,
+          "event": "independent_probe",
+          "expected": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "acquired"
+          },
+          "observed": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "acquired"
+          },
+          "pid": 25038,
+          "sequence": 15
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 0.07846388100006152,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 16
+        },
+        {
+          "elapsed_seconds": 0.0790919219944044,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "exiting",
+            "held": [],
+            "held_identities": {},
+            "history": [
+              "A_shared_acquired",
+              "S_shared_busy",
+              "S_shared_acquired",
+              "S_released",
+              "A_released"
+            ],
+            "identity": {
+              "pid": 25040,
+              "ppid": 25038,
+              "start_ticks": 4654203,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 17
+        },
+        {
+          "elapsed_seconds": 0.08656086599512491,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 25040,
+          "role": "startup",
+          "sequence": 18
+        },
+        {
+          "actors_exited": true,
+          "elapsed_seconds": 0.08825171499483986,
+          "event": "teardown_only_removal",
+          "not_recovery": true,
+          "sequence": 19
+        }
+      ]
+    },
+    {
+      "cleanup": {
+        "actors": [
+          {
+            "exitcode": 0,
+            "expected_exitcode": 0,
+            "pid": 25042,
+            "role": "startup"
+          },
+          {
+            "exitcode": 0,
+            "expected_exitcode": 0,
+            "pid": 25043,
+            "role": "legacy"
+          }
+        ],
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true
+      },
+      "failures": [],
+      "intent_after_schedule": {
+        "present": false,
+        "reason": "absent"
+      },
+      "intent_before_teardown": {
+        "present": false,
+        "reason": "absent"
+      },
+      "locks_after": {
+        "A": {
+          "device": 33,
+          "inode": 3601,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3600,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3602,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "locks_before": {
+        "A": {
+          "device": 33,
+          "inode": 3601,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3600,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3602,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "name": "startup_wins",
+      "result": "Pass",
+      "root": "/tmp/PROTOTYPE-W2d-startup_wins-lsfbtnpc",
+      "root_identity": {
+        "device": 33,
+        "inode": 3599,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0007089229984558187,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 25042,
+            "ppid": 25038,
+            "start_ticks": 4654212,
+            "uid": 1000
+          },
+          "role": "startup",
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.0343804000003729,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "history": [],
+            "identity": {
+              "pid": 25042,
+              "ppid": 25038,
+              "start_ticks": 4654212,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.03884202399785863,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 25043,
+            "ppid": 25038,
+            "start_ticks": 4654215,
+            "uid": 1000
+          },
+          "role": "legacy",
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.07470716999523574,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "history": [],
+            "identity": {
+              "pid": 25043,
+              "ppid": 25038,
+              "start_ticks": 4654215,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 4
+        },
+        {
+          "command": "precheck",
+          "elapsed_seconds": 0.07472664899978554,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.07582287900004303,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "precheck_clear",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "A"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 3601,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired"
+            ],
+            "identity": {
+              "pid": 25042,
+              "ppid": 25038,
+              "start_ticks": 4654212,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 6
+        },
+        {
+          "command": "postcheck",
+          "elapsed_seconds": 0.07593770200037397,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 7
+        },
+        {
+          "elapsed_seconds": 0.07706269499612972,
+          "event": "barrier_reply",
+          "reply": {
+            "decision": "NormalSession",
+            "entered_normal": true,
+            "event": "decision",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 3602,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired",
+              "S_shared_acquired",
+              "A_released"
+            ],
+            "identity": {
+              "pid": 25042,
+              "ppid": 25038,
+              "start_ticks": 4654212,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "second": {
+              "present": false,
+              "reason": "absent"
+            },
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 8
+        },
+        {
+          "command": "attempt",
+          "elapsed_seconds": 0.07713703799527138,
+          "event": "barrier_request",
+          "role": "legacy",
+          "sequence": 9
+        },
+        {
+          "elapsed_seconds": 0.07824842999980319,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "deferred",
+            "held": [],
+            "held_identities": {},
+            "history": [
+              "O_exclusive_acquired",
+              "S_exclusive_busy",
+              "O_released"
+            ],
+            "identity": {
+              "pid": 25043,
+              "ppid": 25038,
+              "start_ticks": 4654215,
+              "uid": 1000
+            },
+            "mutation_starts": 0,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "publication": null,
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 10
+        },
+        {
+          "elapsed_seconds": 0.07838415500009432,
+          "event": "independent_probe",
+          "expected": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "pid": 25038,
+          "sequence": 11
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 0.0784196289969259,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 12
+        },
+        {
+          "elapsed_seconds": 0.07909759500034852,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "exiting",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 3602,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired",
+              "S_shared_acquired",
+              "A_released"
+            ],
+            "identity": {
+              "pid": 25042,
+              "ppid": 25038,
+              "start_ticks": 4654212,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "guarded"
+          },
+          "role": "startup",
+          "sequence": 13
+        },
+        {
+          "elapsed_seconds": 0.08647427999676438,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 25042,
+          "role": "startup",
+          "sequence": 14
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 0.0864804889934021,
+          "event": "barrier_request",
+          "role": "legacy",
+          "sequence": 15
+        },
+        {
+          "elapsed_seconds": 0.08720582699606894,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "exiting",
+            "held": [],
+            "held_identities": {},
+            "history": [
+              "O_exclusive_acquired",
+              "S_exclusive_busy",
+              "O_released"
+            ],
+            "identity": {
+              "pid": 25043,
+              "ppid": 25038,
+              "start_ticks": 4654215,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 16
+        },
+        {
+          "elapsed_seconds": 0.09459354399587028,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 25043,
+          "role": "legacy",
+          "sequence": 17
+        },
+        {
+          "actors_exited": true,
+          "elapsed_seconds": 0.09604522099834867,
+          "event": "teardown_only_removal",
+          "not_recovery": true,
+          "sequence": 18
+        }
+      ]
+    },
+    {
+      "cleanup": {
+        "actors": [
+          {
+            "exitcode": 0,
+            "expected_exitcode": 0,
+            "pid": 25045,
+            "role": "startup"
+          },
+          {
+            "exitcode": -15,
+            "expected_exitcode": -15,
+            "pid": 25046,
+            "role": "legacy"
+          }
+        ],
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true
+      },
+      "failures": [],
+      "intent_after_schedule": {
+        "body": {
+          "fixture": "W2c-only",
+          "schema": 1,
+          "state": "unresolved",
+          "transaction": "PROTOTYPE-W2d-negative_omitted_check-gloo6por"
+        },
+        "identity": {
+          "device": 33,
+          "inode": 3607,
+          "mode": "0o600",
+          "regular": true,
+          "size": 124,
+          "uid": 1000
+        },
+        "present": true,
+        "reason": "unresolved_fixture",
+        "sha256": "45d6178cd7680b8bdcbd47466a676e11e43ca9d8415b71c8672890be3328962e"
+      },
+      "intent_before_teardown": {
+        "body": {
+          "fixture": "W2c-only",
+          "schema": 1,
+          "state": "unresolved",
+          "transaction": "PROTOTYPE-W2d-negative_omitted_check-gloo6por"
+        },
+        "identity": {
+          "device": 33,
+          "inode": 3607,
+          "mode": "0o600",
+          "regular": true,
+          "size": 124,
+          "uid": 1000
+        },
+        "present": true,
+        "reason": "unresolved_fixture",
+        "sha256": "45d6178cd7680b8bdcbd47466a676e11e43ca9d8415b71c8672890be3328962e"
+      },
+      "locks_after": {
+        "A": {
+          "device": 33,
+          "inode": 3605,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3604,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3606,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "locks_before": {
+        "A": {
+          "device": 33,
+          "inode": 3605,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3604,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3606,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "name": "negative_omitted_check",
+      "oracle": {
+        "actual_intent": {
+          "body": {
+            "fixture": "W2c-only",
+            "schema": 1,
+            "state": "unresolved",
+            "transaction": "PROTOTYPE-W2d-negative_omitted_check-gloo6por"
+          },
+          "identity": {
+            "device": 33,
+            "inode": 3607,
+            "mode": "0o600",
+            "regular": true,
+            "size": 124,
+            "uid": 1000
+          },
+          "present": true,
+          "reason": "unresolved_fixture",
+          "sha256": "45d6178cd7680b8bdcbd47466a676e11e43ca9d8415b71c8672890be3328962e"
+        },
+        "finding": "normal_admission_with_unresolved_intent",
+        "violation": true
+      },
+      "result": "Detected",
+      "root": "/tmp/PROTOTYPE-W2d-negative_omitted_check-gloo6por",
+      "root_identity": {
+        "device": 33,
+        "inode": 3603,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0005128359989612363,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 25045,
+            "ppid": 25038,
+            "start_ticks": 4654222,
+            "uid": 1000
+          },
+          "role": "startup",
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.03389216100185877,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "history": [],
+            "identity": {
+              "pid": 25045,
+              "ppid": 25038,
+              "start_ticks": 4654222,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "omit_second_check"
+          },
+          "role": "startup",
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.03438654899946414,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 25046,
+            "ppid": 25038,
+            "start_ticks": 4654225,
+            "uid": 1000
+          },
+          "role": "legacy",
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.06739863300026627,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "ready",
+            "held": [],
+            "held_identities": {},
+            "history": [],
+            "identity": {
+              "pid": 25046,
+              "ppid": 25038,
+              "start_ticks": 4654225,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 4
+        },
+        {
+          "command": "precheck",
+          "elapsed_seconds": 0.06741852300183382,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.06867842000065139,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "precheck_clear",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "A"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 3605,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired"
+            ],
+            "identity": {
+              "pid": 25045,
+              "ppid": 25038,
+              "start_ticks": 4654222,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "omit_second_check"
+          },
+          "role": "startup",
+          "sequence": 6
+        },
+        {
+          "command": "attempt",
+          "elapsed_seconds": 0.06879679900157498,
+          "event": "barrier_request",
+          "role": "legacy",
+          "sequence": 7
+        },
+        {
+          "elapsed_seconds": 0.07072921399958432,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "published",
+            "held": [
+              "O",
+              "S"
+            ],
+            "held_identities": {
+              "O": {
+                "device": 33,
+                "inode": 3604,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              },
+              "S": {
+                "device": 33,
+                "inode": 3606,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "O_exclusive_acquired",
+              "S_exclusive_acquired"
+            ],
+            "identity": {
+              "pid": 25046,
+              "ppid": 25038,
+              "start_ticks": 4654225,
+              "uid": 1000
+            },
+            "mutation_starts": 0,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "publication": {
+              "observed": {
+                "body": {
+                  "fixture": "W2c-only",
+                  "schema": 1,
+                  "state": "unresolved",
+                  "transaction": "PROTOTYPE-W2d-negative_omitted_check-gloo6por"
+                },
+                "identity": {
+                  "device": 33,
+                  "inode": 3607,
+                  "mode": "0o600",
+                  "regular": true,
+                  "size": 124,
+                  "uid": 1000
+                },
+                "present": true,
+                "reason": "unresolved_fixture",
+                "sha256": "45d6178cd7680b8bdcbd47466a676e11e43ca9d8415b71c8672890be3328962e"
+              },
+              "operations": [
+                "exclusive_create_temporary_0600",
+                "write_complete",
+                "fsync_temporary_file",
+                "link_into_intent_name_without_replacement",
+                "remove_temporary_name",
+                "fsync_parent_directory"
+              ]
+            },
+            "role": "legacy",
+            "variant": "guarded"
+          },
+          "role": "legacy",
+          "sequence": 8
+        },
+        {
+          "elapsed_seconds": 0.07089148000522982,
+          "event": "independent_probe",
+          "expected": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "busy",
+            "O": "busy",
+            "S": "busy"
+          },
+          "pid": 25038,
+          "sequence": 9
+        },
+        {
+          "command": "postcheck",
+          "elapsed_seconds": 0.07092987799842376,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 10
+        },
+        {
+          "elapsed_seconds": 0.0723631920045591,
+          "event": "barrier_reply",
+          "reply": {
+            "entered_normal": false,
+            "event": "session_busy",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "A"
+            ],
+            "held_identities": {
+              "A": {
+                "device": 33,
+                "inode": 3605,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired",
+              "S_shared_busy"
+            ],
+            "identity": {
+              "pid": 25045,
+              "ppid": 25038,
+              "start_ticks": 4654222,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "omit_second_check"
+          },
+          "role": "startup",
+          "sequence": 11
+        },
+        {
+          "elapsed_seconds": 0.07376839900098275,
+          "event": "publisher_reaped",
+          "exitcode": -15,
+          "pid": 25046,
+          "sequence": 12
+        },
+        {
+          "command": "postcheck",
+          "elapsed_seconds": 0.07385022300150013,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 13
+        },
+        {
+          "elapsed_seconds": 0.0748160450020805,
+          "event": "barrier_reply",
+          "reply": {
+            "decision": "NormalSession",
+            "entered_normal": true,
+            "event": "decision",
+            "first": {
+              "present": false,
+              "reason": "absent"
+            },
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 3606,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired",
+              "S_shared_busy",
+              "S_shared_acquired",
+              "A_released"
+            ],
+            "identity": {
+              "pid": 25045,
+              "ppid": 25038,
+              "start_ticks": 4654222,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "second": {
+              "skipped": true
+            },
+            "variant": "omit_second_check"
+          },
+          "role": "startup",
+          "sequence": 14
+        },
+        {
+          "elapsed_seconds": 0.07496178500150563,
+          "event": "independent_probe",
+          "expected": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "observed": {
+            "A": "acquired",
+            "O": "acquired",
+            "S": "busy"
+          },
+          "pid": 25038,
+          "sequence": 15
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 0.07499806999840075,
+          "event": "barrier_request",
+          "role": "startup",
+          "sequence": 16
+        },
+        {
+          "elapsed_seconds": 0.07590893900487572,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "exiting",
+            "held": [
+              "S"
+            ],
+            "held_identities": {
+              "S": {
+                "device": 33,
+                "inode": 3606,
+                "mode": "0o600",
+                "regular": true,
+                "size": 0,
+                "uid": 1000
+              }
+            },
+            "history": [
+              "A_shared_acquired",
+              "S_shared_busy",
+              "S_shared_acquired",
+              "A_released"
+            ],
+            "identity": {
+              "pid": 25045,
+              "ppid": 25038,
+              "start_ticks": 4654222,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "role": "startup",
+            "variant": "omit_second_check"
+          },
+          "role": "startup",
+          "sequence": 17
+        },
+        {
+          "elapsed_seconds": 0.08328054600133328,
+          "event": "actor_reaped",
+          "exitcode": 0,
+          "pid": 25045,
+          "role": "startup",
+          "sequence": 18
+        },
+        {
+          "actors_exited": true,
+          "elapsed_seconds": 0.08741846799966879,
+          "event": "teardown_only_removal",
+          "not_recovery": true,
+          "sequence": 19
+        }
+      ]
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44",
+    "os_release": "Debian GNU/Linux 13 (trixie)",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux test-surrogate schedules",
+  "experiment": "W2d post-session intent race",
+  "failures": [],
+  "limits": [
+    "Two directed guarded schedules and one deliberate unsafe mutant; not exhaustive race proof.",
+    "Same-UID cooperating surrogates, trusted IPC and reused W2c-only test fixture; no production compatibility/authentication.",
+    "No installer, mutation child, durability/power-loss, privileged recovery or desktop validation. B01-B06 remain open."
+  ],
+  "outcome_summary": {
+    "guarded_passes": 2,
+    "negative_control_detected": true
+  },
+  "result": "Pass",
+  "source_hashes": {
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2",
+    "manual-update-w2c/run_experiment.py": "b2f92e67c77011ce6d0b7bccffdeaf7e0b9449cae4f335df6782a1ac961d095d",
+    "manual-update-w2d/run_experiment.py": "e8ab4517779461c2ed9f3020cc9e3c34a891dde542c03bc752e3f7dee6559c3c",
+    "manual-update-w2d/test_checks.py": "2ec8321787f4295b208c582b9d161c41fe264ebdaee35e9c11c1ee5489597514"
+  },
+  "started_at_utc": "2026-10-17T05:27:59.255505+00:00"
+}

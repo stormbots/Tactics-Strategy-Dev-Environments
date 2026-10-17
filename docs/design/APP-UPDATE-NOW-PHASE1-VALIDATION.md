@@ -1,6 +1,6 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** W1 executed locally (L1); the separately authorized W2a/W2b/W2c unprivileged
+**Status:** W1 executed locally (L1); the separately authorized W2a–W2d unprivileged
 Linux lock subsets were executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.
 See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
@@ -452,3 +452,16 @@ exits and teardown are recorded. This is only a Linux test-surrogate subset of
 E18/B05/B06, not production startup/recovery or power-loss durability. All six
 blockers and all other W2/W3, elevation, registration, production implementation,
 package operations and workflow/build/release deferrals remain unchanged.
+
+
+## Separately authorized W2d execution
+
+The [W2d record](../../tests/prototypes/manual-update-w2d/README.md) records both
+legacy-worker-wins and startup-wins orderings around the two startup intent
+checks. Both guarded Linux schedules pass; the deliberately omitted-second-check
+control is detected, with independent actual-intent and kernel-lock observations.
+Six focused checks pass. A development launcher failure is preserved. This is
+only a directed E20/B06 surrogate subset; no exhaustive race, real legacy package,
+production startup or durability claim is made. All six blockers and all other
+W2/W3, elevation, registration, production implementation, package operations and
+workflow/build/release deferrals remain unchanged.

@@ -1,0 +1,152 @@
+{
+  "cases": [
+    {
+      "cleanup": {
+        "actors": [
+          {
+            "exitcode": 1,
+            "expected_exitcode": 0,
+            "pid": 24903,
+            "role": "startup"
+          }
+        ],
+        "errors": [
+          "startup: RuntimeError: unexpected actor exit"
+        ],
+        "remaining_direct_children": [],
+        "root_removed": true
+      },
+      "failures": [
+        "RuntimeError: barrier EOF"
+      ],
+      "intent_before_teardown": {
+        "present": false,
+        "reason": "absent"
+      },
+      "locks_after": {
+        "A": {
+          "device": 33,
+          "inode": 3479,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3478,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3480,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "locks_before": {
+        "A": {
+          "device": 33,
+          "inode": 3479,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "O": {
+          "device": 33,
+          "inode": 3478,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        },
+        "S": {
+          "device": 33,
+          "inode": 3480,
+          "mode": "0o600",
+          "regular": true,
+          "size": 0,
+          "uid": 1000
+        }
+      },
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "name": "legacy_wins",
+      "result": "Fail",
+      "root": "/tmp/PROTOTYPE-W2d-legacy_wins-mm_fs2bv",
+      "root_identity": {
+        "device": 33,
+        "inode": 3477,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0007075210014590994,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 24903,
+            "ppid": 24902,
+            "start_ticks": 4648872,
+            "uid": 1000
+          },
+          "role": "startup",
+          "sequence": 1
+        },
+        {
+          "actors_exited": true,
+          "elapsed_seconds": 0.04060569000284886,
+          "event": "teardown_only_removal",
+          "not_recovery": true,
+          "sequence": 2
+        }
+      ]
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44",
+    "os_release": "Debian GNU/Linux 13 (trixie)",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux test-surrogate schedules",
+  "experiment": "W2d post-session intent race",
+  "failures": [],
+  "limits": [
+    "Two directed guarded schedules and one deliberate unsafe mutant; not exhaustive race proof.",
+    "Same-UID cooperating surrogates, trusted IPC and reused W2c-only test fixture; no production compatibility/authentication.",
+    "No installer, mutation child, durability/power-loss, privileged recovery or desktop validation. B01-B06 remain open."
+  ],
+  "result": "Fail",
+  "source_hashes": {
+    "manual-update-w2b/run_experiment.py": "74246f006d6831f97d869cf2d24f35669785f227ee35d8efa37e9afb6772e1d2",
+    "manual-update-w2c/run_experiment.py": "b2f92e67c77011ce6d0b7bccffdeaf7e0b9449cae4f335df6782a1ac961d095d",
+    "manual-update-w2d/run_experiment.py": "f45308ce6b5c55b98354e5008bdf0213ca02ddd0eb11e0643c78684e3d61df9d"
+  },
+  "started_at_utc": "2026-10-17T05:27:05.938572+00:00"
+}
