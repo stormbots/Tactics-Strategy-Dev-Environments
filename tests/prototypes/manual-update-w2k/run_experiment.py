@@ -245,6 +245,10 @@ class Actor(i.Actor):
 def verify_evaluation(case, evaluation, sender):
     """Pure evidence checks; expected result cannot control receiver authority."""
     require(case in CASES, 'unknown W2k case')
+    for field in ('received_flags','recvmsg_flags_argument','payload_capacity','ancillary_capacity',
+                  'received_bytes','expected_record_bytes','declared_json_bytes'):
+        i.check_count(evaluation[field], 'invalid integer receive evidence: '+field)
+    i.check_count(sender['record_bytes'], 'invalid integer sender record size')
     i.check_count(evaluation['authorized_actions'], 'invalid action count')
     i.check_count(evaluation['requests_received'], 'invalid request count')
     require(evaluation['requests_received'] == 1, 'wrong request count')
@@ -279,6 +283,9 @@ def verify_evaluation(case, evaluation, sender):
     actual_ancillary = [(c['level'], c['type'], c['bytes']) for c in evaluation['ancillary']]
     require(sorted(actual_ancillary) == sorted(expected_ancillary), 'wrong ancillary type/count/size')
     d = evaluation['decision']
+    for field in ('flags','record_bytes'):
+        i.check_count(d[field], 'invalid integer validator evidence: '+field)
+    require(d['flags'] == evaluation['received_flags'] and d['record_bytes'] == evaluation['received_bytes'], 'validator did not observe the same flags/length')
     i.check_count(d['delivered_fds_closed'], 'invalid closed-FD count')
     if case == 'K1':
         require(evaluation['authorized_actions'] == 1 and d['accepted'] is True, 'failed healthy control')
@@ -325,6 +332,11 @@ def verify_case_evidence(report):
     for decision, peer in [(ev('client-credentials-and-server-reply')['verification'],client), (ev('server-reply-verified'),server)]:
         require(decision['accepted'] is True and decision['pidfd_live'] is True, 'hello authentication evidence')
         require(decision['credentials'] == [[peer['pid'],peer['uids'][0],peer['gids'][0]]], 'hello sender evidence')
+    baseline = ev('receiver-before-send')
+    require(baseline['identity'] == server, 'receiver baseline identity')
+    for field in ('authorized_actions','requests_received'):
+        i.check_count(baseline[field], 'invalid receiver baseline count')
+        require(baseline[field] == 0, 'receiver not fresh before action')
     before, after = ev('sender-before'), ev('sender-after')
     sent = ev('action-send-permitted')
     require(before['identity'] == after['identity'] == sent['identity'] == client, 'sender instance evidence')
@@ -347,6 +359,13 @@ def verify_case_evidence(report):
         reply = ev('healthy-action-reply-verified')
         require(reply['accepted'] is True and reply['credentials'] == [[server['pid'],server['uids'][0],server['gids'][0]]], 'action reply evidence')
     evaluation = ev('kernel-receive-validation-and-immediate-close')
+    i.check_count(report['action_count'], 'invalid case action count')
+    accepted = ev('accepted-passcred-verified')['descriptor']
+    observed = evaluation['descriptor']
+    require(i.same_endpoint(accepted,observed) and accepted['fd'] == observed['fd'], 'receiver endpoint evidence changed')
+    for inventory in (evaluation['before'],evaluation['after']):
+        matches = [fd for fd in inventory if fd['fd'] == accepted['fd']]
+        require(len(matches) == 1 and matches[0]['dev'] == accepted['device'] and matches[0]['ino'] == accepted['inode'], 'accepted endpoint absent/replaced in inventory')
     require(report['action_count'] == evaluation['authorized_actions'], 'case/evaluation count mismatch')
     require(verify_evaluation(report['case'],evaluation,sent) == 'Expected', 'unexpected authorization')
     order = ['server-ready-before-connect','client-ready-before-connect','trusted-client-enrollment','trusted-server-enrollment',
@@ -354,7 +373,7 @@ def verify_case_evidence(report):
     if report['case'] == 'K2': order.append('owned-pipe-created')
     order += ['receiver-before-send','sender-before','action-send-permitted','kernel-receive-validation-and-immediate-close']
     if report['case'] == 'K1': order.append('healthy-action-reply-verified')
-    order += ['sender-after']
+    order += ['sender-after','runner-instance-after-'+str(server['pid']),'runner-instance-after-'+str(client['pid'])]
     indices = [names.index(name) for name in order]
     require(indices == sorted(indices), 'barrier ordering evidence')
     return True
@@ -455,7 +474,7 @@ def main(output):
     fd_before, sub_before = None, None
     try:
         i.unprivileged(report['environment']['runner'])
-        for name in ('SCM_RIGHTS','SCM_CREDENTIALS','SO_PASSCRED','SOCK_SEQPACKET','MSG_CMSG_CLOEXEC'):
+        for name in ('SCM_RIGHTS','SCM_CREDENTIALS','SO_PASSCRED','SOCK_SEQPACKET','MSG_CMSG_CLOEXEC','MSG_TRUNC','MSG_CTRUNC'):
             require(hasattr(socket,name),'Blocked: missing '+name)
         require(hasattr(os,'pidfd_open') and hasattr(signal,'pidfd_send_signal'),'Blocked: missing pidfd primitives')
         fd_before = fd_inventory(); sub_before = i.subreaper()

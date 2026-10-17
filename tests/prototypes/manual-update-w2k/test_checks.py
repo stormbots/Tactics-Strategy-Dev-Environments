@@ -22,13 +22,13 @@ def fixture(case='K2'):
     complete=w.i.frame('action',case,original['pid']);record_size=len(complete)
     full_hash=hashlib.sha256(complete).hexdigest();prefix_hash=hashlib.sha256(complete[:8]).hexdigest()
     sender=dict(identity=original,attached_fds=[9] if case=='K2' else [],sent_pipe=pipe,payload_sha256=full_hash,payload_prefix_sha256=prefix_hash,record_bytes=record_size)
-    evaluation=dict(authorized_actions=0 if case=='K2' else 1,requests_received=1,observation_errors=[],received_flags=socket.MSG_TRUNC if case=='K2' else 0,
+    evaluation=dict(authorized_actions=0 if case=='K2' else 1,requests_received=1,observation_errors=[],received_flags=int(socket.MSG_TRUNC) if case=='K2' else 0,
                     payload_capacity=8 if case=='K2' else w.i.MAX_RECORD,received_bytes=8 if case=='K2' else record_size,
                     ancillary_capacity=w.i.ANCILLARY,expected_record_bytes=record_size,declared_json_bytes=record_size-4,prefix_matches=True,
-                    recvmsg_flags_argument=socket.MSG_CMSG_CLOEXEC,raw_credentials=[[100,1000,1000]],pidfd_live=True,
+                    recvmsg_flags_argument=int(socket.MSG_CMSG_CLOEXEC),raw_credentials=[[100,1000,1000]],pidfd_live=True,
                     fixture_payload_matches=case=='K1',payload_sha256=prefix_hash if case=='K2' else full_hash,before=[dict(fd=0,dev=1)],after=[dict(fd=0,dev=1)],
                     ancillary=[dict(level=socket.SOL_SOCKET,type=socket.SCM_CREDENTIALS,bytes=12)]+([dict(level=socket.SOL_SOCKET,type=socket.SCM_RIGHTS,bytes=4)] if case=='K2' else []),
-                    decision=dict(accepted=case=='K1',reason='truncated record/control' if case=='K2' else None,delivered_fds_closed=1 if case=='K2' else 0),
+                    decision=dict(flags=int(socket.MSG_TRUNC) if case=='K2' else 0,record_bytes=8 if case=='K2' else record_size,accepted=case=='K1',reason='truncated record/control' if case=='K2' else None,delivered_fds_closed=1 if case=='K2' else 0),
                     installed=[installed] if case=='K2' else [],immediately_closed=[dict(fd=10,fstat_errno=errno.EBADF,getfd_errno=errno.EBADF)] if case=='K2' else [])
     return evaluation,sender
 
@@ -234,6 +234,50 @@ class EvidenceIntegrityChecks(unittest.TestCase):
     def test_duplicate_inventory_fd_rejected(self):
         e,s=fixture();e['before']*=2;e['after']=copy.deepcopy(e['before'])
         with self.assertRaisesRegex(RuntimeError,'duplicate inventory'):w.verify_evaluation('K2',e,s)
+
+
+class W2kReviewChecks(unittest.TestCase):
+    """Corrupted local evidence only; no new native fault/ancillary schedules."""
+    def case(self):
+        root=Path(__file__).with_name('evidence');p=root/'reviewed-linux-run.json'
+        return copy.deepcopy(json.loads((p if p.exists() else root/'linux-run.json').read_text())['cases'][1])
+
+    def test_float_receive_sizes_and_flags_rejected(self):
+        for field in ('payload_capacity','ancillary_capacity','received_bytes','expected_record_bytes','declared_json_bytes','recvmsg_flags_argument'):
+            e,s=fixture();e[field]=float(e[field])
+            with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+        e,s=fixture();s['record_bytes']=float(s['record_bytes'])
+        with self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+
+    def test_validator_must_see_actual_flags_and_length(self):
+        for field,value in [('flags',0),('record_bytes',53)]:
+            e,s=fixture();e['decision'][field]=value
+            with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+
+    def test_post_liveness_observation_cannot_precede_evaluation(self):
+        c=self.case()
+        after=next(n for n,t in enumerate(c['trace']) if t['barrier'].startswith('runner-instance-after-'))
+        before=next(n for n,t in enumerate(c['trace']) if t['barrier']=='receiver-before-send')
+        times=sorted(t['at'] for t in c['trace'])
+        record=c['trace'].pop(after)
+        c['trace'].insert(before,record)
+        for n,t in enumerate(c['trace']):t.update(index=n,at=times[n])
+        with self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_receiver_counter_baseline_must_be_zero(self):
+        for field in ('authorized_actions','requests_received'):
+            c=self.case();record=next(t['evidence'] for t in c['trace'] if t['barrier']=='receiver-before-send');record[field]=1
+            with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+
+    def test_receiver_endpoint_must_match_accepted_socket_and_inventory(self):
+        for corruption in ('descriptor','inventory'):
+            c=self.case();e=next(t['evidence'] for t in c['trace'] if t['barrier']=='kernel-receive-validation-and-immediate-close')
+            if corruption=='descriptor':e['descriptor']['inode']+=1
+            else:
+                target=e['descriptor']['fd']
+                for inventory in (e['before'],e['after']):
+                    next(fd for fd in inventory if fd['fd']==target)['ino']+=1
+            with self.subTest(corruption=corruption),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

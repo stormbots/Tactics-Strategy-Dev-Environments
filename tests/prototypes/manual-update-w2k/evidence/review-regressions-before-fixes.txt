@@ -1,0 +1,149 @@
+test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) ...
+  test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='payload_capacity') ... FAIL
+  test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='ancillary_capacity') ... FAIL
+  test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='received_bytes') ... FAIL
+  test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='expected_record_bytes') ... FAIL
+  test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='declared_json_bytes') ... FAIL
+  test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='recvmsg_flags_argument') ... FAIL
+test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) ... FAIL
+test_post_liveness_observation_cannot_precede_evaluation (checks.W2kReviewChecks.test_post_liveness_observation_cannot_precede_evaluation) ... FAIL
+test_receiver_counter_baseline_must_be_zero (checks.W2kReviewChecks.test_receiver_counter_baseline_must_be_zero) ...
+  test_receiver_counter_baseline_must_be_zero (checks.W2kReviewChecks.test_receiver_counter_baseline_must_be_zero) (field='authorized_actions') ... FAIL
+  test_receiver_counter_baseline_must_be_zero (checks.W2kReviewChecks.test_receiver_counter_baseline_must_be_zero) (field='requests_received') ... FAIL
+test_receiver_endpoint_must_match_accepted_socket_and_inventory (checks.W2kReviewChecks.test_receiver_endpoint_must_match_accepted_socket_and_inventory) ...
+  test_receiver_endpoint_must_match_accepted_socket_and_inventory (checks.W2kReviewChecks.test_receiver_endpoint_must_match_accepted_socket_and_inventory) (corruption='descriptor') ... FAIL
+  test_receiver_endpoint_must_match_accepted_socket_and_inventory (checks.W2kReviewChecks.test_receiver_endpoint_must_match_accepted_socket_and_inventory) (corruption='inventory') ... FAIL
+test_validator_must_see_actual_flags_and_length (checks.W2kReviewChecks.test_validator_must_see_actual_flags_and_length) ...
+  test_validator_must_see_actual_flags_and_length (checks.W2kReviewChecks.test_validator_must_see_actual_flags_and_length) (field='flags') ... FAIL
+  test_validator_must_see_actual_flags_and_length (checks.W2kReviewChecks.test_validator_must_see_actual_flags_and_length) (field='record_bytes') ... FAIL
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='payload_capacity')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 248, in test_float_receive_sizes_and_flags_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='ancillary_capacity')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 248, in test_float_receive_sizes_and_flags_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='received_bytes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 248, in test_float_receive_sizes_and_flags_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='expected_record_bytes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 248, in test_float_receive_sizes_and_flags_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='declared_json_bytes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 248, in test_float_receive_sizes_and_flags_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected) (field='recvmsg_flags_argument')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 248, in test_float_receive_sizes_and_flags_rejected
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_float_receive_sizes_and_flags_rejected (checks.W2kReviewChecks.test_float_receive_sizes_and_flags_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 250, in test_float_receive_sizes_and_flags_rejected
+    with self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_post_liveness_observation_cannot_precede_evaluation (checks.W2kReviewChecks.test_post_liveness_observation_cannot_precede_evaluation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 265, in test_post_liveness_observation_cannot_precede_evaluation
+    with self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_receiver_counter_baseline_must_be_zero (checks.W2kReviewChecks.test_receiver_counter_baseline_must_be_zero) (field='authorized_actions')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 270, in test_receiver_counter_baseline_must_be_zero
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_receiver_counter_baseline_must_be_zero (checks.W2kReviewChecks.test_receiver_counter_baseline_must_be_zero) (field='requests_received')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 270, in test_receiver_counter_baseline_must_be_zero
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_receiver_endpoint_must_match_accepted_socket_and_inventory (checks.W2kReviewChecks.test_receiver_endpoint_must_match_accepted_socket_and_inventory) (corruption='descriptor')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 280, in test_receiver_endpoint_must_match_accepted_socket_and_inventory
+    with self.subTest(corruption=corruption),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_receiver_endpoint_must_match_accepted_socket_and_inventory (checks.W2kReviewChecks.test_receiver_endpoint_must_match_accepted_socket_and_inventory) (corruption='inventory')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 280, in test_receiver_endpoint_must_match_accepted_socket_and_inventory
+    with self.subTest(corruption=corruption),self.assertRaises(RuntimeError):w.verify_case_evidence(c)
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_validator_must_see_actual_flags_and_length (checks.W2kReviewChecks.test_validator_must_see_actual_flags_and_length) (field='flags')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 255, in test_validator_must_see_actual_flags_and_length
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_validator_must_see_actual_flags_and_length (checks.W2kReviewChecks.test_validator_must_see_actual_flags_and_length) (field='record_bytes')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2k/test_checks.py", line 255, in test_validator_must_see_actual_flags_and_length
+    with self.subTest(field=field),self.assertRaises(RuntimeError):w.verify_evaluation('K2',e,s)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.007s
+
+FAILED (failures=14)

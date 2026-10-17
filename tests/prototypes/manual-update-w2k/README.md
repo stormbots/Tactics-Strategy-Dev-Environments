@@ -17,7 +17,7 @@ payload receive limit and corresponding evidence assertions added. It imports
 only definitions from unchanged reviewed W2i `1fc228e`; previous experiment
 entrypoints and schedules never run. The W2i validator, credential and liveness
 guards, framing limit and cleanup are unchanged. W2j files are unchanged.
-Source and helper hashes are pinned in [the native report](evidence/linux-run.json).
+Source and helper hashes are pinned in [the reviewed native report](evidence/reviewed-linux-run.json).
 
 Two independent direct child actors use private control pipes for trusted
 out-of-band process enrollment and named barriers. Both retain pidfds and
@@ -52,17 +52,17 @@ reassembled or promoted to a new command.
 
 ## Final native observations
 
-[Native report](evidence/linux-run.json): **K1 Pass / K2 Pass**, 38 ordered barrier
+[Reviewed native report](evidence/reviewed-linux-run.json): **K1 Pass / K2 Pass**, 38 ordered barrier
 events, no unexpected native or cleanup failures.
 
 | Case | Sent / received | Actual flags and decision | Actions |
 | --- | --- | --- | --- |
-| K1 healthy, no attachment | 53 / 53 bytes; credentials `[40260,1000,1000]` | Flags 1073741824; complete record accepted, fixed reply credential-verified | 1 |
-| K2 one attached pipe FD | 53 / 8 bytes; credentials `[40262,1000,1000]`; declared JSON length 49 | Flags 1073741856: MSG_TRUNC present, MSG_CTRUNC absent; truncation-specific rejection | 0 |
+| K1 healthy, no attachment | 53 / 53 bytes; credentials `[40892,1000,1000]` | Flags 1073741824; complete record accepted, fixed reply credential-verified | 1 |
+| K2 one attached pipe FD | 53 / 8 bytes; credentials `[40894,1000,1000]`; declared JSON length 49 | Flags 1073741856: MSG_TRUNC present, MSG_CTRUNC absent; truncation-specific rejection | 0 |
 
 Both K2 ancillary items arrive completely: one 12-byte credential item and one
 4-byte single-FD rights item. The sender's original read FD 5 and installed
-receiver FD 6 share device 12, inode 268035, FIFO mode 4480 and read-only flags 0.
+receiver FD 6 share device 12, inode 272588, FIFO mode 4480 and read-only flags 0.
 Receiver F_GETFD is 1 (CLOEXEC) before validation. The validator closes exactly
 one delivered FD; immediate fstat and F_GETFD both return errno 9 / EBADF.
 Receiver inventories match at six live descriptors, including identities and
@@ -78,18 +78,19 @@ the controlled sender's pinned source and canonical full-fixture hash establish
 what this experiment submitted. No general statement about arbitrary unseen
 suffixes follows.
 
-[Focused checks](evidence/checks.txt): **28 pass** — 17 synthetic/mocked local
-validation/ordering checks, 7 inventory/evidence-integrity checks and 4 saved
-native-report audits. These are not 28 native schedules or native fault injections.
-Local checks include missing MSG_TRUNC, synthetic MSG_CTRUNC rejection, wrong
-buffer capacities/prefixes, malformed fixture evidence, wrong rejection reason,
-CLOEXEC/closure/inventory evidence, metadata-observation cleanup and closure-probe
-ordering. No native ancillary truncation is exercised by those synthetic flags.
+[Reviewed focused checks](evidence/review-checks.txt): **33 pass** — the original
+28 local validation, integrity and saved-report checks plus 5 review checks with
+multiple corruption subcases. These are not 33 native schedules or native fault
+injections. The suite includes missing MSG_TRUNC, synthetic MSG_CTRUNC rejection,
+wrong capacities/prefixes, malformed fixture evidence, wrong rejection reasons,
+FD closure/inventory evidence, metadata-observation cleanup and closure ordering.
+No native ancillary truncation is exercised by synthetic flag tests.
 
-A final affected native rerun followed tightening of canonical full-sender-fixture
-hash checks; both native runs produced the expected outcomes. The pinned final
-report identifies the final source and is the basis of the observations above.
-No unexpected native failure was hidden or counted as a pass.
+The [original native report](evidence/linux-run.json) and
+[28-check output](evidence/checks.txt) are preserved unchanged as baseline evidence
+at `ac63314`; their source hash identifies that baseline, not the reviewed source.
+The reviewed report independently pins the current source and unchanged W2i helper.
+No unexpected native failure was observed in the affected review rerun.
 
 ## Environment, ownership, cleanup and unchanged settings
 
@@ -137,6 +138,34 @@ security. Full capabilities/replay/consent/Ready/close/install/recovery,
 compatibility migration, Windows and desktop/service behavior remain unresolved.
 A diagnostic completion or finite primitive pass does not establish general
 leak freedom, mutual authentication safety or production readiness.
+
+## Implementation/evidence review
+
+Review baseline: `ac63314`. Changes are confined to W2k and its evidence ledger.
+The production updater, W2i helper and W2j files are unchanged.
+
+| Finding | Correction | Coverage |
+| --- | --- | --- |
+| Float capacities/lengths and a float flag argument could compare equal to integer evidence | Require serialized nonnegative integers for receive sizes, flags, capacities, prefix length, sender size and validator fields | Local corrupted evidence; same two native schedules |
+| Validator flags/byte count were not tied to the raw receive | Require exact raw/validator flag and length agreement | Local corrupted evidence; native K2 still rejects actual MSG_TRUNC |
+| The recorded receiver baseline did not have to show zero prior activity | Require matching server identity and integer zero action/request counts before the send | Local corrupted saved evidence |
+| Final retained-instance observations could be moved before evaluation while preserving the old required barrier order | Require both post-instance barriers after sender-after | Local reordered evidence; original process code already observed them afterward |
+| Receiver metadata could name a different accepted socket or inventory object | Bind receiver descriptor to the accepted endpoint and require its device/inode in both inventories | Local corrupted evidence |
+| MSG_TRUNC/MSG_CTRUNC availability was not an explicit preflight prerequisite | Check both constants before actors start | Code correction; missing-constant native injection not performed |
+
+[Five tests against the baseline](evidence/review-regressions-before-fixes.txt)
+produce **14 failed assertions**. These are synthetic/mocked evidence-validation
+findings, not native authentication counterexamples or released-app defects. The
+synthetic fixtures now use serialized integer flags, matching the control-pipe
+JSON representation; no native flags are normalized or substituted. The reviewed
+suite passes 33 checks. The native rerun remains K1/K2 = 1/0 with actual MSG_TRUNC,
+no MSG_CTRUNC, one installed CLOEXEC FD immediately closed, unchanged inventories,
+38 events, normal reaping and unchanged settings.
+
+No new authentication counterexample appeared. Diagnostic success and the narrow
+primitive pass remain distinct from unproven authentication safety. All B01–B06
+remain open. This review adds no ancillary-truncation/partial-delivery, native
+fault-injection, privileged or production validation.
 
 ## Reproduction within separately authorized W2k scope
 

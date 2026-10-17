@@ -676,3 +676,22 @@ work occurred. Diagnostic success and narrow primitive feasibility do not
 establish authentication safety. W2h's counterexample, W2i/W2j limits and all
 B01–B06 blocker statuses remain unchanged. No publication or PR belongs to this
 execution; remaining work requires separate authorization.
+
+
+#### W2k implementation/evidence review
+
+The W2k-only review of `ac63314` tightened serialized integer evidence, bound
+validator flags/length to raw recvmsg observations, checked a zero receiver
+baseline, tied receiver/accepted socket identities to FD inventories and required
+post-instance observations after evaluation. MSG_TRUNC/MSG_CTRUNC constants are
+explicit prerequisites. The [reviewed W2k record](../../tests/prototypes/manual-update-w2k/README.md#implementationevidence-review)
+preserves baseline artifacts and adds a separate source-pinned native report.
+All 33 focused checks pass; five before-fix local tests record 14 failed
+assertions, not native authentication counterexamples. The same two native
+schedules retain 1/0 actions, 53/8 bytes in K2, actual MSG_TRUNC without
+MSG_CTRUNC, truncation-specific rejection, immediate FD closure, stable
+inventories, 38 events and complete owned cleanup/unchanged settings. No native
+ancillary-truncation or partial-delivery experiment was run. W2h/W2i/W2j limits,
+all six blockers, and all other W2/W3, production, elevation, registration,
+package, build and release deferrals remain unchanged. No publication or PR
+belongs to this review.
