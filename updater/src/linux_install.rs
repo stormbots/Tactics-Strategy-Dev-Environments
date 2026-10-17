@@ -267,93 +267,173 @@ fn install_selected(
 ) -> Result<()> {
     report.phase = crate::observation::Phase::Verification;
     let lease = sde_coordination::installation().map_err(|e| coordination_error(report, e))?;
-    if paused()? {
-        report.outcome = "paused".into();
-        return Ok(());
+    install_in_context(
+        crate::install_core::Context::scheduled(&lease),
+        directory,
+        candidate,
+        report,
+        authenticate,
+    )
+}
+
+/// Internal Phase 1 boundary only: the later authorized/admitted worker supplies
+/// ownership. No CLI, bootstrap, discovery or new lease acquisition is exposed.
+#[allow(dead_code)]
+fn install_app_only(
+    lease: &sde_coordination::Installation,
+    directory: &Path,
+    candidate: &Candidate,
+    report: &mut Report,
+) -> Result<()> {
+    if unsafe { libc::geteuid() } != 0 {
+        return Err("Root maintenance required".into());
     }
-    let before = host::installed_linux_identity()
-        .map_err(|_| "Installed identity unavailable")?
-        .version;
-    if semver::Version::parse(&candidate.version).map_err(|_| "Invalid candidate")?
-        <= semver::Version::parse(&before).map_err(|_| "Invalid installed version")?
-    {
-        report.outcome = "current".into();
-        return Ok(());
-    }
-    report.outcome = "failed".into();
-    let manifest = authenticate_staged(directory, candidate, authenticate)?;
-    deb_identity(directory, &candidate.version)?;
-    if package_busy()? {
-        report.outcome = "deferred".into();
-        report.detail = "Package manager is busy; retry on the next scheduled run".into();
-        return Ok(());
-    }
-    report.phase = crate::observation::Phase::Packagehealth;
-    let audit = command("/usr/bin/dpkg")
-        .arg("--audit")
-        .output()
-        .map_err(|_| "Package health check unavailable")?;
-    if !audit.status.success() || !audit.stdout.is_empty() || !audit.stderr.is_empty() {
-        return Err("Existing package state needs mentor repair before self-installation".into());
-    }
-    let journal = lease.begin_transaction().map_err(|e| e.to_string())?;
-    atomic(
-        &Path::new(ROOT).join("installation.json"),
-        &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":candidate.version,"sha256":manifest.metadata().platforms["linux-amd64"].sha256,"transaction":directory.file_name().and_then(|s|s.to_str()),"startedAt":report.checked_at}),
-        false,
+    report.tool_exit = crate::install_core::tools_for(
+        crate::install_core::Scope::AppOnly,
+        tool_maintenance,
     )?;
-    if paused()? {
-        journal.complete().map_err(|e| e.to_string())?;
-        report.outcome = "paused".into();
-        return Ok(());
+    install_in_context(
+        crate::install_core::Context::app_only(lease),
+        directory,
+        candidate,
+        report,
+        crate::authenticate,
+    )
+}
+
+fn install_in_context(
+    context: crate::install_core::Context<'_>,
+    directory: &Path,
+    candidate: &Candidate,
+    report: &mut Report,
+    authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
+) -> Result<()> {
+    let scope = context.scope();
+    crate::install_core::install(
+        context,
+        &mut LinuxBackend {
+            directory,
+            candidate,
+            report,
+            authenticate: Some(authenticate),
+            scope,
+        },
+    )
+}
+
+struct LinuxBackend<'a, F> {
+    directory: &'a Path,
+    candidate: &'a Candidate,
+    report: &'a mut Report,
+    authenticate: Option<F>,
+    scope: crate::install_core::Scope,
+}
+
+impl<F> crate::install_core::Backend for LinuxBackend<'_, F>
+where
+    F: FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
+{
+    type Verified = AuthenticatedManifest;
+    fn target_version(&self) -> &str {
+        &self.candidate.version
     }
-    report.phase = crate::observation::Phase::Installer;
-    report.outcome = "failed".into();
-    // Wait for actual completion; never kill APT/DPKG, remove locks or force reboot.
-    let status = apt_command(directory)
-        .status()
-        .map_err(|_| "Native completion unknown; mentor review required")?;
-    let code = status
-        .code()
-        .ok_or("Native completion unknown; mentor review required")?;
-    report.native_exit = Some(code);
-    atomic(
-        &Path::new(ROOT).join("installation.json"),
-        &serde_json::json!({"schemaVersion":1,"stage":"postcheck","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code}),
-        false,
-    )?;
-    if code != 0 {
-        return Err(format!(
-            "APT returned {code}; mentor review required before retry"
-        ));
+    fn phase(&mut self, phase: crate::observation::Phase) {
+        self.report.phase = phase;
     }
-    report.phase = crate::observation::Phase::Postcheck;
-    resources(&candidate.version)?;
-    if Path::new(ROOT).join("recovery.json").exists() {
+    fn paused(&mut self) -> Result<bool> {
+        paused()
+    }
+    fn installed_version(&mut self) -> Result<String> {
+        Ok(host::installed_linux_identity().map_err(|_| "Installed identity unavailable")?.version)
+    }
+    fn mark_paused(&mut self) {
+        self.report.outcome = "paused".into();
+    }
+    fn record_paused_intent(&mut self) -> Result<()> {
+        Ok(())
+    }
+    fn mark_current(&mut self) {
+        self.report.outcome = "current".into();
+    }
+    fn mark_failed(&mut self) {
+        self.report.outcome = "failed".into();
+    }
+    fn authenticate(&mut self) -> Result<AuthenticatedManifest> {
+        authenticate_staged(self.directory, self.candidate, self.authenticate.take().ok_or("Authentication already consumed")?)
+    }
+    fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
+        deb_identity(self.directory, &self.candidate.version)?;
+        if package_busy()? {
+            self.report.outcome = "deferred".into();
+            self.report.detail = match self.scope {
+                crate::install_core::Scope::ScheduledMaintenance => {
+                    "Package manager is busy; retry on the next scheduled run"
+                }
+                crate::install_core::Scope::AppOnly => {
+                    "Package manager is busy; start a new authorized update attempt later"
+                }
+            }.into();
+            return Ok(false);
+        }
+        self.report.phase = crate::observation::Phase::Packagehealth;
+        let audit = command("/usr/bin/dpkg").arg("--audit").output()
+            .map_err(|_| "Package health check unavailable")?;
+        if !audit.status.success() || !audit.stdout.is_empty() || !audit.stderr.is_empty() {
+            return Err("Existing package state needs mentor repair before self-installation".into());
+        }
+        Ok(true)
+    }
+    fn record_intent(&mut self, before: &str, manifest: &AuthenticatedManifest) -> Result<()> {
         atomic(
-            &Path::new(ROOT).join("previous-recovery.json"),
-            &read_receipt("recovery.json")?,
+            &Path::new(ROOT).join("installation.json"),
+            &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":self.candidate.version,"sha256":manifest.metadata().platforms["linux-amd64"].sha256,"transaction":self.directory.file_name().and_then(|s|s.to_str()),"startedAt":self.report.checked_at}),
+            false,
+        )
+    }
+    fn launch(&mut self) -> Result<i32> {
+        self.report.outcome = "failed".into();
+        // Wait for actual completion; never kill APT/DPKG, remove locks or force reboot.
+        apt_command(self.directory).status()
+            .map_err(|_| "Native completion unknown; mentor review required")?
+            .code().ok_or_else(|| "Native completion unknown; mentor review required".into())
+    }
+    fn native_finished(&mut self, before: &str, code: i32) -> Result<()> {
+        self.report.native_exit = Some(code);
+        atomic(
+            &Path::new(ROOT).join("installation.json"),
+            &serde_json::json!({"schemaVersion":1,"stage":"postcheck","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}),
             false,
         )?;
+        if code != 0 {
+            return Err(format!("APT returned {code}; mentor review required before retry"));
+        }
+        Ok(())
     }
-    atomic(
-        &Path::new(ROOT).join("recovery.json"),
-        &serde_json::json!({"schemaVersion":1,"version":candidate.version,"transaction":directory.file_name().and_then(|s|s.to_str())}),
-        false,
-    )?;
-    atomic(
-        &Path::new(ROOT).join("installation.json"),
-        &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code}),
-        false,
-    )?;
-    journal.complete().map_err(|e| e.to_string())?;
-    report.application_version = candidate.version.clone();
-    report.outcome = "updated".into();
-    if !report.recovery_available {
-        report.detail = "Previous signed installer unavailable; reduced recovery capability".into();
+    fn postcheck(&mut self) -> Result<()> {
+        resources(&self.candidate.version)
     }
-    Ok(())
+    fn record_success(&mut self, before: &str, code: i32) -> Result<()> {
+        if Path::new(ROOT).join("recovery.json").exists() {
+            atomic(&Path::new(ROOT).join("previous-recovery.json"), &read_receipt("recovery.json")?, false)?;
+        }
+        atomic(
+            &Path::new(ROOT).join("recovery.json"),
+            &serde_json::json!({"schemaVersion":1,"version":self.candidate.version,"transaction":self.directory.file_name().and_then(|s|s.to_str())}), false,
+        )?;
+        atomic(
+            &Path::new(ROOT).join("installation.json"),
+            &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}), false,
+        )
+    }
+    fn mark_updated(&mut self) {
+        self.report.application_version = self.candidate.version.clone();
+        self.report.outcome = "updated".into();
+        if !self.report.recovery_available {
+            self.report.detail = "Previous signed installer unavailable; reduced recovery capability".into();
+        }
+    }
 }
+
 fn stage(github: &mut GitHub, root: &Path, candidate: &Candidate) -> Result<String> {
     staging::stage_with(github, root, candidate, |b, s, t| {
         crate::authenticate(b, s, t).map_err(|_| discovery::Failure::Untrusted)
@@ -538,7 +618,10 @@ pub fn maintain_linux() -> Result<i32> {
             .map(|id| format!("logs/{id}.log")),
     };
     let result = (|| {
-        report.tool_exit = tool_maintenance()?;
+        report.tool_exit = crate::install_core::tools_for(
+            crate::install_core::Scope::ScheduledMaintenance,
+            tool_maintenance,
+        )?;
         if report.tool_exit.is_some_and(|c| c != 0) {
             report.outcome = if report.tool_exit == Some(75) {
                 "deferred"
