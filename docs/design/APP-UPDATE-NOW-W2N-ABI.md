@@ -1,6 +1,8 @@
 # #72 W2n D1: C/ctypes interface and serialized ABI v1
 
-Status: **documentation only; no implementation, compilation or experiments**.
+Status: normative ABI specification. Its D1 closure was documentation only;
+a subsequently authorized [isolated implementation/local checks](../../tests/prototypes/manual-update-w2n/README.md)
+now exist. **No native N1/N2, preload activation or real receive has run.**
 This specification closes the interface/layout documentation gap identified in
 [revision-2 review](APP-UPDATE-NOW-W2N-REVIEW.md). It supplements the
 [receive-observation specification](APP-UPDATE-NOW-W2N-RECEIVE-OBSERVATION.md),
@@ -38,8 +40,9 @@ sets CounterOverflow and invalidates observation rather than wrapping.
 
 ## 2. Exact C API
 
-These are declarations for future implementation, not code implemented by this
-change. No other observer control export is permitted in ABI v1. The interposed
+These normative declarations are implemented by the separately authorized
+isolated observer; the fenced declarations are documentation, not an execution
+command. No other observer control export is permitted in ABI v1. The interposed
 symbol itself retains the system recvmsg prototype.
 
 ```c
@@ -559,18 +562,20 @@ post-freeze status invalidation, without equating them to native verification.
 Documentation QA checked complete, non-overlapping field coverage for the
 256/256/512/1536-byte blocks, exact three-chunk coverage, arena arithmetic and
 relative links. These are document checks, not local observer tests or native
-experiments; no executable observer code exists from this task.
+experiments from that documentation task. Subsequent isolated implementation
+evidence is linked above and must not be confused with native verification.
 
-The unverified gates remain: existing toolchain/profile/provider feasibility;
-observer source/linkage review for no hidden allocation/lazy binding/locks/I/O;
-implementation/local-check correctness; actual healthy N1 interception before
-N2; complete ownership cleanup and evidence persistence. No implementation or
-execution permission is supplied by closing D1. If authorized later, the next
-smallest unit is isolated observer and local checks only; N1/N2 remain deferred
-until that implementation is reviewed and separately authorized.
+Subsequent local implementation measured the compiler header profile and
+reviewed the built wrapper/linkage, without loading it. The unverified gates
+remain actual provider/preload feasibility, actual healthy N1 interception before
+N2, stop-aware native orchestration, ownership cleanup and evidence persistence.
+The isolated code/local evidence still need independent review. No permission
+was supplied by closing D1 itself; local implementation used separate user
+authorization. N1/N2 remain deferred until the code is reviewed and native
+execution is separately authorized.
 
 W2m remains native M2 Fail, diagnostic_success=false and authentication safety
 Unproven. W2h's counterexample, W2i–W2l's limits, B01–B06 and all outcome
-separations remain unchanged. Implementation, experiments, all other W2/W3,
+separations remain unchanged. Further implementation/experiments, all other W2/W3,
 elevation, registration, package operations, build dispatch and release
 preparation remain deferred. No publication or PR belongs to this task.

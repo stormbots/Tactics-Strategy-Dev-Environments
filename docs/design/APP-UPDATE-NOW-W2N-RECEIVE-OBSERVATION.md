@@ -1,8 +1,12 @@
 # #72 W2n receive-observation specification — reviewed draft revision 3
 
-Status: **documentation only; not implemented, compiled or executed**.
-A separate implementation/execution authorization is required after review.
-This draft does not authorize rerunning W2m or any other experiment.
+Status: specification with a separately authorized
+[isolated observer/local-check implementation](../../tests/prototypes/manual-update-w2n/README.md).
+**Native N1/N2 and actual preload execution have not run.** The earlier
+specification/D1 reviews themselves were documentation only.
+The separately granted local implementation authorization has been used only
+for the linked isolated code/local checks. Native execution remains deferred.
+This specification does not authorize rerunning W2m or any other experiment.
 Review baseline: `51a038e`. See the [review disposition](APP-UPDATE-NOW-W2N-REVIEW.md)
 for resolved design gaps and remaining validation gates. D1's exact interface
 and record layout are now specified in the [ABI v1 addendum](APP-UPDATE-NOW-W2N-ABI.md),
@@ -447,19 +451,18 @@ proceed to native schedules when a gate is still unmet.
 | Gate | Current evidence / required disposition |
 | --- | --- |
 | Documentation / interface gate | D1 resolved in the reviewed ABI v1 addendum: exact C/ctypes signatures, statuses, lifecycle, fixed blocks/offsets, masks, chunk framing and resource accounting. This is a specification decision, not empirical implementation or native evidence. |
-| Toolchain / provider feasibility | Not checked by this documentation task. Later authorized setup must demonstrate the supported ABI, existing toolchain, intended libc target and same-instance interception through the existing Hello; otherwise Blocked, not an alternate receiver. |
-| Observer implementation review | Not implemented. Source/linkage review must establish no hidden allocation/lazy binding/locks/I/O inside the valid receive path, single-call forwarding and errno preservation. Local mock checks alone cannot prove native interception. |
-| Memory/export integrity | Not implemented. Later local checks must cover pointer/length changes, final unpadded headers, integer overflow, unsupported control types, masks, chunk consistency, bounded errors and preservation of acceptance/effect on failure. |
-| Failure/ownership handling | Not implemented. Export must not move into the immediate-close interval; original failures and coverage invalidation must survive whenever the actor remains alive. Crash snapshot loss stays explicit. Native fault injection is not included in N1/N2. |
+| Toolchain / provider feasibility | Subsequent local checks use the existing compiler and measure its header ABI. Actual intended-libc provider, preloading and same-instance interception through Hello remain unverified; otherwise Blocked, not an alternate receiver. |
+| Observer implementation review | Isolated code is now built and locally reviewed; the compiled wrapper has one indirect target call and exceptional exit paths. Independent review remains next. No actual loader/provider path has run; mocks cannot prove native interception. |
+| Memory/export integrity | Local mocks/fixtures cover pointer/length changes, unpadded headers, overflow, unsupported controls, masks, chunks, bounded reporting and immutable export. This is not native descriptor cleanup or integrated actor evidence. |
+| Failure/ownership handling | Mocked local abort/error branches are checked. Stop-aware native actor/export/persistence/ownership integration is not implemented or run. Crash snapshot loss stays explicit; no native fault injection is added. |
 | Native observation | Not run. N1 must meet all healthy conditions before N2. Capturing N2 is not a repair or permission for another diagnostic. Authentication safety and production readiness stay unproven/false. |
 
 Recommendation: publish the reviewed documentation if requested. D1 is closed
 at documentation level; no additional interface decision is deferred to code.
-The next smallest implementation scope, only with separate authorization, is the
-isolated observer plus local checks with native execution still deferred.
-Authorize N1/N2 only after reviewing that implementation and its remaining
-prerequisites. Runtime/compiler/provider feasibility has not been checked by
-closing D1.
+The isolated observer/local checks now exist under separate user authorization;
+the next step is independent review of that code and evidence. Authorize N1/N2
+only after that review and explicit acceptance of remaining native prerequisites.
+Closing D1 did not itself check runtime/provider feasibility.
 
 W2h's counterexample, W2i–W2l's limited results and W2m's stopped cleanup failure
 remain unchanged. B01–B06 remain open. All other W2/W3, production implementation,

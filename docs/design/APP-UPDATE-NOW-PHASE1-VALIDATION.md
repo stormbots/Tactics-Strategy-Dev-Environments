@@ -841,3 +841,34 @@ N2 remain unverified. No code, compilation, test suite or experiments occurred.
 W2m remains Fail, W2h remains a counterexample, authentication safety remains
 Unproven, production readiness false, and all B01–B06/deferrals remain intact.
 No publication or PR belongs to this task.
+
+
+### Separately authorized W2n isolated observer/local checks
+
+The [W2n implementation record](../../tests/prototypes/manual-update-w2n/README.md)
+implements only the observer and local checks against `0f33b20`. The C library
+has the exact ABI-v1 exports, measured header-layout reporting, constructor-only
+resolver/provider metadata, bounded one-call capture, strict sanitization,
+immutable chunks and sticky live errors. Explicit Python ctypes declarations
+and independent offline byte/mask/framing helpers are included. No native
+N1/N2 driver is included and no actual preload or receive was executed.
+
+Fifty-three local checks pass: 26 memory-only C/fake-target checks plus 27 Python
+fixture/mock checks, including independent decoding of 18 C-generated synthetic
+records. ASan/UBSan pass on the same C checks; LeakSanitizer is unavailable under
+the observed sandbox ptrace restriction and not claimed validated. Compiled
+wrapper review finds one indirect target call and exceptional _exit paths only;
+exact shared exports/immediate binding are inspected without loading the object.
+Synthetic aborts use longjmp, not native actor termination. Sanitizer review
+redacts the entire unverified header/tail before any export. Local source hashes,
+commands/results, synthetic capture/corpus hash and removed private build root
+are recorded separately from native evidence.
+
+Actual loader/provider/interception, native N1/N2, pidfd/FD transfer/lifetime,
+stop-aware actor integration, crashes, secure native evidence persistence and
+owned native teardown remain unverified. W2m stays M2 Fail; W2h remains a
+counterexample; W2i–W2l limits and all B01–B06 remain. Local checks do not establish
+native observation completion, correct FD cleanup or authentication safety.
+Production readiness remains false. All other W2/W3, production implementation,
+elevation, registration, packages, build dispatch and release preparation stay
+deferred. No publication or PR belongs to this step.
