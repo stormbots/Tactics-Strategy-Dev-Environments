@@ -8,7 +8,7 @@ import yaml
 
 WORKFLOW = ".github/workflows/build-dev-setup.yml"
 GATE = "needs.scope.outputs.application_required == 'true'"
-APPLICATION_JOBS = ("checks", "native", "update-trust")
+APPLICATION_JOBS = ("checks", "update-trust", "desktop-check")
 FIXTURE_PATHS = {
     ".github/workflows/native-uat-fixtures.yml",
     "tests/native_uat_fixtures.py",
@@ -24,7 +24,7 @@ FIXTURE_PATHS = {
 
 
 def unchanged_application_workflow(before, after):
-    """Permit only scope-job introduction and the three explicit job gates."""
+    """Permit only scope-job introduction and the automatic validation job gates."""
     before = copy.deepcopy(before)
     after = copy.deepcopy(after)
     for workflow in (before, after):
