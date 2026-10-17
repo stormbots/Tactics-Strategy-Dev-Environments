@@ -1,0 +1,6 @@
+Initial native invocation: python tests/prototypes/manual-update-w2i/run_experiment.py tests/prototypes/manual-update-w2i/evidence/linux-run.json
+Outcome: exit 1, final report not written. No case results can be claimed from this invocation.
+Failure: FileNotFoundError [Errno 2] /proc/self/task/35302/children in main final cleanup reporting.
+Read-only diagnosis: /proc/self/task exposes the current task but its children file is absent in this managed runtime. No w2i-* fixture roots remained at that observation. That alone does not establish process cleanup.
+Correction: persist per-case reports before finalization; make this extra proc-child enumeration audit explicitly unavailable when absent. Retained pidfds, direct Popen waits and client-owned holder waits remain the reaping/ownership mechanism without substitution of transport or authentication primitives.
+Rerun is limited to the same W2i schedules after this harness reporting correction. No result from this invocation is treated as a pass or native coverage.

@@ -1,11 +1,17 @@
 # #72 B02 revision-4 review and proposed record-credential gate
 
-**Status:** planning only; not executed or authorized to execute. This document
+**Status at drafting:** planning only; not executed or authorized to execute. This document
 proposes the next isolated gate, provisionally W2i, after review of
 [protocol revision 4](APP-UPDATE-NOW-PROTOCOL.md#6-authenticated-ipc-protocol-and-platform-profile).
 No production code, experimental adapter, elevation, registration, package,
 workflow/build dispatch, version allocation or release preparation is included.
 B01–B06 remain open. No owner workstation/VM action is requested.
+
+**Subsequent authorized execution:** after Gate A assessment, the owner separately
+authorized W2i. The [isolated implementation and evidence](../../tests/prototypes/manual-update-w2i/README.md)
+record three native primitive schedules and labeled local checks. The original
+planning text below remains the gate contract; execution does not authorize other
+work or establish authentication safety.
 
 ## 1. Why this gate is needed
 

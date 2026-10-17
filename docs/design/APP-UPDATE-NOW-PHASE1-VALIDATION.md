@@ -566,3 +566,27 @@ subset, not an authentication fix, production flaw claim, post-commit or desktop
 proof. B02 needs a specification decision on the finding; B01–B06 remain open.
 All other W2/W3, elevation, registration, production implementation, package
 operations, workflow/build dispatch and release preparation remain deferred.
+
+
+### Authorized W2i record-credential primitive execution
+
+After Gate A review of revision 4 at `99532ee`, the owner authorized only W2i.
+The [W2i record](../../tests/prototypes/manual-update-w2i/README.md) reports three
+fresh Linux SOCK_SEQPACKET schedules with pre-send SO_PASSCRED verification,
+recvmsg/SCM_CREDENTIALS, mandatory MSG_CMSG_CLOEXEC and retained pidfds. The
+explicit valid original control authorizes one fixed action; the live-original
+inherited holder is kernel-attributed to its own PID and rejected with zero
+actions; its explicit original-PID forgery returns EPERM with zero actions.
+The final report contains 64 barrier events. All eight known actors are reaped,
+three private roots removed, runner FD counts unchanged and subreaper restored.
+The proc child-enumeration audit is unavailable; no unknown-process cleanup
+guarantee is claimed. Startup/reporting and orderly-shutdown failures are retained.
+
+Nineteen focused checks pass: twelve synthetic validator cases, six saved-report
+audits and one mocked cleanup regression. They are not additional native traffic
+coverage. Diagnostic success and primitive feasibility at this scope do not
+establish authentication safety, protected enrollment, native ancillary/FD
+safety, reverse hostile-writer rejection, Windows or integrated close/install
+behavior. B01–B06 remain open. All other W2/W3, production implementation,
+elevation, registration, package operations, build dispatch and release
+preparation remain deferred. No publication or PR is part of this execution.

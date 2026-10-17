@@ -1,0 +1,17 @@
+test_dead_enrolled_instance (test_checks.SyntheticValidatorChecks.test_dead_enrolled_instance) ... ok
+test_lengths_empty_multiple_oversize (test_checks.SyntheticValidatorChecks.test_lengths_empty_multiple_oversize) ... ok
+test_malformed_utf8_duplicate_json_depth_schema (test_checks.SyntheticValidatorChecks.test_malformed_utf8_duplicate_json_depth_schema) ... ok
+test_missing_duplicate_wrong_size_credentials (test_checks.SyntheticValidatorChecks.test_missing_duplicate_wrong_size_credentials) ... ok
+test_no_close_of_payload_named_descriptor (test_checks.SyntheticValidatorChecks.test_no_close_of_payload_named_descriptor) ... ok
+test_no_credential_cache_between_calls (test_checks.SyntheticValidatorChecks.test_no_credential_cache_between_calls) ... ok
+test_payload_pid_cannot_replace_sender (test_checks.SyntheticValidatorChecks.test_payload_pid_cannot_replace_sender) ... ok
+test_rights_closed_on_rejection_and_truncation (test_checks.SyntheticValidatorChecks.test_rights_closed_on_rejection_and_truncation) ... ok
+test_truncation_flags (test_checks.SyntheticValidatorChecks.test_truncation_flags) ... ok
+test_unknown_control_type (test_checks.SyntheticValidatorChecks.test_unknown_control_type) ... ok
+test_valid_explicit_metadata_control (test_checks.SyntheticValidatorChecks.test_valid_explicit_metadata_control) ... ok
+test_wrong_uid_gid (test_checks.SyntheticValidatorChecks.test_wrong_uid_gid) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.002s
+
+OK
