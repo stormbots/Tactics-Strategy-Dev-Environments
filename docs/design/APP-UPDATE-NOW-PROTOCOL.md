@@ -706,6 +706,7 @@ The subsequently authorized [W1 harness and findings](../../tests/prototypes/man
 provide L1-only model evidence. See its explicit scope and fault ledger; all six
 blockers remain open. Freshness/drain timing, historical ACK validity and query
 cache accounting are resolved normatively by revision 3; see the
-[W1 review and alignment requirements](APP-UPDATE-NOW-W1-REVIEW.md). The existing
-harness/evidence remain a revision-2 baseline and do not validate these new rules. No native proof,
+[W1 review and alignment requirements](APP-UPDATE-NOW-W1-REVIEW.md). Original reports remain a revision-2 baseline. The subsequently authorized
+[revision-3 local alignment](../../tests/prototypes/manual-update/EVIDENCE.md#revision-3-alignment-execution)
+checks selected timing/close/cache rules in isolation; it is not full protocol conformance. No native proof,
 production implementation or workflow/build dispatch follows from this result.

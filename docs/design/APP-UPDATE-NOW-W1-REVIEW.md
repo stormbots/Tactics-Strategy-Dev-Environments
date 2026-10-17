@@ -59,3 +59,12 @@ conditions above. Do not relabel those passing tests as revision-3 conformance.
 Updating that isolated harness is the next proposed step, not production work.
 All B01–B06 remain open; native privilege, lifetime, durability and compatibility
 proof are still required under separately authorized W2/W3 work.
+
+
+## Subsequent authorized W1 alignment
+
+The [revision-3 execution record](../../tests/prototypes/manual-update/EVIDENCE.md#revision-3-alignment-execution)
+records 44 passing local tests of selected rules above. The old reports remain
+unchanged historical evidence. Preparation orchestration, native clock/peer/gate
+proof, full integrated race coverage and W2/W3 remain pending. This follow-up does
+not clear B01–B06 or authorize production implementation/build dispatch.

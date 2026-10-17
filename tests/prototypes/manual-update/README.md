@@ -51,17 +51,16 @@ approved shortcut for implementing B01/B02.
 
 ## Local results
 
-See [results and findings](EVIDENCE.md), [machine-readable report](evidence/local-results.json)
-and [test output](evidence/local-tests.txt). Final run: **38 tests passed**;
-**1,438 states / 3,535 edges** exhausted in the chosen finite model. Maximum depth
-24, state limit 150,000; no depth frontier/state-limit truncation was encountered.
-This is the whole reachable graph of this particular small abstraction, not the
-whole application protocol or arbitrary multi-process executions.
+Current revision-3 checks: **44 tests passed**; see
+[revision-3 evidence](evidence/revision3-results.json),
+[test output](evidence/revision3-tests.txt) and [reviewed results](EVIDENCE.md).
+The unchanged actor graph still explores **1,438 states / 3,535 edges**, maximum
+ depth 24 and cap 150,000, without truncation or a baseline safety counterexample.
+That graph does not include the new numeric timing/client/cache state space.
+Three graph mutants and the missing-directory-flush control remain detected.
 
-Three graph negative controls yield shortest counterexamples: omit admission,
-skip post-session journal validation, or spawn before intent. A fourth synthetic
-filesystem control omits directory persistence and is detected before accepting
-mutation as protected. See the JSON report for actual traces.
+The [original revision-2 report](evidence/local-results.json) and
+[original output](evidence/local-tests.txt) are preserved, not overwritten.
 
 The parser tests cover every split and nonempty truncated prefix of the fixture
 Commit frame, bytewise input, coalesced frames, a maximum-length whitespace-padded
@@ -73,23 +72,13 @@ allocation bound of this parser, not measured native IPC memory use.
 
 ## Counterexamples and prototype limitations
 
-1. **W1-C01:** fresh eligibility at t=0, commit at t=0, valid session drain at t=11
-   yields `deferred_stale_eligibility`, despite the 30-second drain allowance.
-   Safe but potentially frustrating; D01 needs an explicit freshness/cutoff decision.
-2. **W1-C02:** blindly replaying a cached accepted Commit after the handoff has
-   already deferred would tell the GUI to close without an active reservation.
-   The prototype returns idempotent effect history plus current state and grants
-   close authority only while currently committed. The protocol must specify the
-   required current-state/deadline/lock validation for a real acknowledgement.
-3. **W1-C03:** the intentionally conservative all-command cache fills after 32
-   ordinary GetStatus polls. A subsequent Commit is rejected, even inside the
-   five-minute Ready period. Define query accounting/reserved mutation capacity;
-   do not silently evict replay protection or treat this controller as shippable.
-
-These are counterexamples to timing/ACK/cache interpretations, not proof of defects
-in released v1.2.9. They are retained even though the tests confirming their safe
-or guarded outcomes pass. Three explicit mutant failures are negative controls,
-not failures of the baseline graph.
+Revision-2 counterexamples remain documented in [EVIDENCE.md](EVIDENCE.md).
+Revision-3 regressions now check commit-time freshness, bounded continuation,
+current deadline-bound close grants and separate query accounting. They do not
+establish real peer authentication or atomic GUI-close/install behavior.
+PrepareLatestStable remains outside the already-Ready controller fixture; the
+three-slot mutation rule is modeled with commit/cancel only (at most one accepted
+branch). There is no complete preparation/retry orchestration implementation.
 
 The first development run also found an overly broad harness oracle: a successful
 historical manual receipt may coexist with a newer legacy transaction's journal.
@@ -111,8 +100,8 @@ The frame/controller, graph, synthetic storage and clock are **separate abstract
 not one integrated root supervisor. Graph deadlines are explicit transitions;
 numerical deadlines are checked in focused clock scenarios. There is no universal
 liveness proof. Real lock ownership/IPC acknowledgement/deadline binding must be
-proved in later authorized work. In particular the controller's phase guard is
-not proof of native admission ownership.
+proved in later authorized work. Controller/bridge gate, live-channel and shared-clock checks use injected facts,
+not proof of native admission ownership or clock mapping.
 
 The report gives **28 cases partial L1 model evidence, 20 Not run**, and marks native
 status Not run for all F01–F48. A partial row does not mean all aspects of that row
@@ -125,5 +114,5 @@ need separate authorization. The approved v1.2.9 fleet rollout is unchanged.
 ## Subsequent specification review
 
 [Protocol revision-3 decisions](../../../docs/design/APP-UPDATE-NOW-W1-REVIEW.md)
-resolve the three findings. This unchanged harness and recorded evidence remain
-a revision-2 baseline; revision-3 conformance and all native validation are pending.
+resolve the three findings. The current isolated harness checks the selected revision-3 rules locally.
+Original revision-2 reports remain historical; native validation is pending.

@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from model import State, explore, transitions, run_trace, violations, edge_violations, visible_outcome
 from framing import (Framer, Controller, FakeOutbound, Rejected, encode, decode,
-                     MAX_FRAME, MAX_CHUNK)
+                     MAX_FRAME, MAX_CHUNK, Bridge)
 from durability import Store, SentinelChild, installation_decision, timeline
 from timing import Budget
 
@@ -17,7 +17,7 @@ COMMIT = READY + ["commit.accept", "gui.primary_exit", "handoff.acquire_exclusiv
 
 
 def command(kind="CommitInstall", index=1):
-    result = dict(type=kind, id=f"20000000-0000-0000-0000-{index:012x}",
+    result = dict(type=kind, **{("queryId" if kind == "GetStatus" else "commandId"):f"20000000-0000-0000-0000-{index:012x}"},
                   attempt=ATTEMPT, capability=CAPABILITY)
     if kind == "CommitInstall":
         result.update(readyEpoch=1, version="1.2.10", digest="a" * 64, installed="1.2.9")
@@ -163,7 +163,7 @@ class FramingChecks(unittest.TestCase):
 
     def test_unknown_fields_bad_identifiers_and_types(self):
         for key, value in [("installed", "01.2.9"), ("readyEpoch", True),
-                           ("readyEpoch", 0), ("id", "../path"), ("digest", "x" * 64),
+                           ("readyEpoch", 0), ("commandId", "../path"), ("digest", "x" * 64),
                            ("version", "https://attacker.invalid"), ("capability", []),
                            ("extra", "run"), ("type", "Run")]:
             with self.subTest(key=key), self.assertRaises(Rejected):
@@ -266,26 +266,102 @@ class ControlChecks(unittest.TestCase):
         self.assertFalse(replay["closeAuthorized"])
         self.assertEqual(c.effects, 1)
 
-    def test_query_cache_exhaustion_counterexample(self):
+    def test_queries_do_not_exhaust_mutation_slots_or_renew_deadlines(self):
         c = self.controller()
-        for n in range(1, 33):
+        for n in range(1, 201):
             c.request(command("GetStatus", n), now=n)
-        with self.assertRaisesRegex(Rejected, "cache bound"):
-            c.request(command(index=33), now=33)
-        self.assertEqual(c.effects, 0)  # bounded but normal polling starves consent
+            c.consume_status()
+        self.assertEqual((len(c.cache), c.events, c.budget.ready_at), (0, 0, 0))
+        c.budget.eligibility_at = 200  # modeled refresh BEFORE admission
+        self.assertTrue(c.request(command(index=201), now=201)["closeAuthorized"])
+        self.assertEqual((len(c.cache), c.effects), (1, 1))
 
-    def test_rate_and_cache_bounds(self):
+    def test_rate_query_and_mutation_bounds(self):
         c = self.controller()
         for i in range(1, 11):
             c.request(command("GetStatus", i))
-        with self.assertRaises(Rejected):
+            c.consume_status()
+        with self.assertRaisesRegex(Rejected, "rate bound"):
             c.request(command("GetStatus", 11))
+        self.assertEqual(c.cache, {})
         c = self.controller()
-        for i in range(1, 33):
-            c.request(command("GetStatus", i), now=i)
-        with self.assertRaises(Rejected):
-            c.request(command("GetStatus", 33), now=33)
-        self.assertEqual(len(c.cache), 32)
+        c.request(command("GetStatus"))
+        with self.assertRaisesRegex(Rejected, "query outstanding"):
+            c.request(command("GetStatus", 2))
+        c.consume_status()
+        c.request(command())  # identical UUID, separate namespace
+        for n in range(2, 100):
+            with self.assertRaisesRegex(Rejected, "AlreadyAccepted"):
+                c.request(command(index=n), now=n)
+        self.assertEqual((len(c.cache), c.effects, c.budget.committed_at), (1, 1, 0))
+
+    def test_replay_and_bridge_deadlines_bindings_and_terminal_order(self):
+        c = self.controller()
+        bridge = Bridge(c, command()["commandId"])
+        ack = c.request(command())
+        self.assertTrue(bridge.accepts(ack, 29.999))
+        self.assertFalse(bridge.accepts(ack, 30))
+        self.assertFalse(c.request(command(), now=30)["closeAuthorized"])
+        for key in bridge.bindings:
+            with self.subTest(key=key):
+                self.assertFalse(Bridge(c, command()["commandId"]).accepts({**ack, key: "foreign"}, 1))
+        for option in ({"live": False}, {"mapped": False}, {"suspended": True}):
+            self.assertFalse(Bridge(c, command()["commandId"]).accepts(ack, 1, **option))
+        b = Bridge(c, command()["commandId"])
+        self.assertFalse(b.accepts({**ack, "state": "deferred", "eventSequence": 2}, 1))
+        self.assertFalse(b.accepts(ack, 2))
+        self.assertFalse(b.accepts({**ack, "eventSequence": 3}, 3))
+
+    def test_close_requires_current_gates_and_nonterminal_state(self):
+        for field in ("operation", "admission"):
+            c = self.controller()
+            c.request(command())
+            setattr(c, field, False)
+            self.assertFalse(c.request(command(), now=1)["closeAuthorized"])
+        for state in ("deferred", "expired", "canceled", "recovery", "updated"):
+            c = self.controller()
+            c.request(command())
+            c.phase = state
+            ack = c.request(command(), now=1)
+            self.assertTrue(ack["effectAccepted"])
+            self.assertFalse(ack["closeAuthorized"])
+            self.assertEqual(c.effects, 1)
+
+    def test_rejected_flood_consumes_no_permanent_slots(self):
+        c = self.controller()
+        for n in range(1, 100):
+            with self.assertRaises(Rejected):
+                c.request({**command(index=n), "readyEpoch": 99}, now=n)
+        self.assertEqual(c.cache, {})
+        c.budget.eligibility_at = 100
+        c.request(command(index=100), now=100)
+        self.assertEqual(c.effects, 1)
+
+    def test_status_never_grants_close_or_renews_committed_deadline(self):
+        c = self.controller()
+        c.request(command())
+        for n in range(1, 40):
+            reply = c.request(command("GetStatus", n), now=n)
+            self.assertFalse(reply["closeAuthorized"])
+            c.consume_status()
+        self.assertEqual((c.events, c.budget.committed_at, len(c.cache)), (1, 0, 1))
+        self.assertFalse(c.request(command(), now=40)["closeAuthorized"])
+
+    def test_candidate_binding_and_client_clock_regressions(self):
+        for key, value in (("digest", "c" * 64), ("version", "1.2.11"),
+                           ("installed", "1.2.8")):
+            with self.subTest(key=key), self.assertRaises(Rejected):
+                self.controller().request({**command(), key: value})
+        c = self.controller()
+        ack = c.request(command())
+        b = Bridge(c, command()["commandId"])
+        self.assertTrue(b.accepts(ack, 2))
+        self.assertFalse(b.accepts(ack, 1))
+        for now in (True, float("nan"), float("inf")):
+            self.assertFalse(b.accepts(ack, now))
+        # The accepted grant cannot foresee a supervisor crash after validation.
+        c.operation = c.admission = False
+        self.assertFalse(Bridge(c, command()["commandId"]).accepts(ack, 3, live=False))
 
     def test_non_reader_coalesces_progress_without_blocking_ticks(self):
         outbound = FakeOutbound()
@@ -336,26 +412,53 @@ class DurabilityChecks(unittest.TestCase):
 
 
 class TimingChecks(unittest.TestCase):
-    def test_freshness_drain_counterexample(self):
-        clock = Budget()
-        self.assertEqual(clock.commit(0), 'committed')
-        self.assertEqual(clock.before_spawn(11, drained=True), 'deferred_stale_eligibility')
-        self.assertEqual(clock.before_spawn(11, drained=False), 'waiting')
+    def test_freshness_at_acquisition_and_drain_boundaries(self):
+        for at, result in ((10, "committed"), (10.001, "refresh_before_admission")):
+            self.assertEqual(Budget().commit(at), result)
+        for at, result in ((11, "may_write_intent"), (29.999, "may_write_intent"), (30, "deferred")):
+            b = Budget()
+            b.commit(0)
+            self.assertEqual(b.before_spawn(at), result)
 
-    def test_boundaries_and_never_clear_intent_on_timeout(self):
+    def test_durable_work_included_in_final_launch_deadline(self):
+        for at, result in ((44.999, "may_spawn"), (45, "retain_uncertain_intent")):
+            b = Budget()
+            b.commit(10)
+            b.before_spawn(39.999)  # drained <30 seconds from A
+            b.intent = True
+            self.assertEqual(b.before_spawn(10 + at), result)
+            self.assertTrue(b.intent)
         b = Budget()
-        self.assertEqual(b.commit(10), 'committed')
-        self.assertEqual(b.before_spawn(40, drained=False), 'deferred')
-        self.assertEqual(b.before_spawn(55), 'deferred')
-        b.intent = True
-        self.assertEqual(b.before_spawn(9999), 'retain_uncertain_intent')
-        self.assertEqual(Budget().commit(300), 'expired')
-        self.assertEqual(Budget().commit(11), 'refresh_before_admission')
+        b.commit(0)
+        b.before_spawn(1)
+        self.assertEqual(b.before_spawn(45), "deferred")
+
+    def test_retries_do_not_renew_and_local_checks_still_apply(self):
+        b = Budget()
+        b.commit(0)
+        self.assertEqual(b.commit(1), "already_committed")
+        self.assertEqual(b.committed_at, 0)
+        for kwargs in ({"paused": True}, {"integrity": False}):
+            b = Budget()
+            b.commit(0)
+            self.assertEqual(b.before_spawn(1, **kwargs), "deferred")
+            b.intent = True
+            self.assertEqual(b.before_spawn(2, **kwargs), "retain_uncertain_intent")
 
     def test_suspend_reboot_and_clock_discontinuity(self):
-        self.assertEqual(Budget(suspended=True).commit(1), 'expired')
-        self.assertEqual(Budget().commit(1, boot='new-boot'), 'expired')
-        self.assertEqual(Budget().commit(-1), 'expired')
+        self.assertEqual(Budget(suspended=True).commit(1), "expired")
+        self.assertEqual(Budget().commit(1, boot="new-boot"), "expired")
+        self.assertEqual(Budget().commit(300), "expired")
+        for now in (-1, float("nan"), float("inf"), True):
+            self.assertEqual(Budget().commit(now), "expired")
+        for kwargs in ({"boot": "new-boot"}, {}):
+            b = Budget()
+            b.commit(2)
+            self.assertEqual(b.before_spawn(1, **kwargs), "deferred")
+        b = Budget()
+        b.commit(0)
+        b.suspended = True
+        self.assertEqual(b.before_spawn(1), "deferred")
 
 
 if __name__ == '__main__':

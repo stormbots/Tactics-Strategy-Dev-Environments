@@ -78,53 +78,46 @@ def coverage_ledger():
 
 
 def scenario_findings():
-    # Fixed public dummy credentials and IDs for an already-authenticated MODEL
-    # connection. This never performs native authentication or opens an endpoint.
+    # Public dummy credentials; native peer authentication remains injected.
     attempt = "10000000-0000-0000-0000-000000000001"
     capability = "b" * 64
     def request(kind, index):
-        value = dict(type=kind, id=f"20000000-0000-0000-0000-{index:012x}",
-                     attempt=attempt, capability=capability)
-        if kind == 'CommitInstall':
-            value.update(readyEpoch=1, version='1.2.10', digest='a' * 64, installed='1.2.9')
+        value = dict(type=kind, attempt=attempt, capability=capability)
+        value["queryId" if kind == "GetStatus" else "commandId"] = f"20000000-0000-0000-0000-{index:012x}"
+        if kind == "CommitInstall":
+            value.update(readyEpoch=1, version="1.2.10", digest="a" * 64, installed="1.2.9")
         return value
     clock = Budget()
-    commit = clock.commit(0)
-    stale = clock.before_spawn(11, drained=True)
+    assert clock.commit(0) == "committed"
+    drained = clock.before_spawn(11)
     controller = Controller(attempt, capability, authenticated=True)
-    historical = controller.request(request('CommitInstall', 1))
-    controller.phase = 'deferred'
-    replay = controller.request(request('CommitInstall', 1), now=31)
+    historical = controller.request(request("CommitInstall", 1))
+    controller.phase = "deferred"
+    replay = controller.request(request("CommitInstall", 1), now=31)
     cache = Controller(attempt, capability, authenticated=True)
-    for index in range(1, 33):
-        cache.request(request('GetStatus', index), now=index)
-    try:
-        cache.request(request('CommitInstall', 33), now=33)
-    except Rejected as exc:
-        capacity_result = str(exc)
-    else:
-        raise AssertionError('expected conservative cache-accounting counterexample')
-    assert commit == 'committed' and stale == 'deferred_stale_eligibility'
-    assert historical['closeAuthorized'] and not replay['closeAuthorized']
+    for index in range(1, 201):
+        cache.request(request("GetStatus", index), now=index)
+        cache.consume_status()
+    before = len(cache.cache)
+    cache.budget.eligibility_at = 200  # refresh before admission
+    committed = cache.request(request("CommitInstall", 201), now=201)
+    assert drained == "may_write_intent"
+    assert historical["closeAuthorized"] and replay["effectAccepted"] and not replay["closeAuthorized"]
+    assert before == 0 and committed["closeAuthorized"] and cache.effects == 1
     return [
-        {'id': 'W1-C01', 'kind': 'timing counterexample',
-         'observed': {'commit_at_0': commit, 'sessions_drained_at_11': stale},
-         'trace': ['fresh at t=0', 'commit at t=0', 'sessions drain at t=11',
-                   'safe stale deferral despite 30-second drain allowance'],
-         'decision': 'D01 remains open; do not fetch network after admission or silently relax freshness'},
-        {'id': 'W1-C02', 'kind': 'counterexample to naive historical ACK replay',
-         'observed': {'blind_historical_close_authorized': historical['closeAuthorized'],
-                      'current_state': replay['state'], 'guarded_replay_close_authorized': replay['closeAuthorized']},
-         'trace': ['commit accepted', 'drain deadline => Deferred', 'repeat same Commit ID'],
-         'prototype_rule': 'Idempotent effect history is not fresh close authority; recheck current committed state',
-         'decision': 'Specify authoritative ACK validity after timeout before integration'},
-        {'id': 'W1-C03', 'kind': 'bounded-cache usability counterexample',
-         'observed': {'status_polls': 32, 'cache_entries': len(cache.cache),
-                      'commit_at_second_33': capacity_result, 'effects': cache.effects},
-         'decision': 'Define read-only query accounting/reserved mutation capacity; do not evict replay protection unsafely'},
-        {'id': 'W1-H01', 'kind': 'harness-oracle correction',
-         'detail': 'Initial oracle treated historical Updated plus a NEW legacy journal as a false protocol success. '
-                   'Current decision gives that journal precedence; regression and initial development failure retained.'},
+        {"id": "W1-C01", "status": "revision-3 local regression passed",
+         "observed": {"sessions_drained_at_11": drained},
+         "limit": "Synthetic acquisition/clock only; no native scheduler or network proof"},
+        {"id": "W1-C02", "status": "revision-3 local regression passed",
+         "observed": {"historical_effect_accepted": replay["effectAccepted"],
+                      "deferred_replay_close_authorized": replay["closeAuthorized"]},
+         "limit": "Injected peer/gate/clock facts; supervisor can crash after bridge validation"},
+        {"id": "W1-C03", "status": "revision-3 local regression passed",
+         "observed": {"status_polls": 200, "mutation_entries_before_commit": before,
+                      "mutation_entries_after_commit": len(cache.cache), "effects": cache.effects},
+         "limit": "Already-Ready fixture; preparation and full transport not implemented"},
+        {"id": "W1-H01", "status": "historical oracle correction retained",
+         "detail": "Historical Updated cannot override a newer legacy journal; regression retained."},
     ]
 
 
@@ -138,6 +131,7 @@ def main():
     flush_gap = next(x for x in timeline(True) if x[0] == 'native.mutate')
     report = {
         'evidence_level': 'L1 only',
+        'protocol_revision': 3,
         'native_validation': False,
         'python': platform.python_version(),
         'platform': sys.platform,

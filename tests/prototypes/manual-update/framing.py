@@ -5,7 +5,7 @@ import json
 import math
 import re
 import struct
-from collections import OrderedDict
+from timing import Budget
 
 MAX_FRAME = 16384
 MAX_CHUNK = 4096
@@ -81,7 +81,8 @@ def validate(v):
         if set(v) != {"type", "protocol"} or type(v["protocol"]) is not int or v["protocol"] != 1:
             raise Rejected("unsupported hello")
         return
-    base = {"type", "id", "attempt", "capability"}
+    identifier = "queryId" if kind == "GetStatus" else "commandId"
+    base = {"type", identifier, "attempt", "capability"}
     if kind == "CommitInstall":
         fields = base | {"readyEpoch", "version", "digest", "installed"}
     elif kind in {"PrepareLatestStable", "CancelPreparation", "GetStatus"}:
@@ -90,7 +91,7 @@ def validate(v):
         raise Rejected("unknown command")
     if set(v) != fields:
         raise Rejected("unknown/missing fields")
-    for key in ("id", "attempt"):
+    for key in (identifier, "attempt"):
         if not isinstance(v[key], str) or not UUID.fullmatch(v[key]):
             raise Rejected("invalid identifier")
     if not isinstance(v["capability"], str) or not HEX.fullmatch(v["capability"]):
@@ -161,21 +162,31 @@ class Framer:
 
 
 class Controller:
-    """Authentication is an injected MODEL fact. It does not verify OS identities."""
+    """All peer, process and gate identities below are injected MODEL facts."""
     def __init__(self, attempt, capability, authenticated=False):
-        self.attempt = attempt
-        self.capability = capability
+        self.attempt, self.capability = attempt, capability
         self.authenticated = authenticated
-        self.phase = "ready"
-        self.epoch = 1
-        self.version = "1.2.10"
-        self.installed = "1.2.9"
-        self.digest = "a" * 64
-        self.events = 0
-        self.effects = 0
-        self.cache = OrderedDict()
-        self.rate_second = None
-        self.rate_count = 0
+        self.phase, self.epoch = "ready", 1
+        self.version, self.installed, self.digest = "1.2.10", "1.2.9", "a" * 64
+        self.incarnation, self.channel, self.process = "supervisor-1", "channel-1", "gui-1"
+        self.events = self.effects = 0
+        self.cache = {}  # accepted mutation payloads only, at most three action slots
+        self.actions = {}
+        self.rate_second, self.rate_count = None, 0
+        self.budget = Budget()
+        self.operation = True
+        self.admission = False
+        self.query_pending = None  # one coalesced response, no query history
+
+    def response(self, correlation, accepted, now, control=False):
+        deadline = None if self.budget.committed_at is None else self.budget.committed_at + 30
+        return dict(effectAccepted=accepted, state=self.phase, eventSequence=self.events,
+                    closeAuthorized=bool(control and accepted and self.phase == "committed"
+                        and self.operation and self.admission and deadline is not None
+                        and now < deadline and not self.budget.suspended),
+                    attempt=self.attempt, incarnation=self.incarnation, channel=self.channel,
+                    process=self.process, readyEpoch=self.epoch, digest=self.digest,
+                    correlation=correlation, drainDeadline=deadline, boot=self.budget.boot)
 
     def request(self, command, now=0):
         validate(command)
@@ -183,46 +194,83 @@ class Controller:
             raise Rejected("model peer not authenticated")
         if command.get("attempt") != self.attempt or not hmac.compare_digest(command.get("capability", ""), self.capability):
             raise Rejected("foreign attempt/capability")
+        if not self.budget.valid_clock(now, self.budget.boot):
+            raise Rejected("invalid clock")
         if self.rate_second != int(now):
             self.rate_second, self.rate_count = int(now), 0
         self.rate_count += 1
         if self.rate_count > 10:
             raise Rejected("rate bound")
+        kind = command["type"]
+        if kind == "GetStatus":
+            if self.query_pending is not None:
+                raise Rejected("query outstanding")
+            self.query_pending = self.response(command["queryId"], False, now)
+            return self.query_pending
+        key = command["commandId"]
         payload = hashlib.sha256(json.dumps(command, sort_keys=True).encode()).digest()
-        key = command["id"]
         if key in self.cache:
-            previous, accepted = self.cache[key]
+            previous, original_kind = self.cache[key]
             if previous != payload:
                 raise Rejected("conflicting command id")
-            # Replaying a historical ACK is not a fresh instruction to close.
-            return {"accepted": accepted, "state": self.phase,
-                    "closeAuthorized": accepted and self.phase == "committed"}
-        if len(self.cache) >= 32:
-            raise Rejected("command cache bound")
-        kind = command["type"]
-        accepted = False
+            return self.response(key, True, now, original_kind == "CommitInstall")
+        if kind in self.actions:
+            raise Rejected("AlreadyAccepted")
         if kind == "CommitInstall":
             expected = (self.epoch, self.version, self.digest, self.installed)
             actual = tuple(command[k] for k in ("readyEpoch", "version", "digest", "installed"))
-            if self.phase != "ready" or actual != expected:
+            if self.phase != "ready" or actual != expected or not self.operation:
                 raise Rejected("stale consent")
-            self.phase = "committed"
+            if self.budget.commit(now) != "committed":
+                raise Rejected("expired or stale eligibility")
+            self.phase, self.admission = "committed", True
             self.effects += 1
-            accepted = True
         elif kind == "CancelPreparation":
             if self.phase not in {"ready", "preparing"}:
                 raise Rejected("too late")
-            self.phase = "canceled"
-        elif kind == "GetStatus":
-            pass
+            self.phase, self.operation = "canceled", False
         elif kind == "PrepareLatestStable":
             raise Rejected("one modeled Ready attempt only")
         else:
             raise Rejected("hello is not a control command")
-        self.cache[key] = (payload, accepted)
+        self.cache[key] = (payload, kind)
+        self.actions[kind] = key
         self.events += 1
-        return {"accepted": accepted, "state": self.phase,
-                "closeAuthorized": accepted and self.phase == "committed"}
+        return self.response(key, True, now, kind == "CommitInstall")
+
+    def consume_status(self):
+        response, self.query_pending = self.query_pending, None
+        return response
+
+
+class Bridge:
+    """Synthetic client checks; shared clock, OS peer and process liveness injected."""
+    def __init__(self, controller, command_id):
+        self.bindings = {k: getattr(controller, v) for k, v in
+                         (("attempt", "attempt"), ("incarnation", "incarnation"),
+                          ("channel", "channel"), ("process", "process"),
+                          ("readyEpoch", "epoch"), ("digest", "digest"))}
+        self.bindings.update(correlation=command_id, boot=controller.budget.boot)
+        self.highest = 0
+        self.terminal = False
+        self.last_time = 0
+
+    def accepts(self, reply, now, live=True, mapped=True, suspended=False):
+        if (type(now) not in (int, float) or not math.isfinite(now)
+                or now < self.last_time):
+            return False
+        self.last_time = now
+        if not live or not mapped or suspended or any(reply.get(k) != v for k, v in self.bindings.items()):
+            return False
+        sequence = reply.get("eventSequence")
+        if type(sequence) is not int or sequence < self.highest:
+            return False
+        self.highest = sequence
+        self.terminal |= reply.get("state") in {"deferred", "canceled", "expired", "recovery", "updated"}
+        deadline = reply.get("drainDeadline")
+        return bool(not self.terminal and reply.get("state") == "committed"
+                    and reply.get("effectAccepted") is True and reply.get("closeAuthorized") is True
+                    and type(deadline) in (int, float) and math.isfinite(deadline) and now < deadline)
 
 
 class FakeOutbound:

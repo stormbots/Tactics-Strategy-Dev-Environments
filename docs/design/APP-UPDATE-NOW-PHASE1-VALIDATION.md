@@ -386,7 +386,7 @@ integration proof pending, or Resolved at the named evidence scope. No blanket
 
 | Decision / gate | Required disposition before proceeding |
 | --- | --- |
-| D01 Timing compatibility | Resolved in protocol revision 3: age ≤10 seconds at accepted commit; drain <30 seconds; final launch decision <45 seconds after A. Revised W1 checks and native timing evidence remain pending. |
+| D01 Timing compatibility | Resolved in protocol revision 3: age ≤10 seconds at accepted commit; drain <30 seconds; final launch decision <45 seconds after A. Selected revised W1 local checks now pass; native timing evidence remains pending. |
 | D02 Windows SYSTEM mechanism | Accept the narrowly scoped one-shot task only after E01–E03/E05 prove fixed action, access rights and account modes; otherwise redesign. |
 | D03 Linux lifetime mechanism | Choose direct root versus transient system-service supervision from E10; explicitly control cgroup/restart/kill behavior without a permanent daemon. |
 | D04 Legacy hook authorization | Specify and prove a new-parent and supported-old-parent binding. If infeasible, define a supported initial migration route instead of weakening the exception. |
@@ -413,3 +413,5 @@ ran; this historical instruction does not authorize W2/W3 or integration.
 ## Revision-3 follow-up
 
 See [W1 protocol review](APP-UPDATE-NOW-W1-REVIEW.md) for resolved timing, close-grant and query-cache rules. The pinned baseline and recorded W1 results above remain revision-2 evidence. W2/W3, production implementation and build dispatch remain deferred.
+
+Selected revision-3 W1 checks were subsequently authorized and executed: [44-test local record](../../tests/prototypes/manual-update/EVIDENCE.md#revision-3-alignment-execution). This does not clear the native blockers or advance to W2/W3.
