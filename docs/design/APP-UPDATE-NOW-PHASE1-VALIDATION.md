@@ -790,3 +790,22 @@ does not repair the FD-cleanup failure or prove authentication safety. W2h's
 counterexample, W2i–W2l limits, B01–B06 and all deferrals remain unchanged. No
 publication or PR belongs to this review; further native diagnostics require
 separate authorization.
+
+
+### Proposed W2n receive-observation gate — documentation only
+
+The [W2n draft specification](APP-UPDATE-NOW-W2N-RECEIVE-OBSERVATION.md) proposes
+one healthy control and one fixed-capacity M2 diagnostic, after separate review
+and authorization. A server-only observer would capture the existing forwarded
+recvmsg call's native control memory/returned length, flags and result in bounded
+preallocated storage, then correlate it with Python tuples and FD inventories.
+It must preserve original arguments, results, errno, buffers, transport and
+validator, perform no logging I/O inside the wrapper and prove actual
+interception/call correlation. Instrumentation can alter timing/layout; it is
+not invisible or a second receiver. The draft defines bounds, redaction,
+ownership/cleanup, outcome classifications and stop conditions. A reproduced
+cleanup failure may yield complete diagnostic evidence without being a safety
+pass. W2m remains Fail and W2h remains an authentication counterexample.
+No implementation, compilation, tests or experiments were performed for this
+draft. All B01–B06 and existing deferrals remain unchanged; no publication or
+PR belongs to this step.
