@@ -1,0 +1,84 @@
+test_bind_rejects_exited_peer (__main__.Checks.test_bind_rejects_exited_peer) ... ok
+test_case_identity_failure_allocates_no_root (__main__.Checks.test_case_identity_failure_allocates_no_root) ... FAIL
+test_cleanup_continues_after_handle_close_failure (__main__.Checks.test_cleanup_continues_after_handle_close_failure) ... ERROR
+test_descriptor_identity_includes_inode (__main__.Checks.test_descriptor_identity_includes_inode) ... ok
+test_exited_original_denied_despite_matching_credentials (__main__.Checks.test_exited_original_denied_despite_matching_credentials) ... ok
+test_healthy_action (__main__.Checks.test_healthy_action) ... ok
+test_identity_change_closes_bound_handle (__main__.Checks.test_identity_change_closes_bound_handle) ... ok
+test_missing_request_is_failure (__main__.Checks.test_missing_request_is_failure) ... ok
+test_mutant_exposes_stale_peer_action (__main__.Checks.test_mutant_exposes_stale_peer_action) ... ok
+test_native_snapshot_oracle_rejects_corruption (__main__.Checks.test_native_snapshot_oracle_rejects_corruption) ... ok
+test_oracle_rejects_privileged_holder_snapshot (__main__.Checks.test_oracle_rejects_privileged_holder_snapshot) ... FAIL
+test_oracle_requires_boolean_pidfd_inheritance (__main__.Checks.test_oracle_requires_boolean_pidfd_inheritance) ... FAIL
+test_oracle_requires_holder_ping_reply (__main__.Checks.test_oracle_requires_holder_ping_reply) ... FAIL
+test_partial_startup_without_pidfd_is_reaped (__main__.Checks.test_partial_startup_without_pidfd_is_reaped) ... ok
+test_payload_claim_cannot_choose_different_identity (__main__.Checks.test_payload_claim_cannot_choose_different_identity) ... ok
+test_pidfd_query_error_cannot_authorize (__main__.Checks.test_pidfd_query_error_cannot_authorize) ... ok
+test_unknown_case_creates_no_root (__main__.Checks.test_unknown_case_creates_no_root) ... ok
+test_unknown_variant_stops_before_read (__main__.Checks.test_unknown_variant_stops_before_read) ... ok
+test_wrong_kernel_pid_still_denied_in_mutant (__main__.Checks.test_wrong_kernel_pid_still_denied_in_mutant) ... ok
+
+======================================================================
+ERROR: test_cleanup_continues_after_handle_close_failure (__main__.Checks.test_cleanup_continues_after_handle_close_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2g/test_checks.py", line 174, in test_cleanup_continues_after_handle_close_failure
+    case.cleanup()
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2g/run_experiment.py", line 370, in cleanup
+    os.close(self.holder_fd)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+OSError: test-only pidfd close failure
+
+======================================================================
+FAIL: test_case_identity_failure_allocates_no_root (__main__.Checks.test_case_identity_failure_allocates_no_root)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2g/test_checks.py", line 160, in test_case_identity_failure_allocates_no_root
+    self.assertEqual(allocated, [])
+AssertionError: Lists differ: [PosixPath('/tmp/PROTOTYPE-W2g-kee1z2fm')] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+PosixPath('/tmp/PROTOTYPE-W2g-kee1z2fm')
+
+- [PosixPath('/tmp/PROTOTYPE-W2g-kee1z2fm')]
++ []
+
+======================================================================
+FAIL: test_oracle_rejects_privileged_holder_snapshot (__main__.Checks.test_oracle_rejects_privileged_holder_snapshot)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2g/test_checks.py", line 134, in test_oracle_rejects_privileged_holder_snapshot
+    with self.assertRaises(RuntimeError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_oracle_requires_boolean_pidfd_inheritance (__main__.Checks.test_oracle_requires_boolean_pidfd_inheritance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2g/test_checks.py", line 146, in test_oracle_requires_boolean_pidfd_inheritance
+    with self.assertRaises(RuntimeError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_oracle_requires_holder_ping_reply (__main__.Checks.test_oracle_requires_holder_ping_reply)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2g/test_checks.py", line 140, in test_oracle_requires_holder_ping_reply
+    with self.assertRaises(RuntimeError):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.015s
+
+FAILED (failures=4, errors=1)

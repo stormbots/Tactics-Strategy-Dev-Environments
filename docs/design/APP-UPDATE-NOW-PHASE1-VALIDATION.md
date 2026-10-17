@@ -514,7 +514,10 @@ original client's pidfd and rejects the request on observed exit, with zero
 authorized actions. The healthy control authorizes one action; a test-only
 omitted-liveness variant authorizes one unsafe test action and is Detected.
 Overall success requires Pass / Pass / Detected, not three safe protocol passes.
-Fourteen focused local checks pass. Kernel credentials, retained pidfds, process
+Nineteen reviewed focused local checks pass; four pre-fix regression failures
+and one error are preserved separately. Review strengthened actor/descriptor
+evidence validation, partial-initialization cleanup, continued handle closure
+and holder-reaping bookkeeping. The original native schedule remains consistent. Kernel credentials, retained pidfds, process
 and socket identities, barriers, requests/actions, failures, cleanup and restored
 child-subreaper state are recorded. This is only an E06/B02 lifetime subset: no
 continuous message-origin, live-client delegation, reverse server-loss, production

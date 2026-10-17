@@ -12,6 +12,12 @@ w = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(w)
 
 
+def evidence_path():
+    root = Path(__file__).parent / 'evidence'
+    reviewed = root / 'reviewed-linux-run.json'
+    return reviewed if reviewed.exists() else root / 'linux-run.json'
+
+
 class Checks(unittest.TestCase):
     def setUp(self):
         self.enrolled = dict(pid=1234, uid=1000, gid=1000, start_ticks=50, ppid=123)
@@ -104,7 +110,7 @@ class Checks(unittest.TestCase):
         self.assertTrue(result['forced'])
 
     def test_native_snapshot_oracle_rejects_corruption(self):
-        report = json.loads((Path(__file__).parent / 'evidence/linux-run.json').read_text())
+        report = json.loads(evidence_path().read_text())
         for original in report['cases']:
             w.validate_result(original)
             for field, value in [('authorized_actions', True), ('original_client_live', 1), ('variant', 'other')]:
@@ -120,6 +126,58 @@ class Checks(unittest.TestCase):
             bad['holder_after']['descriptor']['inode'] += 1
             with self.assertRaises(RuntimeError):
                 w.validate_result(bad)
+
+
+    def test_oracle_rejects_privileged_holder_snapshot(self):
+        report = json.loads(evidence_path().read_text())['cases'][0]
+        report['holder_before']['privilege']['euid'] = 0
+        with self.assertRaises(RuntimeError):
+            w.validate_result(report)
+
+    def test_oracle_requires_holder_ping_reply(self):
+        report = json.loads(evidence_path().read_text())['cases'][0]
+        report['holder_after']['event'] = 'holder-exiting'
+        with self.assertRaises(RuntimeError):
+            w.validate_result(report)
+
+    def test_oracle_requires_boolean_pidfd_inheritance(self):
+        report = json.loads(evidence_path().read_text())['cases'][0]
+        report['evaluation']['retained_pidfd_inheritable'] = None
+        with self.assertRaises(RuntimeError):
+            w.validate_result(report)
+
+    def test_case_identity_failure_allocates_no_root(self):
+        allocated = []
+        original = w.tempfile.mkdtemp
+        def track(*args, **kwargs):
+            path = original(*args, **kwargs)
+            allocated.append(Path(path))
+            return path
+        try:
+            with patch.object(w.tempfile, 'mkdtemp', side_effect=track), patch.object(w.peer, 'identity', side_effect=OSError('test-only process identity failure')):
+                with self.assertRaises(OSError):
+                    w.Case('healthy')
+            self.assertEqual(allocated, [])
+        finally:
+            for path in allocated:
+                path.rmdir()  # only empty roots created by this unit check
+
+    def test_cleanup_continues_after_handle_close_failure(self):
+        case = w.Case.__new__(w.Case)
+        case.actors = []
+        case.holder_fd, case.holder_reaped, case.holder_identity = 99, True, dict(pid=1234)
+        case.parent_control, case.child_control = Mock(), Mock()
+        case.parent_control.close.side_effect = OSError('test-only control close failure')
+        case.root, case.root_before, case.sockets = Path('/unused/test-only'), {}, {}
+        case.report = dict(failures=[], result='Pass', root_removed=False)
+        with patch.object(w.os, 'close', side_effect=OSError('test-only pidfd close failure')), patch.object(w.support, 'direct_children', return_value=[]), patch.object(w.peer, 'cleanup_root') as remove:
+            case.cleanup()
+        case.parent_control.close.assert_called_once_with()
+        case.child_control.close.assert_called_once_with()
+        remove.assert_not_called()
+        self.assertEqual(case.report['result'], 'Fail')
+        self.assertFalse(case.report['root_removed'])
+
 
 
 if __name__ == '__main__':

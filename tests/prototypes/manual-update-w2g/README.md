@@ -60,7 +60,7 @@ evaluation. A payload PID cannot choose the identity to be checked.
 
 ## Native evidence
 
-[evidence/linux-run.json](evidence/linux-run.json) records 61 ordered trace events
+[Reviewed native evidence](evidence/reviewed-linux-run.json) records 61 ordered trace events
 and source SHA-256 hashes for both W2g Python files plus unchanged W2f/W2b helper
 modules, imported for definitions only. No earlier scenario executes.
 
@@ -89,7 +89,11 @@ server's action.
 Recorded run: managed Linux 6.18.44 x86_64, Python 3.12.14, UID/EUID/GID 1000,
 zero effective capabilities. All three schedules had no unexpected failures or
 cleanup fallback; the mutant's unauthorized test action is explicitly Detected.
-No development execution failure occurred.
+The original implementation run had no development execution failure. A temporary
+review-edit indentation error stopped one attempt before actor startup; its
+diagnostic is preserved in
+[evidence/review-development-syntax-failure.txt](evidence/review-development-syntax-failure.txt).
+It was corrected before the passing reviewed run.
 
 Six direct server/client actors exited zero with empty stderr. Three holders also
 exited zero and were reaped: by the still-live client in the healthy case and by
@@ -106,13 +110,54 @@ restoration fail the run; unsafe root removal is refused. Cleanup path checks ar
 conservative fixture guards, not atomic defenses against hostile namespace races.
 Actual cleanup/timeouts/unkillable-task faults were not injected natively.
 
-[evidence/local-checks.txt](evidence/local-checks.txt) records 14 focused checks:
+[Original checks](evidence/local-checks.txt) record 14 focused checks:
 healthy admission, original-client exit rejection despite matching credentials,
 mutant detection, kernel mismatch even in the mutant, payload/variant/missing-
 request rejection, pidfd-query failure, creation changes/exited binding,
 descriptor identity, partial startup cleanup, unknown-case rejection and corrupted
 native snapshot rejection. Mock failures and replayed snapshots are not additional
 native schedules or proof of hostile IPC security.
+
+
+## Implementation/evidence review
+
+The original `linux-run.json` and `local-checks.txt` remain unchanged historical
+evidence bound to commit `38934db`. Reviewed source hashes in
+`evidence/reviewed-linux-run.json` describe the current two W2g Python files and
+unchanged W2f/W2b definition-only helpers; the old report must not be checked
+against new source files. No previous experiment was rerun.
+
+Review found the original native schedule consistent, but exceptional cleanup
+and evidence validation needed narrower guarantees:
+
+- Move root allocation from case construction into the registered case's guarded
+  run. A constructor identity error now allocates no directory, and later setup
+  errors are recorded with cleanup state instead of escaping before registration.
+- Attempt every owned stream/pidfd/control close even if an earlier close fails.
+  Record close errors, fail the case, and refuse root deletion when closure is
+  uncertain. Original cleanup could skip remaining handles on the first error.
+- Record successful holder reaping immediately, before subsequent healthy-client
+  shutdown. A later shutdown failure must not trigger a second wait on a holder
+  already reaped by its original parent.
+- Require the expected holder reply event, exact actor identity/privilege, strict
+  pidfd inheritance booleans, stream-socket metadata, matching holder-side server
+  credentials and the exact two-descriptor explicit inheritance set. The client
+  now records the passed control descriptor separately for that comparison.
+
+[Pre-fix regressions](evidence/review-counterexamples.txt) reproduced **four
+failures and one error among 19 checks** against the original harness: privileged
+holder metadata accepted, incorrect holder reply event accepted, nonboolean
+pidfd inheritance accepted, directory allocated before constructor failure, and
+cleanup aborting on a handle-close failure. Those tests use mutated snapshots,
+mocked failures and private temporary files, not five native security failures.
+[Reviewed checks](evidence/review-checks.txt) now pass **all 19 checks**.
+
+The reviewed native run still records Pass / Pass / Detected with 61 trace events,
+one actual request per case and action counts 1 / 0 / 1. All nine actors exited
+zero and were reaped, no cleanup fallback or close errors occurred, all three
+roots/socket entries were removed, no children remain and the child-subreaper
+flag was restored to its original value. Native timeout, handle-close, startup
+and shutdown faults remain untested; the relevant added checks are local mocks.
 
 ## Remaining coverage gaps
 

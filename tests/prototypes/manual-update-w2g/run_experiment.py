@@ -155,7 +155,7 @@ def client(endpoint, holder_control_fd):
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         os.close(holder_control_fd)
         support.write_message(1, ready('holder-spawned', child_identity=peer.identity(child.pid),
-                                      descriptor=descriptor(conn), pass_fds=list(passed), close_fds=True))
+                                      descriptor=descriptor(conn), holder_control_fd=holder_control_fd, pass_fds=list(passed), close_fds=True))
         while True:
             command = support.read_message(0)
             if command['op'] == 'send':
@@ -171,6 +171,16 @@ def client(endpoint, holder_control_fd):
                 return
             else:
                 raise RuntimeError('unknown client operation')
+
+
+def close_resources(resources):
+    errors = []
+    for label, closer in resources:
+        try:
+            closer()
+        except Exception as exc:
+            errors.append(f'{label}: {type(exc).__name__}: {exc}')
+    return errors
 
 
 class Actor:
@@ -209,18 +219,22 @@ class Actor:
             return dict(pid=self.proc.pid, reaped=True, forced=forced,
                         exit_code=self.proc.returncode, stderr=error.decode())
         finally:
-            for stream in (self.proc.stdin, self.proc.stdout, self.proc.stderr):
-                if stream is not None:
-                    stream.close()
+            resources = [(f'actor stream {index}', stream.close) for index, stream in enumerate(
+                         (self.proc.stdin, self.proc.stdout, self.proc.stderr)) if stream is not None]
             if self.pidfd is not None:
-                os.close(self.pidfd)
+                resources.append(('actor pidfd', lambda: os.close(self.pidfd)))
+            active_error = sys.exc_info()[1]
+            errors = close_resources(resources)
+            self.pidfd = None
+            if errors:
+                raise RuntimeError(f'actor close failures: {errors}; prior error: {active_error}') from active_error
 
 
 class Case:
     def __init__(self, name):
         ensure(name in CASES, 'unknown W2g case')
         self.name = name
-        self.root = Path(tempfile.mkdtemp(prefix='PROTOTYPE-W2g-'))
+        self.root = None
         self.root_before = None
         self.sockets = {}
         self.actors = []
@@ -228,7 +242,7 @@ class Case:
         self.holder_identity = None
         self.holder_reaped = False
         self.parent_control = self.child_control = None
-        self.report = dict(case=name, result='Fail', failures=[], trace=[], root=str(self.root), root_removed=False, runner_identity=peer.identity(os.getpid()))
+        self.report = dict(case=name, result='Fail', failures=[], trace=[], root=None, root_removed=False, runner_identity=peer.identity(os.getpid()))
         self.started = time.monotonic()
 
     def event(self, name, **details):
@@ -265,7 +279,8 @@ class Case:
         self.event('holder-reply', reply=reply)
         return reply
 
-    def validate_holder(self, msg, client, adopted):
+    def validate_holder(self, msg, client, adopted, expected_event='holder-alive'):
+        ensure(msg['event'] == expected_event, 'unexpected holder reply event')
         expected = dict(self.holder_identity, ppid=os.getpid() if adopted else client.proc.pid)
         observed = dict(identity=peer.identity(expected['pid']), pidfd_live=live(self.holder_fd), observed_at=time.monotonic())
         ensure(msg['identity'] == expected and observed['identity'] == expected and observed['pidfd_live'], 'holder identity/liveness mismatch')
@@ -274,6 +289,8 @@ class Case:
         ensure(same_socket(self.report['client_socket'], msg['descriptor']), 'holder did not retain original connected socket')
 
     def run(self):
+        self.root = Path(tempfile.mkdtemp(prefix='PROTOTYPE-W2g-'))
+        self.report['root'] = str(self.root)
         self.root_before = peer.metadata(self.root)
         self.report['root_identity'] = self.root_before
         ensure(self.root_before['directory'] and self.root_before['uid'] == os.geteuid() and self.root_before['mode'] == '0o700', 'unsafe root')
@@ -291,6 +308,9 @@ class Case:
         client_actor.send(dict(op='connect', enrolled=server_actor.initial))
         sa, ca = server_actor.read(), client_actor.read()
         self.event('mutual-authentication', server=sa, client=ca)
+        ensure(sa['identity'] == server_actor.initial and ca['identity'] == client_actor.initial, 'authenticated actor identity changed')
+        self.check_privilege(sa)
+        self.check_privilege(ca)
         ensure(sa['event'] == ca['event'] == 'authenticated' and sa['verification']['accepted'] and ca['verification']['accepted'], 'authentication failed')
         ensure(sa['pidfd_live'] and not sa['pidfd_inheritable'], 'server lacks noninheritable live retained pidfd')
         self.report.update(server_auth=sa, client_auth=ca, enrolled_client=client_actor.initial,
@@ -301,7 +321,7 @@ class Case:
         self.holder_fd = bind_process(self.holder_identity)
         hr = self.holder_message()
         self.report['inheritance'] = dict(spawned=spawned, holder_ready=hr)
-        self.validate_holder(hr, client_actor, False)
+        self.validate_holder(hr, client_actor, False, 'holder-ready')
         ensure(hr['event'] == 'holder-ready' and same_socket(spawned['descriptor'], ca['descriptor']), 'holder readiness/descriptor mismatch')
         ensure(spawned['close_fds'] and not spawned['descriptor']['inheritable'] and hr['descriptor']['inheritable'] and spawned['descriptor']['fd'] in spawned['pass_fds'], 'explicit descriptor inheritance not established')
         lost = self.name != 'healthy'
@@ -337,13 +357,14 @@ class Case:
             status = support.wait_pidfd(self.holder_fd)
             ensure(status.si_pid == self.holder_identity['pid'] and status.si_code == os.CLD_EXITED and status.si_status == 0, 'adopted holder failed')
             self.report['holder_reap'] = dict(pid=status.si_pid, exit_code=status.si_status, by='runner', reaped=True)
+            self.holder_reaped = True
         else:
             reaped = self.command(client_actor, 'reap-holder')
             ensure(reaped['event'] == 'holder-reaped' and reaped['child_pid'] == self.holder_identity['pid'] and reaped['exit_code'] == 0 and not live(self.holder_fd), 'holder reap not confirmed')
             self.report['holder_reap'] = dict(pid=reaped['child_pid'], exit_code=0, by='original-client', reaped=True)
+            self.holder_reaped = True
             self.command(client_actor, 'stop')
             ensure(client_actor.proc.wait(timeout=TIMEOUT) == 0, 'healthy client shutdown failed')
-        self.holder_reaped = True
         server_actor.send(dict(op='stop'))
         ensure(server_actor.proc.wait(timeout=TIMEOUT) == 0, 'server shutdown failed')
 
@@ -366,16 +387,25 @@ class Case:
         except Exception as exc:
             self.report['failures'].append(f'holder cleanup: {exc}')
         finally:
+            resources = []
             if self.holder_fd is not None:
-                os.close(self.holder_fd)
-            for control in (self.parent_control, self.child_control):
+                resources.append(('holder pidfd', lambda: os.close(self.holder_fd)))
+            for index, control in enumerate((self.parent_control, self.child_control)):
                 if control is not None:
-                    control.close()
+                    resources.append((f'holder control {index}', control.close))
+            close_errors = close_resources(resources)
+            self.holder_fd = None
+            self.report['close_errors'] = close_errors
+            self.report['failures'].extend(close_errors)
         clean = len(self.report['actor_cleanup']) == len(self.actors) and all(c['reaped'] for c in self.report['actor_cleanup'])
         try:
-            ensure(clean and not support.direct_children() and (self.holder_identity is None or self.holder_reaped), 'uncertain process cleanup; preserve root')
-            ensure(self.root_before is not None, 'unknown root identity; preserve root')
-            self.report['root_removed'] = peer.cleanup_root(self.root, self.root_before, self.sockets)
+            ensure(not close_errors and clean and not support.direct_children() and (self.holder_identity is None or self.holder_reaped), 'uncertain process cleanup; preserve root')
+            if self.root is None:
+                self.report['root_not_allocated'] = True
+                self.report['root_removed'] = True
+            else:
+                ensure(self.root_before is not None, 'unknown root identity; preserve root')
+                self.report['root_removed'] = peer.cleanup_root(self.root, self.root_before, self.sockets)
             ensure(self.report['root_removed'], 'root removal not confirmed')
         except Exception as exc:
             self.report['failures'].append(f'filesystem cleanup: {exc}')
@@ -383,6 +413,23 @@ class Case:
             self.report['failures'].append('actor failure or forced cleanup')
         if self.report['failures']:
             self.report['result'] = 'Fail'
+
+
+def validate_actor_snapshot(snapshot, expected, event):
+    ensure(snapshot['event'] == event and snapshot['identity'] == expected, 'actor identity/reply mismatch')
+    privilege = snapshot['privilege']
+    ensure(type(privilege['uid']) is int and type(privilege['euid']) is int and
+           privilege['uid'] == privilege['euid'] == expected['uid'] != 0 and
+           isinstance(privilege['effective_capabilities'], str) and
+           int(privilege['effective_capabilities'], 16) == 0, 'privileged/mismatched actor snapshot')
+
+
+def validate_socket_snapshot(record):
+    ensure(record['socket'] is True and type(record['type']) is int and record['type'] == socket.SOCK_STREAM,
+           'not a stream socket snapshot')
+    for key in ('fd', 'device', 'inode', 'uid', 'gid'):
+        ensure(type(record[key]) is int and record[key] >= 0, 'invalid socket descriptor metadata')
+    ensure(type(record['inheritable']) is bool, 'invalid socket inheritance flag')
 
 
 def validate_result(report):
@@ -396,6 +443,9 @@ def validate_result(report):
     ensure(enrolled['uid'] == report['enrolled_server']['uid'] != 0 and enrolled['gid'] == report['enrolled_server']['gid'], 'account scope mismatch')
     for key, expected in [('server_auth', enrolled), ('client_auth', report['enrolled_server'])]:
         auth = report[key]
+        actual_actor = report['enrolled_server'] if key == 'server_auth' else enrolled
+        validate_actor_snapshot(auth, actual_actor, 'authenticated')
+        validate_socket_snapshot(auth['descriptor'])
         v = auth['verification']
         ensure(auth['event'] == 'authenticated' and v['accepted'] is True and v['reason'] == 'enrolled-live-process-instance' and 'error' not in v, 'missing initial authentication')
         ensure(v['enrolled'] == v['before'] == v['after'] == expected and v['pidfd_live'] is True, 'missing initial creation/liveness proof')
@@ -406,6 +456,16 @@ def validate_result(report):
         ensure(sample['identity'] == enrolled and sample['pidfd_live'] is (not lost) and sample['exit_code'] == (0 if lost else None), 'independent original-client lifetime proof missing')
     inherited = report['inheritance']
     spawned, holder_ready = inherited['spawned'], inherited['holder_ready']
+    validate_actor_snapshot(spawned, enrolled, 'holder-spawned')
+    validate_actor_snapshot(holder_ready, spawned['child_identity'], 'holder-ready')
+    ensure(spawned['child_identity']['pid'] not in (enrolled['pid'], report['enrolled_server']['pid'], runner_pid), 'holder is not a distinct process')
+    ensure(holder_ready['identity']['uid'] == enrolled['uid'] and holder_ready['identity']['gid'] == enrolled['gid'], 'holder account changed')
+    for record in (spawned['descriptor'], holder_ready['descriptor'], report['client_socket']):
+        validate_socket_snapshot(record)
+    ensure(report['client_socket'] == report['client_auth']['descriptor'], 'client socket/authentication record diverged')
+    ensure(holder_ready['kernel_server'] == {k: report['enrolled_server'][k] for k in ('pid', 'uid', 'gid')}, 'holder server credentials changed')
+    passed = spawned['pass_fds']
+    ensure(len(passed) == 2 and all(type(fd) is int and fd >= 0 for fd in passed) and len(set(passed)) == 2 and set(passed) == {spawned['descriptor']['fd'], spawned['holder_control_fd']}, 'unexpected inherited descriptor set')
     ensure(spawned['event'] == 'holder-spawned' and spawned['child_identity'] == holder_ready['identity'] and holder_ready['identity']['ppid'] == enrolled['pid'], 'initial holder ownership mismatch')
     ensure(spawned['close_fds'] is True and spawned['descriptor']['fd'] in spawned['pass_fds'] and spawned['descriptor']['inheritable'] is False and holder_ready['descriptor']['inheritable'] is True, 'missing explicit descriptor inheritance')
     ensure(same_socket(spawned['descriptor'], report['client_socket']) and same_socket(holder_ready['descriptor'], report['client_socket']), 'initial inherited socket mismatch')
@@ -414,7 +474,7 @@ def validate_result(report):
     ensure(type(r['original_client_live']) is bool and r['original_client_live'] is not lost, 'wrong original-client liveness')
     enrolled = report['enrolled_client']
     ensure(r['kernel'] == {k: enrolled[k] for k in ('pid', 'uid', 'gid')}, 'kernel identity not the original enrolled client')
-    ensure(r['retained_pidfd'] == report['server_auth']['retained_pidfd'] and not r['retained_pidfd_inheritable'], 'retained pidfd changed')
+    ensure(r['retained_pidfd'] == report['server_auth']['retained_pidfd'] and r['retained_pidfd_inheritable'] is False, 'retained pidfd changed')
     ensure(r['request'] == fixed_request(enrolled['pid']) and type(r['requests_received']) is int and r['requests_received'] == 1, 'missing or changed request')
     expected = int(not lost or mutant)
     ensure(type(r['authorized_actions']) is int and r['authorized_actions'] == expected, 'unexpected authorized-action count')
@@ -425,9 +485,12 @@ def validate_result(report):
     for msg in (before, after):
         ensure(msg['identity']['pid'] == holder_id['pid'] and msg['identity']['start_ticks'] == holder_id['start_ticks'], 'holder instance changed')
         expected_identity = dict(holder_id, ppid=runner_pid if lost else enrolled['pid'])
+        validate_actor_snapshot(msg, expected_identity, 'holder-alive')
+        validate_socket_snapshot(msg['descriptor'])
         ensure(msg['identity'] == expected_identity and msg['runner_observed']['identity'] == expected_identity and msg['runner_observed']['pidfd_live'] is True, 'holder survival/adoption proof missing')
         ensure(same_socket(report['client_socket'], msg['descriptor']), 'holder socket changed')
-    ensure(sender['identity'] == (dict(holder_id, ppid=runner_pid) if lost else enrolled), 'wrong actual request sender')
+    validate_actor_snapshot(sender, dict(holder_id, ppid=runner_pid) if lost else enrolled, 'request-sent')
+    validate_socket_snapshot(sender['descriptor'])
     ensure(same_socket(report['client_socket'], sender['descriptor']), 'request not sent over retained socket')
     times = (report['original_client_before']['observed_at'], before['runner_observed']['observed_at'], sender['sent_at'], r['evaluated_at'], after['runner_observed']['observed_at'], report['original_client_after']['observed_at'])
     ensure(all(type(t) in (int, float) and 0 < t < float('inf') for t in times) and list(times) == sorted(times), 'barrier/request/evaluation ordering inconsistent')
