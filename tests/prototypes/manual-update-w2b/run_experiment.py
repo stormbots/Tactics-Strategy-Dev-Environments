@@ -69,8 +69,23 @@ def read_message(fd):
 def write_message(fd, message):
     wire = json.dumps(message, separators=(',', ':')).encode() + b'\n'
     ensure(len(wire) <= 8192, 'barrier message too large')
-    # Small trusted fixed messages only; this is not a hardened production IPC adapter.
-    os.write(fd, wire)
+    # Handle partial writes and full buffers; not a production authenticated IPC adapter.
+    original = os.get_blocking(fd)
+    deadline = time.monotonic() + TIMEOUT
+    offset = 0
+    try:
+        os.set_blocking(fd, False)
+        while offset < len(wire):
+            remaining = deadline - time.monotonic()
+            ensure(remaining > 0 and select.select([], [fd], [], max(0, remaining))[1], 'barrier write timeout')
+            try:
+                written = os.write(fd, wire[offset:])
+            except BlockingIOError:
+                continue
+            ensure(written > 0, 'barrier zero-byte write')
+            offset += written
+    finally:
+        os.set_blocking(fd, original)
 
 
 def regular_descriptors():
@@ -171,6 +186,7 @@ class Case:
         self.supervisor_pidfd = None
         self.child_pidfd = None
         self.child_identity = None
+        self.sentinel_lock_fd = -1
         self.parent_socket = self.child_socket = None
         self.expected_file = None
         self.expected_root = inode(root.stat(follow_symlinks=False))
@@ -200,12 +216,20 @@ class Case:
         self.event('pidfd_bound', identity=before)
         return fd
 
+    def validate_alive(self, reply):
+        ensure(reply.get('identity') == {**self.child_identity, 'ppid': os.getpid()}, 'sentinel identity changed')
+        ensure(not select.select([self.child_pidfd], [], [], 0)[0], 'sentinel exited before liveness check')
+        if reply.get('event') == 'alive':
+            ensure(reply.get('lock_fd') == self.sentinel_lock_fd, 'sentinel descriptor state changed')
+
     def child_message(self, command=None):
         if command:
             self.event('barrier_request', command=command)
             write_message(self.parent_socket.fileno(), dict(command=command))
         reply = read_message(self.parent_socket.fileno())
         self.event('barrier_reply', reply=reply)
+        if command in ('ping', 'close_descriptor'):
+            self.validate_alive(reply)
         if self.expected_file:
             ensure(inode((self.root / 'O').stat(follow_symlinks=False)) == self.expected_file, 'lock file changed')
         return reply
@@ -250,6 +274,7 @@ class Case:
         ensure(child_ready['event'] == 'sentinel_ready' and child_ready['identity'] == self.child_identity, 'sentinel identity mismatch')
         for details in (ready, child_ready):
             ensure(details['privilege']['euid'] == os.geteuid() and not int(details['privilege']['effective_capabilities'], 16), 'actor not unprivileged')
+        self.sentinel_lock_fd = child_ready['lock_fd']
         inherited = self.mode == 'inherit'
         actual = [record for record in child_ready['regular_descriptors']
                   if record['identity']['device'] == self.expected_file['device']
@@ -271,6 +296,7 @@ class Case:
         ensure(self.child_message('ping')['event'] == 'alive', 'sentinel died during probe')
         if inherited:
             ensure(self.child_message('close_descriptor')['event'] == 'descriptor_closed', 'descriptor not closed')
+            self.sentinel_lock_fd = -1
             self.probe('acquired')
             ensure(self.child_message('ping')['event'] == 'alive', 'close killed sentinel')
         self.report['result'] = 'Pass'
@@ -307,11 +333,17 @@ class Case:
                         self.event('fallback_sentinel_reaped', pid=status.si_pid, code=status.si_code, status=status.si_status)
                 except BaseException as fallback:
                     self.cleanup_errors.append(f'sentinel fallback: {type(fallback).__name__}: {fallback}')
-        for sock in (self.parent_socket, self.child_socket):
+        for label, sock in (('parent socket', self.parent_socket), ('child socket', self.child_socket)):
             if sock is not None:
-                sock.close()
+                try:
+                    sock.close()
+                except BaseException as exc:
+                    self.cleanup_errors.append(f'{label}: {type(exc).__name__}: {exc}')
         if self.supervisor is not None and self.supervisor.stdout:
-            self.supervisor.stdout.close()
+            try:
+                self.supervisor.stdout.close()
+            except BaseException as exc:
+                self.cleanup_errors.append(f'stdout close: {type(exc).__name__}: {exc}')
         for pid in direct_children():
             if self.supervisor is not None and pid == self.supervisor.pid:
                 continue
@@ -322,7 +354,9 @@ class Case:
                        and candidate['start_ticks'] >= self.runner_start_ticks, 'unowned process; no signal')
                 recovery_fd = self.bind_pidfd(candidate)
                 self.cleanup_errors.append('fallback cleanup of adopted startup/sentinel child')
-                if not select.select([recovery_fd], [], [], 0)[0]:
+                known = self.child_identity is not None and all(candidate[k] == self.child_identity[k]
+                    for k in ('pid', 'uid', 'start_ticks'))
+                if known and not select.select([recovery_fd], [], [], 0)[0]:
                     signal.pidfd_send_signal(recovery_fd, signal.SIGKILL)
                 status = wait_pidfd(recovery_fd)
                 self.event('adopted_child_fallback_reaped', pid=status.si_pid, code=status.si_code, status=status.si_status)
@@ -333,7 +367,10 @@ class Case:
                     os.close(recovery_fd)
         for fd in (self.supervisor_pidfd, self.child_pidfd):
             if fd is not None:
-                os.close(fd)
+                try:
+                    os.close(fd)
+                except BaseException as exc:
+                    self.cleanup_errors.append(f'pidfd close: {type(exc).__name__}: {exc}')
         self.report['cleanup'] = dict(supervisor_exited=self.supervisor is None or self.supervisor.returncode is not None,
                                       sentinel_reaped=self.child_reaped, errors=self.cleanup_errors,
                                       remaining_direct_children=direct_children())
@@ -372,8 +409,9 @@ def main():
         report['environment']['os_release'] = next((line.split('=', 1)[1].strip(chr(34))
             for line in Path('/etc/os-release').read_text().splitlines() if line.startswith('PRETTY_NAME=')), 'unknown')
         original_subreaper = subreaper()
+        report['subreaper'] = dict(original=original_subreaper)
         subreaper(True)
-        report['subreaper'] = dict(original=original_subreaper, during=subreaper())
+        report['subreaper']['during'] = subreaper()
         for mode in ('exclude', 'inherit'):
             root = Path(tempfile.mkdtemp(prefix=f'PROTOTYPE-W2b-{mode}-'))
             item = dict(mode=mode, root=str(root), result='Not run', trace=[], failures=[])

@@ -1,0 +1,49 @@
+test_close_error_does_not_skip_later_resources (test_checks.SafetyChecks.test_close_error_does_not_skip_later_resources) ... ERROR
+test_identity_change_during_pidfd_binding_closes_handle (test_checks.SafetyChecks.test_identity_change_during_pidfd_binding_closes_handle) ... ok
+test_partial_barrier_write_is_completed (test_checks.SafetyChecks.test_partial_barrier_write_is_completed) ... FAIL
+test_reap_is_nonblocking_after_pidfd_readability (test_checks.SafetyChecks.test_reap_is_nonblocking_after_pidfd_readability) ... ok
+test_reap_watchdog_does_not_enter_waitid_after_timeout (test_checks.SafetyChecks.test_reap_watchdog_does_not_enter_waitid_after_timeout) ... ok
+test_subreaper_setup_failure_preserves_original_error_and_restores (test_checks.SafetyChecks.test_subreaper_setup_failure_preserves_original_error_and_restores) ... FAIL
+test_wrong_process_identity_rejected_before_binding (test_checks.SafetyChecks.test_wrong_process_identity_rejected_before_binding) ... ok
+
+======================================================================
+ERROR: test_close_error_does_not_skip_later_resources (test_checks.SafetyChecks.test_close_error_does_not_skip_later_resources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2b/test_checks.py", line 88, in test_close_error_does_not_skip_later_resources
+    case.cleanup()
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2b/run_experiment.py", line 312, in cleanup
+    sock.close()
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+OSError: injected close error
+
+======================================================================
+FAIL: test_partial_barrier_write_is_completed (test_checks.SafetyChecks.test_partial_barrier_write_is_completed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2b/test_checks.py", line 60, in test_partial_barrier_write_is_completed
+    self.assertEqual(b''.join(parts), b'{"command":"ping"}\n')
+AssertionError: b'{"' != b'{"command":"ping"}\n'
+
+======================================================================
+FAIL: test_subreaper_setup_failure_preserves_original_error_and_restores (test_checks.SafetyChecks.test_subreaper_setup_failure_preserves_original_error_and_restores)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update-w2b/test_checks.py", line 71, in test_subreaper_setup_failure_preserves_original_error_and_restores
+    self.assertEqual(report['result'], 'Blocked')
+AssertionError: 'Fail' != 'Blocked'
+- Fail
++ Blocked
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.005s
+
+FAILED (failures=2, errors=1)

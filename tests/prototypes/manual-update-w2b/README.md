@@ -38,13 +38,14 @@ Sentinel exit is reaped through its pidfd. This is controlled test ownership, no
 production IPC authentication or the proposed privileged supervisor mechanism.
 
 Trusted socketpair/stdout messages provide explicit readiness, ping, descriptor-
-close and exit barriers. Reads have five-second diagnostic watchdogs and an 8-KiB
-message cap. Pipe/socket writes are small trusted messages, not hardened against
-hostile backpressure. No sleeps or average stress outcomes establish correctness.
+close and exit barriers. Reads and writes have five-second diagnostic watchdogs and an 8-KiB
+message cap. Writes handle short writes, temporary backpressure and zero-byte
+failure, and restore the original blocking mode. This does not establish
+authenticated or flood-resistant production IPC. No sleeps or average stress outcomes establish correctness.
 
 ## Results
 
-[Recorded native run](evidence/linux-run.json): **both directed cases Pass**,
+[Reviewed native run](evidence/reviewed-linux-run.json): **both directed cases Pass**,
 33 total trace events (14 exclusion, 19 inheritance). The supervisor genuinely
 excludes an independent probe before termination in both cases.
 
@@ -83,10 +84,12 @@ roots were removed, no direct children remained, and the runner's subreaper valu
 was restored from 1 to its original 0. Removal refuses uncertain process completion,
 changed root/file identities or unknown root entries. Failure fallback signals
 use owned pidfds and count as failure; uncertain roots remain for inspection.
-Startup-orphan cleanup is limited to verified same-UID direct children adopted
-into this single-purpose runner, and records any such fallback as failure.
+Startup-orphan cleanup can reap a verified same-UID direct child after control
+EOF. A destructive signal additionally requires the registered sentinel identity;
+ancestry and process age alone do not authorize it. Such fallback is recorded as
+failure, and uncertain roots remain for inspection.
 
-[Four focused checks](evidence/local-checks.txt) additionally pass: reap timeout
+[Original four focused checks](evidence/local-checks.txt) additionally pass: reap timeout
 never enters waitid, readable-pidfd reaping uses WNOHANG, a mismatched process
 identity cannot bind a pidfd, and identity change during binding closes the handle.
 Those checks use mocks; they are not additional native schedules or evidence for
@@ -108,3 +111,42 @@ The exclusion case deliberately demonstrates that a child can remain alive after
 the supervisor's lock disappears. Neither result authorizes GUI startup during
 uncertain real installation. Durable-intent/child-quiescence validation remains a
 separate requirement; no blocker is cleared and no broader wave is authorized.
+
+
+## W2b implementation and evidence review
+
+Reviewed initial commit `7df8536`. Its [original native run](evidence/linux-run.json)
+and [four-check output](evidence/local-checks.txt) remain unchanged historical
+evidence; their source hashes describe that initial implementation.
+
+| Finding | W2b-only correction |
+| --- | --- |
+| A partial os.write could silently truncate a barrier frame | Loop to completion using nonblocking writes, a fixed deadline, bounded messages and blocking-mode restoration; zero writes fail |
+| A resource close error could prevent later cleanup/reporting | Collect socket/stdout/pidfd close errors and continue later resource cleanup; the run fails |
+| Subreaper enable failure could cause a second KeyError and obscure restoration evidence | Initialize restoration bookkeeping before enabling; preserve the original failure and report actual restored state |
+| Post-termination replies checked only part of sentinel identity | Require full PID/UID/creation identity with the expected adoption PPID, a non-exited pidfd and expected descriptor state on every ping |
+| Startup-orphan cleanup could signal based only on ancestry/age | Unknown adopted children may be reaped after EOF, but only the registered sentinel identity authorizes a destructive signal |
+
+[Pre-fix regression output](evidence/review-counterexamples.txt) records two
+failures and one error among the first seven focused tests. The
+[reviewed 13-check output](evidence/review-checks.txt) passes: original pidfd/reap
+checks plus partial/zero-byte/timeout writes, resource cleanup continuation,
+setup/restoration bookkeeping, full identity changes, stale liveness replies,
+descriptor-state changes and no signal to an unregistered adopted child. These
+are focused mock/failure-path checks, not thirteen native experiments.
+
+The [reviewed JSON](evidence/reviewed-linux-run.json) binds both reviewed Python
+files by SHA-256. Both native schedules pass again with 33 trace events, expected
+supervisor exits, normal sentinel reaping, unchanged lock identities, no remaining
+direct children, both roots removed and the original subreaper bit restored.
+There were no unexpected failures or fallback cleanup in that native run.
+
+Remaining gaps include no actual startup/timeout/cleanup fault injection, no
+SIGTERM-resistant supervisor or unkillable task, no adversarial process/PID-reuse
+or IPC attack, no independent process-identity authentication, and no exhaustive
+interleaving exploration. The same-UID identity metadata and pidfds are controlled
+test ownership, not a production authentication protocol. A supervisor that
+cannot complete the bounded termination attempt is recorded as failure; no
+successful cleanup is inferred. All previously stated platform, journal,
+installer and durability gaps remain. No blocker was cleared and no other W2/W3,
+elevation, registration, production, package or build scope was exercised.

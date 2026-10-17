@@ -1,0 +1,18 @@
+test_alive_replies_require_full_original_identity (test_checks.SafetyChecks.test_alive_replies_require_full_original_identity) ... ok
+test_alive_reply_requires_expected_descriptor_state (test_checks.SafetyChecks.test_alive_reply_requires_expected_descriptor_state) ... ok
+test_close_error_does_not_skip_later_resources (test_checks.SafetyChecks.test_close_error_does_not_skip_later_resources) ... ok
+test_identity_change_during_pidfd_binding_closes_handle (test_checks.SafetyChecks.test_identity_change_during_pidfd_binding_closes_handle) ... ok
+test_partial_barrier_write_is_completed (test_checks.SafetyChecks.test_partial_barrier_write_is_completed) ... ok
+test_queued_alive_reply_does_not_prove_live_process (test_checks.SafetyChecks.test_queued_alive_reply_does_not_prove_live_process) ... ok
+test_reap_is_nonblocking_after_pidfd_readability (test_checks.SafetyChecks.test_reap_is_nonblocking_after_pidfd_readability) ... ok
+test_reap_watchdog_does_not_enter_waitid_after_timeout (test_checks.SafetyChecks.test_reap_watchdog_does_not_enter_waitid_after_timeout) ... ok
+test_subreaper_setup_failure_preserves_original_error_and_restores (test_checks.SafetyChecks.test_subreaper_setup_failure_preserves_original_error_and_restores) ... ok
+test_unregistered_adopted_child_is_not_signaled (test_checks.SafetyChecks.test_unregistered_adopted_child_is_not_signaled) ... ok
+test_write_timeout_restores_mode_without_writing (test_checks.SafetyChecks.test_write_timeout_restores_mode_without_writing) ... ok
+test_wrong_process_identity_rejected_before_binding (test_checks.SafetyChecks.test_wrong_process_identity_rejected_before_binding) ... ok
+test_zero_byte_write_is_failure (test_checks.SafetyChecks.test_zero_byte_write_is_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.007s
+
+OK
