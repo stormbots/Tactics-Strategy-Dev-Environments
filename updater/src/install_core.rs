@@ -36,12 +36,16 @@ pub(crate) trait Ownership {
     type Intent<'a>: Journal
     where
         Self: 'a;
-    fn begin(&self) -> Result<Self::Intent<'_>>;
+    fn begin(&self, scope: Scope) -> Result<Self::Intent<'_>>;
 }
 impl Ownership for sde_coordination::Installation {
     type Intent<'a> = sde_coordination::Transaction<'a>;
-    fn begin(&self) -> Result<Self::Intent<'_>> {
-        self.begin_transaction().map_err(|e| e.to_string())
+    fn begin(&self, scope: Scope) -> Result<Self::Intent<'_>> {
+        match scope {
+            Scope::ScheduledMaintenance => self.begin_transaction(),
+            Scope::AppOnly => self.begin_app_only_transaction(),
+        }
+        .map_err(|e| e.to_string())
     }
 }
 
@@ -125,7 +129,7 @@ pub(crate) fn install<O: Ownership, B: Backend>(
         backend.mark_paused();
         return Ok(());
     }
-    let journal = context.owner.begin()?;
+    let journal = context.owner.begin(context.scope)?;
     backend.record_intent(&before, &verified)?;
     if context.scope == Scope::ScheduledMaintenance && backend.paused()? {
         backend.record_paused_intent()?;
@@ -155,15 +159,17 @@ mod tests {
         intent: bool,
         fail_begin: bool,
         fail_complete: bool,
+        scope: Option<Scope>,
     }
     type Shared = Rc<RefCell<State>>;
     struct Owner(Shared);
     struct Intent(Shared);
     impl Ownership for Owner {
         type Intent<'a> = Intent;
-        fn begin(&self) -> Result<Intent> {
+        fn begin(&self, scope: Scope) -> Result<Intent> {
             let mut state = self.0.borrow_mut();
             state.events.push("begin".into());
+            state.scope = Some(scope);
             // Model uncertain publication: even an error may leave intent.
             state.intent = true;
             if state.fail_begin {
@@ -343,6 +349,7 @@ mod tests {
             run(scope, &owner, &mut backend).unwrap();
             assert_eq!(backend.outcome, "updated");
             assert!(!state.borrow().intent);
+            assert_eq!(state.borrow().scope, Some(scope));
             let events = &state.borrow().events;
             let phases: Vec<_> = events
                 .iter()

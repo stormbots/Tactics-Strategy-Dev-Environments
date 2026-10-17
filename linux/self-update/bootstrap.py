@@ -65,10 +65,53 @@ def receipt(path, value):
     atomic(path, json.dumps(value).encode())
 
 
+def app_only_installation():
+    """Protected scope is a preservation hint, never installation authority."""
+    journal = Path('/var/lib/skyview-robotics-coordination/transaction.json')
+    try:
+        journal.lstat()
+    except FileNotFoundError:
+        return False
+    trusted(journal)
+    if not stat.S_ISREG(journal.lstat().st_mode):
+        raise RuntimeError('Invalid installation intent')
+    fd = os.open(journal, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    with os.fdopen(fd, 'rb') as stream:
+        raw = stream.read(4097)
+    if len(raw) > 4096:
+        raise RuntimeError('Oversized installation intent')
+    record = json.loads(raw)
+    if not isinstance(record, dict) or type(record.get('schema')) is not int or record['schema'] != 1:
+        raise RuntimeError('Unsupported installation intent')
+    scope = record.get('scope')
+    if scope is None:
+        return False  # Preserve existing scheduled/schema-1 packaging behavior.
+    if scope != 'app_only' or record.get('kind') != 'installation':
+        raise RuntimeError('Unsupported installation scope')
+    return True
+
+
+def configure_maintenance(app_only):
+    # A fixed drop-in selects the launcher and records its service attempts.
+    # Timer settings and unrelated service settings are preserved; app-only
+    # installs create no unit. Hooks do not execute tools or launch installers.
+    baseline = Path('/usr/local/sbin/skyview-student-dev-update')
+    unit = DROPIN.parent.parent / 'skyview-student-dev-update.service'
+    if not app_only and baseline.exists() and unit.exists():
+        trusted(baseline)
+        trusted(unit)
+        if '# SDE_COORDINATION_V1' in baseline.read_text():
+            directory(DROPIN.parent, 0o755)
+            atomic(DROPIN, b'[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /usr/local/libexec/skyview-self-update.py\nExecStartPre=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py start\nExecStopPost=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py finish\n', 0o644)
+            if Path('/run/systemd/system').is_dir():
+                subprocess.run(['/usr/bin/systemctl', 'daemon-reload'], check=True, env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'})
+
+
 def main():
     if os.geteuid() != 0 or len(sys.argv) != 1:
         raise RuntimeError('Root packaging invocation required')
     os.umask(0o077)
+    app_only = app_only_installation()
     trusted(BUNDLE)
     version = subprocess.check_output(['/usr/bin/dpkg-query', '-W', '-f=${Version}', 'skyview-dev-setup'], env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'}, text=True)
     if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
@@ -106,19 +149,7 @@ def main():
         previous = json.loads(active.read_text())
         receipt(ROOT / 'previous-engine.json', previous)
     receipt(active, dict(schemaVersion=1, version=version, generation=generation))
-    # A fixed drop-in selects the launcher and records its service attempts.
-    # Timer settings and unrelated service settings are preserved; app-only
-    # installs create no unit. Hooks do not execute tools or launch installers.
-    baseline = Path('/usr/local/sbin/skyview-student-dev-update')
-    unit = DROPIN.parent.parent / 'skyview-student-dev-update.service'
-    if baseline.exists() and unit.exists():
-        trusted(baseline)
-        trusted(unit)
-        if '# SDE_COORDINATION_V1' in baseline.read_text():
-            directory(DROPIN.parent, 0o755)
-            atomic(DROPIN, b'[Service]\nExecStart=\nExecStart=/usr/bin/python3 -I /usr/local/libexec/skyview-self-update.py\nExecStartPre=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py start\nExecStopPost=/usr/bin/python3 -I /usr/local/libexec/skyview-maintenance-history.py finish\n', 0o644)
-            if Path('/run/systemd/system').is_dir():
-                subprocess.run(['/usr/bin/systemctl', 'daemon-reload'], check=True, env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'})
+    configure_maintenance(app_only)
     keep = {generation}
     if previous:
         old = previous.get('generation')

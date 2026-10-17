@@ -28,7 +28,7 @@ impl std::fmt::Display for Error {
             }
             Self::Untrusted => "SDE coordination storage failed its security checks.",
             Self::NeedsRepair => {
-                "Existing maintenance needs one mentor-approved Repair to enable safe coordination."
+                "Installed components do not support safe coordination. Mentor review or a compatible update is required."
             }
         })
     }
@@ -176,22 +176,19 @@ pub fn installation() -> Result<Installation> {
     Ok(lease)
 }
 pub fn status() -> Status {
-    let dir = root();
-    match acquire_at(&dir, "operations.gate", false).and_then(|_lease| no_interruption(&dir)) {
-        Ok(()) => match acquire_at(&dir, "sessions.gate", false) {
-            Ok(_) => match compatible_maintenance() {
-                Ok(()) => Status::Idle,
-                Err(_) => Status::NeedsRepair,
-            },
-            Err(Error::Busy) => Status::Busy,
-            Err(Error::Untrusted) => Status::Untrusted,
-            Err(_) => Status::Unavailable,
-        },
+    match idle_at(&root(), compatible_maintenance) {
+        Ok(()) => Status::Idle,
         Err(Error::Busy) => Status::Busy,
         Err(Error::Interrupted) => Status::Interrupted,
         Err(Error::Untrusted) => Status::Untrusted,
+        Err(Error::NeedsRepair) => Status::NeedsRepair,
         Err(_) => Status::Unavailable,
     }
+}
+
+fn idle_at(dir: &Path, compatible: impl FnOnce() -> Result<()>) -> Result<()> {
+    let _installation = installation_at(dir)?;
+    compatible()
 }
 
 /// An older deployed scheduler cannot participate in new locks. Never report
@@ -211,14 +208,23 @@ fn compatible_maintenance_marker(marker: &str) -> Result<()> {
         r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1",
         r"C:\ProgramData\SkyviewRobotics\Coordination.ps1",
     ];
-    if !Path::new(paths[0])
-        .try_exists()
-        .map_err(|_| Error::NeedsRepair)?
-    {
-        return Ok(());
+    compatible_maintenance_at(&paths.map(Path::new), marker)
+}
+fn compatible_maintenance_at(paths: &[&Path; 2], marker: &str) -> Result<()> {
+    // lstat distinguishes true absence from a dangling link. A partial deployment
+    // is not an application-only machine with no maintenance installation.
+    let present = paths.map(|path| match std::fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err(Error::NeedsRepair),
+    });
+    match (present[0], present[1]) {
+        (Ok(false), Ok(false)) => return Ok(()),
+        (Ok(true), Ok(true)) => (),
+        _ => return Err(Error::NeedsRepair),
     }
     for name in paths {
-        let path = Path::new(name);
+        let path = *name;
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
@@ -238,12 +244,16 @@ fn compatible_maintenance_marker(marker: &str) -> Result<()> {
         File::open(path)
             .and_then(|file| file.take(65537).read_to_end(&mut bytes))
             .map_err(|_| Error::NeedsRepair)?;
-        if bytes.len() > 65536 || !String::from_utf8_lossy(&bytes).contains(marker) {
+        if bytes.len() > 65536 || !has_marker(&bytes, marker) {
             return Err(Error::NeedsRepair);
         }
     }
     Ok(())
 }
+fn has_marker(bytes: &[u8], marker: &str) -> bool {
+    std::str::from_utf8(bytes).is_ok_and(|text| text.lines().any(|line| line == marker))
+}
+
 fn no_interruption(dir: &Path) -> Result<()> {
     let entries = std::fs::read_dir(dir).map_err(|_| Error::Unavailable)?;
     for (count, entry) in entries.enumerate() {
@@ -369,6 +379,17 @@ pub struct Transaction<'a> {
 }
 impl Installation {
     pub fn begin_transaction(&self) -> Result<Transaction<'_>> {
+        self.begin_transaction_with_scope(false)
+    }
+    /// App-only package hooks must preserve maintenance configuration. Only an
+    /// admission-owning Installation can publish this scoped transaction.
+    pub fn begin_app_only_transaction(&self) -> Result<Transaction<'_>> {
+        if self._admission.is_none() {
+            return Err(Error::NeedsRepair);
+        }
+        self.begin_transaction_with_scope(true)
+    }
+    fn begin_transaction_with_scope(&self, app_only: bool) -> Result<Transaction<'_>> {
         use std::io::Write;
         let path = self.directory.join("transaction.json");
         #[cfg(unix)]
@@ -387,8 +408,11 @@ impl Installation {
         };
         #[cfg(windows)]
         let mut file = windows::journal(&path)?;
-        let record =
+        let mut record =
             serde_json::json!({"schema": 1, "pid": std::process::id(), "kind": "installation"});
+        if app_only {
+            record["scope"] = serde_json::json!("app_only");
+        }
         file.write_all(record.to_string().as_bytes())
             .and_then(|_| file.sync_all())
             .map_err(|_| Error::Unavailable)?;
@@ -573,18 +597,135 @@ mod tests {
         assert_eq!(session_at(&f.path).unwrap_err(), Error::Unavailable);
     }
     #[test]
+    fn idle_query_retains_both_leases_during_compatibility_check() {
+        let Some(f) = Fixture::new() else { return };
+        idle_at(&f.path, || {
+            assert_eq!(
+                acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+                Error::Busy
+            );
+            assert_eq!(
+                acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+                Error::Busy
+            );
+            Ok(())
+        })
+        .unwrap();
+        drop(installation_at(&f.path).unwrap());
+    }
+    #[test]
+    fn maintenance_markers_require_complete_utf8_lines() {
+        assert!(has_marker(
+            b"#!/bin/sh\n# SDE_COORDINATION_V1\r\n",
+            "# SDE_COORDINATION_V1"
+        ));
+        for bytes in [
+            b"echo '# SDE_COORDINATION_V1'".as_slice(),
+            b"# SDE_COORDINATION_V10",
+            b"# SDE_COORDINATION_V1\xff",
+        ] {
+            assert!(!has_marker(bytes, "# SDE_COORDINATION_V1"));
+        }
+    }
+    #[test]
+    fn partial_or_legacy_maintenance_never_enables_manual_preparation() {
+        let Some(f) = Fixture::new() else { return };
+        let entry = f.path.join("maintenance");
+        let helper = f.path.join("helper");
+        let paths = [entry.as_path(), helper.as_path()];
+        let v1 = "# SDE_COORDINATION_V1";
+        let v2 = "# SDE_COORDINATION_ADMISSION_V2";
+        assert!(compatible_maintenance_at(&paths, v2).is_ok());
+        std::fs::write(&helper, v1).unwrap();
+        assert_eq!(
+            compatible_maintenance_at(&paths, v2),
+            Err(Error::NeedsRepair)
+        );
+        std::fs::write(&entry, v1).unwrap();
+        assert!(compatible_maintenance_at(&paths, v1).is_ok());
+        assert_eq!(
+            compatible_maintenance_at(&paths, v2),
+            Err(Error::NeedsRepair)
+        );
+        std::fs::write(&entry, format!("{v1}\n{v2}\n")).unwrap();
+        std::fs::write(&helper, format!("{v1}\n{v2}\n")).unwrap();
+        assert!(compatible_maintenance_at(&paths, v2).is_ok());
+        #[cfg(unix)]
+        {
+            std::fs::remove_file(&entry).unwrap();
+            std::os::unix::fs::symlink("missing", &entry).unwrap();
+            assert_eq!(
+                compatible_maintenance_at(&paths, v2),
+                Err(Error::NeedsRepair)
+            );
+        }
+    }
+    #[test]
+    fn app_only_intent_requires_admission_and_survives_package_initialization() {
+        let Some(f) = Fixture::new() else { return };
+        let scheduled = installation_at(&f.path).unwrap();
+        assert!(matches!(
+            scheduled.begin_app_only_transaction(),
+            Err(Error::NeedsRepair)
+        ));
+        assert!(!f.path.join("transaction.json").exists());
+        drop(scheduled);
+        let install = prepare_at(&f.path)
+            .unwrap()
+            .close_admission()
+            .unwrap()
+            .try_installation()
+            .unwrap();
+        let transaction = install.begin_app_only_transaction().unwrap();
+        let path = f.path.join("transaction.json");
+        let before = std::fs::read(&path).unwrap();
+        let record: serde_json::Value = serde_json::from_slice(&before).unwrap();
+        assert_eq!(record["scope"], "app_only");
+        // A separate packaging child initializes while its parent retains O/A/S/I.
+        let hook = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "tests::process_probe", "--nocapture"])
+            .env("SDE_TEST_COORDINATION_DIR", &f.path)
+            .env("SDE_TEST_COORDINATION_MODE", "initialize")
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            hook.status.success(),
+            "{}",
+            String::from_utf8_lossy(&hook.stderr)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert_eq!(
+            acquire_at(&f.path, "admission.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        assert_eq!(
+            acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+            Error::Busy
+        );
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        transaction.complete().unwrap();
+        drop(install);
+        drop(session_at(&f.path).unwrap());
+    }
+    #[test]
     fn process_probe() {
         let Some(dir) = std::env::var_os("SDE_TEST_COORDINATION_DIR") else {
             return;
         };
         let dir = PathBuf::from(dir);
         let mode = std::env::var("SDE_TEST_COORDINATION_MODE").unwrap();
-        let _lease = if mode == "session" {
-            acquire_at(&dir, "sessions.gate", true)
+        let _lease = if mode == "initialize" {
+            initialize_at(&dir).unwrap();
+            None
+        } else if mode == "session" {
+            Some(acquire_at(&dir, "sessions.gate", true).unwrap())
         } else {
-            acquire_at(&dir, "operations.gate", false)
-        }
-        .unwrap();
+            Some(acquire_at(&dir, "operations.gate", false).unwrap())
+        };
         println!("SDE_LEASE_READY");
         std::io::stdout().flush().unwrap();
         let mut b = [0u8];
