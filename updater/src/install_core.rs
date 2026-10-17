@@ -185,6 +185,8 @@ mod tests {
         target: String,
         installed: String,
         policy: VecDeque<bool>,
+        policy_reads: usize,
+        fail_policy_read: Option<usize>,
         fail: Option<&'static str>,
         busy: bool,
         code: i32,
@@ -193,7 +195,7 @@ mod tests {
     impl Fake {
         fn new(state: Shared) -> Self {
             Self { state, target: "1.2.10".into(), installed: "1.2.9".into(),
-                policy: VecDeque::from([false,false]), fail: None, busy: false,
+                policy: VecDeque::from([false,false]), policy_reads: 0, fail_policy_read: None, fail: None, busy: false,
                 code: 0, outcome: "unavailable" }
         }
         fn step(&mut self, name: &'static str) -> Result<()> {
@@ -208,7 +210,12 @@ mod tests {
         }
         fn phase(&mut self, phase: Phase) { self.state.borrow_mut().events.push(format!("phase:{phase:?}")); }
         fn paused(&mut self) -> Result<bool> {
-            self.step("policy")?; Ok(self.policy.pop_front().expect("unexpected extra policy read"))
+            self.step("policy")?;
+            self.policy_reads += 1;
+            if self.fail_policy_read == Some(self.policy_reads) {
+                return Err("policy read failed".into());
+            }
+            Ok(self.policy.pop_front().expect("unexpected extra policy read"))
         }
         fn installed_version(&mut self) -> Result<String> {
             self.step("identity")?; Ok(self.installed.clone())
@@ -425,4 +432,41 @@ mod tests {
         assert!(state.borrow().intent);
         assert_eq!(backend.outcome,"failed");
     }
+    #[test]
+    fn final_policy_read_failure_is_before_manual_intent_but_after_scheduled_intent() {
+        for scope in SCOPES {
+            let (state, owner, mut backend) = fixture();
+            backend.fail_policy_read = Some(2);
+            assert_eq!(run(scope, &owner, &mut backend), Err("policy read failed".into()));
+            let state = state.borrow();
+            assert_eq!(state.intent, scope == Scope::ScheduledMaintenance);
+            assert!(!state.events.iter().any(|event| event == "launch" || event == "complete"));
+            assert_eq!(backend.outcome, "failed");
+        }
+    }
+
+    #[test]
+    fn failed_scheduled_pause_receipt_preserves_intent_without_launch_or_completion() {
+        let (state, owner, mut backend) = fixture();
+        backend.policy = VecDeque::from([false, true]);
+        backend.fail = Some("paused-intent");
+        assert_eq!(run(Scope::ScheduledMaintenance, &owner, &mut backend), Err("paused-intent".into()));
+        let state = state.borrow();
+        assert!(state.intent);
+        assert!(!state.events.iter().any(|event| event == "launch" || event == "complete"));
+        assert_eq!(backend.outcome, "failed");
+    }
+
+    #[test]
+    fn app_only_pause_never_uses_the_legacy_paused_receipt_hook() {
+        let (state, owner, mut backend) = fixture();
+        backend.policy = VecDeque::from([false, true]);
+        backend.fail = Some("paused-intent");
+        run(Scope::AppOnly, &owner, &mut backend).unwrap();
+        assert_eq!(backend.outcome, "paused");
+        let state = state.borrow();
+        assert!(!state.intent);
+        assert!(!state.events.iter().any(|event| event == "paused-intent" || event == "begin"));
+    }
+
 }
