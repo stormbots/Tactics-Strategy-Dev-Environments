@@ -92,6 +92,10 @@ pub(crate) trait Backend {
     fn authenticate(&mut self) -> Result<Self::Verified>;
     /// false means a platform-specific safe deferral, already recorded.
     fn preflight(&mut self, verified: &Self::Verified) -> Result<bool>;
+    /// App-only request/boot/deadline validation after native preflight.
+    fn validate_commit(&mut self) -> Result<()> {
+        Err("App-only commit validation is not implemented for this backend".into())
+    }
     fn record_intent(&mut self, before: &str, verified: &Self::Verified) -> Result<()>;
     fn launch(&mut self) -> Result<i32>;
     /// Record actual exit/reboot and reject non-success, preserving the journal.
@@ -128,6 +132,9 @@ pub(crate) fn install<O: Ownership, B: Backend>(
     if context.scope == Scope::AppOnly && backend.paused()? {
         backend.mark_paused();
         return Ok(());
+    }
+    if context.scope == Scope::AppOnly {
+        backend.validate_commit()?;
     }
     let journal = context.owner.begin(context.scope)?;
     backend.record_intent(&before, &verified)?;
@@ -277,6 +284,9 @@ mod tests {
             }
             Ok(!self.busy)
         }
+        fn validate_commit(&mut self) -> Result<()> {
+            self.step("commit-check")
+        }
         fn record_intent(&mut self, before: &str, verified: &Verified) -> Result<()> {
             assert_eq!(before, "1.2.9");
             assert_eq!(verified.0, "signed-bytes");
@@ -362,7 +372,7 @@ mod tests {
             );
             let core: Vec<_> = events
                 .iter()
-                .filter(|e| !e.starts_with("phase:") && *e != "policy")
+                .filter(|e| !e.starts_with("phase:") && *e != "policy" && *e != "commit-check")
                 .map(String::as_str)
                 .collect();
             assert_eq!(
@@ -438,6 +448,23 @@ mod tests {
             assert!(!state.borrow().intent);
             assert!(!state.borrow().events.iter().any(|e| e == "launch"));
         }
+    }
+    #[test]
+    fn expired_after_preflight_or_final_pause_never_creates_intent() {
+        let (state, owner, mut backend) = fixture();
+        backend.fail = Some("commit-check");
+        assert!(run(Scope::AppOnly, &owner, &mut backend).is_err());
+        let events = &state.borrow().events;
+        assert_eq!(
+            &events[events.len() - 3..],
+            ["preflight", "policy", "commit-check"]
+        );
+        assert!(!events.iter().any(|e| e == "begin" || e == "launch"));
+        assert!(!state.borrow().intent);
+        let (state, owner, mut backend) = fixture();
+        backend.fail = Some("commit-check");
+        run(Scope::ScheduledMaintenance, &owner, &mut backend).unwrap();
+        assert!(!state.borrow().events.iter().any(|e| e == "commit-check"));
     }
     #[test]
     fn app_only_final_pause_is_before_intent() {

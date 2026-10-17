@@ -13,12 +13,13 @@ use std::{
     },
     path::Path,
     process::Command,
+    time::Duration,
 };
-const ROOT: &str = "/var/lib/skyview-robotics/self-update";
-const INSTALLER: &str = "Skyview-Dev-Setup-LinuxMint-amd64.deb";
+pub(super) const ROOT: &str = "/var/lib/skyview-robotics/self-update";
+pub(super) const INSTALLER: &str = "Skyview-Dev-Setup-LinuxMint-amd64.deb";
 const BUNDLE: &str = "/usr/lib/Skyview Dev Setup/backend/linux";
 
-fn trusted(path: &Path) -> Result<()> {
+pub(super) fn trusted(path: &Path) -> Result<()> {
     for ancestor in path.ancestors() {
         host::validate(ancestor).map_err(|_| "Untrusted maintenance path")?;
     }
@@ -28,7 +29,7 @@ fn trusted(path: &Path) -> Result<()> {
     }
     Ok(())
 }
-fn trusted_file(path: &Path) -> Result<()> {
+pub(super) fn trusted_file(path: &Path) -> Result<()> {
     trusted(path)?;
     if !std::fs::symlink_metadata(path)
         .map_err(|_| "Missing maintenance file")?
@@ -54,7 +55,7 @@ struct Policy {
     schema_version: u32,
     paused: bool,
 }
-fn paused() -> Result<bool> {
+pub(super) fn paused() -> Result<bool> {
     let path = Path::new(ROOT).join("policy.json");
     trusted(&path)?;
     let p: Policy = serde_json::from_slice(&crate::read_bounded(&path, 4096)?)
@@ -64,7 +65,7 @@ fn paused() -> Result<bool> {
     }
     Ok(p.paused)
 }
-fn atomic(path: &Path, value: &impl Serialize, readable: bool) -> Result<()> {
+pub(super) fn atomic(path: &Path, value: &impl Serialize, readable: bool) -> Result<()> {
     let parent = path.parent().ok_or("Invalid receipt path")?;
     trusted(parent)?;
     if path.exists() {
@@ -114,8 +115,34 @@ fn authenticate_staged(
     crate::verify_installer(&manifest, "linux-amd64", &directory.join(INSTALLER))?;
     Ok(manifest)
 }
-fn deb_identity(directory: &Path, version: &str) -> Result<()> {
-    let output = command("/usr/bin/dpkg-deb")
+// Only read-only pre-install probes may be timed out. APT/DPKG installation
+// itself is NEVER wrapped, killed or cancelled when an authorization expires.
+fn inspection(program: &str, guard: Option<&dyn Fn() -> Result<Duration>>) -> Result<Command> {
+    if !matches!(program, "/usr/bin/dpkg-deb" | "/usr/bin/dpkg") {
+        return Err("Not a read-only package probe".into());
+    }
+    let Some(guard) = guard else {
+        return Ok(command(program));
+    };
+    trusted_file(Path::new("/usr/bin/timeout"))?;
+    let budget = probe_timeout(guard()?)?;
+    let mut c = command("/usr/bin/timeout");
+    c.args(["--signal=KILL", &budget, program]);
+    Ok(c)
+}
+fn probe_timeout(remaining: Duration) -> Result<String> {
+    let ms = remaining.as_millis().min(10_000);
+    if ms == 0 {
+        return Err("Pre-install request expired".into());
+    }
+    Ok(format!("{}.{:03}s", ms / 1000, ms % 1000))
+}
+fn deb_identity(
+    directory: &Path,
+    version: &str,
+    guard: Option<&dyn Fn() -> Result<Duration>>,
+) -> Result<()> {
+    let output = inspection("/usr/bin/dpkg-deb", guard)?
         .args(["-f"])
         .arg(directory.join(INSTALLER))
         .args(["Package", "Version", "Architecture"])
@@ -234,21 +261,21 @@ fn receipt_id<'a>(value: &'a serde_json::Value, field: &str) -> Result<&'a str> 
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Report {
-    phase: crate::observation::Phase,
-    completed_at: Option<u64>,
-    schema_version: u32,
-    checked_at: u64,
-    application_version: String,
-    maintenance_engine_version: String,
-    applied_baseline_version: Option<String>,
-    tool_exit: Option<i32>,
-    outcome: String,
-    detail: String,
-    candidate_version: Option<String>,
-    native_exit: Option<i32>,
-    recovery_available: bool,
-    log_reference: Option<String>,
+pub(super) struct Report {
+    pub(super) phase: crate::observation::Phase,
+    pub(super) completed_at: Option<u64>,
+    pub(super) schema_version: u32,
+    pub(super) checked_at: u64,
+    pub(super) application_version: String,
+    pub(super) maintenance_engine_version: String,
+    pub(super) applied_baseline_version: Option<String>,
+    pub(super) tool_exit: Option<i32>,
+    pub(super) outcome: String,
+    pub(super) detail: String,
+    pub(super) candidate_version: Option<String>,
+    pub(super) native_exit: Option<i32>,
+    pub(super) recovery_available: bool,
+    pub(super) log_reference: Option<String>,
 }
 fn coordination_error(report: &mut Report, error: sde_coordination::Error) -> String {
     report.outcome = match error {
@@ -273,17 +300,19 @@ fn install_selected(
         candidate,
         report,
         authenticate,
+        None,
+        None,
     )
 }
 
-/// Internal Phase 1 boundary only: the later authorized/admitted worker supplies
-/// ownership. No CLI, bootstrap, discovery or new lease acquisition is exposed.
-#[allow(dead_code)]
-fn install_app_only(
+/// Authorized worker retains O/A/S and supplies a mandatory late commit check.
+pub(super) fn install_app_only(
     lease: &sde_coordination::Installation,
     directory: &Path,
     candidate: &Candidate,
     report: &mut Report,
+    guard: &dyn Fn() -> Result<Duration>,
+    observe: &dyn Fn(crate::observation::Phase),
 ) -> Result<()> {
     if unsafe { libc::geteuid() } != 0 {
         return Err("Root maintenance required".into());
@@ -296,6 +325,8 @@ fn install_app_only(
         candidate,
         report,
         crate::authenticate,
+        Some(guard),
+        Some(observe),
     )
 }
 
@@ -305,6 +336,8 @@ fn install_in_context(
     candidate: &Candidate,
     report: &mut Report,
     authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
+    guard: Option<&dyn Fn() -> Result<Duration>>,
+    observe: Option<&dyn Fn(crate::observation::Phase)>,
 ) -> Result<()> {
     let scope = context.scope();
     crate::install_core::install(
@@ -315,6 +348,8 @@ fn install_in_context(
             report,
             authenticate: Some(authenticate),
             scope,
+            guard,
+            observe,
         },
     )
 }
@@ -325,6 +360,8 @@ struct LinuxBackend<'a, F> {
     report: &'a mut Report,
     authenticate: Option<F>,
     scope: crate::install_core::Scope,
+    guard: Option<&'a dyn Fn() -> Result<Duration>>,
+    observe: Option<&'a dyn Fn(crate::observation::Phase)>,
 }
 
 impl<F> crate::install_core::Backend for LinuxBackend<'_, F>
@@ -337,6 +374,9 @@ where
     }
     fn phase(&mut self, phase: crate::observation::Phase) {
         self.report.phase = phase;
+        if let Some(observe) = self.observe {
+            observe(phase);
+        }
     }
     fn paused(&mut self) -> Result<bool> {
         paused()
@@ -368,7 +408,7 @@ where
         )
     }
     fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
-        deb_identity(self.directory, &self.candidate.version)?;
+        deb_identity(self.directory, &self.candidate.version, self.guard)?;
         if package_busy()? {
             self.report.outcome = "deferred".into();
             self.report.detail = match self.scope {
@@ -383,7 +423,7 @@ where
             return Ok(false);
         }
         self.report.phase = crate::observation::Phase::Packagehealth;
-        let audit = command("/usr/bin/dpkg")
+        let audit = inspection("/usr/bin/dpkg", self.guard)?
             .arg("--audit")
             .output()
             .map_err(|_| "Package health check unavailable")?;
@@ -393,6 +433,9 @@ where
             );
         }
         Ok(true)
+    }
+    fn validate_commit(&mut self) -> Result<()> {
+        self.guard.ok_or("Missing app-only authorization guard")?().map(|_| ())
     }
     fn record_intent(&mut self, before: &str, manifest: &AuthenticatedManifest) -> Result<()> {
         atomic(
@@ -456,14 +499,14 @@ where
     }
 }
 
-fn stage(github: &mut GitHub, root: &Path, candidate: &Candidate) -> Result<String> {
+pub(super) fn stage(github: &mut GitHub, root: &Path, candidate: &Candidate) -> Result<String> {
     staging::stage_with(github, root, candidate, |b, s, t| {
         crate::authenticate(b, s, t).map_err(|_| discovery::Failure::Untrusted)
     })
     .map(|s| s.id)
     .map_err(|e| format!("Authenticated staging failed: {e:?}"))
 }
-fn recovery(github: &mut GitHub, root: &Path, installed: &str) -> Result<bool> {
+pub(super) fn recovery(github: &mut GitHub, root: &Path, installed: &str) -> Result<bool> {
     if Path::new(ROOT).join("recovery.json").exists() {
         let r = read_receipt("recovery.json")?;
         if r["schemaVersion"] != 1 {
@@ -735,6 +778,19 @@ pub fn set_linux_pause(paused: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn read_only_probe_budgets_never_disable_timeout_or_wrap_installer() {
+        use super::*;
+        assert_eq!(probe_timeout(Duration::from_millis(1)).unwrap(), "0.001s");
+        assert_eq!(probe_timeout(Duration::from_secs(100)).unwrap(), "10.000s");
+        assert!(probe_timeout(Duration::ZERO).is_err());
+        assert!(inspection("/usr/bin/apt-get", None).is_err());
+        assert_eq!(
+            inspection("/usr/bin/dpkg", None).unwrap().get_program(),
+            "/usr/bin/dpkg"
+        );
+    }
+
     use super::*;
     use minisign::KeyPair;
     use std::{
