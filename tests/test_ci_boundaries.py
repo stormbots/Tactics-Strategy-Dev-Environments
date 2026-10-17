@@ -98,6 +98,14 @@ class CiBoundaries(unittest.TestCase):
         coordination = next(s for s in steps if s.get('name') == 'Native cross-process coordination contracts')
         self.assertIn("runner.os == 'Windows' && '1'", coordination['env']['SDE_REQUIRE_COORDINATION'])
 
+    def test_multi_command_rust_validation_is_fail_fast_on_windows(self):
+        steps = self.build['jobs']['update-trust']['steps']
+        for name in ['Native cross-process coordination contracts', 'Verifier formatting and static analysis']:
+            step = next(s for s in steps if s.get('name') == name)
+            # Explicit bash uses Actions' -e -o pipefail on both OSes. A later
+            # successful command must not mask an earlier native tool failure.
+            self.assertEqual(step.get('shell'), 'bash')
+
     def test_only_publication_jobs_have_write_permission(self):
         for workflow, permitted in [(self.build, 'release'), (self.uat, 'sign-publish'), (self.probe, None)]:
             self.assertEqual(workflow['permissions']['contents'], 'read')
