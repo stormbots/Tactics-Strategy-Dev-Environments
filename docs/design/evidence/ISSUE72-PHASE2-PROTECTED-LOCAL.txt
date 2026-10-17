@@ -1,0 +1,19 @@
+uid=0 gid=0 groups=0
+Linux 6.18.44 x86_64 GNU/Linux
+FIXTURES_BEFORE
+
+running 10 tests
+test tests::admission_deferral_reopens_without_replacing_gates ... ok
+test tests::admission_retains_ownership_and_intent_blocks_reopen ... ok
+test tests::cross_process_sessions_operations_crash_and_installation_race ... ok
+test tests::durable_installation_intent_and_bootstrap_preserve_live_gates ... ok
+test tests::interrupted_record_blocks_even_with_free_kernel_gates ... ok
+test tests::native_storage_rejects_links_writable_gates_and_untrusted_directories ... ok
+test tests::process_probe ... ok
+test tests::startup_checks_each_boundary_and_releases_every_temporary_lease ... ok
+test tests::startup_propagates_gate_failures_without_admitting_session ... ok
+test tests::status_has_explicit_safe_failure_outcomes ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+FIXTURES_AFTER

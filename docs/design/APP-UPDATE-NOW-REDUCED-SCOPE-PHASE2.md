@@ -1,6 +1,7 @@
 # #72 Phase 2: coordination boundary
 
-Status: implemented and locally reviewed; protected/native validation pending.
+Status: implemented and locally reviewed; Linux protected process tests passed;
+Windows runtime and installed package-hook validation pending.
 No Update Now command or UI is enabled by this change.
 
 ## Ownership and admission
@@ -78,3 +79,26 @@ User will perform desktop UAT on owned Mint and Windows 11 PCs. Application buil
 and release preparation remain deferred. W2h remains a counterexample; W2m's
 immediate cleanup failure remains Fail; W2n native N1/N2 remain NotRun. Diagnostic
 completion, cleanup correctness and authentication safety remain separate.
+
+## Authorized protected Linux validation — 2026-10-17
+
+The owner authorized root coordination tests using disposable fixtures only. The
+non-root shell has no sudo, so the existing test executable was copied with its
+local runtime libraries into a temporary Docker image (no downloads or application
+builds). The container ran UID 0, network none, all capabilities dropped, read-only
+root filesystem, bounded memory/PIDs and a private 16 MiB /var/lib tmpfs. No host
+filesystem or Docker socket was mounted into it.
+
+`SDE_REQUIRE_COORDINATION=1` prevented silent unprivileged fixture skipping. All
+10 test entries passed, including six protected-fixture tests; process_probe is
+a helper also invoked by the cross-process test, not an independent scenario.
+The native kernel was Linux 6.18.44 x86_64, not a Mint desktop environment.
+Fixture inventories were empty before and after. Container and temporary image
+removal both succeeded. The binary digest, source commit, invocation and raw
+output are recorded in evidence/ISSUE72-PHASE2-PROTECTED-LOCAL.{json,txt}.
+
+This closes the previously unrun Linux protected-fixture gate only. It does not
+validate installed package hooks, capability migration, Windows share/ACL runtime
+behavior, desktop UAT, privileged bootstrap or request deadlines. No changes to
+production code were needed during this run. The earlier statements that fixture
+tests had not yet run describe the preceding local-review stage.
