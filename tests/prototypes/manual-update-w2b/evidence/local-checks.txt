@@ -1,0 +1,9 @@
+test_identity_change_during_pidfd_binding_closes_handle (test_checks.SafetyChecks.test_identity_change_during_pidfd_binding_closes_handle) ... ok
+test_reap_is_nonblocking_after_pidfd_readability (test_checks.SafetyChecks.test_reap_is_nonblocking_after_pidfd_readability) ... ok
+test_reap_watchdog_does_not_enter_waitid_after_timeout (test_checks.SafetyChecks.test_reap_watchdog_does_not_enter_waitid_after_timeout) ... ok
+test_wrong_process_identity_rejected_before_binding (test_checks.SafetyChecks.test_wrong_process_identity_rejected_before_binding) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.002s
+
+OK

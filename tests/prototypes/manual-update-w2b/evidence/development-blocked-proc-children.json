@@ -1,0 +1,28 @@
+{
+  "cases": [],
+  "environment": {
+    "kernel": "6.18.44",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux primitives only",
+  "experiment": "W2b surviving sentinel / descriptor lifetime",
+  "failures": [
+    "FileNotFoundError: [Errno 2] No such file or directory: '/proc/self/task/22348/children'"
+  ],
+  "limits": [
+    "One lock and two directed schedules; no production compatibility or universal race/liveness proof.",
+    "Same-UID trusted control pipes; no authenticated IPC, journal, real installer or crash recovery.",
+    "No desktop, Windows/Mint, service, privilege, package, build or release validation. B01-B06 remain open."
+  ],
+  "result": "Blocked",
+  "source_hashes": {
+    "run_experiment.py": "eeb70c1c1e8c7ec624fda94ce2c2737182fee5a508dba3fcec72bb5bd49f5613"
+  },
+  "started_at_utc": "2026-10-17T05:09:30.115127+00:00"
+}

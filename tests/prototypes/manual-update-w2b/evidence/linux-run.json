@@ -1,0 +1,591 @@
+{
+  "cases": [
+    {
+      "cleanup": {
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true,
+        "sentinel_reaped": true,
+        "supervisor_exited": true
+      },
+      "failures": [],
+      "lock_after": {
+        "device": 33,
+        "inode": 2573,
+        "mode": "0o600",
+        "regular": true,
+        "size": 0,
+        "uid": 1000
+      },
+      "lock_before": {
+        "device": 33,
+        "inode": 2573,
+        "mode": "0o600",
+        "regular": true,
+        "size": 0,
+        "uid": 1000
+      },
+      "mode": "exclude",
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "result": "Pass",
+      "root": "/tmp/PROTOTYPE-W2b-exclude-fl77e6sg",
+      "root_identity": {
+        "device": 33,
+        "inode": 2572,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.0007716179970884696,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 22467,
+            "ppid": 22466,
+            "start_ticks": 4547581,
+            "uid": 1000
+          },
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.03533881699695485,
+          "event": "supervisor_ready",
+          "reply": {
+            "child_identity": {
+              "pid": 22468,
+              "ppid": 22467,
+              "start_ticks": 4547584,
+              "uid": 1000
+            },
+            "close_fds": true,
+            "event": "supervisor_ready",
+            "identity": {
+              "pid": 22467,
+              "ppid": 22466,
+              "start_ticks": 4547581,
+              "uid": 1000
+            },
+            "lock_identity": {
+              "device": 33,
+              "inode": 2573,
+              "mode": "0o600",
+              "regular": true,
+              "size": 0,
+              "uid": 1000
+            },
+            "pass_fds": [
+              4
+            ],
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "supervisor_lock_fd": 3,
+            "supervisor_lock_inheritable": false
+          },
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.035516967000148725,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 22468,
+            "ppid": 22467,
+            "start_ticks": 4547584,
+            "uid": 1000
+          },
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.06699851699522696,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "sentinel_ready",
+            "identity": {
+              "pid": 22468,
+              "ppid": 22467,
+              "start_ticks": 4547584,
+              "uid": 1000
+            },
+            "inheritable": null,
+            "lock_fd": -1,
+            "lock_identity": null,
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "regular_descriptors": []
+          },
+          "sequence": 4
+        },
+        {
+          "elapsed_seconds": 0.06715618599992013,
+          "event": "independent_probe",
+          "expected": "busy",
+          "identity": {
+            "device": 33,
+            "inode": 2573,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "pid": 22466,
+          "result": "busy",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.06830787899525603,
+          "event": "supervisor_terminated",
+          "exitcode": -15,
+          "pid": 22467,
+          "sequence": 6
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.06831112399959238,
+          "event": "barrier_request",
+          "sequence": 7
+        },
+        {
+          "elapsed_seconds": 0.0687410539976554,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "alive",
+            "identity": {
+              "pid": 22468,
+              "ppid": 22466,
+              "start_ticks": 4547584,
+              "uid": 1000
+            },
+            "lock_fd": -1
+          },
+          "sequence": 8
+        },
+        {
+          "elapsed_seconds": 0.06879709899658337,
+          "event": "independent_probe",
+          "expected": "acquired",
+          "identity": {
+            "device": 33,
+            "inode": 2573,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "pid": 22466,
+          "result": "acquired",
+          "sequence": 9
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.06880110500060255,
+          "event": "barrier_request",
+          "sequence": 10
+        },
+        {
+          "elapsed_seconds": 0.06916370399994776,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "alive",
+            "identity": {
+              "pid": 22468,
+              "ppid": 22466,
+              "start_ticks": 4547584,
+              "uid": 1000
+            },
+            "lock_fd": -1
+          },
+          "sequence": 11
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 0.0691953019995708,
+          "event": "barrier_request",
+          "sequence": 12
+        },
+        {
+          "elapsed_seconds": 0.06937344100151677,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "sentinel_exiting"
+          },
+          "sequence": 13
+        },
+        {
+          "code": 1,
+          "elapsed_seconds": 0.07439876599528361,
+          "event": "sentinel_reaped",
+          "pid": 22468,
+          "sequence": 14,
+          "status": 0
+        }
+      ]
+    },
+    {
+      "cleanup": {
+        "errors": [],
+        "remaining_direct_children": [],
+        "root_removed": true,
+        "sentinel_reaped": true,
+        "supervisor_exited": true
+      },
+      "failures": [],
+      "lock_after": {
+        "device": 33,
+        "inode": 2575,
+        "mode": "0o600",
+        "regular": true,
+        "size": 0,
+        "uid": 1000
+      },
+      "lock_before": {
+        "device": 33,
+        "inode": 2575,
+        "mode": "0o600",
+        "regular": true,
+        "size": 0,
+        "uid": 1000
+      },
+      "mode": "inherit",
+      "mount_entries": [
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "91",
+          "mount_point": "/tmp",
+          "options": "ro,nosuid,nodev,relatime"
+        },
+        {
+          "filesystem": "tmpfs",
+          "mount_id": "106",
+          "mount_point": "/tmp",
+          "options": "rw,nosuid,nodev,relatime"
+        }
+      ],
+      "result": "Pass",
+      "root": "/tmp/PROTOTYPE-W2b-inherit-cw_inej3",
+      "root_identity": {
+        "device": 33,
+        "inode": 2574,
+        "mode": "0o700",
+        "regular": false,
+        "size": 40,
+        "uid": 1000
+      },
+      "trace": [
+        {
+          "elapsed_seconds": 0.00043531899427762255,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 22469,
+            "ppid": 22466,
+            "start_ticks": 4547588,
+            "uid": 1000
+          },
+          "sequence": 1
+        },
+        {
+          "elapsed_seconds": 0.037279964999470394,
+          "event": "supervisor_ready",
+          "reply": {
+            "child_identity": {
+              "pid": 22470,
+              "ppid": 22469,
+              "start_ticks": 4547592,
+              "uid": 1000
+            },
+            "close_fds": true,
+            "event": "supervisor_ready",
+            "identity": {
+              "pid": 22469,
+              "ppid": 22466,
+              "start_ticks": 4547588,
+              "uid": 1000
+            },
+            "lock_identity": {
+              "device": 33,
+              "inode": 2575,
+              "mode": "0o600",
+              "regular": true,
+              "size": 0,
+              "uid": 1000
+            },
+            "pass_fds": [
+              4,
+              3
+            ],
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "supervisor_lock_fd": 3,
+            "supervisor_lock_inheritable": false
+          },
+          "sequence": 2
+        },
+        {
+          "elapsed_seconds": 0.037448319999384694,
+          "event": "pidfd_bound",
+          "identity": {
+            "pid": 22470,
+            "ppid": 22469,
+            "start_ticks": 4547592,
+            "uid": 1000
+          },
+          "sequence": 3
+        },
+        {
+          "elapsed_seconds": 0.07023915199533803,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "sentinel_ready",
+            "identity": {
+              "pid": 22470,
+              "ppid": 22469,
+              "start_ticks": 4547592,
+              "uid": 1000
+            },
+            "inheritable": true,
+            "lock_fd": 3,
+            "lock_identity": {
+              "device": 33,
+              "inode": 2575,
+              "mode": "0o600",
+              "regular": true,
+              "size": 0,
+              "uid": 1000
+            },
+            "privilege": {
+              "effective_capabilities": "0000000000000000",
+              "euid": 1000,
+              "uid": 1000
+            },
+            "regular_descriptors": [
+              {
+                "fd": 3,
+                "identity": {
+                  "device": 33,
+                  "inode": 2575,
+                  "mode": "0o600",
+                  "regular": true,
+                  "size": 0,
+                  "uid": 1000
+                }
+              }
+            ]
+          },
+          "sequence": 4
+        },
+        {
+          "elapsed_seconds": 0.07035570799780544,
+          "event": "independent_probe",
+          "expected": "busy",
+          "identity": {
+            "device": 33,
+            "inode": 2575,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "pid": 22466,
+          "result": "busy",
+          "sequence": 5
+        },
+        {
+          "elapsed_seconds": 0.07151816099940334,
+          "event": "supervisor_terminated",
+          "exitcode": -15,
+          "pid": 22469,
+          "sequence": 6
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.07152215699898079,
+          "event": "barrier_request",
+          "sequence": 7
+        },
+        {
+          "elapsed_seconds": 0.07188823099568253,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "alive",
+            "identity": {
+              "pid": 22470,
+              "ppid": 22466,
+              "start_ticks": 4547592,
+              "uid": 1000
+            },
+            "lock_fd": 3
+          },
+          "sequence": 8
+        },
+        {
+          "elapsed_seconds": 0.07197077599994373,
+          "event": "independent_probe",
+          "expected": "busy",
+          "identity": {
+            "device": 33,
+            "inode": 2575,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "pid": 22466,
+          "result": "busy",
+          "sequence": 9
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.07199749699793756,
+          "event": "barrier_request",
+          "sequence": 10
+        },
+        {
+          "elapsed_seconds": 0.0723343659992679,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "alive",
+            "identity": {
+              "pid": 22470,
+              "ppid": 22466,
+              "start_ticks": 4547592,
+              "uid": 1000
+            },
+            "lock_fd": 3
+          },
+          "sequence": 11
+        },
+        {
+          "command": "close_descriptor",
+          "elapsed_seconds": 0.07236380099493545,
+          "event": "barrier_request",
+          "sequence": 12
+        },
+        {
+          "elapsed_seconds": 0.07264467599452473,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "descriptor_closed",
+            "identity": {
+              "pid": 22470,
+              "ppid": 22466,
+              "start_ticks": 4547592,
+              "uid": 1000
+            }
+          },
+          "sequence": 13
+        },
+        {
+          "elapsed_seconds": 0.07267297899670666,
+          "event": "independent_probe",
+          "expected": "acquired",
+          "identity": {
+            "device": 33,
+            "inode": 2575,
+            "mode": "0o600",
+            "regular": true,
+            "size": 0,
+            "uid": 1000
+          },
+          "pid": 22466,
+          "result": "acquired",
+          "sequence": 14
+        },
+        {
+          "command": "ping",
+          "elapsed_seconds": 0.07267584299552254,
+          "event": "barrier_request",
+          "sequence": 15
+        },
+        {
+          "elapsed_seconds": 0.0729279349980061,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "alive",
+            "identity": {
+              "pid": 22470,
+              "ppid": 22466,
+              "start_ticks": 4547592,
+              "uid": 1000
+            },
+            "lock_fd": -1
+          },
+          "sequence": 16
+        },
+        {
+          "command": "exit",
+          "elapsed_seconds": 0.07294842600094853,
+          "event": "barrier_request",
+          "sequence": 17
+        },
+        {
+          "elapsed_seconds": 0.07308402099442901,
+          "event": "barrier_reply",
+          "reply": {
+            "event": "sentinel_exiting"
+          },
+          "sequence": 18
+        },
+        {
+          "code": 1,
+          "elapsed_seconds": 0.07838651500060223,
+          "event": "sentinel_reaped",
+          "pid": 22470,
+          "sequence": 19,
+          "status": 0
+        }
+      ]
+    }
+  ],
+  "environment": {
+    "kernel": "6.18.44",
+    "os_release": "Debian GNU/Linux 13 (trixie)",
+    "privilege": {
+      "effective_capabilities": "0000000000000000",
+      "euid": 1000,
+      "uid": 1000
+    },
+    "python": "3.12.14",
+    "system": "Linux"
+  },
+  "evidence_level": "L2 Linux primitives only",
+  "experiment": "W2b surviving sentinel / descriptor lifetime",
+  "failures": [],
+  "limits": [
+    "One lock and two directed schedules; no production compatibility or universal race/liveness proof.",
+    "Same-UID trusted control pipes; no authenticated IPC, journal, real installer or crash recovery.",
+    "No desktop, Windows/Mint, service, privilege, package, build or release validation. B01-B06 remain open."
+  ],
+  "result": "Pass",
+  "source_hashes": {
+    "run_experiment.py": "f97b1ed0995e394bb1a7a43bceaf5a4cf6dadd35dba7f0fc79dd89dc9a3a1a5b",
+    "test_checks.py": "0bac46506518f7c1120f6c7d91efcd5bb167a8e1aa23e46f139c38bd00c72e1f"
+  },
+  "started_at_utc": "2026-10-17T05:10:13.030524+00:00",
+  "subreaper": {
+    "during": 1,
+    "original": 0,
+    "restored": 0
+  }
+}

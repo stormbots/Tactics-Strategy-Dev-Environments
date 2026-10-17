@@ -1,7 +1,7 @@
 # #72 Phase 1: protocol feasibility validation plan
 
-**Status:** W1 executed locally (L1); the separately authorized W2a unprivileged
-Linux lock subset was executed (narrow L2 evidence). Remaining W2/W3 and
+**Status:** W1 executed locally (L1); the separately authorized W2a/W2b unprivileged
+Linux lock subsets were executed (narrow L2 evidence). Remaining W2/W3 and
 production integration remain unauthorized. No workflow/application build was dispatched.
 See [W1 results](../../tests/prototypes/manual-update/EVIDENCE.md).
 **Baseline:** [protocol revision 2](APP-UPDATE-NOW-PROTOCOL.md), commit
@@ -427,3 +427,15 @@ cross-process O/A/S subset on the recorded Debian/Linux/tmpfs environment. It do
 not clear B06, replace W1 evidence, validate Mint/Windows desktops or authorize any
 remaining W2/W3 work. No elevation, registration, production implementation,
 package operation, workflow/build dispatch or release work occurred.
+
+
+## Separately authorized W2b execution
+
+The [W2b record](../../tests/prototypes/manual-update-w2b/README.md) records descriptor
+exclusion versus explicit inheritance with a surviving sentinel, stable process
+ownership, unchanged lock identities and cleanup. Both Linux cases pass; four
+focused mocked safety checks also pass. A development preflight Blocked result
+is preserved. This is a narrow process/descriptor subset relevant to B03/B06,
+not journal, real-installer, privileged-service or desktop proof. All six blockers
+remain open and all other W2/W3, elevation, registration, production implementation,
+package operations and workflow/build/release work remain deferred.
