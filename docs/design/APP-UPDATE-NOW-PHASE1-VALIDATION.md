@@ -770,3 +770,23 @@ and B01–B06 remain unchanged. All other W2/W3, production implementation,
 elevation, registration, package operations, build dispatch and release
 preparation remain deferred. Native execution stays stopped pending review;
 no publication or PR belongs to this execution.
+
+
+#### W2m stopped-failure source/evidence review
+
+The [W2m source review](../../tests/prototypes/manual-update-w2m/SOURCE-REVIEW.md)
+leaves M2 Fail intact. Reviewed upstream Linux/CPython and local glibc source
+predict that the fixed 52-byte layout can expose credentials plus one FD;
+missing final padding alone does not explain the observed absent rights tuple.
+The report lacks raw syscall control memory/returned length and verified build
+provenance, so the actual metadata discrepancy remains unresolved. No native
+experiment, receiver/transport/capacity change or validator change occurred.
+Three corrupted-report variants exposed local audit gaps; offline checks now
+validate the stopped prefix's ownership, enrollment, barrier order, socket/pipe
+identities, payload, counters, validator flags, unique inventories and forced
+cleanup. Thirty-one local checks pass, preserving the original failure and all
+native artifacts. Diagnostic success remains false; zero unauthorized actions
+does not repair the FD-cleanup failure or prove authentication safety. W2h's
+counterexample, W2i–W2l limits, B01–B06 and all deferrals remain unchanged. No
+publication or PR belongs to this review; further native diagnostics require
+separate authorization.

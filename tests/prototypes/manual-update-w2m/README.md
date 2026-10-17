@@ -136,7 +136,7 @@ Saved-report audits intentionally require the **observed failure**, empty
 returned-rights metadata alongside the additional live pipe FD, zero M2 actions,
 forced M2 cleanup and missing post-stop observations. Passing these audits means
 the failure is faithfully preserved; it does not turn M2 into a native pass.
-The production validator, receive capacity and transport were not changed after
+The isolated test validator, receive capacity and transport were not changed after
 the native failure. All artifacts are covered by [SHA256SUMS](evidence/SHA256SUMS).
 
 ## Remaining gaps and next gate
@@ -159,3 +159,25 @@ All other W2/W3, production implementation, elevation, registration, package
 operations, build dispatch and release preparation remain deferred. No GitHub
 publication or PR belongs to this step. Native execution has stopped; the next
 action is review of the failure and limitations, not another experiment.
+
+## Stopped-failure review
+
+[Source and evidence review](SOURCE-REVIEW.md) compares CPython v3.12.14,
+upstream Linux v6.18 and the local glibc header. On the reviewed 64-bit layout,
+52 bytes should allow credentials plus one descriptor, and normal traversal
+should expose both headers. The sources therefore do **not** establish that
+missing final padding explains the absent rights tuple. The running builds and
+raw syscall control buffer/returned length are not attested by the report; the
+actual discrepancy remains unresolved. Source review is not new native evidence.
+
+Local audits were strengthened after reproducing three accepted corrupted-report
+variants: duplicate inventory entries, mismatched validator flags and a foreign
+runner-parent identity. An offline stopped-prefix audit now binds identities,
+enrollment, barriers, socket metadata, pipe ownership, payload/counters,
+validator flags, typed unique inventories and cleanup records. Ten corruption
+subtests exercise those relationships. **31 reviewed checks pass**; they preserve
+native M2 Fail, diagnostic success=false and authentication safety=Unproven.
+No source runner/helper, native evidence, capacity, transport or validator was
+changed, and no native experiment was rerun. Original evidence remains preserved.
+All deferrals and W2h/W2i–W2l limitations stand; next comes publication/review of
+the stopped finding before any separately authorized native diagnostic.

@@ -141,6 +141,76 @@ class LocalChecks(unittest.TestCase):
             run.assert_called_once_with('M1')
 
 
+def audit_stopped_report(report):
+    """Offline relationships for the stopped M2 prefix; no socket/process calls."""
+    require=w.require
+    c=report['cases'][1];trace=c['trace']
+    names=['server-ready-before-connect','client-ready-before-connect','trusted-client-enrollment','trusted-server-enrollment',
+           'connect-permitted','accepted-passcred-verified','hello-send-permitted','client-credentials-and-server-reply',
+           'server-reply-verified','owned-pipe-created','receiver-before-send','sender-before','action-send-permitted','kernel-receive-and-truncation-check']
+    require([t['barrier'] for t in trace]==names,'stopped barrier sequence')
+    require([t['index'] for t in trace]==list(range(len(trace))),'stopped trace indices')
+    times=[t['at'] for t in trace]
+    require(all(type(t) in (int,float) and t>=0 and t<float('inf') for t in times) and times==sorted(times),'invalid stopped timestamps')
+    ev={t['barrier']:t['evidence'] for t in trace}
+    runner=report['environment']['runner'];server=ev[names[0]]['identity'];client=ev[names[1]]['identity']
+    require(server['pid']!=client['pid'],'distinct owned actors')
+    for actor in (server,client):
+        w.i.unprivileged(actor)
+        require(actor['ppid']==runner['pid'] and actor['namespaces']==runner['namespaces'],'runner ownership/namespace mismatch')
+    for name,peer in [('trusted-client-enrollment',client),('trusted-server-enrollment',server)]:
+        enrolled=ev[name]
+        require(enrolled['enrolled']==peer and enrolled['pidfd_live'] is True and enrolled['inheritable'] is False,'stopped enrollment mismatch')
+    for d in (ev[names[0]]['listener'],ev[names[1]]['descriptor'],ev['connect-permitted']['descriptor'],ev['accepted-passcred-verified']['descriptor']):
+        require(d['passcred']==1 and d['type']==socket.SOCK_SEQPACKET and d['inheritable'] is False,'stopped socket guards')
+    for decision,peer in [(ev['client-credentials-and-server-reply']['verification'],client),(ev['server-reply-verified'],server)]:
+        require(decision['accepted'] is True and decision['pidfd_live'] is True and decision['credentials']==[[peer['pid'],peer['uids'][0],peer['gids'][0]]],'stopped hello credentials')
+    baseline=ev['receiver-before-send'];before=ev['sender-before'];sent=ev['action-send-permitted'];made=ev['owned-pipe-created'];e=ev['kernel-receive-and-truncation-check'];d=e['decision']
+    require(baseline['identity']==server and before['identity']==sent['identity']==made['identity']==client,'stopped identity mismatch')
+    for value,wanted in [(baseline['authorized_actions'],0),(baseline['requests_received'],0),(before['requests_sent'],0),(sent['requests_sent'],1),(e['requests_received'],1),(e['authorized_actions'],0),(c['action_count'],0)]:
+        w.i.check_count(value,'invalid stopped integer count');require(value==wanted,'stopped counter mismatch')
+    require(before['pipe']==made['pipe']==sent['sent_pipe'] and len(made['pipe'])==2,'stopped pipe ownership')
+    read,write=made['pipe']
+    require(type(read['fd']) is int and type(write['fd']) is int and read['fd']!=write['fd'],'distinct sent FDs')
+    require(sent['attached_fds']==[read['fd'],write['fd']],'both owned pipe ends attached')
+    require(stat.S_ISFIFO(read['mode']) and all(read[k]==write[k] for k in ('dev','ino','mode')),'same owned pipe')
+    require(read['flags']&os.O_ACCMODE==os.O_RDONLY and write['flags']&os.O_ACCMODE==os.O_WRONLY,'pipe access mode evidence')
+    require(sent['requested_credentials']==[client['pid'],client['uids'][0],client['gids'][0]],'requested sender credentials')
+    require(w.i.same_endpoint(before['descriptor'],sent['descriptor']),'sender endpoint mismatch')
+    accepted=ev['accepted-passcred-verified']['descriptor']
+    require(w.i.same_endpoint(accepted,e['descriptor']) and accepted['fd']==e['descriptor']['fd'],'receiver endpoint mismatch')
+    frame=w.i.frame('action','M2',client['pid']);digest=hashlib.sha256(frame).hexdigest()
+    for value in (sent['record_bytes'],sent['return_value'],e['received_bytes'],e['expected_record_bytes'],d['record_bytes']):
+        w.i.check_count(value,'invalid stopped byte count');require(value==len(frame),'stopped payload length mismatch')
+    w.i.check_count(e['declared_json_bytes'],'invalid stopped prefix length')
+    require(sent['errno'] is None and e['declared_json_bytes']==len(frame)-4 and e['fixture_payload_matches'] is True,'complete stopped payload evidence')
+    require(sent['payload_sha256']==e['payload_sha256']==digest,'stopped payload hash mismatch')
+    for field in ('received_flags','recvmsg_flags_argument','payload_capacity','ancillary_capacity'):
+        w.i.check_count(e[field],'invalid stopped receive integer')
+    w.i.check_count(d['flags'],'invalid validator flags')
+    require(d['flags']==e['received_flags'],'validator flags mismatch')
+    require(e['received_flags']&socket.MSG_CTRUNC and not e['received_flags']&socket.MSG_TRUNC,'stopped truncation flags')
+    require(e['recvmsg_flags_argument']==socket.MSG_CMSG_CLOEXEC and e['payload_capacity']==w.i.MAX_RECORD and e['ancillary_capacity']==w.partial_capacity(),'stopped capacities/receive flags')
+    require(e['pidfd_live'] is True and e['observation_errors']==[],'stopped liveness/observation failure')
+    for inventory in (e['before'],e['after']):
+        numbers=[]
+        for fd in inventory:
+            for field in ('fd','dev','ino','mode','flags','fdflags'):w.i.check_count(fd[field],'invalid inventory metadata')
+            numbers.append(fd['fd'])
+        require(len(numbers)==len(set(numbers)),'duplicate inventory descriptor')
+        matches=[fd for fd in inventory if fd['fd']==accepted['fd']]
+        require(len(matches)==1 and matches[0]['dev']==accepted['device'] and matches[0]['ino']==accepted['inode'],'accepted endpoint inventory mismatch')
+    require(c['case']=='M2' and c['result']=='Fail' and c['failures']==['receiver FD inventory changed'],'stopped failure classification')
+    require(d['accepted'] is False and d['reason']=='truncated record/control' and d['credentials']==[],'stopped rejection mismatch')
+    require(not c.get('counterexample'),'unexpected authority counterexample claim')
+    cleanup=c['cleanup']['actors']
+    require(len(cleanup)==2 and {a['pid'] for a in cleanup}=={client['pid'],server['pid']},'cleanup ownership mismatch')
+    for a in cleanup:
+        require(type(a['pid']) is int and type(a['exit_code']) is int and a['exit_code']==-15 and a['reaped'] is True and a['forced'] is True,'stopped cleanup accounting')
+    require(c['cleanup']['root_removed'] is True,'fixture cleanup missing')
+    return True
+
+
 class EvidenceChecks(unittest.TestCase):
     """Audit the preserved stopped failure, never relabel it as native success."""
     @classmethod
@@ -149,6 +219,23 @@ class EvidenceChecks(unittest.TestCase):
         if not path.exists():raise unittest.SkipTest('native report not yet generated')
         cls.report=json.loads(path.read_text())
     def ev(self,c,name):return next(t['evidence'] for t in c['trace'] if t['barrier']==name)
+    def test_stopped_prefix_relationships(self):
+        self.assertTrue(audit_stopped_report(self.report))
+    def test_corrupted_stopped_relationships_rejected(self):
+        for kind in ('duplicate','flags','runner','enrollment','order','attachment','hash','counts','endpoint','cleanup'):
+            r=copy.deepcopy(self.report);c=r['cases'][1];e=self.ev(c,'kernel-receive-and-truncation-check')
+            if kind=='duplicate':e['before'].append(copy.deepcopy(e['before'][0]))
+            elif kind=='flags':e['decision']['flags']=0
+            elif kind=='runner':r['environment']['runner']['pid']+=100000
+            elif kind=='enrollment':self.ev(c,'trusted-client-enrollment')['enrolled']['start_ticks']+=1
+            elif kind=='order':c['trace'][2],c['trace'][3]=c['trace'][3],c['trace'][2]
+            elif kind=='attachment':self.ev(c,'action-send-permitted')['attached_fds']=[5]
+            elif kind=='hash':self.ev(c,'action-send-permitted')['payload_sha256']='wrong'
+            elif kind=='counts':e['authorized_actions']=False
+            elif kind=='endpoint':e['descriptor']['inode']+=1
+            else:c['cleanup']['actors'].append(copy.deepcopy(c['cleanup']['actors'][0]))
+            with self.subTest(kind=kind),self.assertRaises(RuntimeError):audit_stopped_report(r)
+
     def test_hashes_and_failed_disposition_preserved(self):
         r=self.report
         self.assertEqual(r['source_sha256'],hashlib.sha256(w.SCRIPT.read_bytes()).hexdigest())
