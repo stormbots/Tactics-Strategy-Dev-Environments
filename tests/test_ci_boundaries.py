@@ -124,6 +124,30 @@ class CiBoundaries(unittest.TestCase):
         guard = (ROOT / 'tests/Test-Node24MigrationCI.ps1').read_text().splitlines()[1]
         self.assertIn("$env:SDE_RUN_NATIVE_PACKAGES -ne '1'", guard)
 
+    def test_mint_preflight_is_separate_read_only_and_mocks_are_automatic(self):
+        workflow = load('mint-validation-preflight.yml')
+        self.assertEqual(set(workflow['on']), {'pull_request', 'workflow_dispatch'})
+        self.assertEqual(workflow['permissions'], {'contents': 'read'})
+        self.assertEqual(set(workflow['jobs']), {'mocked-checks', 'host-preflight'})
+        for job in workflow['jobs'].values():
+            self.assertEqual(job['runs-on'], 'ubuntu-24.04')
+            self.assertNotIn('needs', job)
+            self.assertNotIn('permissions', job)
+            self.assertEqual(job['timeout-minutes'], '5')
+            for step in job['steps']:
+                self.assertNotIn('secrets', str(step))
+                run = step.get('run', '')
+                self.assertNotRegex(run, r'sudo|apt-get|pkexec|workflow run|tauri build|qemu-system|--execute')
+                if step.get('uses', '').startswith('actions/checkout@'):
+                    self.assertEqual(step['with']['persist-credentials'], 'false')
+        mock = workflow['jobs']['mocked-checks']['steps'][-1]['run']
+        self.assertIn('test_mint_update_validation.py', mock)
+        host = workflow['jobs']['host-preflight']['steps'][1]['run']
+        self.assertIn("report['ready'] = False", host)
+        self.assertIn('guest-execution-authorization', host)
+        self.assertNotIn('verify_media(', host)
+        self.assertNotIn('pip install', host)
+
     def test_only_publication_jobs_have_write_permission(self):
         for workflow, permitted in [(self.build, 'release'), (self.uat, 'sign-publish'), (self.probe, None)]:
             self.assertEqual(workflow['permissions']['contents'], 'read')
