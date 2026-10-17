@@ -10,7 +10,7 @@ import unittest
 from model import explore
 from durability import timeline
 from timing import Budget
-from framing import Controller, Rejected
+from framing import Controller, Bridge, Rejected
 
 ROOT = Path(__file__).resolve().parent
 ALLOWED_IMPORTS = {
@@ -68,7 +68,7 @@ def coverage_ledger():
         39: 'event number versus immutable Ready epoch in fake controller',
         43: 'synthetic suspend/boot/clock invalidation, not native time sources',
         44: 'modeled pause-after-read race only; remote withdrawal not modeled',
-        45: 'synthetic freshness/drain/pre-intent timeout outcomes; no DNS/package probes',
+        45: 'synthetic commit freshness/drain/final-launch-decision and sticky abort outcomes; no DNS/package probes',
         46: 'chosen synthetic durable write/journal ordering only',
     }
     return {f'F{i:02}': {'status': 'Partial L1 modeled' if i in modeled else 'Not run',
@@ -92,7 +92,7 @@ def scenario_findings():
     drained = clock.before_spawn(11)
     controller = Controller(attempt, capability, authenticated=True)
     historical = controller.request(request("CommitInstall", 1))
-    controller.phase = "deferred"
+    controller.tick(30)
     replay = controller.request(request("CommitInstall", 1), now=31)
     cache = Controller(attempt, capability, authenticated=True)
     for index in range(1, 201):
@@ -121,6 +121,58 @@ def scenario_findings():
     ]
 
 
+def review_regressions():
+    # Actual observations of the four original review counterexamples and rate gap.
+    attempt = "10000000-0000-0000-0000-000000000001"
+    capability = "b" * 64
+    commit = dict(type="CommitInstall", commandId="20000000-0000-0000-0000-000000000001",
+                  attempt=attempt, capability=capability, readyEpoch=1,
+                  version="1.2.10", digest="a" * 64, installed="1.2.9")
+    query = dict(type="GetStatus", queryId=commit["commandId"], attempt=attempt, capability=capability)
+    clock = Budget()
+    clock.commit(0)
+    stopped = clock.before_spawn(1, paused=True)
+    retried = clock.before_spawn(2)
+    c = Controller(attempt, capability, authenticated=True)
+    c.request(query)
+    ack = c.request(commit, now=0.1)
+    latest = c.consume_status()
+    c.tick(30.1)  # commit was accepted at 0.1, so its deadline is 30.1
+    terminal = c.request(query, now=30.1)
+    bridge = Bridge(c, commit["commandId"])
+    bridge.accepts(terminal, 30.1)
+    after_terminal = bridge.accepts(ack, 30.1)
+    # A separate injected pre-deadline abort isolates sequence/correlation.
+    early = Controller(attempt, capability, authenticated=True)
+    early_ack = early.request(commit)
+    early.phase = "deferred"
+    early.events += 1
+    early_status = early.request(query, now=1)
+    bridge = Bridge(early, commit["commandId"])
+    bridge.accepts(early_status, 1)
+    older = bridge.accepts(early_ack, 2)
+    uncertain = Bridge(c, commit["commandId"])
+    uncertain.accepts(ack, 1, mapped=False)
+    recovered = uncertain.accepts(ack, 2)
+    rate = Controller(attempt, capability, authenticated=True)
+    for _ in range(10):
+        rate.request(query, now=0.999)
+        rate.consume_status()
+    try:
+        rate.request(query, now=1.0)
+    except Rejected as exc:
+        rate_result = str(exc)
+    else:
+        raise AssertionError("sliding rate bound missing")
+    assert stopped == retried == "deferred"
+    assert latest["state"] == "committed" and not latest["closeAuthorized"]
+    assert not older and not recovered and not after_terminal
+    assert not c.operation and not c.admission and rate_result == "rate bound"
+    return dict(sticky_abort=[stopped, retried], queued_status=latest["state"],
+                older_grant_after_terminal_status=older, grant_after_clock_uncertainty=recovered,
+                cross_second_rate_result=rate_result, timeout_released_fake_gates=not(c.operation or c.admission))
+
+
 def main():
     imports = scope_review()
     suite = unittest.defaultTestLoader.discover(str(ROOT), pattern='test_harness.py')
@@ -143,6 +195,7 @@ def main():
         'synthetic_durability': {'boundaries': len(list(timeline())),
                                  'missing_directory_flush_detected': flush_gap[2] and 'intent' not in flush_gap[1]},
         'findings': scenario_findings(),
+        'review_regressions': review_regressions(),
         'fault_ledger': coverage_ledger(),
         'blockers': {f'B{i:02}': 'Unresolved; no native or integrated proof' for i in range(1, 7)},
         'limits': ['One manual attempt; two GUI actors; one legacy O/S surrogate; finite crashes/transitions.',

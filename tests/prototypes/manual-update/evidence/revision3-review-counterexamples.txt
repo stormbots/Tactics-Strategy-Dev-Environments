@@ -1,0 +1,47 @@
+...F....F......F...........................F....
+======================================================================
+FAIL: test_clock_uncertainty_permanently_invalidates_close_grant (test_harness.ControlChecks.test_clock_uncertainty_permanently_invalidates_close_grant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update/test_harness.py", line 389, in test_clock_uncertainty_permanently_invalidates_close_grant
+    self.assertFalse(b.accepts(ack, 2))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_pending_status_is_current_when_consumed (test_harness.ControlChecks.test_pending_status_is_current_when_consumed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update/test_harness.py", line 380, in test_pending_status_is_current_when_consumed
+    self.assertEqual((reply["state"], reply["eventSequence"]), ("committed", 1))
+AssertionError: Tuples differ: ('ready', 0) != ('committed', 1)
+
+First differing element 0:
+'ready'
+'committed'
+
+- ('ready', 0)
++ ('committed', 1)
+
+======================================================================
+FAIL: test_terminal_status_supersedes_pending_commit_reply (test_harness.ControlChecks.test_terminal_status_supersedes_pending_commit_reply)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update/test_harness.py", line 373, in test_terminal_status_supersedes_pending_commit_reply
+    self.assertFalse(b.accepts(ack, 2))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_deferred_attempt_cannot_resume_after_checks_recover (test_harness.TimingChecks.test_deferred_attempt_cannot_resume_after_checks_recover)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Tactics-Strategy-Dev-Environments/tests/prototypes/manual-update/test_harness.py", line 478, in test_deferred_attempt_cannot_resume_after_checks_recover
+    self.assertEqual(b.before_spawn(2), "deferred")
+AssertionError: 'may_write_intent' != 'deferred'
+- may_write_intent
++ deferred
+
+
+----------------------------------------------------------------------
+Ran 48 tests in 0.068s
+
+FAILED (failures=4)

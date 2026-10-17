@@ -13,16 +13,22 @@ class Budget:
     suspended: bool = False
     intent: bool = False
     last_time: float = 0
+    invalidated: bool = False
+    stopped: bool = False
 
     def valid_clock(self, now, boot):
         valid = (type(now) in (int, float) and math.isfinite(now)
-                 and now >= self.last_time and boot == self.boot and not self.suspended)
+                 and now >= self.last_time and boot == self.boot and not self.suspended
+                 and not self.invalidated)
         if valid:
             self.last_time = now
+        else:
+            self.invalidated = True
         return valid
 
     def commit(self, now, boot="prototype-boot"):
-        if not self.valid_clock(now, boot) or now - self.ready_at >= 300 or now < self.ready_at:
+        if not self.valid_clock(now, boot) or self.stopped or now - self.ready_at >= 300 or now < self.ready_at:
+            self.stopped = True
             return "expired"
         if self.committed_at is not None:
             return "already_committed"  # retries never renew the reservation
@@ -35,12 +41,14 @@ class Budget:
         valid = self.valid_clock(now, boot)
         if self.committed_at is None:
             return "not_committed"
-        if not valid or paused or not integrity:
+        if self.stopped or not valid or paused or not integrity:
+            self.stopped = True
             return "retain_uncertain_intent" if self.intent else "deferred"
         elapsed = now - self.committed_at
         if self.drained_at is None and drained and elapsed < 30:
             self.drained_at = now
         if elapsed >= 45 or self.drained_at is None and elapsed >= 30:
+            self.stopped = True
             return "retain_uncertain_intent" if self.intent else "deferred"
         if self.drained_at is None:
             return "waiting"

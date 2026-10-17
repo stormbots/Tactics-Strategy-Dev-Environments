@@ -344,7 +344,7 @@ class ControlChecks(unittest.TestCase):
             reply = c.request(command("GetStatus", n), now=n)
             self.assertFalse(reply["closeAuthorized"])
             c.consume_status()
-        self.assertEqual((c.events, c.budget.committed_at, len(c.cache)), (1, 0, 1))
+        self.assertEqual((c.events, c.budget.committed_at, len(c.cache)), (2, 0, 1))
         self.assertFalse(c.request(command(), now=40)["closeAuthorized"])
 
     def test_candidate_binding_and_client_clock_regressions(self):
@@ -362,6 +362,65 @@ class ControlChecks(unittest.TestCase):
         # The accepted grant cannot foresee a supervisor crash after validation.
         c.operation = c.admission = False
         self.assertFalse(Bridge(c, command()["commandId"]).accepts(ack, 3, live=False))
+
+    def test_terminal_status_supersedes_pending_commit_reply(self):
+        c = self.controller()
+        b = Bridge(c, command()["commandId"])
+        ack = c.request(command())
+        status = {**ack, "correlation": command("GetStatus", 2)["queryId"],
+                  "state": "deferred", "eventSequence": 2, "closeAuthorized": False}
+        self.assertFalse(b.accepts(status, 1))
+        self.assertFalse(b.accepts(ack, 2))
+
+    def test_pending_status_is_current_when_consumed(self):
+        c = self.controller()
+        c.request(command("GetStatus"))
+        c.request(command(), now=1)
+        reply = c.consume_status()
+        self.assertEqual((reply["state"], reply["eventSequence"]), ("committed", 1))
+        self.assertFalse(reply["closeAuthorized"])
+
+    def test_clock_uncertainty_permanently_invalidates_close_grant(self):
+        c = self.controller()
+        ack = c.request(command())
+        for failure in ({"mapped": False}, {"suspended": True}, {"live": False}):
+            b = Bridge(c, command()["commandId"])
+            self.assertFalse(b.accepts(ack, 1, **failure))
+            self.assertFalse(b.accepts(ack, 2))
+
+    def test_drain_timeout_releases_fake_reservation_without_client_read(self):
+        c = self.controller()
+        c.request(command())
+        c.tick(30)
+        self.assertEqual((c.phase, c.operation, c.admission), ("deferred", False, False))
+        replay = c.request(command(), now=31)
+        self.assertTrue(replay["effectAccepted"])
+        self.assertFalse(replay["closeAuthorized"])
+        self.assertEqual(c.effects, 1)
+
+    def test_sliding_rate_bound_crosses_second_boundary(self):
+        c = self.controller()
+        for n in range(1, 11):
+            c.request(command("GetStatus", n), now=0.999)
+            c.consume_status()
+        with self.assertRaisesRegex(Rejected, "rate bound"):
+            c.request(command("GetStatus", 11), now=1.0)
+        c.request(command("GetStatus", 11), now=1.999)
+        c.consume_status()
+        self.assertEqual(c.cache, {})
+
+    def test_progress_ordering_and_boolean_bindings(self):
+        c = self.controller()
+        ack = c.request(command())
+        b = Bridge(c, command()["commandId"])
+        self.assertFalse(b.accepts({**ack, "readyEpoch": True}, 1))
+        self.assertFalse(b.accepts({**ack, "correlation": "progress", "eventSequence": 5,
+                                   "closeAuthorized": False}, 2))
+        self.assertFalse(b.accepts(ack, 3))
+        for state in ("failed", "paused"):
+            b = Bridge(c, command()["commandId"])
+            b.accepts({**ack, "correlation": "status", "state": state, "eventSequence": 2}, 1)
+            self.assertFalse(b.accepts({**ack, "eventSequence": 3}, 2))
 
     def test_non_reader_coalesces_progress_without_blocking_ticks(self):
         outbound = FakeOutbound()
@@ -444,6 +503,17 @@ class TimingChecks(unittest.TestCase):
             self.assertEqual(b.before_spawn(1, **kwargs), "deferred")
             b.intent = True
             self.assertEqual(b.before_spawn(2, **kwargs), "retain_uncertain_intent")
+
+    def test_deferred_attempt_cannot_resume_after_checks_recover(self):
+        for kwargs in ({"paused": True}, {"integrity": False}, {"boot": "other"}):
+            b = Budget()
+            b.commit(0)
+            self.assertEqual(b.before_spawn(1, **kwargs), "deferred")
+            self.assertEqual(b.before_spawn(2), "deferred")
+            self.assertEqual(b.commit(2), "expired")
+        b = Budget()
+        self.assertEqual(b.commit(1, boot="other"), "expired")
+        self.assertEqual(b.commit(2), "expired")
 
     def test_suspend_reboot_and_clock_discontinuity(self):
         self.assertEqual(Budget(suspended=True).commit(1), "expired")

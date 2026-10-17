@@ -1,6 +1,6 @@
 # W1 local evidence and protocol findings
 
-**Current:** revision-3 alignment results appear below. The original table and
+**Current:** the 51-test revision-3 harness review appears at the end. The original table and
 traces in this document describe the preserved revision-2 run.
 
 Status: local L1 evidence only. Source hashes are in
@@ -75,7 +75,8 @@ rules now have isolated local checks, as recorded below; native validation is pe
 
 [Machine-readable report](evidence/revision3-results.json) and
 [test output](evidence/revision3-tests.txt): **44 tests passed**, zero errors/failures.
-Source hashes bind the report to the current Python harness files. Graph results
+Source hashes bind that historical report to commit `3aa0c0e`, not the
+subsequently reviewed files. Graph results
 remain 1,438 states / 3,535 edges, no baseline counterexample within the chosen
 abstraction; all three graph mutants and the synthetic persistence defect are detected.
 The 28 partial / 20 not-run ledger is unchanged; every native status is Not run.
@@ -102,3 +103,45 @@ supervisor/client races remain unimplemented. Numeric checks and actor explorati
 are separate abstractions, not an integrated updater or universal liveness proof.
 B01–B06 remain unresolved. W2/W3, production implementation, elevation, task/service
 registration, package operations, workflows, build dispatch and releases remain deferred.
+
+
+## Revision-3 harness review
+
+Reviewed alignment commit `3aa0c0e`. Four added regressions failed against that
+implementation; [pre-fix output](evidence/revision3-review-counterexamples.txt)
+records the 48-test development run (the original 44 plus four new regressions).
+These are isolated harness counterexamples, not released-app findings:
+
+| Finding | Reproduced behavior | Fix |
+| --- | --- | --- |
+| H3-R01 Abort resurrection | Pause/integrity/clock failure returned Deferred; a later call could return may_write_intent | Sticky attempt stop/clock invalidation; uncertain intent remains retained |
+| H3-R02 Cross-message ordering | A terminal status with query correlation was ignored, allowing an older commit grant | Observe authenticated bound status/progress sequence and terminal state before checking commit correlation; status itself never grants close |
+| H3-R03 Grant resurrection | After rejected clock mapping/suspend/EOF, the same grant could later be accepted | Permanently invalidate that bridge attempt on uncertainty/loss; a new attempt is required |
+| H3-R04 Queued status staleness | Queued Ready snapshot could be consumed after commit as Ready | Regenerate the bounded pending-query response from current state at consumption |
+| H3-R05 Rate boundary gap | Fixed buckets permitted ten frames at .999 and another at 1.0 | Bounded sliding one-second window; a focused cross-boundary regression rejects the extra frame |
+
+The explicit controller timeout barrier now checks Ready and drain expiry and
+releases its fake reservation without a client read. Added regressions also cover
+progress with different correlation, boolean epoch confusion, and paused/failed
+terminal states. Status/progress observation still assumes an authenticated native
+channel; it does not implement or prove that assumption.
+
+[Reviewed report](evidence/revision3-reviewed-results.json) and
+[reviewed test output](evidence/revision3-reviewed-tests.txt): **51 tests passed**,
+zero errors/failures. The report hashes the reviewed Python files and computes
+observations for abort, stale status, terminal ordering, clock uncertainty, rate
+boundary and fake timeout release. Original revision-2 and 44-test revision-3
+reports are preserved unchanged. The actor graph remains 1,438 states / 3,535
+edges with all three graph negative controls detected, and synthetic missing-
+directory-flush detection remains intact. No baseline counterexample arose in
+that graph. The graph is unchanged and does not explore these new numeric rules.
+
+Remaining gaps: preparation and full mutation-slot lifecycle are not implemented
+(the controller starts Ready); close-grant responses are Python snapshots, not a
+native response decoder; queues, gates, channel/process identities and clocks
+remain injected facts; explicit ticks are not scheduler/liveness proof. The
+controller and numeric budget are not an integrated installer supervisor. Real
+clock mapping, ACL/IPC authentication, process death, package operations, power
+loss, migration and desktop behavior remain unvalidated. All 48 native fault
+statuses remain Not run; B01–B06 remain open. No W2/W3, production implementation,
+elevation/registration, workflow/build dispatch or release work was performed.

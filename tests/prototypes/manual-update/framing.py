@@ -172,7 +172,7 @@ class Controller:
         self.events = self.effects = 0
         self.cache = {}  # accepted mutation payloads only, at most three action slots
         self.actions = {}
-        self.rate_second, self.rate_count = None, 0
+        self.rate_times = []  # sliding one-second window, at most ten accepted frames
         self.budget = Budget()
         self.operation = True
         self.admission = False
@@ -194,13 +194,11 @@ class Controller:
             raise Rejected("model peer not authenticated")
         if command.get("attempt") != self.attempt or not hmac.compare_digest(command.get("capability", ""), self.capability):
             raise Rejected("foreign attempt/capability")
-        if not self.budget.valid_clock(now, self.budget.boot):
-            raise Rejected("invalid clock")
-        if self.rate_second != int(now):
-            self.rate_second, self.rate_count = int(now), 0
-        self.rate_count += 1
-        if self.rate_count > 10:
+        self.tick(now)
+        self.rate_times = [at for at in self.rate_times if now - at < 1]
+        if len(self.rate_times) >= 10:
             raise Rejected("rate bound")
+        self.rate_times.append(now)
         kind = command["type"]
         if kind == "GetStatus":
             if self.query_pending is not None:
@@ -238,9 +236,25 @@ class Controller:
         self.events += 1
         return self.response(key, True, now, kind == "CommitInstall")
 
+    def tick(self, now, boot=None):
+        """Explicit scheduling barrier; no client read is needed for timeouts."""
+        valid = self.budget.valid_clock(now, self.budget.boot if boot is None else boot)
+        expired = self.phase == "ready" and (not valid or now - self.budget.ready_at >= 300)
+        deferred = self.phase == "committed" and (not valid or now - self.budget.committed_at >= 30)
+        if expired or deferred:
+            self.phase = "expired" if expired else "deferred"
+            self.operation = self.admission = False
+            self.budget.stopped = True
+            self.events += 1
+        if not valid:
+            raise Rejected("invalid clock")
+
     def consume_status(self):
-        response, self.query_pending = self.query_pending, None
-        return response
+        if self.query_pending is None:
+            return None
+        query_id = self.query_pending["correlation"]
+        self.query_pending = None
+        return self.response(query_id, False, self.budget.last_time)
 
 
 class Bridge:
@@ -253,22 +267,31 @@ class Bridge:
         self.bindings.update(correlation=command_id, boot=controller.budget.boot)
         self.highest = 0
         self.terminal = False
+        self.invalidated = False
         self.last_time = 0
 
     def accepts(self, reply, now, live=True, mapped=True, suspended=False):
         if (type(now) not in (int, float) or not math.isfinite(now)
                 or now < self.last_time):
+            self.invalidated = True
             return False
         self.last_time = now
-        if not live or not mapped or suspended or any(reply.get(k) != v for k, v in self.bindings.items()):
+        if not live or not mapped or suspended:
+            self.invalidated = True
+        if self.invalidated or not isinstance(reply, dict):
+            return False
+        # Observe authenticated status/progress independently of commit correlation.
+        if any(type(reply.get(k)) is not type(v) or reply.get(k) != v
+               for k, v in self.bindings.items() if k != "correlation"):
             return False
         sequence = reply.get("eventSequence")
         if type(sequence) is not int or sequence < self.highest:
             return False
         self.highest = sequence
-        self.terminal |= reply.get("state") in {"deferred", "canceled", "expired", "recovery", "updated"}
+        self.terminal |= reply.get("state") in {"deferred", "canceled", "expired", "recovery", "updated", "paused", "failed"}
         deadline = reply.get("drainDeadline")
-        return bool(not self.terminal and reply.get("state") == "committed"
+        return bool(not self.terminal and reply.get("correlation") == self.bindings["correlation"]
+                    and reply.get("state") == "committed"
                     and reply.get("effectAccepted") is True and reply.get("closeAuthorized") is True
                     and type(deadline) in (int, float) and math.isfinite(deadline) and now < deadline)
 

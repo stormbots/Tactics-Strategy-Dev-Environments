@@ -1,0 +1,594 @@
+{
+  "blockers": {
+    "B01": "Unresolved; no native or integrated proof",
+    "B02": "Unresolved; no native or integrated proof",
+    "B03": "Unresolved; no native or integrated proof",
+    "B04": "Unresolved; no native or integrated proof",
+    "B05": "Unresolved; no native or integrated proof",
+    "B06": "Unresolved; no native or integrated proof"
+  },
+  "evidence_level": "L1 only",
+  "fault_ledger": {
+    "F01": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F02": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F03": {
+      "native_status": "Not run",
+      "scope": "abstract pause state / final-read race only",
+      "status": "Partial L1 modeled"
+    },
+    "F04": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F05": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F06": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F07": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F08": {
+      "native_status": "Not run",
+      "scope": "in-memory client framing validation only",
+      "status": "Partial L1 modeled"
+    },
+    "F09": {
+      "native_status": "Not run",
+      "scope": "injected authenticated fact, fixture capability, ID/payload/epoch checks only",
+      "status": "Partial L1 modeled"
+    },
+    "F10": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F11": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F12": {
+      "native_status": "Not run",
+      "scope": "modeled operation ownership/exclusion only",
+      "status": "Partial L1 modeled"
+    },
+    "F13": {
+      "native_status": "Not run",
+      "scope": "modeled operation ownership/exclusion only",
+      "status": "Partial L1 modeled"
+    },
+    "F14": {
+      "native_status": "Not run",
+      "scope": "single manual attempt plus legacy O/S exclusion; not two real workers",
+      "status": "Partial L1 modeled"
+    },
+    "F15": {
+      "native_status": "Not run",
+      "scope": "modeled cancellation/expiry and lock release",
+      "status": "Partial L1 modeled"
+    },
+    "F16": {
+      "native_status": "Not run",
+      "scope": "serialized fake-controller cancel/commit ordering",
+      "status": "Partial L1 modeled"
+    },
+    "F17": {
+      "native_status": "Not run",
+      "scope": "one modeled admission reader can precede commit",
+      "status": "Partial L1 modeled"
+    },
+    "F18": {
+      "native_status": "Not run",
+      "scope": "one modeled new GUI, not a real startup process",
+      "status": "Partial L1 modeled"
+    },
+    "F19": {
+      "native_status": "Not run",
+      "scope": "model exclusion and synthetic persistence ordering only",
+      "status": "Partial L1 modeled"
+    },
+    "F20": {
+      "native_status": "Not run",
+      "scope": "explicit drain-timeout transition / synthetic clock",
+      "status": "Partial L1 modeled"
+    },
+    "F21": {
+      "native_status": "Not run",
+      "scope": "fake control replay/current close authorization; no native transport ACK",
+      "status": "Partial L1 modeled"
+    },
+    "F22": {
+      "native_status": "Not run",
+      "scope": "modeled GUI exit/disconnect and supervisor ownership only",
+      "status": "Partial L1 modeled"
+    },
+    "F23": {
+      "native_status": "Not run",
+      "scope": "modeled supervisor crash releases its own leases only",
+      "status": "Partial L1 modeled"
+    },
+    "F24": {
+      "native_status": "Not run",
+      "scope": "synthetic intent-before-mutation crash boundaries; not power loss",
+      "status": "Partial L1 modeled"
+    },
+    "F25": {
+      "native_status": "Not run",
+      "scope": "in-process orphan-child state retains journal",
+      "status": "Partial L1 modeled"
+    },
+    "F26": {
+      "native_status": "Not run",
+      "scope": "abstract nonzero/postcheck-failure states; not native results",
+      "status": "Partial L1 modeled"
+    },
+    "F27": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F28": {
+      "native_status": "Not run",
+      "scope": "one legacy O/S surrogate and post-session journal recheck",
+      "status": "Partial L1 modeled"
+    },
+    "F29": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F30": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F31": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F32": {
+      "native_status": "Not run",
+      "scope": "historical receipt precedence / abstract disconnect; not protected OS receipt",
+      "status": "Partial L1 modeled"
+    },
+    "F33": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F34": {
+      "native_status": "Not run",
+      "scope": "synthetic persisted state and boot identity; not real reboot",
+      "status": "Partial L1 modeled"
+    },
+    "F35": {
+      "native_status": "Not run",
+      "scope": "in-process actor independence only; no real GUI/USB/process lifetime",
+      "status": "Partial L1 modeled"
+    },
+    "F36": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F37": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F38": {
+      "native_status": "Not run",
+      "scope": "parser chunk/frame/rate/cache bounds and one coalesced output slot; no real pipe",
+      "status": "Partial L1 modeled"
+    },
+    "F39": {
+      "native_status": "Not run",
+      "scope": "event number versus immutable Ready epoch in fake controller",
+      "status": "Partial L1 modeled"
+    },
+    "F40": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F41": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F42": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F43": {
+      "native_status": "Not run",
+      "scope": "synthetic suspend/boot/clock invalidation, not native time sources",
+      "status": "Partial L1 modeled"
+    },
+    "F44": {
+      "native_status": "Not run",
+      "scope": "modeled pause-after-read race only; remote withdrawal not modeled",
+      "status": "Partial L1 modeled"
+    },
+    "F45": {
+      "native_status": "Not run",
+      "scope": "synthetic commit freshness/drain/final-launch-decision and sticky abort outcomes; no DNS/package probes",
+      "status": "Partial L1 modeled"
+    },
+    "F46": {
+      "native_status": "Not run",
+      "scope": "chosen synthetic durable write/journal ordering only",
+      "status": "Partial L1 modeled"
+    },
+    "F47": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    },
+    "F48": {
+      "native_status": "Not run",
+      "scope": "Native/integrated behavior or model not implemented",
+      "status": "Not run"
+    }
+  },
+  "file_hashes": {
+    "durability.py": "1c95b09b180054f9b22fb626cfbec865633b8e0ff6c904e8f7efea62bfbb8186",
+    "framing.py": "74be16318a780230afd4566a4e9c4b539826c2c832859a667ebd2fa8c4cec019",
+    "model.py": "b08d62ab4750b4d4f52a172959b1c8ba9a0d38adba023c86aee9b8e40efe604c",
+    "run_checks.py": "9561d8024a8b44cf099cc1e3cdb4c55dc56e1c634d350f7aa2ec40ec69363651",
+    "test_harness.py": "b1c779d52df6a27123c2ff5af600e527a9e0b12bb6ee476bbeb97709141fa236",
+    "timing.py": "0b12ca5fdda94a16ac864289c00a0d8d10f7b44c7b26d7e4e8feefe59b1427f2"
+  },
+  "findings": [
+    {
+      "id": "W1-C01",
+      "limit": "Synthetic acquisition/clock only; no native scheduler or network proof",
+      "observed": {
+        "sessions_drained_at_11": "may_write_intent"
+      },
+      "status": "revision-3 local regression passed"
+    },
+    {
+      "id": "W1-C02",
+      "limit": "Injected peer/gate/clock facts; supervisor can crash after bridge validation",
+      "observed": {
+        "deferred_replay_close_authorized": false,
+        "historical_effect_accepted": true
+      },
+      "status": "revision-3 local regression passed"
+    },
+    {
+      "id": "W1-C03",
+      "limit": "Already-Ready fixture; preparation and full transport not implemented",
+      "observed": {
+        "effects": 1,
+        "mutation_entries_after_commit": 1,
+        "mutation_entries_before_commit": 0,
+        "status_polls": 200
+      },
+      "status": "revision-3 local regression passed"
+    },
+    {
+      "detail": "Historical Updated cannot override a newer legacy journal; regression retained.",
+      "id": "W1-H01",
+      "status": "historical oracle correction retained"
+    }
+  ],
+  "limits": [
+    "One manual attempt; two GUI actors; one legacy O/S surrogate; finite crashes/transitions.",
+    "Timeouts are explicit fair transitions in graph exploration; numerical timing checked separately.",
+    "No OS locks, processes, IPC, authentication, signatures, package installs, real power loss, or GUI tested.",
+    "Admission cannot restrain unsupported legacy clients; modeled S exclusion still applies.",
+    "Negative controls deliberately violate model rules; detected traces do not prove model completeness."
+  ],
+  "native_validation": false,
+  "negative_controls": {
+    "omit_admission": {
+      "complete": false,
+      "counterexample": [
+        "request.authorized",
+        "prepare.acquire_operation",
+        "prepare.verified",
+        "commit.accept"
+      ],
+      "depth_bound": 12,
+      "edges": 205,
+      "events": [
+        "admin.pause",
+        "commit.accept",
+        "gui.acquire_session",
+        "gui.new_launch_admitted",
+        "gui.primary_exit",
+        "gui.secondary_exit",
+        "legacy.acquire_exclusive_sessions",
+        "legacy.acquire_operation",
+        "legacy.crash",
+        "legacy.persist_intent",
+        "prepare.acquire_operation",
+        "prepare.busy",
+        "prepare.paused",
+        "prepare.verification_failed",
+        "prepare.verified",
+        "ready.expire",
+        "ready.later",
+        "request.authorized",
+        "status.progress_event",
+        "supervisor.crash",
+        "transport.precommit_disconnect"
+      ],
+      "phases": [
+        "authorized",
+        "available",
+        "canceled",
+        "committed",
+        "deferred",
+        "failed",
+        "paused",
+        "preparing",
+        "ready"
+      ],
+      "state_limit": 150000,
+      "states": 98,
+      "violations": [
+        "committed_owner_missing"
+      ]
+    },
+    "skip_post_session_journal": {
+      "complete": false,
+      "counterexample": [
+        "gui.primary_exit",
+        "gui.new_launch_admitted",
+        "legacy.acquire_operation",
+        "legacy.acquire_exclusive_sessions",
+        "legacy.persist_intent",
+        "legacy.crash",
+        "gui.acquire_session"
+      ],
+      "depth_bound": 12,
+      "edges": 752,
+      "events": [
+        "admin.pause",
+        "commit.accept",
+        "commit.admission_busy",
+        "commit.pause_observed",
+        "gui.acquire_session",
+        "gui.new_launch_admitted",
+        "gui.new_launch_blocked",
+        "gui.new_launch_recovery",
+        "gui.primary_exit",
+        "gui.secondary_exit",
+        "handoff.acquire_exclusive_sessions",
+        "handoff.drain_timeout",
+        "legacy.acquire_exclusive_sessions",
+        "legacy.acquire_operation",
+        "legacy.crash",
+        "legacy.persist_intent",
+        "prepare.acquire_operation",
+        "prepare.busy",
+        "prepare.paused",
+        "prepare.verification_failed",
+        "prepare.verified",
+        "ready.expire",
+        "ready.later",
+        "request.authorized",
+        "status.progress_event",
+        "supervisor.crash",
+        "transport.precommit_disconnect"
+      ],
+      "phases": [
+        "authorized",
+        "available",
+        "canceled",
+        "committed",
+        "deferred",
+        "failed",
+        "intent",
+        "paused",
+        "preparing",
+        "ready",
+        "recovery"
+      ],
+      "state_limit": 150000,
+      "states": 303,
+      "violations": [
+        "startup_ignored_durable_intent"
+      ]
+    },
+    "spawn_without_intent": {
+      "complete": false,
+      "counterexample": [
+        "request.authorized",
+        "prepare.acquire_operation",
+        "prepare.verified",
+        "commit.accept",
+        "gui.primary_exit",
+        "handoff.acquire_exclusive_sessions",
+        "native.spawn_before_intent"
+      ],
+      "depth_bound": 12,
+      "edges": 1056,
+      "events": [
+        "admin.pause",
+        "commit.accept",
+        "commit.admission_busy",
+        "commit.pause_observed",
+        "gui.acquire_session",
+        "gui.new_launch_admitted",
+        "gui.new_launch_blocked",
+        "gui.new_launch_recovery",
+        "gui.post_session_journal_reject",
+        "gui.primary_exit",
+        "gui.secondary_exit",
+        "handoff.acquire_exclusive_sessions",
+        "handoff.drain_timeout",
+        "legacy.acquire_exclusive_sessions",
+        "legacy.acquire_operation",
+        "legacy.crash",
+        "legacy.persist_intent",
+        "native.spawn_before_intent",
+        "prepare.acquire_operation",
+        "prepare.busy",
+        "prepare.paused",
+        "prepare.verification_failed",
+        "prepare.verified",
+        "ready.expire",
+        "ready.later",
+        "request.authorized",
+        "status.progress_event",
+        "supervisor.crash",
+        "transport.precommit_disconnect"
+      ],
+      "phases": [
+        "authorized",
+        "available",
+        "canceled",
+        "committed",
+        "deferred",
+        "failed",
+        "installing",
+        "intent",
+        "paused",
+        "preparing",
+        "ready",
+        "recovery"
+      ],
+      "state_limit": 150000,
+      "states": 413,
+      "violations": [
+        "mutation_without_durable_intent"
+      ]
+    }
+  },
+  "platform": "linux",
+  "protocol_revision": 3,
+  "python": "3.12.14",
+  "review_regressions": {
+    "cross_second_rate_result": "rate bound",
+    "grant_after_clock_uncertainty": false,
+    "older_grant_after_terminal_status": false,
+    "queued_status": "committed",
+    "sticky_abort": [
+      "deferred",
+      "deferred"
+    ],
+    "timeout_released_fake_gates": true
+  },
+  "scope_imports_checked": [
+    "ast",
+    "collections",
+    "dataclasses",
+    "durability",
+    "framing",
+    "hashlib",
+    "hmac",
+    "json",
+    "math",
+    "model",
+    "pathlib",
+    "platform",
+    "random",
+    "re",
+    "struct",
+    "sys",
+    "tempfile",
+    "timing",
+    "unittest"
+  ],
+  "state_exploration": {
+    "complete": true,
+    "counterexample": null,
+    "depth_bound": 24,
+    "edges": 3535,
+    "events": [
+      "admin.pause",
+      "commit.accept",
+      "commit.admission_busy",
+      "commit.pause_observed",
+      "finish.release",
+      "gui.acquire_session",
+      "gui.new_launch_admitted",
+      "gui.new_launch_blocked",
+      "gui.new_launch_recovery",
+      "gui.post_session_journal_reject",
+      "gui.primary_exit",
+      "gui.secondary_exit",
+      "handoff.acquire_exclusive_sessions",
+      "handoff.drain_timeout",
+      "handoff.preintent_timeout",
+      "intent.final_policy_read",
+      "intent.pause_no_spawn",
+      "intent.persist",
+      "journal.clear",
+      "legacy.acquire_exclusive_sessions",
+      "legacy.acquire_operation",
+      "legacy.crash",
+      "legacy.persist_intent",
+      "native.failure",
+      "native.orphan_finishes",
+      "native.spawn",
+      "native.success",
+      "postcheck.failure",
+      "postcheck.persist_complete",
+      "prepare.acquire_operation",
+      "prepare.busy",
+      "prepare.paused",
+      "prepare.verification_failed",
+      "prepare.verified",
+      "ready.expire",
+      "ready.later",
+      "request.authorized",
+      "status.progress_event",
+      "supervisor.crash",
+      "transport.precommit_disconnect"
+    ],
+    "phases": [
+      "authorized",
+      "available",
+      "canceled",
+      "cleared",
+      "committed",
+      "deferred",
+      "failed",
+      "installing",
+      "intent",
+      "paused",
+      "policy",
+      "postcheck",
+      "preparing",
+      "ready",
+      "recorded",
+      "recovery",
+      "updated"
+    ],
+    "state_limit": 150000,
+    "states": 1438
+  },
+  "synthetic_durability": {
+    "boundaries": 11,
+    "missing_directory_flush_detected": true
+  },
+  "tests": {
+    "errors": 0,
+    "failures": 0,
+    "run": 51
+  }
+}

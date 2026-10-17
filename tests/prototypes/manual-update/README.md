@@ -51,14 +51,16 @@ approved shortcut for implementing B01/B02.
 
 ## Local results
 
-Current revision-3 checks: **44 tests passed**; see
-[revision-3 evidence](evidence/revision3-results.json),
-[test output](evidence/revision3-tests.txt) and [reviewed results](EVIDENCE.md).
+Current reviewed revision-3 checks: **51 tests passed**; see
+[reviewed evidence](evidence/revision3-reviewed-results.json),
+[test output](evidence/revision3-reviewed-tests.txt) and [reviewed results](EVIDENCE.md).
 The unchanged actor graph still explores **1,438 states / 3,535 edges**, maximum
  depth 24 and cap 150,000, without truncation or a baseline safety counterexample.
 That graph does not include the new numeric timing/client/cache state space.
 Three graph mutants and the missing-directory-flush control remain detected.
 
+The initial [44-test revision-3 report](evidence/revision3-results.json) and
+[output](evidence/revision3-tests.txt) are historical, bound to commit `3aa0c0e`.
 The [original revision-2 report](evidence/local-results.json) and
 [original output](evidence/local-tests.txt) are preserved, not overwritten.
 
@@ -116,3 +118,13 @@ need separate authorization. The approved v1.2.9 fleet rollout is unchanged.
 [Protocol revision-3 decisions](../../../docs/design/APP-UPDATE-NOW-W1-REVIEW.md)
 resolve the three findings. The current isolated harness checks the selected revision-3 rules locally.
 Original revision-2 reports remain historical; native validation is pending.
+
+
+## Revision-3 harness review
+
+See [review findings and remaining gaps](EVIDENCE.md#revision-3-harness-review).
+Abort/clock uncertainty now stays invalid for the attempt; authenticated status
+and progress advance client ordering independently of commit correlation. Pending
+status is regenerated at consumption. An explicit injected `tick` barrier checks
+Ready/drain expiry and releases fake gates without a client read. There is no
+real scheduler or autonomous task. Rate limiting uses a bounded sliding window.
