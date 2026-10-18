@@ -13,6 +13,11 @@ on:
       - '.github/workflows/mint-media-console-prep.yml'
       - 'tests/run_mint_media_console.py'
       - 'tests/test_mint_media_workflow.py'
+      - 'tests/start_mint_preparation_runner.py'
+      - 'tests/test_mint_runner_permissions.py'
+      - '.github/workflows/mint-checkout-validation.yml'
+      - 'tests/observe_mint_checkout.py'
+      - 'tests/test_mint_checkout_observer.py'
       - 'tests/fixtures/linuxmint-iso-signing.asc'
       - 'tests/ci_scope.py'
       - 'tests/test_ci_scope.py'
@@ -31,6 +36,11 @@ on:
       - '.github/workflows/mint-media-console-prep.yml'
       - 'tests/run_mint_media_console.py'
       - 'tests/test_mint_media_workflow.py'
+      - 'tests/start_mint_preparation_runner.py'
+      - 'tests/test_mint_runner_permissions.py'
+      - '.github/workflows/mint-checkout-validation.yml'
+      - 'tests/observe_mint_checkout.py'
+      - 'tests/test_mint_checkout_observer.py'
       - 'tests/fixtures/linuxmint-iso-signing.asc'
       - 'tests/ci_scope.py'
       - 'tests/test_ci_scope.py'
@@ -55,7 +65,9 @@ jobs:
           python3 -m unittest discover -s tests -p test_ci_scope.py -v
           python3 -m unittest discover -s tests -p test_mint_media_console.py -v
           python3 -m unittest discover -s tests -p test_mint_media_workflow.py -v
+          python3 -m unittest discover -s tests -p test_mint_runner_permissions.py -v
+          python3 -m unittest discover -s tests -p test_mint_checkout_observer.py -v
       - name: Lint only the infrastructure workflows
         uses: docker://rhysd/actionlint:1.7.7
         with:
-          args: -color .github/workflows/mint-host-inventory.yml .github/workflows/mint-host-inventory-checks.yml .github/workflows/native-uat-fixtures.yml .github/workflows/mint-media-console-prep.yml
+          args: -color .github/workflows/mint-host-inventory.yml .github/workflows/mint-host-inventory-checks.yml .github/workflows/native-uat-fixtures.yml .github/workflows/mint-media-console-prep.yml .github/workflows/mint-checkout-validation.yml

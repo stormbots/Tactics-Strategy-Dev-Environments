@@ -70,7 +70,7 @@ class DriverChecks(unittest.TestCase):
     def test_bundle_includes_caller_key_and_both_helpers(self):
         self.assertEqual(set(d.SOURCES), {'tests/run_mint_media_console.py',
             'tests/mint_media_console.py','tests/mint_media_native.py',
-            'tests/fixtures/linuxmint-iso-signing.asc'})
+            'tests/start_mint_preparation_runner.py','tests/fixtures/linuxmint-iso-signing.asc'})
         for name in d.SOURCES:
             changed=dict(SNAPSHOTS); changed[name]+=b'x'
             self.assertNotEqual(d.bundle_digest(changed),DIGEST)

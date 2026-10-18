@@ -594,3 +594,254 @@ or blocking calls can still leave uncertain state. Authentication safety, proces
 cleanup, runner deregistration and whole-host restoration remain distinct.
 Both #73 and #77 remain draft/unmerged; activation, runner operation, dispatch,
 downloads, guests, application builds, packages and releases remain deferred.
+
+## SOURCE_OWNER checkout-creation fix (proposal; no host changes)
+
+The stopped run 39099802574 at 05a8142 remains a failure. Owner-provided `id` and
+`namei -l` evidence showed correct sde-runner UID 1001 ownership, but group-writable
+`_work`, repository ancestors and `tests` (0775), plus caller file 0664. Root/home
+ancestors and the dedicated account/session were not group-writable. SOURCE_OWNER
+was therefore the intended rejection, before native helper loading, workspace
+allocation or media work. No claim is made that source permissions were the only
+remaining native gate. The failed checkout remains unchanged as evidence.
+
+### Narrow remediation boundary
+
+Prevent shared-write creation in a NEW session rather than chmod/chown the failed
+checkout, accept shared groups, copy unverified mutable code into a trusted path,
+or relax read_source. `tests/start_mint_preparation_runner.py` is a future LOCAL
+listener launcher, never a workflow step or automatic CI command. It sets umask
+0077 before executing the fixed trusted runner run.sh, so the listener, worker,
+checkout action and git inherit the restrictive creation mask. Setting umask only
+in the later preparation step is too late to protect checkout's ancestors.
+
+The launcher requires the dedicated non-sudo account, a fixed new session below
+its passwd home (`mint-prep-runner-private-session`), mode-0700 session and empty
+mode-0700 `_work-private`, root/current-user-owned non-writable ancestry without
+symlinks, no inherited default ACL on session/work root, an owned non-writable
+regular executable run.sh, and bounded private .runner configuration selecting
+`workFolder: _work-private`, `ephemeral: true`, `agentName: sde-mint-prep-once`, and
+`gitHubUrl: https://github.com/stormbots`. The config is not an authorization
+boundary: group restrictions, exact approved workflow/SHA, protected environment,
+and one-run approval remain mandatory. It never reads registration credentials.
+Configuration field names were checked against actions/runner v2.338.0's
+Runner.Common/ConfigurationStore.cs; native serialization remains a proof gate.
+
+It exposes no arguments, registration, download, install, chmod, chown, ACL repair,
+recursive traversal/deletion or generic shell action. Wrong modes, default ACLs,
+symlinks, a reused work root, changed configuration, wrong account or unexpected
+runner settings stop instead of silently fixing state. ACL inspection uses the
+Python standard library; unsupported/denied inspection stops without installing
+utilities. Settings reads are bounded, reject duplicate JSON fields/change/short
+reads, and close once; uncertain close cannot pass. A failed preflight/exec restores
+the launcher's earlier umask. Successful exec carries 0077 into the listener.
+
+### Future preparation sequence — NOT authorized by this PR
+
+1. After separate review/merge and a new execution authorization, independently
+   bind the new main SHA, source bundle and this local launcher's exact file hash.
+   The caller's bundle now includes FIVE fixed source files, adding the launcher
+   before the public key in SOURCES. The old packet/hash/run is not reusable.
+2. Revalidate the approved runner archive and prepare a fresh dedicated session
+   named mint-prep-runner-private-session with umask 0077 and exclusive 0700
+   creation. Create an empty `_work-private` there with mode 0700. If either
+   already exists, stop; do not overwrite/reuse/remove it. Do not touch the old
+   mint-prep-runner-session/_work or its failed checkout.
+3. Register one ephemeral runner using the reviewed interactive token prompt
+   (never token in argv/history/chat), same restricted group and sde-mint-prep
+   label, with `--work _work-private`, in that fresh session under umask 0077.
+   Verify the actual private configuration/schema and group while offline.
+4. Deliver the approved launcher as a separately SHA-256-verified private regular
+   file; do not depend on a checkout that has not happened yet or fetch mutable
+   branch code at listener startup. The future start invocation is isolated
+   `/usr/bin/python3 -I -B <verified-local-launcher>` with no arguments. Approve
+   the exact waiting environment job and restore self-review protection before
+   invoking it. Do not bypass this launcher with direct run.sh or set a weaker
+   umask for registration/listener startup.
+5. Observe actual creation modes and strict source-guard results in the newly
+   authorized bounded run. A runner/action resetting umask, unexpected ACL,
+   serialization mismatch or any other native difference stops; never apply a
+   recursive permission repair or weaken the source check as fallback.
+
+No host command in this sequence was executed. Native inheritance through the
+actual runner/worker/checkout, actual ACL/settings behavior and media/authentication
+remain unvalidated. This is a proposed setup correction with fail-closed checks,
+not a successful native rerun. Default ACL inheritance is explicitly rejected
+because ACL-based creation can differ from the ordinary umask model.
+
+### Local regression and CI review
+
+97 mocked/static checks pass (39 existing helper, 30 caller/workflow, 11 new
+launcher/permission checks, 8 policy, 9 scope), plus focused actionlint and whitespace
+checks. Mocked launch tests observe 0077 at the exec boundary, model ordinary file
+0600/directory0700 creation, verify earlier mask restoration on failure and assert
+no exec for unsafe context. Inspection tests cover wrong owners, symlinks,
+permissive modes, default ACLs, reused workspaces, registration drift, bounded/
+short/duplicate settings and uncertain descriptor closure. The original source
+reader still rejects the observed 0775 and 0664 modes without chmod.
+
+Only the exact two new launcher/test paths join the existing infrastructure scope
+exception and automatic mocked/static policy coverage. Native preparation, native
+fixture and application/release workflow gates are unchanged. A mixed application,
+key or unknown path retains application CI. Keep this infrastructure PR unmerged,
+activation disabled, and runner operations, dispatch, media, guests, #73 merge,
+application builds/packages/releases deferred. No source-guard permission rule was
+relaxed and no spare-host permission was changed.
+
+### PR #78 permission/security review follow-up
+
+The review preserved the strict source-ownership policy and found three launcher
+startup gaps, fixed before any native use:
+
+1. Inherited BASH_ENV/ENV, shell option/function exports, NODE_OPTIONS and dynamic
+   loader hooks could influence the script/worker environment before checkout.
+   The launcher now uses execve with those hooks removed while retaining ordinary
+   runner context and configured proxy/CA settings. This is launch-time filtering,
+   not attestation or modification of a persisted runner .env file. Future runner
+   configuration still requires a trusted clean shell, verified archive and fresh
+   private session; malicious same-account/root changes are outside this boundary.
+2. An unexpected FIFO or terminal at .runner could block or acquire terminal state
+   before fstat rejected it. Opening now includes O_NONBLOCK and O_NOCTTY as well as
+   O_NOFOLLOW/CLOEXEC; only a bounded owned private regular file can be read.
+3. Failure while restoring the earlier umask could bypass structured failure
+   reporting. Restoration is now attempted before the failure record is emitted,
+   and any uncertainty is reported as UMASK_RESTORE_UNCERTAIN without exposing
+   native exception text or retrying. Successful exec still never returns and
+   retains the restrictive mask. An unexpected exec return fails explicitly.
+
+QA: **102 mocked/static tests passed** (39 helper, 30 caller/workflow, 16 launcher/
+permission, 8 policy, 9 scope), focused actionlint and whitespace checks passed.
+New cases cover hook filtering with proxy/CA preservation, nonblocking special-file
+rejection, mask restoration uncertainty, unexpected exec return, every disallowed
+privileged group and effective-UID mismatch. All OS/process/mask operations in
+these launcher tests are mocked. Workflow definitions and activation gates are
+unchanged. Both infrastructure-only installer skipping and mixed app/key controls
+remain checked, and the original source-reader function remains unchanged.
+
+No actual umask inheritance, native runner/script/environment/settings/ACL behavior,
+permission modification, startup, cancellation, authentication or cleanup is proven
+by these checks. A future approved native run must still stop if a stored runner
+environment or runner/action code changes creation policy. The failed checkout is
+retained unchanged; no normalization or retry is authorized. The new launcher bytes
+require a fresh independently approved file and five-file bundle hash after any
+separately authorized merge. Keep #78 and #73 draft/unmerged; activation, runners,
+dispatch, downloads, guests, application builds/packages/releases remain deferred.
+
+## Fixed checkout-only validation added to PR #78
+
+This addition prepares the next permission diagnostic only; no native execution
+is authorized or performed. The earlier SOURCE_OWNER run remains a stopped
+failure. #78 and #73 remain draft/unmerged, and the failed host checkout is
+untouched. This diagnostic precedes any proposed media retry.
+
+`.github/workflows/mint-checkout-validation.yml` has only workflow_dispatch, no
+inputs, contents-read permissions, the existing non-cancelling spare-mint-host
+concurrency group, protected mint-host-access environment, restricted
+org/sde-mint-isolated group and routing label sde-mint-prep. Its observe job has a
+10-minute limit and an identical pinned checkout step/configuration to the media
+workflow; sparse checkout or different Git options are not substituted for the
+permission-creation behavior under examination. Normal Actions/repository fetches
+would occur in a future authorized run, but no ISO, package or development-tool
+installation is included. Automatic events cannot schedule this observer.
+
+New independent activation candidates, all left unset/disabled now:
+
+- MINT_CHECKOUT_ENABLED=true and MINT_CHECKOUT_ACCESS_READY=verified.
+- MINT_CHECKOUT_APPROVED_SHA equal to the separately reviewed final main SHA.
+- MINT_CHECKOUT_BUNDLE_SHA256 equal to an independently calculated six-file bundle.
+
+The event/repo/ref/workflow-ref must match this exact manual main workflow, source
+and workflow SHA must match approval, and attempt must be 1. MINT_PREP_* values
+cannot activate it. The observer rechecks the gates and accepts no arguments.
+The existing media workflow and source guard are unchanged. A later authorized
+execution must replace the group's sole selected workflow with
+stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-checkout-validation.yml@refs/heads/main,
+not add broad/all-workflow access. Selected repository, required-reviewer,
+main-only and no-bypass controls and any freshly approved single-reviewer exception
+must be verified independently. No controls or settings were changed here.
+
+`tests/observe_mint_checkout.py` is standalone standard-library code. It neither
+imports nor executes repository helper modules. It reads/hashes their bounded
+source bytes as inert data, with root/current-user-owned non-writable ancestors,
+no symlink/special-file substitution, identity/change checks and descriptor
+closure. New private-session/checkout directories additionally must be owned by
+the dedicated account with mode 0700 and no default ACL; source files must have
+no group/other permissions. It reports fixed-path metadata before rejecting a
+bad component, avoiding the earlier unlocalized SOURCE_OWNER diagnostic. These
+are stricter diagnostic checks, not a relaxation of the preparation source guard.
+
+The observer requires the dedicated non-privileged account on Linux x86_64 and
+bounded root-owned Mint RELEASE=22.3 metadata. It reads only Umask from the fixed
+/proc/self/status path (never changes umask or exports raw proc data), requires
+0077, and verifies the expected private-session/_work-private repository location.
+It records bounded UID/account/groups, actual path modes/owners/inode identities,
+default-ACL presence, source sizes/hashes, Actions run/attempt/job name and SHA.
+It creates no workspace/file/manifest and prints one sanitized JSON record <=64
+KiB. File snapshots <=128 KiB each, host metadata <=8 KiB, proc status <=16 KiB,
+path inventory <=32 and an observer budget of 30 seconds bound checked stages.
+Blocking filesystem/account operations are not claimed hard-real-time; the
+independent ten-minute workflow limit remains necessary. Cancellation or missing
+export is unknown/failure, not permission-validation Pass or cleanup proof.
+
+Bundle contract is deliberately independent of media preparation:
+SHA256(b'mint-checkout-bundle-v1\0' + each ASCII path + NUL + decimal byte length +
+NUL + exact bytes), in this fixed order:
+
+1. tests/observe_mint_checkout.py
+2. tests/run_mint_media_console.py
+3. tests/mint_media_console.py
+4. tests/mint_media_native.py
+5. tests/start_mint_preparation_runner.py
+6. tests/fixtures/linuxmint-iso-signing.asc
+
+The media caller retains its separate five-file mint-prep-bundle-v1 contract.
+Neither an old source approval nor one bundle hash substitutes for the other.
+Approval must be calculated after any authorized merge, from final source bytes,
+not self-approved by the running job. Local verified launcher delivery, new
+private session/empty work root, fresh one-job registration, approved queued run,
+manual listener start and deregistration remain separate authorization gates.
+No existing registration, worktree or stopped run may be reused automatically.
+
+Pass requires all source/identity/private-mode/ACL/mask/hash/context checks and
+complete bounded export. Failure retains bounded offending metadata where
+available and stops without repair, fallback or automatic retry. Every outcome
+marks media authentication NotRun, guestExecuted=false, productionReady=false,
+cleanupCorrectness=NotValidated and no whole-host cleanup claim. No GPG/curl,
+KVM/ioctl, socket/network client, subprocess, package, disk creation, console,
+guest, updater or build/release operation exists in this observer. Successful
+permission observation would not authorize the media phase or establish its
+cryptographic safety, process cleanup or usable console behavior.
+
+Local review/QA: **118 mocked/static checks passed** (102 prior checks plus 16
+observer/workflow cases), focused actionlint and whitespace checks passed. Cases
+cover disabled/default/wrong approvals/events/refs/attempt/location/account,
+mask/release/digest mismatch, original shared modes, symlinks/default ACL, short/
+changed sources, close uncertainty, deadline, proc bounds, argument rejection,
+failure sanitization/export size and six-file tamper sensitivity. Static checks
+verify the identical pinned checkout and only observer command, no repository
+imports or native execution ports. Only the three exact new workflow/observer/test
+paths join automatic mocked policy coverage and installer-skip scope. Actual native
+runner inheritance, filesystem/ACL/account behavior, log retrieval and closeout
+remain unvalidated. Activation, runners, dispatch, downloads, guests, #73 merge,
+application builds/packages/releases remain deferred.
+
+
+### Checkout observer review follow-up
+
+The observer now reports defaultAcl=null when no ACL query was completed, rather
+than claiming absence on ancestors outside the private session. It retains the
+failing directory's bounded mode/owner/identity metadata before querying ACLs,
+and validates directory type/ownership/mode before that query. An ACL-query
+error still stops with sanitized failure; it does not authorize a fallback or
+source read. A checked private directory reports true/false as observed.
+The fixed proc Umask parser now accepts horizontal whitespace only, rejecting a
+malformed value on a different line.
+
+Local QA: **121 mocked/static checks passed**, including added cases for failed
+ACL-query evidence, unchecked ACL reporting, ancestry changes, the 32-directory
+inventory limit, mid-read deadline closure without retry, and multiline Umask
+rejection. No observer, listener, checkout action or host preparation was executed.
+Approval gates and workflow commands are unchanged; group/reviewer/settings must
+still be verified before separately authorized execution. These local results do
+not validate native inheritance, ACL support, deregistration, cleanup correctness
+or authentication safety. The stopped media preparation result remains unchanged.
