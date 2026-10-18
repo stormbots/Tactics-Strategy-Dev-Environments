@@ -87,3 +87,179 @@ validated by these static checks. Historical #72 research failures remain intact
 References:
 - https://docs.github.com/en/enterprise-cloud@latest/actions/how-tos/manage-runners/self-hosted-runners/manage-access
 - https://docs.github.com/en/rest/actions/self-hosted-runner-groups
+
+## Spare Mint inventory closeout: observed evidence
+
+The inventory session completed on October 17, 2026, at 9:46 p.m.
+America/New_York. The host remains a spare physical machine; a disposable Mint
+**guest** has not yet been created or validated. The earlier hosted-Ubuntu
+inventory's unavailable KVM result is a different environment, not a contradictory
+result or a failure repaired by this session.
+
+| Item | Evidence and scope |
+| --- | --- |
+| Approved source | main commit `28fb4d058e0e3ec363a1b03d715d56342f457795` |
+| Successful run | [39085486766](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/39085486766), workflow_dispatch, completed/success; no rerun |
+| Successful job | `117551015842`, inventory, success; October 17, 9:45:56–9:46:00 p.m. America/New_York |
+| Actual execution identity | GitHub job API: runner `sde-mint-spare-once`, runner ID 195, group `sde-mint-isolated`, group ID 3 |
+| Job boundary | Setup, fixed read-only inventory, completion all succeeded. Reviewed source rejects root, requires KVM API 12, checks Mint 22.3, and invokes QEMU --version. No checkout, guest creation, native installer or application/package build |
+| Raw stdout limitation | Actions log download endpoint returned Forbidden. Job success/source contract is verified; exact emitted JSON was not independently retrieved. Do not invent a captured report or QEMU version from missing logs |
+| Host versions/resources | User separately reported Mint 22.3 Cinnamon, Intel i5-7500T/4 CPUs, about 15 GiB RAM/199 GiB disk free, KVM API 12, QEMU 8.2.2. These are user terminal observations, not extra fields measured by this four-second inventory |
+| Local runner teardown | User terminal: job Succeeded; Removed .credentials; Removed .runner; runner listener exit 0; Exiting runner. This proves reported local teardown, not erasure of all host artifacts |
+| Remote deregistration | User checked the group page and confirmed the runner is no longer listed. Organization runner APIs return 403 to this integration; remote removal is administrator-observed, not independently API-attested |
+| Activation disabled | User confirmed MINT_RUNNER_ENABLED=false. Variables API returns 403; this is user-attested, not independently read back |
+| Extra dispatch | [39087384990](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/39087384990) existed in waiting state, attributed to rdpollard. Codex cancelled it before execution; API now says completed/cancelled. Its cause was not established. Exactly one inventory job executed; two dispatch records exist |
+| Approval restoration | Environment API now reports prevent_self_review=true, required reviewer rdpollard, can_admins_bypass=false; branch-policy API reports the sole rule main/type branch |
+| PR/release state | #73 remains OPEN/draft at 22c724dfdb28a923dda6b0ed9c2b14e66957941b. No guest, application build/package/release workflow was dispatched during this session |
+
+### Single-reviewer exception and its closure
+
+The API dispatch was attributed to rdpollard, who was also the only required
+reviewer. Prevent-self-review therefore blocked the initial approval. The owner
+explicitly authorized a temporary one-run exception for this fixed inventory.
+Codex's environment-update request returned 403; the owner changed the checkbox
+and approved the waiting run. No administrator-bypass setting was enabled.
+The owner has now restored prevent-self-review and Codex verified restoration
+through the environment API. Do not describe this run as independently reviewed:
+it used an expressly approved single-operator exception. That exception has ended
+and does not authorize self-review for any future run.
+
+No runner is to be restarted/re-registered and no workflow is to be dispatched
+under the closed inventory authorization. The remaining runner directory,
+downloaded archive, logs, dedicated account and kvm group membership were **not**
+deleted. No service was installed by the reviewed instructions. Full host cleanup
+or retirement of that account remains a separate scoped operation if needed.
+
+Diagnostic inventory: **Pass**. Intended local teardown: **reported Pass**.
+Remote runner deregistration: **administrator-confirmed**. Whole-host cleanup:
+**NotRun**. Media authentication, working guest console, GUI/cgroup handoff,
+privileged updater authentication and guest tests: **NotRun/unproven**. Production
+readiness remains false. Preserve W2h's counterexample, W2i–W2l limited results,
+W2m's immediate cleanup failure, W2n N1/N2 NotRun and the managed-filesystem ACL
+EOPNOTSUPP result; this inventory neither resolves nor supersedes them.
+
+## Next bounded phase: media authentication and offline console preparation
+
+Status: reviewable proposal only. No helper/workflow implementation, media
+acquisition, disk creation, runner registration/start or dispatch occurs in this
+documentation step. Actual desktop installation/boot and updater validation need
+later explicit authorization. Keep #73 draft and unmerged.
+
+### P1: authenticate one Cinnamon ISO on the spare host
+
+Prepare a fixed-purpose helper and its mocked tests before authorizing native
+execution. Adapt host preflight explicitly for the actual **Mint 22.3 host**;
+the historical Ubuntu-only preflight would reject it and must not be passed by
+relabeling the host. The media verifier can reuse its signature/digest contract
+without importing production updater code or pretending the host is Ubuntu.
+
+Future execution, only after a separate review/authorization:
+
+- Run as the dedicated non-sudo account in a new mode-0700 directory under
+  `$HOME/mint-validation/<run UUID>`. No personal home traversal, shared writable
+  directories, sudo, service registration, package manager or remote shell input.
+- Recheck owned path ancestry, Mint release, architecture, trusted fixed tool
+  paths, KVM API 12, at least 6 GiB available RAM and 40 GiB free disk. Record the
+  host OS as Mint, separately from the intended Mint guest. Unsupported facts
+  stop without permission fallbacks or dependency installation.
+- Retrieve only the official Mint 22.3 signed checksum list, detached signature,
+  and `linuxmint-22.3-cinnamon-64bit.iso` from one reviewed fixed HTTPS mirror:
+  `https://mirrors.kernel.org/linuxmint/stable/22.3/`. Verify a bounded redirect
+  chain stays on the reviewed HTTPS host; no user URL, unsigned alternate or
+  quiet mirror substitution. Actual spare-host connectivity is unproven. The
+  Codex workspace's earlier mirror 403 remains a separate access limitation.
+- Use the reviewed repository key `tests/fixtures/linuxmint-iso-signing.asc`,
+  bound by reviewed source SHA and file hash. Require primary fingerprint
+  `27DEB15644C6B3CF3BD7D291300F846BA25BAE09`, successful detached-signature
+  validation in a fresh private keyring, disabled automatic key retrieval,
+  exactly one canonical Cinnamon checksum entry and no unexpected signature.
+  Reject signature errors and revoked/expired keys. The pinned fingerprint is
+  the trust anchor; do not modify ambient ownertrust merely to silence warnings.
+- Freeze the digest from authenticated metadata, then stream-hash the complete
+  regular ISO and require equality. Never substitute the Xfce pin. Stop before
+  any extraction/boot on signature/digest/edition/size mismatch. Do not invent a
+  Cinnamon pin now: it has not been authenticated or downloaded in this step.
+- Maximum key/checksum files 64 KiB each, signature 8 KiB, ISO 6 GiB; one transfer
+  at a time; 20-second connection, 60-second metadata and 15-minute ISO deadline,
+  at most one attempt each. Stop on a partial transfer; quarantine its owned
+  partial file instead of treating it as media. No resume/retry/mirror tuning
+  in this first bounded run. Reserve at most 8 GiB actual storage in its owned
+  workspace and check size while receiving, not only after download.
+- Seal complete media read-only within the private workspace. Record byte size,
+  actual SHA-256, key/metadata/signature hashes, accepted signing identity, source
+  URL, tool versions, and verifier/source hashes. Revalidate immutable identity
+  and bytes before a separately authorized future boot. A read-only mode alone
+  is not tamper-proof against the owning account.
+
+Pass means one cryptographically authenticated Cinnamon ISO and bounded durable
+verification evidence. A downloaded file, successful HTTP response or a website
+checksum alone is not a pass. Failure stops P2; preserve bounded reasons and
+ownership evidence. No broad deletion of an uncertain workspace.
+
+### P2: offline console launch plan, without starting QEMU
+
+After P1 passes, prepare only a validated manifest/argument plan. No QEMU process,
+VM disk, user account, polkit policy or guest credentials are created in this
+phase. A future launch must revalidate the plan and receive separate permission.
+
+- Guest plan: Mint 22.3 Cinnamon, KVM only, 2 vCPUs, 4 GiB RAM, 30-GiB virtual
+  disk on ext4 when installed, standard QEMU identity plus a new run-bound UUID.
+  Host resources remain independent; no TCG/container/chroot substitution.
+- Console/control plan: VNC and optional QMP **Unix-domain sockets only**, below
+  the run-owned mode-0700 directory, accessible only to the dedicated account.
+  Validate QEMU Unix-socket path-length bounds before producing a plan. No
+  public/loopback TCP listener, SPICE clipboard, USB/host-device passthrough,
+  host filesystem share, network monitor, generic shell or reusable password.
+  The launch plan has no guest NIC; network enablement is a later decision.
+- The intended controller runs as that same account in a future approved runner
+  job and talks only to this owned console/control socket. It must bind process
+  identity and UUID, constrain commands and bound/redact evidence. This is a
+  proposed controller boundary, **not a controller implemented or proven today**.
+  A real Cinnamon login/polkit agent and safe mentor-password entry cannot be
+  asserted from an offline plan or replaced with fake session variables.
+- Validate paths, no symlink replacement, collision refusal, exact allowed argv,
+  no arbitrary config includes/extra QEMU args, media identity binding and a
+  future owned-process cleanup plan. If a secure controller or host-display
+  approach cannot be established, stop before boot; do not expose VNC publicly
+  or borrow ryan's desktop credentials/authority as a convenience fallback.
+
+P2 pass means a reviewed offline manifest with no execution effects. A usable
+console remains **NotRun** until separately authorized launch/controller checks.
+Ownership cleanup for preparatory files is separate from runner deregistration
+and future guest/process cleanup.
+
+### Workflow and approval gates before any future execution
+
+Implement/review helpers and local mocked checks first, using no real network,
+GPG process, QEMU, runner or guest in those tests. Then a separate infrastructure
+PR can propose a clearly named fixed-purpose `mint-media-console-prep.yml`.
+It must not quietly expand the historical inventory workflow into a downloader
+or VM launcher. No dispatch input may select commands, URLs, refs or extra args.
+
+Only after its separate review/merge authorization may the administrator replace
+the group's sole selected workflow with that exact new workflow at main, verify
+the reviewed SHA and approval environment, and authorize a fresh ephemeral
+registration/start plus one dispatch. Do not broaden the group to all workflows.
+Leave ENABLED=false until those gates pass; main changes invalidate the old
+approved SHA. Evidence must name the actual executed source SHA, account/group,
+run/job ID and all report-source limitations.
+
+The single-reviewer limitation must be handled **before** dispatch: either an
+independent permitted reviewer is available, or the owner explicitly approves a
+new narrowly scoped, temporary self-review exception. The past exception is not
+reusable consent. Require owner confirmation of the protected environment's
+approval, restore prevent-self-review immediately after approval, disable
+activation after the job, and verify deregistration again. Inspect for an
+unexpected second dispatch; cancel any unapproved waiting duplicate before
+runner startup. No automatic workflow rerun or re-registration on failure.
+
+Proposed whole-job limit: 25 minutes, including at most four bounded metadata/key
+inputs and one ISO transfer. Export only a sanitized report <=64 KiB plus an
+explicit ownership manifest; no passwords/tokens, keyring private state, raw
+runner diagnostics, browser session data or ISO artifacts. Mirror/signature,
+storage/time bounds, changed ownership, controller ambiguity, unexpected network
+or package/guest activity, or failed evidence persistence are stopping conditions.
+
+Current authorization ends with this preparation. It does not cover implementing
+or executing that workflow, creating a VM, guest package operations, updater
+fixtures, installed SDE changes, application builds/signing/releases or #73 merge.
