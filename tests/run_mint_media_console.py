@@ -17,7 +17,8 @@ import uuid
 REPO = 'stormbots/Tactics-Strategy-Dev-Environments'
 WORKFLOW = REPO + '/.github/workflows/mint-media-console-prep.yml@refs/heads/main'
 SOURCES = ('tests/run_mint_media_console.py', 'tests/mint_media_console.py',
-           'tests/mint_media_native.py', 'tests/fixtures/linuxmint-iso-signing.asc')
+           'tests/mint_media_native.py', 'tests/start_mint_preparation_runner.py',
+           'tests/fixtures/linuxmint-iso-signing.asc')
 FILE_LIMIT = 128 * 1024
 EXPORT_LIMIT = 64 * 1024
 

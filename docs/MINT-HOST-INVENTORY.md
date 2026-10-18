@@ -594,3 +594,96 @@ or blocking calls can still leave uncertain state. Authentication safety, proces
 cleanup, runner deregistration and whole-host restoration remain distinct.
 Both #73 and #77 remain draft/unmerged; activation, runner operation, dispatch,
 downloads, guests, application builds, packages and releases remain deferred.
+
+## SOURCE_OWNER checkout-creation fix (proposal; no host changes)
+
+The stopped run 39099802574 at 05a8142 remains a failure. Owner-provided `id` and
+`namei -l` evidence showed correct sde-runner UID 1001 ownership, but group-writable
+`_work`, repository ancestors and `tests` (0775), plus caller file 0664. Root/home
+ancestors and the dedicated account/session were not group-writable. SOURCE_OWNER
+was therefore the intended rejection, before native helper loading, workspace
+allocation or media work. No claim is made that source permissions were the only
+remaining native gate. The failed checkout remains unchanged as evidence.
+
+### Narrow remediation boundary
+
+Prevent shared-write creation in a NEW session rather than chmod/chown the failed
+checkout, accept shared groups, copy unverified mutable code into a trusted path,
+or relax read_source. `tests/start_mint_preparation_runner.py` is a future LOCAL
+listener launcher, never a workflow step or automatic CI command. It sets umask
+0077 before executing the fixed trusted runner run.sh, so the listener, worker,
+checkout action and git inherit the restrictive creation mask. Setting umask only
+in the later preparation step is too late to protect checkout's ancestors.
+
+The launcher requires the dedicated non-sudo account, a fixed new session below
+its passwd home (`mint-prep-runner-private-session`), mode-0700 session and empty
+mode-0700 `_work-private`, root/current-user-owned non-writable ancestry without
+symlinks, no inherited default ACL on session/work root, an owned non-writable
+regular executable run.sh, and bounded private .runner configuration selecting
+`workFolder: _work-private`, `ephemeral: true`, `agentName: sde-mint-prep-once`, and
+`gitHubUrl: https://github.com/stormbots`. The config is not an authorization
+boundary: group restrictions, exact approved workflow/SHA, protected environment,
+and one-run approval remain mandatory. It never reads registration credentials.
+Configuration field names were checked against actions/runner v2.338.0's
+Runner.Common/ConfigurationStore.cs; native serialization remains a proof gate.
+
+It exposes no arguments, registration, download, install, chmod, chown, ACL repair,
+recursive traversal/deletion or generic shell action. Wrong modes, default ACLs,
+symlinks, a reused work root, changed configuration, wrong account or unexpected
+runner settings stop instead of silently fixing state. ACL inspection uses the
+Python standard library; unsupported/denied inspection stops without installing
+utilities. Settings reads are bounded, reject duplicate JSON fields/change/short
+reads, and close once; uncertain close cannot pass. A failed preflight/exec restores
+the launcher's earlier umask. Successful exec carries 0077 into the listener.
+
+### Future preparation sequence — NOT authorized by this PR
+
+1. After separate review/merge and a new execution authorization, independently
+   bind the new main SHA, source bundle and this local launcher's exact file hash.
+   The caller's bundle now includes FIVE fixed source files, adding the launcher
+   before the public key in SOURCES. The old packet/hash/run is not reusable.
+2. Revalidate the approved runner archive and prepare a fresh dedicated session
+   named mint-prep-runner-private-session with umask 0077 and exclusive 0700
+   creation. Create an empty `_work-private` there with mode 0700. If either
+   already exists, stop; do not overwrite/reuse/remove it. Do not touch the old
+   mint-prep-runner-session/_work or its failed checkout.
+3. Register one ephemeral runner using the reviewed interactive token prompt
+   (never token in argv/history/chat), same restricted group and sde-mint-prep
+   label, with `--work _work-private`, in that fresh session under umask 0077.
+   Verify the actual private configuration/schema and group while offline.
+4. Deliver the approved launcher as a separately SHA-256-verified private regular
+   file; do not depend on a checkout that has not happened yet or fetch mutable
+   branch code at listener startup. The future start invocation is isolated
+   `/usr/bin/python3 -I -B <verified-local-launcher>` with no arguments. Approve
+   the exact waiting environment job and restore self-review protection before
+   invoking it. Do not bypass this launcher with direct run.sh or set a weaker
+   umask for registration/listener startup.
+5. Observe actual creation modes and strict source-guard results in the newly
+   authorized bounded run. A runner/action resetting umask, unexpected ACL,
+   serialization mismatch or any other native difference stops; never apply a
+   recursive permission repair or weaken the source check as fallback.
+
+No host command in this sequence was executed. Native inheritance through the
+actual runner/worker/checkout, actual ACL/settings behavior and media/authentication
+remain unvalidated. This is a proposed setup correction with fail-closed checks,
+not a successful native rerun. Default ACL inheritance is explicitly rejected
+because ACL-based creation can differ from the ordinary umask model.
+
+### Local regression and CI review
+
+97 mocked/static checks pass (39 existing helper, 30 caller/workflow, 11 new
+launcher/permission checks, 8 policy, 9 scope), plus focused actionlint and whitespace
+checks. Mocked launch tests observe 0077 at the exec boundary, model ordinary file
+0600/directory0700 creation, verify earlier mask restoration on failure and assert
+no exec for unsafe context. Inspection tests cover wrong owners, symlinks,
+permissive modes, default ACLs, reused workspaces, registration drift, bounded/
+short/duplicate settings and uncertain descriptor closure. The original source
+reader still rejects the observed 0775 and 0664 modes without chmod.
+
+Only the exact two new launcher/test paths join the existing infrastructure scope
+exception and automatic mocked/static policy coverage. Native preparation, native
+fixture and application/release workflow gates are unchanged. A mixed application,
+key or unknown path retains application CI. Keep this infrastructure PR unmerged,
+activation disabled, and runner operations, dispatch, media, guests, #73 merge,
+application builds/packages/releases deferred. No source-guard permission rule was
+relaxed and no spare-host permission was changed.
