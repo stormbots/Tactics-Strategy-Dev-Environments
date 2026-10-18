@@ -299,6 +299,27 @@ fn request_app_update() -> Result<(), String> {
     app_update::request().map_err(str::to_owned)
 }
 #[tauri::command]
+async fn discover_app_update() -> Result<app_update::Discovery, String> {
+    tauri::async_runtime::spawn_blocking(app_update::discover)
+        .await
+        .map_err(|_| "SDE release check unavailable".to_owned())?
+        .map_err(str::to_owned)
+}
+#[tauri::command]
+async fn inspect_app_update_progress(request_id: String) -> Result<serde_json::Value, String> {
+    if request_id.len() != 36 {
+        return Err("Invalid request correlation".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || app_update::progress(&request_id))
+        .await
+        .map_err(|_| "SDE progress unavailable".to_owned())?
+        .map_err(str::to_owned)
+}
+#[tauri::command]
+fn close_for_app_update(request_id: String) -> Result<(), String> {
+    app_update::close(&request_id).map_err(str::to_owned)
+}
+#[tauri::command]
 async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
     let root = backend(&app)?;
     tauri::async_runtime::spawn_blocking(move || schedule::inspect(&root))
@@ -408,6 +429,9 @@ fn main() {
             inspect_self_update,
             inspect_app_update,
             request_app_update,
+            discover_app_update,
+            inspect_app_update_progress,
+            close_for_app_update,
             run_operation,
             open_destination
         ])

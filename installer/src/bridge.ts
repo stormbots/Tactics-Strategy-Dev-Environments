@@ -187,3 +187,29 @@ export async function requestAppUpdate(): Promise<never> {
   // Even an unexpected success reply is not evidence of an authorized worker.
   throw new Error("No app-only update request was confirmed.");
 }
+
+export async function discoverAppUpdate(): Promise<
+  import("./appUpdate").ReleaseCheck
+> {
+  if (!native)
+    throw new Error("Release checking is unavailable in browser preview.");
+  const { parseReleaseCheck } = await import("./appUpdate");
+  return parseReleaseCheck(await invoke("discover_app_update"));
+}
+export async function inspectAppUpdateProgress(
+  requestId: string,
+): Promise<import("./appUpdate").UpdateProgress> {
+  const { parseUpdateProgress, requestIdPattern } = await import("./appUpdate");
+  if (!native || !requestIdPattern.test(requestId))
+    throw new Error("Protected progress unavailable");
+  return parseUpdateProgress(
+    await invoke("inspect_app_update_progress", { requestId }),
+    requestId,
+  );
+}
+export async function closeForAppUpdate(requestId: string): Promise<never> {
+  const { requestIdPattern } = await import("./appUpdate");
+  if (native && requestIdPattern.test(requestId))
+    await invoke("close_for_app_update", { requestId });
+  throw new Error("Closing for installation remains disabled.");
+}

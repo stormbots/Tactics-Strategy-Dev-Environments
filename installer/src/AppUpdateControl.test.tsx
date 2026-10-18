@@ -8,15 +8,21 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { AppUpdateControl } from "./AppUpdateControl";
-import { inspectAppUpdate, requestAppUpdate } from "./bridge";
+import {
+  inspectAppUpdate,
+  requestAppUpdate,
+  inspectAppUpdateProgress,
+} from "./bridge";
 import { parseAppUpdate } from "./appUpdate";
 vi.mock("./bridge", () => ({
   inspectAppUpdate: vi.fn(),
   requestAppUpdate: vi.fn(),
+  inspectAppUpdateProgress: vi.fn(),
 }));
 beforeEach(() => {
   vi.mocked(inspectAppUpdate).mockReset();
   vi.mocked(requestAppUpdate).mockReset();
+  vi.mocked(inspectAppUpdateProgress).mockReset();
 });
 afterEach(cleanup);
 it("real backend contract and every unknown/forged eligibility reply fail closed", () => {
@@ -48,7 +54,7 @@ it("stays disabled while loading and after native validation-pending discovery",
   await act(async () =>
     resolve({ enabled: false, reason: "native_validation_pending" }),
   );
-  expect(screen.getByRole("status").textContent).toContain("not enabled");
+  expect(screen.getByText(/not enabled on this installation/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Update Now" }));
   expect(requestAppUpdate).not.toHaveBeenCalled();
 });
@@ -140,4 +146,24 @@ it("late discovery after unmount cannot submit anything", async () => {
   view.unmount();
   await act(async () => resolve({ enabled: true, reason: "unavailable" }));
   expect(requestAppUpdate).not.toHaveBeenCalled();
+});
+
+it("does not attach progress from URL or local storage without a correlated request", async () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  const previous = location.href;
+  history.replaceState({}, "", `?requestId=${id}`);
+  localStorage.setItem("sde-update-request", id);
+  try {
+    vi.mocked(inspectAppUpdate).mockResolvedValue({
+      enabled: false,
+      reason: "native_validation_pending",
+    });
+    render(<AppUpdateControl />);
+    await screen.findByText(/not enabled on this installation/);
+    expect(inspectAppUpdateProgress).not.toHaveBeenCalled();
+    expect(requestAppUpdate).not.toHaveBeenCalled();
+  } finally {
+    history.replaceState({}, "", previous);
+    localStorage.removeItem("sde-update-request");
+  }
 });

@@ -185,6 +185,13 @@ test("Schedule Update Now stays disabled and accessible at compact and wide size
     await expect(
       page.getByText("Update Now is unavailable in browser preview."),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Check SDE release" }).click();
+    await expect(
+      page.getByText(
+        "Release metadata could not be verified. No update request was submitted.",
+      ),
+    ).toBeVisible();
+    await expect(button).toBeDisabled();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

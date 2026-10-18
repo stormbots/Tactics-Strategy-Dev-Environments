@@ -171,6 +171,12 @@ impl GitHub {
             deadline: Instant::now() + DEADLINE,
         })
     }
+    /// Notification metadata only: preserve transport policy, shorten total budget.
+    pub(crate) fn notification() -> Result<Self> {
+        let mut client = Self::new()?;
+        client.deadline = Instant::now() + Duration::from_secs(15);
+        Ok(client)
+    }
     fn remaining(&self) -> Result<Duration> {
         self.deadline
             .checked_duration_since(Instant::now())
@@ -545,6 +551,13 @@ mod tests {
         );
         output.reset().unwrap();
         assert!(output.is_empty());
+    }
+    #[test]
+    fn notification_budget_does_not_shorten_scheduled_discovery() {
+        let ordinary = GitHub::new().unwrap();
+        let notification = GitHub::notification().unwrap();
+        assert!(ordinary.remaining().unwrap() > Duration::from_secs(500));
+        assert!(notification.remaining().unwrap() <= Duration::from_secs(15));
     }
     #[test]
     fn real_http_stream_preserves_original_length_and_rejects_truncation() {

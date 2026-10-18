@@ -298,9 +298,14 @@ pub fn app_only_progress(id: &str) -> Result<String> {
     let path = Path::new(RUNS).join(id).join("progress.json");
     let p: Progress = read(&path)?;
     let (boot, ms) = now()?;
+    validate_progress(&p, id, unsafe { libc::getuid() }, &boot, ms)?;
+    // Age and reboot are not interpreted as process completion or a close grant.
+    serde_json::to_string(&p).map_err(|_| "Progress encoding failed".into())
+}
+fn validate_progress(p: &Progress, id: &str, uid: u32, boot: &str, ms: u64) -> Result<()> {
     if p.schema_version != 1
         || p.request_id != id
-        || p.uid != unsafe { libc::getuid() }
+        || p.uid != uid
         || p.boot_id != boot
         || p.sequence == 0
         || p.sequence > 32
@@ -311,8 +316,73 @@ pub fn app_only_progress(id: &str) -> Result<String> {
     {
         return Err("Progress identity or clock mismatch".into());
     }
-    // Age and reboot are not interpreted as process completion or a close grant.
-    serde_json::to_string(&p).map_err(|_| "Progress encoding failed".into())
+    Ok(())
+}
+/// Bounded presentation projection. This is observation, never worker liveness,
+/// an installation grant, a recovery clearance or permission to close the GUI.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressObservation {
+    request_id: String,
+    boot_id: String,
+    sequence: u32,
+    state: State,
+    observed_ms: u64,
+    age_ms: u64,
+    remaining_ms: u64,
+    fresh: bool,
+    candidate_version: Option<String>,
+    candidate_sha256: Option<String>,
+    close_allowed: bool,
+}
+fn project_progress(
+    p: Progress,
+    id: &str,
+    uid: u32,
+    boot: &str,
+    ms: u64,
+) -> Result<ProgressObservation> {
+    validate_progress(&p, id, uid, boot, ms)?;
+    if p.state == State::Ready && (p.candidate.is_none() || p.ready_deadline_ms.is_none()) {
+        return Err("Incomplete readiness observation".into());
+    }
+    let precommit = matches!(
+        p.state,
+        State::Preparing | State::Downloading | State::Verifying | State::Ready
+    );
+    let age_ms = ms - p.observed_ms;
+    let remaining_ms = p
+        .ready_deadline_ms
+        .unwrap_or(p.deadline_ms)
+        .min(p.deadline_ms)
+        .saturating_sub(ms);
+    if remaining_ms > OVERALL_MS
+        || p.observed_ms > 9_007_199_254_740_991
+        || age_ms > 9_007_199_254_740_991
+    {
+        return Err("Progress presentation bounds exceeded".into());
+    }
+    Ok(ProgressObservation {
+        request_id: p.request_id,
+        boot_id: p.boot_id,
+        sequence: p.sequence,
+        state: p.state,
+        observed_ms: p.observed_ms,
+        age_ms,
+        remaining_ms,
+        fresh: age_ms <= 10_000 && (!precommit || remaining_ms > 0),
+        candidate_version: p.candidate.as_ref().map(|c| c.version.clone()),
+        candidate_sha256: p.candidate.map(|c| c.sha256),
+        close_allowed: false,
+    })
+}
+pub fn app_only_observation(id: &str) -> Result<ProgressObservation> {
+    if !uuid(id) {
+        return Err("Invalid request correlation".into());
+    }
+    let p: Progress = read(&Path::new(RUNS).join(id).join("progress.json"))?;
+    let (boot, ms) = now()?;
+    project_progress(p, id, unsafe { libc::getuid() }, &boot, ms)
 }
 fn worker_directory(exe: &Path) -> Result<PathBuf> {
     native::trusted_file(exe)?;
@@ -611,6 +681,69 @@ mod tests {
             "Progress publication bound exceeded"
         );
         assert_eq!(p.sequence, 32);
+    }
+    fn observation_fixture() -> Progress {
+        let r = request();
+        Progress {
+            schema_version: 1,
+            request_id: r.request_id,
+            uid: r.uid,
+            boot_id: r.boot_id,
+            sequence: 4,
+            observed_ms: 20_000,
+            deadline_ms: r.deadline_ms,
+            ready_deadline_ms: Some(140_000),
+            state: State::Ready,
+            candidate: Some(CandidateProgress {
+                version: "1.2.2".into(),
+                sha256: "a".repeat(64),
+            }),
+            native_exit: None,
+            detail: Some("not exported".into()),
+        }
+    }
+    #[test]
+    fn observations_never_authorize_close_even_when_ready_and_fresh() {
+        let p = observation_fixture();
+        let id = p.request_id.clone();
+        let boot = p.boot_id.clone();
+        let view = project_progress(p, &id, 1000, &boot, 20_001).unwrap();
+        assert!(view.fresh);
+        assert!(!view.close_allowed);
+        assert!(!serde_json::to_string(&view)
+            .unwrap()
+            .contains("not exported"));
+    }
+    #[test]
+    fn stale_and_expired_ready_are_not_liveness_or_authority() {
+        for ms in [30_001, 140_000] {
+            let p = observation_fixture();
+            let id = p.request_id.clone();
+            let boot = p.boot_id.clone();
+            let view = project_progress(p, &id, 1000, &boot, ms).unwrap();
+            assert!(!view.fresh);
+            assert!(!view.close_allowed);
+        }
+    }
+    #[test]
+    fn mismatched_identity_future_clock_and_incomplete_ready_reject() {
+        for case in 0..8 {
+            let mut p = observation_fixture();
+            let id = p.request_id.clone();
+            let boot = p.boot_id.clone();
+            match case {
+                0 => p.uid = 1001,
+                1 => p.request_id = uuid::Uuid::new_v4().to_string(),
+                2 => p.boot_id = uuid::Uuid::new_v4().to_string(),
+                3 => p.observed_ms = 20_001,
+                4 => p.sequence = 33,
+                5 => p.candidate = None,
+                6 => p.ready_deadline_ms = None,
+                _ => p.candidate.as_mut().unwrap().sha256 = "invalid".into(),
+            }
+            assert!(project_progress(p, &id, 1000, &boot, 20_000).is_err());
+        }
+        assert!(app_only_observation("../../policy.json").is_err());
     }
     #[test]
     fn progress_rejects_unknown_fields_and_states() {

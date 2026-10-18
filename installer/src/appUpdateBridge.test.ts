@@ -38,3 +38,30 @@ it("backend refusal is not retried", async () => {
   await expect(requestAppUpdate()).rejects.toThrow("Disabled");
   expect(invoke).toHaveBeenCalledTimes(1);
 });
+
+it("fixed discovery command cannot submit requests or take caller-selected URLs", async () => {
+  const { discoverAppUpdate } = await import("./bridge");
+  vi.mocked(invoke).mockResolvedValue({
+    status: "no_newer_listing",
+    candidate: null,
+  });
+  expect((await discoverAppUpdate()).status).toBe("no_newer_listing");
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("discover_app_update");
+});
+it("invalid progress/close IDs are rejected before IPC", async () => {
+  const { inspectAppUpdateProgress, closeForAppUpdate } =
+    await import("./bridge");
+  await expect(inspectAppUpdateProgress("../../policy.json")).rejects.toThrow();
+  await expect(closeForAppUpdate("../../policy.json")).rejects.toThrow();
+  expect(invoke).not.toHaveBeenCalled();
+});
+it("even a successful close reply cannot cause GUI exit", async () => {
+  const { closeForAppUpdate } = await import("./bridge");
+  vi.mocked(invoke).mockResolvedValue(undefined);
+  await expect(
+    closeForAppUpdate("00000000-0000-4000-8000-000000000001"),
+  ).rejects.toThrow(/disabled/);
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("close_for_app_update", {
+    requestId: "00000000-0000-4000-8000-000000000001",
+  });
+});

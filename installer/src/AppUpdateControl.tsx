@@ -1,10 +1,12 @@
+import { AppReleaseCheck } from "./AppReleaseCheck";
+import { AppUpdateProgress } from "./AppUpdateProgress";
 import { useEffect, useRef, useState } from "react";
 import { inspectAppUpdate, requestAppUpdate } from "./bridge";
 import { unavailableAppUpdate, type AppUpdateAvailability } from "./appUpdate";
 
 /** Initial disabled integration. Consent is exercised only with mocked
  * eligibility; the real bridge and backend independently refuse enablement. */
-export function AppUpdateControl() {
+export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
   const [availability, setAvailability] =
     useState<AppUpdateAvailability | null>(null);
   const [phase, setPhase] = useState<
@@ -63,6 +65,8 @@ export function AppUpdateControl() {
           : availability.reason === "native_validation_pending"
             ? "Update Now is not enabled on this installation. Native validation and deployment are pending."
             : "Update Now availability could not be confirmed. No request has been submitted.";
+  if (requestId)
+    return <AppUpdateProgress key={requestId} requestId={requestId} />;
   return (
     <div
       className="app-update-control"
@@ -72,6 +76,7 @@ export function AppUpdateControl() {
       <p id="app-update-availability" role="status">
         {explanation}
       </p>
+      {phase === "idle" && <AppReleaseCheck />}
       {phase === "idle" && (
         <button
           ref={updateButton}

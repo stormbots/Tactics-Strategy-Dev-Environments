@@ -11,6 +11,9 @@
     "allow-inspect-self-update",
     "allow-inspect-app-update",
     "allow-request-app-update",
+    "allow-discover-app-update",
+    "allow-inspect-app-update-progress",
+    "allow-close-for-app-update",
     "allow-run-operation",
     "allow-open-destination"
   ]
