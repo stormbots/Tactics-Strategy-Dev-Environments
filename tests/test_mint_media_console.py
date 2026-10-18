@@ -314,6 +314,28 @@ class NativeAdapterMockTests(unittest.TestCase):
         self.assertTrue(spawn.call_args.kwargs['start_new_session'])
         self.assertNotIn('shell',spawn.call_args.kwargs)
 
+    def test_owned_children_preserve_runner_tracking_without_inheriting_credentials(self):
+        for tracked in (False,True):
+            process=Mock();process.stdout.fileno.return_value=7;process.poll.return_value=0
+            process.wait.return_value=0
+            selector=Mock();selector.select.return_value=[object()]
+            synthetic={'HTTPS_PROXY':'https://synthetic-proxy.invalid',
+                       'SSL_CERT_FILE':'/synthetic/ca.pem','GITHUB_TOKEN':'synthetic-secret',
+                       'SSH_AUTH_SOCK':'/synthetic/agent','LD_PRELOAD':'/synthetic/inject.so'}
+            if tracked:synthetic['RUNNER_TRACKING_ID']='synthetic-job-tracking'
+            with self.subTest(tracked=tracked),patch.dict(n.os.environ,synthetic,clear=True), \
+                 patch.object(n,'_tool'),patch.object(n.subprocess,'Popen',return_value=process) as spawn, \
+                 patch.object(n.selectors,'DefaultSelector',return_value=selector), \
+                 patch.object(n.os,'set_blocking'),patch.object(n.os,'read',return_value=b''):
+                self.assertEqual(n._capture(['/usr/bin/curl','--disable','--version'],10,lambda:0),b'')
+            passed=spawn.call_args.kwargs['env']
+            expected={'PATH':'/usr/bin:/bin','LANG':'C','LC_ALL':'C',
+                      'HTTPS_PROXY':synthetic['HTTPS_PROXY'],'SSL_CERT_FILE':synthetic['SSL_CERT_FILE']}
+            if tracked:expected['RUNNER_TRACKING_ID']=synthetic['RUNNER_TRACKING_ID']
+            self.assertEqual(passed,expected)
+            self.assertNotIn('synthetic-job-tracking',spawn.call_args.args[0])
+            process.kill.assert_not_called()
+
     def test_workspace_rejects_replacement_and_symlink_identity(self):
         w=object.__new__(n.Workspace)
         w.fd=3;w.files={'a':(8,(1,2,1001,0o400,1))}

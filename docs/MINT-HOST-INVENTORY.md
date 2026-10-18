@@ -418,3 +418,179 @@ actionlint and diff whitespace checks passed. This establishes local policy and
 mocked coverage only; native preparation-helper authentication/cleanup/console
 claims remain unvalidated. Historical fixture success and #72 findings remain
 historical evidence, not proof of the new preparation helpers.
+
+## Prepared manual media/console workflow (not activated)
+
+The separately prepared `.github/workflows/mint-media-console-prep.yml` uses the
+merged helpers through `tests/run_mint_media_console.py`. This section supersedes
+the earlier proposal's “no caller/workflow” status only. Preparation does not
+authorize publication/merge, runner registration/start, settings changes,
+dispatch, media acquisition or guest execution. #73 remains draft/unmerged.
+
+The workflow is manual-only, takes no dispatch inputs, has contents-read-only
+permissions, and shares the non-cancelling `spare-mint-host` concurrency group.
+Its sole 25-minute job selects `org/sde-mint-isolated` with routing label
+`sde-mint-prep`, and requires the `mint-host-access` approval environment.
+Labels are not authorization. Before any separately authorized execution, an
+administrator must replace the runner group's sole selected workflow with
+`stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-media-console-prep.yml@refs/heads/main`,
+retain selected-repository access only to this repository, verify public-repo
+and branch protection settings, and verify the environment's main-only deployment
+rule, required reviewer and administrator-bypass policy. No such settings were
+changed by preparing this workflow. The old inventory allowlist is not sufficient
+to execute the new workflow, and must not be broadened to all workflows.
+
+Independent disabled-by-default gates (none configured in this preparation):
+
+- `MINT_PREP_ENABLED` must be exactly `true`.
+- `MINT_PREP_ACCESS_READY` must be exactly `verified`, after live control review.
+- `MINT_PREP_APPROVED_SHA` must equal the reviewed main commit being dispatched.
+- `MINT_PREP_HELPERS_SHA256` must be the independently reviewed source-bundle hash.
+
+Unset values prevent scheduling. Inventory activation variables cannot activate
+this job. The event/repository/ref/workflow-ref must be the fixed manual main
+workflow, workflow SHA must equal source SHA, and run attempt must be 1. A rerun
+is refused; an authorized retry requires a new reviewed dispatch/owned run.
+The environment reviewer must inspect the exact queued commit and operation.
+The sole-reviewer exception remains separately authorized per execution; removing
+PR approval requirements did not waive this environment protection. Leave the
+runner absent and all preparation flags unset/disabled until those gates pass.
+
+The checkout is pinned to `github.sha`, does not persist credentials, and disables
+submodules/LFS. The caller runs under `/usr/bin/python3 -I -B`, with no CLI args.
+Before loading native ports it verifies the fixed Actions context and four
+bounded regular non-symlink source snapshots (caller, core, native ports, public
+signing key), rejecting writable/untrusted ancestry and changing identities.
+The bundle framing is `SHA256(b'mint-prep-bundle-v1\0' + each fixed path's ASCII
+name + NUL + ASCII decimal byte length + NUL + raw bytes)`, in the `SOURCES` order
+in the caller. It compiles only the approved helper snapshots, not a second
+pathname import; preloaded helpers are rejected. Approval values must come from
+independent review of the merged source, never from the running job blessing its
+own files. The bundle hash is not a cryptographic signature or a defense against
+malicious same-account/root code modifying the caller before it starts.
+
+Mint host collection and the merged host/resource gates precede exclusive
+workspace creation. The existing one-mirror signature/digest/ownership/size/
+deadline/stop rules remain unchanged. A fresh UUID binds the private retained
+workspace to the run. Neither QEMU nor a disk/package/service/runner executor is
+called. The offline plan is data only; guest readiness remains unproven.
+
+After durable helper report/ownership persistence, the caller reads back the
+bounded run-bound ownership manifest and closes owned descriptors before emitting
+one JSON export of at most 64 KiB. It includes source/bundle hashes, actual host
+facts, Actions run/attempt IDs and fixed job name, report and manifest. No ISO/keyring/raw tool
+output or artifact glob is exported. Sanitized failure output identifies the run
+UUID once allocated and marks cleanup NotConfirmed. Partial workspaces remain
+private for investigation; no recursive deletion, resume or mirror substitution.
+Helper completion, successful workflow export, descriptor/process cleanup,
+runner deregistration and whole-host restoration are separate outcomes.
+
+Remaining native gates: real checkout permissions/tool ancestry, Mint/GPG/curl
+compatibility and mirror access, actual signature/digest/owned filesystem behavior,
+export/log retrieval and cancellation/owned-child cleanup are not validated by
+mocks. GitHub timeout or forced interruption can leave uncertain state; filesystem
+calls are not hard-real-time and no SIGKILL cleanup guarantee is claimed. Stop
+and preserve uncertainty; do not automatically retry or start another runner.
+Actual console/controller/guest tests require later authorization.
+
+Automatic preparation CI adds only this exact workflow/caller/test to its watched
+paths and installer-skip exception, and lints the new workflow. It runs the new
+mocked driver/gate tests; native fixture jobs remain dispatch-gated. No production
+or active inventory workflow changes are included.
+
+Workflow preparation review evidence: **74 local checks passed** (38 existing
+helper mocks, 19 caller/workflow checks, 8 policy checks, 9 scope checks), plus
+focused actionlint and whitespace checks. The approved-snapshot loader was checked
+with actual helper definitions while native open/ioctl/socket/process entry points
+were denied; this is import/definition coverage, not native execution proof.
+Fault cases cover wrong/missing context, reruns, source tampering/ownership and
+bounds, helper preloading/partial-load restoration, host rejection, preparation
+failure, ownership/export bounds, close uncertainty and sanitized error output.
+No helper activation, media download, KVM access, GPG/curl process, QEMU process,
+runner operation, workflow dispatch, application build/package/release or #73
+merge was performed. Publication and a separate infrastructure PR remain a next
+review step; the prepared workflow is not present on main yet.
+
+### Local caller/workflow review follow-up
+
+The local review found and fixed these caller issues before publication:
+
+- TERM/INT previously had default process behavior and could bypass Python
+  unwinding. The fixed main entry point now temporarily installs a first-request
+  interruption guard, restores prior handlers on exit, and refuses success after
+  any recorded interruption. Further TERM/INT requests return while the initial
+  exception unwinds, rather than disrupting owned cleanup. Failure output retains
+  an independent interruption flag even if a helper translates the exception.
+  Handler installation/restoration failures stop; restoration uncertainty prevents
+  success export. Tests invoke captured mock handlers, never send real signals or
+  install handlers on the testing host.
+- Source traversal could leak the newly opened next descriptor if closing its
+  parent failed. Every opened descriptor is now tracked immediately, close is
+  attempted once without retry, remaining descriptors are still attempted, and
+  any ambiguous close produces SOURCE_CLEANUP_UNCERTAIN.
+- Ownership export could accept a valid JSON prefix from a short read. It now
+  bounds the recorded file size before reading, requires exactly that many bytes
+  and unchanged size afterward, rechecks owned identity and requires a JSON object
+  bound to the run. Size bounds reject before allocation/read.
+- Error reporting could fail when a preloaded helper lacked a valid Stop class.
+  The sanitizer now verifies exception-type identity before inspecting controlled
+  reason codes and never substitutes arbitrary exception text for a reason.
+
+The workflow's disabled activation, protected environment, exact workflow/main
+source approvals, restricted runner group, no-input interface, no-rerun gate,
+resource bounds and installer-skip rules remain unchanged. Source bundle approval
+must be recomputed from the final reviewed/merged caller, not a previous candidate.
+No approval variables or runner/group/environment settings were changed.
+
+QA: **84 local mocked/static checks passed** (38 existing helper checks,
+29 caller/workflow checks, 8 policy checks, 9 scope checks), focused actionlint and
+whitespace checks passed. Added fault coverage includes parent/final descriptor
+close failure, partial/changing manifests, malformed preloaded modules, handler
+partial installation/restoration failure, repeated interruption during cleanup,
+helper exception translation and suppressed-interruption false-success control.
+The 74-check result above records the earlier candidate, not this revision.
+
+Remaining proof gates are unchanged: no actual signals, child processes, KVM,
+network/media, GPG, owned native filesystem run or GitHub cancellation was exercised.
+SIGKILL, interpreter failure, cancellation grace periods and blocking filesystem
+calls can still leave uncertain state. Graceful-unwind mock success establishes
+neither actual process cleanup nor authentication safety. Reports, file retention,
+runner deregistration and whole-host restoration remain separate outcomes; no
+forced-interruption cleanup guarantee or production-readiness claim is made.
+Publication and activation remain deferred, as do runner operations, workflow
+dispatch, guest work, #73 merge, application builds, packages and releases.
+
+### PR #77 security/stopping/CI review
+
+Review found that the reused curl/GPG process environment dropped
+`RUNNER_TRACKING_ID`. Because owned children start a new session, retaining the
+runner's opaque job-tracking marker helps preserve GitHub's separate best-effort
+orphan cleanup path if the caller is forcibly terminated. The fixed allowlist
+now forwards that marker only when present, without logging it or adding it to
+command arguments. It remains cleanup metadata, never an authentication or
+runner-group authorization boundary. Proxy/CA settings are still preserved;
+GitHub tokens, SSH agent settings and dynamic-loader injection variables are not
+inherited. This changes only the test-infrastructure native port, not production
+updater code. The caller bundle includes this port, so the final independently
+approved bundle digest must include the fix.
+
+QA: **86 local mocked/static checks passed** (39 helper checks, 30 caller/workflow
+checks, 8 policy checks, 9 scope checks), focused actionlint and whitespace checks
+passed. The two additional checks use a fully mocked child environment/process
+and a synthetic handler invocation reaching the real owned-child cleanup logic;
+no process is spawned and no signal is sent or installed. Both present and absent
+tracking-marker cases preserve the limited environment. The synthetic termination
+checks owned kill/wait/stdout/selector cleanup calls; they do not establish kernel
+or GitHub cancellation behavior.
+
+Dispatch controls, settings and workflow definitions are unchanged by this review.
+The full PR remains confined to exact infrastructure paths; automatic validation
+is static/mocked, with native fixture and installer/release jobs dispatch/scope
+controlled. Remaining execution gates include live runner-group/environment
+verification, fresh exact main SHA and bundle approval, ephemeral single-job
+registration, explicit dispatch authorization and native media/cancellation/
+filesystem/export validation. SIGKILL, missing tracking metadata, runner failure
+or blocking calls can still leave uncertain state. Authentication safety, process
+cleanup, runner deregistration and whole-host restoration remain distinct.
+Both #73 and #77 remain draft/unmerged; activation, runner operation, dispatch,
+downloads, guests, application builds, packages and releases remain deferred.

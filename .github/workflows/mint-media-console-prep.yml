@@ -1,0 +1,43 @@
+# Preparation only. Disabled until separate administrator/execution authorization.
+name: Approved Mint media authentication and offline console plan
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: spare-mint-host
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' &&
+      github.ref == 'refs/heads/main' &&
+      github.workflow_ref == 'stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-media-console-prep.yml@refs/heads/main' &&
+      github.sha == github.workflow_sha &&
+      github.run_attempt == 1 &&
+      vars.MINT_PREP_ENABLED == 'true' &&
+      vars.MINT_PREP_ACCESS_READY == 'verified' &&
+      github.sha == vars.MINT_PREP_APPROVED_SHA &&
+      vars.MINT_PREP_HELPERS_SHA256 != ''
+    environment: mint-host-access
+    runs-on:
+      group: org/sde-mint-isolated
+      labels: sde-mint-prep
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Authenticate fixed media and write offline plan only
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        env:
+          PREP_ENABLED: ${{ vars.MINT_PREP_ENABLED }}
+          PREP_ACCESS_READY: ${{ vars.MINT_PREP_ACCESS_READY }}
+          PREP_APPROVED_SHA: ${{ vars.MINT_PREP_APPROVED_SHA }}
+          PREP_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          PREP_APPROVED_HELPERS_SHA256: ${{ vars.MINT_PREP_HELPERS_SHA256 }}
+        run: /usr/bin/python3 -I -B tests/run_mint_media_console.py

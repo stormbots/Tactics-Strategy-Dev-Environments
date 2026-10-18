@@ -88,7 +88,8 @@ class InventoryPolicy(unittest.TestCase):
         self.assertEqual(commands, ["python3 -m pip install 'PyYAML==6.0.2'",
             'python3 -m unittest discover -s tests -p test_mint_host_inventory.py -v\n'
             'python3 -m unittest discover -s tests -p test_ci_scope.py -v\n'
-            'python3 -m unittest discover -s tests -p test_mint_media_console.py -v\n'])
+            'python3 -m unittest discover -s tests -p test_mint_media_console.py -v\n'
+            'python3 -m unittest discover -s tests -p test_mint_media_workflow.py -v\n'])
         self.assertEqual(job['steps'][0]['with']['persist-credentials'], 'false')
 
     def test_scope_exception_does_not_expand_to_native_or_application_work(self):
