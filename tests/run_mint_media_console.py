@@ -3,11 +3,13 @@
 No CLI arguments, URLs, shell commands, QEMU launch, package or cleanup executor.
 Only the reviewed Actions workflow may activate the native ports.
 """
+from contextlib import contextmanager
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import signal
 import stat
 import sys
 import uuid
@@ -53,35 +55,51 @@ def read_source(root, name):
     """Bounded non-symlink source snapshots; no writable/shared source ancestry."""
     parts = Path(name).parts
     need(root.is_absolute() and '..' not in root.parts, 'SOURCE_ROOT')
+    owned = []
+
+    def close_owned(fd):
+        owned.remove(fd)  # never retry an ambiguously closed descriptor
+        try:
+            os.close(fd)
+        except OSError:
+            raise GateError('SOURCE_CLEANUP_UNCERTAIN') from None
+
     fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    owned.append(fd)
     try:
         uid = os.getuid()
         for part in (*root.parts[1:], *parts[:-1]):
             nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=fd)
-            os.close(fd); fd = nxt
+            owned.append(nxt)
+            close_owned(fd)
+            fd = nxt
             st = os.fstat(fd)
             need(st.st_uid in {0, uid} and not stat.S_IMODE(st.st_mode) & 0o022, 'SOURCE_OWNER')
         leaf = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=fd)
-        try:
-            before = os.fstat(leaf)
-            need(stat.S_ISREG(before.st_mode) and before.st_uid in {0, uid} and
-                 before.st_nlink == 1 and not stat.S_IMODE(before.st_mode) & 0o022 and
-                 0 < before.st_size <= FILE_LIMIT, 'SOURCE_FILE')
-            raw = bytearray()
-            while len(raw) <= FILE_LIMIT:
-                block = os.read(leaf, min(65536, FILE_LIMIT + 1 - len(raw)))
-                if not block:
-                    break
-                raw.extend(block)
-            after = os.fstat(leaf)
-            need(len(raw) == before.st_size and len(raw) <= FILE_LIMIT and
-                 (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) ==
-                 (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns), 'SOURCE_CHANGED')
-            return bytes(raw)
-        finally:
-            os.close(leaf)
+        owned.append(leaf)
+        before = os.fstat(leaf)
+        need(stat.S_ISREG(before.st_mode) and before.st_uid in {0, uid} and
+             before.st_nlink == 1 and not stat.S_IMODE(before.st_mode) & 0o022 and
+             0 < before.st_size <= FILE_LIMIT, 'SOURCE_FILE')
+        raw = bytearray()
+        while len(raw) <= FILE_LIMIT:
+            block = os.read(leaf, min(65536, FILE_LIMIT + 1 - len(raw)))
+            if not block:
+                break
+            raw.extend(block)
+        after = os.fstat(leaf)
+        need(len(raw) == before.st_size and len(raw) <= FILE_LIMIT and
+             (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) ==
+             (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns), 'SOURCE_CHANGED')
+        return bytes(raw)
     finally:
-        os.close(fd)
+        uncertain = False
+        for remaining in list(reversed(owned)):
+            try:
+                close_owned(remaining)
+            except GateError:
+                uncertain = True
+        need(not uncertain, 'SOURCE_CLEANUP_UNCERTAIN')
 
 
 def bundle_digest(snapshots):
@@ -114,10 +132,13 @@ def load_ports(snapshots):
 
 def ownership_record(workspace):
     fd = workspace._file('ownership.json')
-    raw = os.pread(fd, EXPORT_LIMIT + 1, 0)
-    need(0 < len(raw) <= EXPORT_LIMIT, 'EXPORT_SIZE')
+    size = os.fstat(fd).st_size
+    need(0 < size <= EXPORT_LIMIT, 'EXPORT_SIZE')
+    raw = os.pread(fd, size + 1, 0)
+    need(len(raw) == size and os.fstat(fd).st_size == size, 'EXPORT_INCOMPLETE')
     workspace._file('ownership.json')
     record = json.loads(raw)
+    need(type(record) is dict, 'EXPORT_OWNERSHIP')
     need(record.get('runId') == workspace.run_id and record.get('cleanupPerformed') is False,
          'EXPORT_OWNERSHIP')
     return record
@@ -151,17 +172,58 @@ def run(env, *, reader=read_source, loader=load_ports, run_uuid=uuid.uuid4, obse
     return raw
 
 
+@contextmanager
+def interruption_guard(state=None):
+    """Unwind on the first TERM/INT; repeated signals must not interrupt cleanup.
+
+    SIGKILL, interpreter failure and blocking native calls remain native stop gates.
+    Tests replace every signal operation; they never signal the host process.
+    """
+    previous = []
+    state = {} if state is None else state
+    requested = False
+
+    def stop(signum, frame):
+        nonlocal requested
+        if not requested:
+            requested = True
+            state['requested'] = True
+            raise GateError('INTERRUPTED')
+
+    try:
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            old = signal.getsignal(signum)
+            previous.append((signum, old))
+            signal.signal(signum, stop)
+        yield
+    finally:
+        uncertain = False
+        for signum, old in reversed(previous):
+            try:
+                signal.signal(signum, old)
+            except (OSError, ValueError):
+                uncertain = True
+        need(not uncertain, 'SIGNAL_RESTORE_UNCERTAIN')
+
+
 def main():
     observation = {}
+    interruption = {}
     try:
-        need(len(sys.argv) == 1, 'NO_ARGUMENTS')
-        print(run(os.environ, observation=observation))
+        with interruption_guard(interruption):
+            need(len(sys.argv) == 1, 'NO_ARGUMENTS')
+            result = run(os.environ, observation=observation)
+        need(not interruption.get('requested'), 'INTERRUPTED')
+        print(result)
         return 0
     except Exception as error:
         core = sys.modules.get('mint_media_console')
-        controlled = isinstance(error, GateError) or (core is not None and isinstance(error, core.Stop))
+        stop_type = getattr(core, 'Stop', None)
+        controlled = isinstance(error, GateError) or (isinstance(stop_type, type) and
+                     issubclass(stop_type, Exception) and isinstance(error, stop_type))
         code = str(error) if controlled and re.fullmatch('[A-Z][A-Z0-9_]{0,63}', str(error)) else 'PREPARATION_STOPPED'
         print(json.dumps({'pass': False, 'reason': code, 'ownedRunId': observation.get('runId'),
+                          'interrupted': interruption.get('requested', False),
                           'nativeGuestTestsExecuted': False,
                           'productionReady': False, 'cleanupCorrectness': 'NotConfirmed'}))
         return 1

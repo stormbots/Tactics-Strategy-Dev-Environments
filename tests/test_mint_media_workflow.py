@@ -25,6 +25,11 @@ def env():
 
 class DriverChecks(unittest.TestCase):
     def setUp(self):
+        # Main's signal guard is exercised without installing real handlers.
+        getsignal = patch.object(d.signal, 'getsignal', return_value=d.signal.SIG_DFL)
+        setsignal = patch.object(d.signal, 'signal')
+        getsignal.start(); setsignal.start()
+        self.addCleanup(getsignal.stop); self.addCleanup(setsignal.stop)
         self.reader = Mock(side_effect=lambda root, name: SNAPSHOTS[name])
         self.core = Mock()
         self.core.prepare.return_value = {'productionReady': False, 'nativeGuestTestsExecuted': False}
@@ -107,12 +112,27 @@ class DriverChecks(unittest.TestCase):
 
     def test_ownership_export_is_bounded_and_bound_to_run(self):
         self.ws._file.return_value=9
-        for raw, reason in [(b'x'*(d.EXPORT_LIMIT+1),'EXPORT_SIZE'),
-                            (b'{"runId":"other","cleanupPerformed":false}','EXPORT_OWNERSHIP')]:
-            with patch.object(d.os,'pread',return_value=raw), self.assertRaisesRegex(d.GateError,reason):
+        with patch.object(d.os,'fstat',return_value=SimpleNamespace(st_size=d.EXPORT_LIMIT+1)), \
+             patch.object(d.os,'pread') as read,self.assertRaisesRegex(d.GateError,'EXPORT_SIZE'):
+            d.ownership_record(self.ws)
+        read.assert_not_called()
+        for record in ({'runId':'other','cleanupPerformed':False},
+                       {'runId':RUN,'cleanupPerformed':False}):
+            raw=json.dumps(record).encode()
+            with patch.object(d.os,'fstat',return_value=SimpleNamespace(st_size=len(raw))), \
+                 patch.object(d.os,'pread',return_value=raw):
+                if record['runId'] == RUN:
+                    self.assertEqual(d.ownership_record(self.ws)['runId'],RUN)
+                else:
+                    with self.assertRaisesRegex(d.GateError,'EXPORT_OWNERSHIP'):d.ownership_record(self.ws)
+
+    def test_partial_or_changing_manifest_cannot_export_valid_prefix(self):
+        self.ws._file.return_value=9
+        raw=json.dumps({'runId':RUN,'cleanupPerformed':False}).encode()
+        for sizes in ([len(raw)+4], [len(raw),len(raw)+1]):
+            with patch.object(d.os,'fstat',side_effect=[SimpleNamespace(st_size=x) for x in sizes]), \
+                 patch.object(d.os,'pread',return_value=raw),self.assertRaisesRegex(d.GateError,'EXPORT_INCOMPLETE'):
                 d.ownership_record(self.ws)
-        with patch.object(d.os,'pread',return_value=json.dumps({'runId':RUN,'cleanupPerformed':False}).encode()):
-            self.assertEqual(d.ownership_record(self.ws)['runId'],RUN)
 
     def test_failure_output_sanitizes_arbitrary_exception_text(self):
         for failure, reason in [(RuntimeError('SECRET_TOKEN'),'PREPARATION_STOPPED'),
@@ -212,6 +232,104 @@ class DriverChecks(unittest.TestCase):
         result=json.loads(out.getvalue())
         self.assertEqual(result['ownedRunId'],RUN)
         self.assertEqual(result['cleanupCorrectness'],'NotConfirmed')
+
+    def test_source_parent_close_failure_closes_new_descriptor_without_retry(self):
+        with patch.object(d.os,'open',side_effect=[1,2]),patch.object(d.os,'getuid',return_value=1001), \
+             patch.object(d.os,'close',side_effect=[OSError('synthetic close uncertainty'),None]) as close, \
+             self.assertRaisesRegex(d.GateError,'SOURCE_CLEANUP_UNCERTAIN'):
+            d.read_source(Path('/checkout'),'tests/file.py')
+        self.assertEqual([c.args[0] for c in close.call_args_list],[1,2])
+
+    def test_source_final_close_failure_still_attempts_other_descriptors(self):
+        directory=SimpleNamespace(st_uid=1001,st_mode=0o40700)
+        file=SimpleNamespace(st_uid=1001,st_mode=0o100600,st_nlink=1,st_size=3,
+                             st_dev=1,st_ino=2,st_mtime_ns=1,st_ctime_ns=1)
+        with patch.object(d.os,'open',side_effect=[1,2,3,4]),patch.object(d.os,'getuid',return_value=1001), \
+             patch.object(d.os,'fstat',side_effect=[directory,directory,file,file]), \
+             patch.object(d.os,'read',side_effect=[b'abc',b'']), \
+             patch.object(d.os,'close',side_effect=[None,None,OSError('synthetic close uncertainty'),None]) as close, \
+             self.assertRaisesRegex(d.GateError,'SOURCE_CLEANUP_UNCERTAIN'):
+            d.read_source(Path('/checkout'),'tests/file.py')
+        self.assertEqual([c.args[0] for c in close.call_args_list],[1,2,4,3])
+
+    def test_malformed_preloaded_module_does_not_break_sanitized_failure(self):
+        out=io.StringIO()
+        with patch.dict(d.sys.modules,{'mint_media_console':SimpleNamespace(Stop='not a type')}), \
+             patch.object(d,'run',side_effect=RuntimeError('SECRET_TOKEN')), \
+             patch.object(d.sys,'argv',['driver']),patch('sys.stdout',out):
+            self.assertEqual(d.main(),1)
+        self.assertEqual(json.loads(out.getvalue())['reason'],'PREPARATION_STOPPED')
+
+    def test_signal_restore_failure_prevents_main_success_export(self):
+        calls=[None,None,OSError('synthetic restore failure'),None]
+        out=io.StringIO()
+        with patch.object(d.signal,'signal',side_effect=calls),patch.object(d,'run',return_value='success'), \
+             patch.object(d.sys,'argv',['driver']),patch('sys.stdout',out):
+            self.assertEqual(d.main(),1)
+        self.assertNotIn('success',out.getvalue())
+        self.assertEqual(json.loads(out.getvalue())['reason'],'SIGNAL_RESTORE_UNCERTAIN')
+
+    def test_caught_interruption_cannot_turn_into_main_success(self):
+        out=io.StringIO()
+        with patch.object(d.signal,'signal') as install:
+            def suppressed(env, observation):
+                handler=install.call_args_list[0].args[1]
+                try:handler(d.signal.SIGTERM,None)
+                except d.GateError:pass
+                return 'must not export success'
+            with patch.object(d,'run',side_effect=suppressed),patch.object(d.sys,'argv',['driver']), \
+                 patch('sys.stdout',out):self.assertEqual(d.main(),1)
+        result=json.loads(out.getvalue())
+        self.assertTrue(result['interrupted'])
+        self.assertEqual(result['reason'],'INTERRUPTED')
+        self.assertNotIn('must not export success',out.getvalue())
+
+    def test_interruption_marker_survives_helper_failure_translation(self):
+        out=io.StringIO()
+        with patch.object(d.signal,'signal') as install:
+            def translated(env, observation):
+                handler=install.call_args_list[0].args[1]
+                try:handler(d.signal.SIGINT,None)
+                except d.GateError:raise d.GateError('NATIVE_FAILURE') from None
+            with patch.object(d,'run',side_effect=translated),patch.object(d.sys,'argv',['driver']), \
+                 patch('sys.stdout',out):self.assertEqual(d.main(),1)
+        result=json.loads(out.getvalue())
+        self.assertTrue(result['interrupted'])
+        self.assertEqual(result['reason'],'NATIVE_FAILURE')
+
+
+class SignalChecks(unittest.TestCase):
+    def test_first_termination_unwinds_and_repeated_signal_does_not_abort_cleanup(self):
+        cleaned=[]
+        with patch.object(d.signal,'getsignal',side_effect=['old TERM','old INT']), \
+             patch.object(d.signal,'signal') as install,self.assertRaisesRegex(d.GateError,'INTERRUPTED'):
+            with d.interruption_guard():
+                handler=install.call_args_list[0].args[1]
+                try:
+                    handler(d.signal.SIGTERM,None)  # synthetic invocation, not a signal
+                finally:
+                    handler(d.signal.SIGINT,None)
+                    cleaned.append(True)
+        self.assertEqual(cleaned,[True])
+        self.assertEqual([c.args for c in install.call_args_list[-2:]],
+                         [(d.signal.SIGINT,'old INT'),(d.signal.SIGTERM,'old TERM')])
+
+    def test_partial_handler_installation_restores_every_saved_handler(self):
+        body=Mock()
+        with patch.object(d.signal,'getsignal',side_effect=['old TERM','old INT']), \
+             patch.object(d.signal,'signal',side_effect=[None,OSError('synthetic install failure'),None,None]) as install, \
+             self.assertRaises(OSError):
+            with d.interruption_guard():body()
+        body.assert_not_called()
+        self.assertEqual([c.args for c in install.call_args_list[-2:]],
+                         [(d.signal.SIGINT,'old INT'),(d.signal.SIGTERM,'old TERM')])
+
+    def test_restore_uncertainty_attempts_both_handlers(self):
+        with patch.object(d.signal,'getsignal',return_value=d.signal.SIG_DFL), \
+             patch.object(d.signal,'signal',side_effect=[None,None,OSError('synthetic restore uncertainty'),None]) as install, \
+             self.assertRaisesRegex(d.GateError,'SIGNAL_RESTORE_UNCERTAIN'):
+            with d.interruption_guard():pass
+        self.assertEqual(install.call_count,4)
 
 
 class WorkflowChecks(unittest.TestCase):

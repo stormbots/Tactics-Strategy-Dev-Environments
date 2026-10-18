@@ -510,3 +510,52 @@ No helper activation, media download, KVM access, GPG/curl process, QEMU process
 runner operation, workflow dispatch, application build/package/release or #73
 merge was performed. Publication and a separate infrastructure PR remain a next
 review step; the prepared workflow is not present on main yet.
+
+### Local caller/workflow review follow-up
+
+The local review found and fixed these caller issues before publication:
+
+- TERM/INT previously had default process behavior and could bypass Python
+  unwinding. The fixed main entry point now temporarily installs a first-request
+  interruption guard, restores prior handlers on exit, and refuses success after
+  any recorded interruption. Further TERM/INT requests return while the initial
+  exception unwinds, rather than disrupting owned cleanup. Failure output retains
+  an independent interruption flag even if a helper translates the exception.
+  Handler installation/restoration failures stop; restoration uncertainty prevents
+  success export. Tests invoke captured mock handlers, never send real signals or
+  install handlers on the testing host.
+- Source traversal could leak the newly opened next descriptor if closing its
+  parent failed. Every opened descriptor is now tracked immediately, close is
+  attempted once without retry, remaining descriptors are still attempted, and
+  any ambiguous close produces SOURCE_CLEANUP_UNCERTAIN.
+- Ownership export could accept a valid JSON prefix from a short read. It now
+  bounds the recorded file size before reading, requires exactly that many bytes
+  and unchanged size afterward, rechecks owned identity and requires a JSON object
+  bound to the run. Size bounds reject before allocation/read.
+- Error reporting could fail when a preloaded helper lacked a valid Stop class.
+  The sanitizer now verifies exception-type identity before inspecting controlled
+  reason codes and never substitutes arbitrary exception text for a reason.
+
+The workflow's disabled activation, protected environment, exact workflow/main
+source approvals, restricted runner group, no-input interface, no-rerun gate,
+resource bounds and installer-skip rules remain unchanged. Source bundle approval
+must be recomputed from the final reviewed/merged caller, not a previous candidate.
+No approval variables or runner/group/environment settings were changed.
+
+QA: **84 local mocked/static checks passed** (38 existing helper checks,
+29 caller/workflow checks, 8 policy checks, 9 scope checks), focused actionlint and
+whitespace checks passed. Added fault coverage includes parent/final descriptor
+close failure, partial/changing manifests, malformed preloaded modules, handler
+partial installation/restoration failure, repeated interruption during cleanup,
+helper exception translation and suppressed-interruption false-success control.
+The 74-check result above records the earlier candidate, not this revision.
+
+Remaining proof gates are unchanged: no actual signals, child processes, KVM,
+network/media, GPG, owned native filesystem run or GitHub cancellation was exercised.
+SIGKILL, interpreter failure, cancellation grace periods and blocking filesystem
+calls can still leave uncertain state. Graceful-unwind mock success establishes
+neither actual process cleanup nor authentication safety. Reports, file retention,
+runner deregistration and whole-host restoration remain separate outcomes; no
+forced-interruption cleanup guarantee or production-readiness claim is made.
+Publication and activation remain deferred, as do runner operations, workflow
+dispatch, guest work, #73 merge, application builds, packages and releases.
