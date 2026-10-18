@@ -21,6 +21,10 @@ MINT_INFRA_PATHS = {
     'tests/mint_media_console.py',
     'tests/mint_media_native.py',
     'tests/test_mint_media_console.py',
+    '.github/workflows/mint-media-console-prep.yml',
+    'tests/run_mint_media_console.py',
+    'tests/test_mint_media_workflow.py',
+
     'docs/MINT-HOST-INVENTORY.md',
     'tests/ci_scope.py',
     'tests/test_ci_scope.py',
