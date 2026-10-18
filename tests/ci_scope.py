@@ -1,6 +1,8 @@
 """Fail closed to normal application CI unless a PR changes only fixture support."""
 import copy
+import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -9,6 +11,37 @@ import yaml
 WORKFLOW = ".github/workflows/build-dev-setup.yml"
 GATE = "needs.scope.outputs.application_required == 'true'"
 APPLICATION_JOBS = ("checks", "update-trust", "desktop-check")
+# Narrow infrastructure exception: never broaden to arbitrary workflows/tests.
+MINT_INFRA_PATHS = {
+    '.github/actionlint.yaml',
+    '.github/workflows/mint-host-inventory.yml',
+    '.github/workflows/mint-host-inventory-checks.yml',
+    '.github/workflows/native-uat-fixtures.yml',
+    'tests/test_mint_host_inventory.py',
+    'tests/mint_media_console.py',
+    'tests/mint_media_native.py',
+    'tests/test_mint_media_console.py',
+    '.github/workflows/mint-media-console-prep.yml',
+    'tests/run_mint_media_console.py',
+    'tests/test_mint_media_workflow.py',
+    'tests/start_mint_preparation_runner.py',
+    'tests/test_mint_runner_permissions.py',
+    '.github/workflows/mint-checkout-validation.yml',
+    'tests/observe_mint_checkout.py',
+    'tests/test_mint_checkout_observer.py',
+    'tests/mint_session_archive_plan.py',
+    'tests/test_mint_session_archive_plan.py',
+    'tests/mint_session_archive_native.py',
+    'tests/test_mint_session_archive_native.py',
+    'tests/mint_archive_supervisor.py',
+    'tests/test_mint_archive_supervisor.py',
+
+
+
+    'docs/MINT-HOST-INVENTORY.md',
+    'tests/ci_scope.py',
+    'tests/test_ci_scope.py',
+}
 FIXTURE_PATHS = {
     ".github/workflows/native-uat-fixtures.yml",
     "tests/native_uat_fixtures.py",
@@ -40,7 +73,7 @@ def unchanged_application_workflow(before, after):
 def application_required(paths, before=None, after=None):
     if not paths:
         return True
-    if any(path not in FIXTURE_PATHS | {WORKFLOW} for path in paths):
+    if any(path not in FIXTURE_PATHS | MINT_INFRA_PATHS | {WORKFLOW} for path in paths):
         return True
     if WORKFLOW in paths:
         if before is None or after is None:
@@ -57,6 +90,25 @@ def git(*args):
     return subprocess.run(["git", *args], check=True, capture_output=True).stdout
 
 
+def infrastructure_only_push():
+    """Only exact infra-only pushes on main may skip application packaging."""
+    if os.environ.get('GITHUB_REF') != 'refs/heads/main':
+        return False
+    try:
+        event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+        before, after = event['before'], event['after']
+        if (event.get('ref') != 'refs/heads/main'
+                or event.get('deleted') is not False
+                or after != os.environ.get('GITHUB_SHA')
+                or any(not isinstance(v, str) or not re.fullmatch('[0-9a-f]{40}', v)
+                       or v == '0'*40 for v in (before, after))):
+            return False
+        paths = git('diff', '--no-renames', '--name-only', '-z', before, after).decode().rstrip('\0').split('\0')
+        return bool(paths) and all(p in MINT_INFRA_PATHS for p in paths)
+    except (KeyError, OSError, ValueError, TypeError, subprocess.SubprocessError):
+        return False
+
+
 def main():
     required = True
     if os.environ.get("CI_EVENT_NAME") == "pull_request":
@@ -70,6 +122,8 @@ def main():
             before = yaml.load(git("show", f"{base}:{WORKFLOW}"), Loader=yaml.BaseLoader)
             after = yaml.load(git("show", f"{head}:{WORKFLOW}"), Loader=yaml.BaseLoader)
         required = application_required(paths, before, after)
+    elif os.environ.get('CI_EVENT_NAME') == 'push':
+        required = not infrastructure_only_push()
     value = str(required).lower()
     print(f"Application CI required: {value}")
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:

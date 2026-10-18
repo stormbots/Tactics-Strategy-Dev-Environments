@@ -1,5 +1,12 @@
 name: Native UAT fixture helpers
 on:
+  workflow_dispatch:
+    inputs:
+      run_native:
+        description: 'Run native Windows/Mint fixture checks, including media and package preparation'
+        type: boolean
+        required: true
+        default: false
   push:
     branches: ['qa/native-uat-fixtures']
     paths:
@@ -25,6 +32,7 @@ permissions:
 jobs:
   workflow-checks:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Validate fixture and application workflow definitions
@@ -32,6 +40,8 @@ jobs:
         with:
           args: -color .github/workflows/build-dev-setup.yml .github/workflows/native-uat-fixtures.yml
   windows-fixtures:
+    needs: workflow-checks
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' && inputs.run_native == true
     runs-on: windows-2022
     timeout-minutes: 15
     steps:
@@ -60,6 +70,8 @@ jobs:
           path: evidence/
           if-no-files-found: error
   mint-fixtures:
+    needs: workflow-checks
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' && inputs.run_native == true
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

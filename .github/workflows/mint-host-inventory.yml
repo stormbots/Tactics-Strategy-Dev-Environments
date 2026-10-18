@@ -1,0 +1,57 @@
+# Disabled until an administrator verifies live access controls and approves this SHA.
+name: Approved spare Mint host inventory
+on:
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: spare-mint-host
+  cancel-in-progress: false
+jobs:
+  inventory:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' &&
+      github.ref == 'refs/heads/main' &&
+      github.workflow_ref == 'stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-host-inventory.yml@refs/heads/main' &&
+      vars.MINT_RUNNER_ENABLED == 'true' &&
+      vars.MINT_RUNNER_ACCESS_READY == 'verified' &&
+      github.sha == vars.MINT_RUNNER_APPROVED_SHA
+    environment: mint-host-access
+    runs-on:
+      group: org/sde-mint-isolated
+      labels: sde-mint-inventory
+    timeout-minutes: 5
+    steps:
+      - name: Read-only host inventory; no guest execution
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        run: |
+          /usr/bin/python3 -I - <<'PY'
+          import fcntl
+          import json
+          import os
+          import platform
+          import subprocess
+          from pathlib import Path
+          if os.geteuid() == 0:
+              raise SystemExit('Refusing a root runner')
+          fd = os.open('/dev/kvm', os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW)
+          try:
+              api = fcntl.ioctl(fd, 0xAE00, 0)
+          finally:
+              os.close(fd)
+          if api != 12:
+              raise SystemExit('Unsupported KVM API')
+          version = subprocess.run(['/usr/bin/qemu-system-x86_64', '--version'],
+                                   check=True, capture_output=True, timeout=5,
+                                   env={'PATH': '/usr/bin:/bin', 'LANG': 'C'})
+          if len(version.stdout) > 4096:
+              raise SystemExit('Unexpected version output size')
+          release = Path('/etc/linuxmint/info').read_text()
+          if len(release) > 8192 or 'RELEASE=22.3' not in release:
+              raise SystemExit('Expected Mint 22.3 host')
+          report = {'schemaVersion': 1, 'machine': platform.machine(),
+                    'kvmApi': api, 'qemuVersion': version.stdout.decode().splitlines()[0],
+                    'guestExecuted': False, 'mediaAuthenticated': False,
+                    'consolePrepared': False, 'productionReady': False}
+          print(json.dumps(report))
+          PY

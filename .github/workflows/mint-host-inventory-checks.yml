@@ -1,0 +1,88 @@
+name: Mint preparation policy and mocked checks
+on:
+  pull_request:
+    paths:
+      - '.github/actionlint.yaml'
+      - '.github/workflows/mint-host-inventory.yml'
+      - '.github/workflows/mint-host-inventory-checks.yml'
+      - '.github/workflows/native-uat-fixtures.yml'
+      - 'tests/test_mint_host_inventory.py'
+      - 'tests/mint_media_console.py'
+      - 'tests/mint_media_native.py'
+      - 'tests/test_mint_media_console.py'
+      - '.github/workflows/mint-media-console-prep.yml'
+      - 'tests/run_mint_media_console.py'
+      - 'tests/test_mint_media_workflow.py'
+      - 'tests/start_mint_preparation_runner.py'
+      - 'tests/test_mint_runner_permissions.py'
+      - '.github/workflows/mint-checkout-validation.yml'
+      - 'tests/observe_mint_checkout.py'
+      - 'tests/test_mint_checkout_observer.py'
+      - 'tests/mint_session_archive_plan.py'
+      - 'tests/test_mint_session_archive_plan.py'
+      - 'tests/mint_session_archive_native.py'
+      - 'tests/test_mint_session_archive_native.py'
+      - 'tests/mint_archive_supervisor.py'
+      - 'tests/test_mint_archive_supervisor.py'
+      - 'tests/fixtures/linuxmint-iso-signing.asc'
+      - 'tests/ci_scope.py'
+      - 'tests/test_ci_scope.py'
+      - 'docs/MINT-HOST-INVENTORY.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/actionlint.yaml'
+      - '.github/workflows/mint-host-inventory.yml'
+      - '.github/workflows/mint-host-inventory-checks.yml'
+      - '.github/workflows/native-uat-fixtures.yml'
+      - 'tests/test_mint_host_inventory.py'
+      - 'tests/mint_media_console.py'
+      - 'tests/mint_media_native.py'
+      - 'tests/test_mint_media_console.py'
+      - '.github/workflows/mint-media-console-prep.yml'
+      - 'tests/run_mint_media_console.py'
+      - 'tests/test_mint_media_workflow.py'
+      - 'tests/start_mint_preparation_runner.py'
+      - 'tests/test_mint_runner_permissions.py'
+      - '.github/workflows/mint-checkout-validation.yml'
+      - 'tests/observe_mint_checkout.py'
+      - 'tests/test_mint_checkout_observer.py'
+      - 'tests/mint_session_archive_plan.py'
+      - 'tests/test_mint_session_archive_plan.py'
+      - 'tests/mint_session_archive_native.py'
+      - 'tests/test_mint_session_archive_native.py'
+      - 'tests/mint_archive_supervisor.py'
+      - 'tests/test_mint_archive_supervisor.py'
+      - 'tests/fixtures/linuxmint-iso-signing.asc'
+      - 'tests/ci_scope.py'
+      - 'tests/test_ci_scope.py'
+      - 'docs/MINT-HOST-INVENTORY.md'
+permissions:
+  contents: read
+jobs:
+  policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install 'PyYAML==6.0.2'
+      - name: Static policy and mocked helper checks only
+        run: |
+          python3 -m unittest discover -s tests -p test_mint_host_inventory.py -v
+          python3 -m unittest discover -s tests -p test_ci_scope.py -v
+          python3 -m unittest discover -s tests -p test_mint_media_console.py -v
+          python3 -m unittest discover -s tests -p test_mint_media_workflow.py -v
+          python3 -m unittest discover -s tests -p test_mint_runner_permissions.py -v
+          python3 -m unittest discover -s tests -p test_mint_checkout_observer.py -v
+          python3 -m unittest discover -s tests -p test_mint_session_archive_plan.py -v
+          python3 -m unittest discover -s tests -p test_mint_session_archive_native.py -v
+          python3 -m unittest discover -s tests -p test_mint_archive_supervisor.py -v
+      - name: Lint only the infrastructure workflows
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color .github/workflows/mint-host-inventory.yml .github/workflows/mint-host-inventory-checks.yml .github/workflows/native-uat-fixtures.yml .github/workflows/mint-media-console-prep.yml .github/workflows/mint-checkout-validation.yml
