@@ -1113,3 +1113,101 @@ ACL is not substituted for a creation-ancestor ACL check. No additional model
 implementation defects were found; focused workflow lint and whitespace passed.
 Merge readiness applies only to documentation/pure planning and mocked CI, not
 native archival, quiescence verification, persistent recovery or execution approval.
+
+## Isolated archival inspector/executor implementation — not executed
+
+`tests/mint_session_archive_native.py` implements the fixed local inspector,
+filesystem ports and controller against the merged archival procedure. It has
+no CLI or import-time host effects. Native() construction is inert;
+Native.open/execute are deliberately not invoked during local QA. No caller,
+workflow execution step, runner setup command or host delivery is provided here.
+The existing launcher/media observer/transport/validator remain unchanged.
+
+The entrypoint requires an explicit authorized=True plus an injected remote-gate
+provider. Three exact true facts (all activation disabled, remote runner absent,
+no queued/active jobs) must be newly attested before accepting the plan and again
+after path/process revalidation immediately before rename. This is a trusted
+local controller contract, NOT authenticated IPC or independent GitHub API proof.
+There is no API credential, activation writer, registration/start command,
+package/service executor or guest path in this module. Existing inability to
+read organization/variable settings must still be handled by owner evidence.
+
+Inspector behavior:
+- UID/EUID1001, sde-runner passwd home, exact existing groups, Linux and fixed
+  paths only. Pin root/home/session/legacy directories with descriptor-relative
+  O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC opens; check root/home modes/ownership,
+  default-ACL absence on creation ancestors and original session device/inode.
+  Legacy contents are never recursively traversed or read. Reject reused Native
+  instances, present registration names, archive/journal collision or unsafe ACLs.
+- Enumerate only the fixed /proc PID namespace, with <=4096 directory entries
+  per scan, <=16 account processes, <=32MiB aggregate proc reads per invocation,
+  bounded status/stat reads (16KiB/8KiB). All four account UID fields must be1001;
+  require one thread and zero inheritable/permitted/effective/ambient capability
+  sets. Other account processes must be exactly the inspector's identified
+  controller ancestors, not unrelated shells/listeners/workers. Unreadable,
+  vanished or malformed process observations stop; no kill or namespace fallback.
+- Compare stable PID/parent/start-time maps across scans, acquire retained pidfds,
+  scan again after enrollment and reject readiness/exit or later map changes.
+  Record bounded controller PID/parent/start-time evidence. Quiescence remains
+  observational and not a kernel-enforced freeze; same-UID/root interference is
+  outside the trust boundary. Pidfd/process-namespace behavior remains a native
+  proof obligation, not established by mocks.
+
+Mutation/durability behavior:
+- Bind libc renameat2 through exact ctypes int,char*,int,char*,unsigned ABI with
+  use_errno=True, RENAME_NOREPLACE=1. Binding availability alone does not prove
+  filesystem/kernel support. No destructive capability probe occurs; the actual
+  authorized call must succeed, otherwise sanitized errno and rename-pending
+  state are reported without fallback/retry. This refines the model's
+  noReplaceRenameAvailable preflight field to binding availability; kernel
+  capability remains an execution stop gate. No plain rename/mv/copy/replace.
+- Exclusive O_NOFOLLOW owner-only journal creation in the pinned home; cumulative
+  <=16KiB append-only JSONL with sequence, original run/identities, validated plan,
+  observed ancestor/process/control metadata and pending/completed phases.
+  A single bounded write per record; short write/fsync/identity/link/mode/size or
+  readback mismatch stops. The parent is fsynced after journal creation; records
+  are fsynced and exact bytes read back. A torn tail is uncertainty, not a record
+  to replay or ignore automatically. No rewrite/truncation/repair occurs.
+- Persist rename-pending before atomic rename; flush the home directory and read
+  back original archived identity/legacy identity/source absence. Exclusively
+  mkdir fresh source and work root under temporary umask0077; validate0700/owner/
+  ACL/linked identities and empty directory structure, flush child and parent,
+  then record completion. No old tree's contents, modes or ownership are changed.
+- SIGTERM/SIGINT handlers only set a stop flag; checked boundaries stop without
+  raising asynchronously between an open and ownership enrollment. All owned
+  descriptors are attempted once, including after another close failure; a close
+  is removed from ownership before attempting it and is never retried. Restore
+  the previous umask and signal handlers; any uncertainty makes the report fail.
+  Unsupported signal context/pidfds/ACLs/rename or permission checks stop.
+
+The overall checked budget is 30 seconds, with bounded counts/storage. Blocking
+filesystem/NSS/fsync operations are not claimed hard-real-time; a separate
+reviewed execution supervisor would be required to enforce a hard wall-clock
+limit. SIGKILL/power loss can prevent export entirely. Stop reports retain the
+last known phase and require read-only reconciliation; no rollback/resume/delete
+path exists. Even a completed journal with cleanup/export failure is not an
+unqualified healthy setup. Authentication safety and whole-host cleanup are never
+inferred; the return report explicitly keeps nativeValidated=false because local
+mocked QA cannot certify native behavior. A future caller must persist bounded
+sanitized output and identify its provenance; there is no automatic stdout/file
+export or native handoff in this implementation step.
+
+Local QA: **162 mocked/static checks passed**, including 28 new native-port/
+controller tests. Calls that would inspect processes, change umask/handlers,
+open/write/fsync/rename/mkdir or close host resources are mocked. Cases cover
+unauthorized refusal, journal-before-mutation ordering, each failed transition,
+partial writes/flush/readback/collision/identity uncertainty, SIGTERM stop,
+interruption-safe descriptor enrollment, cleanup restoration, proc UID/thread/
+capability/field/count/read bounds, pidfd enrollment changes, stopped controllers,
+exclusive mkdir, exact rename ABI and errno failures with no fallback, source/
+fresh path substitution, deadlines and absence of CLI/process-launch/repair paths.
+Focused actionlint, whitespace and exact infrastructure-scope checks are required
+before committing. Only automatic mocked checks/path filters change; no native
+workflow is dispatched. Original checkout success and manual deregistration
+remain historical evidence, not native validation of this archival implementation.
+
+Remaining gates: independent source review of this implementation and the future
+verified delivery/gate-attestation/report supervisor; then separately authorized
+native setup with read-only reconciliation on any uncertainty. No host/session
+operation, activation change, runner action, dispatch, media download, guest,
+package/build/release operation or #73 merge is authorized or performed here.

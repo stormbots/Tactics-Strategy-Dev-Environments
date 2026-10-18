@@ -31,6 +31,8 @@ MINT_INFRA_PATHS = {
     'tests/test_mint_checkout_observer.py',
     'tests/mint_session_archive_plan.py',
     'tests/test_mint_session_archive_plan.py',
+    'tests/mint_session_archive_native.py',
+    'tests/test_mint_session_archive_native.py',
 
 
 
