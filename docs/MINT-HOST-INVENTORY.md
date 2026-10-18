@@ -482,9 +482,9 @@ runner absent and all preparation flags unset/disabled until those gates pass.
 
 The checkout is pinned to `github.sha`, does not persist credentials, and disables
 submodules/LFS. The caller runs under `/usr/bin/python3 -I -B`, with no CLI args.
-Before loading native ports it verifies the fixed Actions context and four
-bounded regular non-symlink source snapshots (caller, core, native ports, public
-signing key), rejecting writable/untrusted ancestry and changing identities.
+Before loading native ports it verifies the fixed Actions context and five
+bounded regular non-symlink source snapshots (caller, core, native ports, local
+launcher, public signing key), rejecting writable/untrusted ancestry and changing identities.
 The bundle framing is `SHA256(b'mint-prep-bundle-v1\0' + each fixed path's ASCII
 name + NUL + ASCII decimal byte length + NUL + raw bytes)`, in the `SOURCES` order
 in the caller. It compiles only the approved helper snapshots, not a second
@@ -869,3 +869,114 @@ Approval gates and workflow commands are unchanged; group/reviewer/settings must
 still be verified before separately authorized execution. These local results do
 not validate native inheritance, ACL support, deregistration, cleanup correctness
 or authentication safety. The stopped media preparation result remains unchanged.
+
+## Checkout-only native evidence and next media proposal
+
+### Completed checkout diagnostic (not media authentication)
+
+Run [39132131036](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/39132131036),
+job 117689277573, executed observe once on source/workflow SHA
+c8e0134a3de8f36981a83bea1546b5b9a9daf1d6, attempt 1. GitHub API confirmed success
+and explicit environment approval by rdpollard under standing self-approval.
+The owner supplied the observer JSON because integration log retrieval was denied.
+It reports pass=true, reason=CHECKOUT_VALIDATED and bundle SHA-256
+27689dc72c1b72d30a031ed1bbd807130c0a21ec4ae5bce54df3b718ba66f445.
+
+Observed Mint 22.3 account sde-runner UID 1001, groups kvm/sde-runner/users,
+effective umask 0077. All six fixed source files were owned by UID 1001 with
+mode 0600 and expected sizes/hashes. The session, _work-private, repository
+ancestors, tests and fixtures directories were UID 1001/mode 0700 with
+no default ACLs. Root/home were root-owned 0755; the account home was UID
+1001/mode 0750. ACL=null on those outer ancestors means unchecked, not absent.
+This validates permission creation through this actual runner/worker/checkout
+schedule; it does not prove every possible filesystem or runner configuration.
+The earlier SOURCE_OWNER media failure is preserved as a separate stopped run.
+
+Closeout evidence is deliberately separated:
+- Owner terminal showed runner 2.338.0, observe succeeded, local .credentials
+  and .runner removed, listener exit 0. This is terminal evidence, not a complete
+  process/descriptor inventory or whole-host cleanup proof.
+- Owner confirmed MINT_CHECKOUT_ENABLED=false. Variable API readback is unavailable
+  to the integration; this is owner-attested, not independently verified.
+- Remote sde-mint-prep-once remained listed after local exit. Owner manually
+  removed it and confirmed absence. Do not claim automatic deregistration passed.
+- JSON explicitly reports cleanupCorrectness=NotValidated,
+  mediaAuthentication=NotRun, guestExecuted=false, productionReady=false and
+  wholeHostCleanupPerformed=false. Permission diagnostic completion, cleanup
+  correctness and authentication safety remain distinct.
+
+No ISO, guest, package, application build or release operation was part of this
+run. The private checkout and earlier failed media checkout remain retained.
+PR #73 remains draft/unmerged. No follow-on execution is authorized.
+
+### Proposed next bounded phase — preparation only
+
+Reuse the existing fixed media workflow/caller and the validated private-launcher
+permission approach; do not weaken source checks or apply chmod/chown repairs.
+Permit a future separately authorized single media-authentication/offline-plan
+job only after the following setup gate is resolved and controls reverified.
+
+**Fresh-session blocker:** mint-prep-runner-private-session now exists and contains
+this evidence. The launcher rejects nonempty _work-private; neither old session
+may be reused or silently deleted. Proposed smallest preparation is a separately
+reviewed local archive procedure with mocked-only coverage: verify dedicated
+account, no active listener/job, absent registration files, expected ownership,
+non-symlink ancestry and retained evidence identity; verify a collision-free
+run-bound sibling destination; move the whole completed session without overwrite
+or recursive modification/deletion; retain a source/destination identity record.
+Unexpected identities, inability to establish quiescence, destination collision
+or rename uncertainty stop without retry/fallback. Same-UID/root mutation remains
+outside this procedure's trust boundary. Actual archival and fresh-session
+creation require separate explicit authorization; neither happened here.
+
+Afterward, a newly created fixed-name 0700 session/empty work root, verified
+runner archive and local launcher hash, token-safe ephemeral registration,
+offline group-membership verification, exact SHA/bundle approvals and one
+protected dispatch would be needed. Do not turn this proposal into host commands
+until the archive/setup procedure has been reviewed. Keep the failed media-run
+session untouched as well.
+
+Control changes proposed only: replace the group's sole selected workflow with
+stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-media-console-prep.yml@refs/heads/main;
+retain only this selected repository, explicit public-repository access, required
+rdpollard approval with self-approval allowed, main-only environment and no admin
+bypass. Keep checkout/inventory activation off. Future MINT_PREP_ENABLED=true
+is set last, only after MINT_PREP_ACCESS_READY=verified, approved final main SHA
+and independent MINT_PREP_HELPERS_SHA256 are bound. No settings changed here.
+
+At c8e0134 the five-file mint-prep-bundle-v1 digest is
+1eaf77cd1379b60d191bfadeda74066cab598daf2e91acf1e6a33dbcacab4c7c;
+launcher SHA-256 remains
+d6fcdbc5bf8edd3f583206292eb8f4fcbf8fa95b503f2201707399d6b85d736b.
+These are proposal references, not activation approval. Recalculate from the
+final approved main commit after any documentation/implementation merge; do not
+reuse the consumed checkout or failed media authorization.
+
+Future native scope: fixed mirrors.kernel.org/linuxmint/stable/22.3 checksum,
+detached signature and linuxmint-22.3-cinnamon-64bit.iso acquisition; fixed
+pinned signing key fingerprint 27DEB15644C6B3CF3BD7D291300F846BA25BAE09;
+isolated GPG verification, ISO SHA-256 readback, private UUID-bound workspace,
+bounded report/ownership manifest and offline console-plan data only. Existing
+host gates include Mint 22.3/x86_64, dedicated nonprivileged account, KVM API 12,
+trusted tools, >=6 GiB available memory and >=40 GiB available disk. No tool
+installation or alternate mirror is an automatic fallback.
+
+Limits: workflow/helper budget 25 minutes, checksum fetch 60 seconds/signature
+60 seconds/ISO 900 seconds (also bounded by overall deadline); checksums <=64 KiB,
+signature <=8 KiB, ISO <=6 GiB, workspace <=8 GiB and stdout export <=64 KiB.
+Existing same-origin/same-path bounded redirects only; no mirror substitution.
+Quiescence/host/settings/signature/digest/resource/deadline/ownership failure,
+interruption, missing export, extra dispatch or unexpected process stops without
+resume or automatic retry. Retain bounded owned partial evidence, not recursive
+cleanup. An expired forced workflow cannot itself prove process cleanup.
+
+Pass requires the pinned signature and digest verification, completed bounded
+readback/export and run-bound report/ownership evidence. An offline plan must
+retain diskCreated=false, qemuStarted=false, consoleValidatedNatively=false and
+launchAuthorized=false. No guest image creation, VM boot, console socket launch,
+package operations, elevation, service/task registration, updater execution,
+application build, release or #73 merge is included. Media success would not
+validate a usable console, guest behavior or Update Now production readiness.
+Closeout separately disables media activation and verifies local runner exit,
+remote removal (manual if necessary), owned process/descriptor results and
+retained workspace status; no whole-host restoration claim is inferred.
