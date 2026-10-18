@@ -308,9 +308,10 @@ def _stream_process(argv, deadline, clock):
     require(argv[0] in TOOLS, 'TOOL')
     env = {'PATH': '/usr/bin:/bin', 'LANG': 'C', 'LC_ALL': 'C'}
     for name in ('HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy',
-                 'https_proxy', 'all_proxy', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'CURL_CA_BUNDLE'):
+                 'https_proxy', 'all_proxy', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'CURL_CA_BUNDLE',
+                 'RUNNER_TRACKING_ID'):
         if name in os.environ:
-            env[name] = os.environ[name]  # preserve configured proxy/trust; never log values
+            env[name] = os.environ[name]  # preserve proxy/trust and runner cleanup tracking; never log values
     process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                stdin=subprocess.DEVNULL, env=env, start_new_session=True,
                                close_fds=True)

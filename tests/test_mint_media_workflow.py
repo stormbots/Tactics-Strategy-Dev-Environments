@@ -297,6 +297,23 @@ class DriverChecks(unittest.TestCase):
         self.assertTrue(result['interrupted'])
         self.assertEqual(result['reason'],'NATIVE_FAILURE')
 
+    def test_synthetic_termination_reaches_real_owned_child_cleanup_logic(self):
+        import mint_media_native as native
+        process=Mock();process.stdout.fileno.return_value=7;process.poll.return_value=None
+        selector=Mock()
+        state={}
+        with patch.object(d.signal,'signal') as install,patch.object(native,'_tool'), \
+             patch.object(native.subprocess,'Popen',return_value=process), \
+             patch.object(native.selectors,'DefaultSelector',return_value=selector), \
+             patch.object(native.os,'set_blocking'),self.assertRaisesRegex(d.GateError,'INTERRUPTED'):
+            with d.interruption_guard(state):
+                handler=install.call_args_list[0].args[1]
+                selector.select.side_effect=lambda timeout:handler(d.signal.SIGTERM,None)
+                native._capture(['/usr/bin/curl','--disable','--version'],10,lambda:0)
+        self.assertTrue(state['requested'])
+        process.kill.assert_called_once();process.wait.assert_called_once_with(timeout=5)
+        process.stdout.close.assert_called_once();selector.close.assert_called_once()
+
 
 class SignalChecks(unittest.TestCase):
     def test_first_termination_unwinds_and_repeated_signal_does_not_abort_cleanup(self):

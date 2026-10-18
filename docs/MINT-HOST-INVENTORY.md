@@ -559,3 +559,38 @@ runner deregistration and whole-host restoration remain separate outcomes; no
 forced-interruption cleanup guarantee or production-readiness claim is made.
 Publication and activation remain deferred, as do runner operations, workflow
 dispatch, guest work, #73 merge, application builds, packages and releases.
+
+### PR #77 security/stopping/CI review
+
+Review found that the reused curl/GPG process environment dropped
+`RUNNER_TRACKING_ID`. Because owned children start a new session, retaining the
+runner's opaque job-tracking marker helps preserve GitHub's separate best-effort
+orphan cleanup path if the caller is forcibly terminated. The fixed allowlist
+now forwards that marker only when present, without logging it or adding it to
+command arguments. It remains cleanup metadata, never an authentication or
+runner-group authorization boundary. Proxy/CA settings are still preserved;
+GitHub tokens, SSH agent settings and dynamic-loader injection variables are not
+inherited. This changes only the test-infrastructure native port, not production
+updater code. The caller bundle includes this port, so the final independently
+approved bundle digest must include the fix.
+
+QA: **86 local mocked/static checks passed** (39 helper checks, 30 caller/workflow
+checks, 8 policy checks, 9 scope checks), focused actionlint and whitespace checks
+passed. The two additional checks use a fully mocked child environment/process
+and a synthetic handler invocation reaching the real owned-child cleanup logic;
+no process is spawned and no signal is sent or installed. Both present and absent
+tracking-marker cases preserve the limited environment. The synthetic termination
+checks owned kill/wait/stdout/selector cleanup calls; they do not establish kernel
+or GitHub cancellation behavior.
+
+Dispatch controls, settings and workflow definitions are unchanged by this review.
+The full PR remains confined to exact infrastructure paths; automatic validation
+is static/mocked, with native fixture and installer/release jobs dispatch/scope
+controlled. Remaining execution gates include live runner-group/environment
+verification, fresh exact main SHA and bundle approval, ephemeral single-job
+registration, explicit dispatch authorization and native media/cancellation/
+filesystem/export validation. SIGKILL, missing tracking metadata, runner failure
+or blocking calls can still leave uncertain state. Authentication safety, process
+cleanup, runner deregistration and whole-host restoration remain distinct.
+Both #73 and #77 remain draft/unmerged; activation, runner operation, dispatch,
+downloads, guests, application builds, packages and releases remain deferred.
