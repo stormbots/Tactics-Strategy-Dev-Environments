@@ -29,11 +29,11 @@ class CiScope(unittest.TestCase):
         self.assertTrue(application_required([WORKFLOW]))
         self.assertTrue(application_required([WORKFLOW], {}, {}))
 
-    def test_non_pr_events_always_require_application_ci(self):
+    def test_non_pr_events_without_main_metadata_require_application_ci(self):
         for event in ("push", "workflow_dispatch", "unknown"):
             with self.subTest(event=event), tempfile.TemporaryDirectory() as directory:
                 output = Path(directory) / "output"
-                with patch.dict(os.environ, {"CI_EVENT_NAME": event, "GITHUB_OUTPUT": str(output)}), patch.object(ci_scope, "git") as git:
+                with patch.dict(os.environ, {"CI_EVENT_NAME": event, "GITHUB_OUTPUT": str(output)}, clear=True), patch.object(ci_scope, "git") as git:
                     ci_scope.main()
                 git.assert_not_called()
                 self.assertEqual(output.read_text(), "application_required=true\n")
