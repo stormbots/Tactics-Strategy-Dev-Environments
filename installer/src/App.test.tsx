@@ -16,6 +16,7 @@ import {
   open,
 } from "./bridge";
 vi.mock("./bridge", () => ({
+  inspectAppUpdateReceipt: vi.fn(async () => null),
   native: false,
   inspectAppUpdate: vi.fn(async () => ({ enabled: false, reason: "preview" })),
   requestAppUpdate: vi.fn(async () => {

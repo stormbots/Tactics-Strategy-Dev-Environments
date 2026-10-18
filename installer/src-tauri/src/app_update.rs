@@ -15,10 +15,24 @@ pub fn inspect() -> Availability {
     }
 }
 
-pub fn request() -> Result<(), &'static str> {
+#[cfg(target_os = "linux")]
+#[path = "app_update_launch.rs"]
+mod launch;
+const EXECUTION_ENABLED: bool = false;
+pub fn request() -> Result<serde_json::Value, &'static str> {
     // Independent backend refusal: a modified/stale GUI cannot bypass this gate.
     // No caller-supplied command, path, candidate, policy or privilege parameters.
-    Err("Update Now is unavailable pending native validation and deployment. No request was submitted.")
+    if !EXECUTION_ENABLED {
+        return Err("Update Now is unavailable pending native validation and deployment. No request was submitted.");
+    }
+    #[cfg(target_os = "linux")]
+    {
+        launch::request()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Err("Authorized app-only launch is not supported on this platform yet")
+    }
 }
 
 #[derive(Serialize)]
@@ -76,6 +90,20 @@ pub fn progress(id: &str) -> Result<serde_json::Value, &'static str> {
     {
         let _ = id;
         Err("Protected app-only progress is not supported on this platform yet")
+    }
+}
+pub fn receipt() -> Result<serde_json::Value, &'static str> {
+    #[cfg(target_os = "linux")]
+    {
+        serde_json::to_value(
+            sde_update_trust::app_only_current_receipt()
+                .map_err(|_| "Protected update receipt unavailable")?,
+        )
+        .map_err(|_| "Protected receipt encoding unavailable")
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Err("Protected app-only receipts are not supported on this platform yet")
     }
 }
 pub fn close(_id: &str) -> Result<(), &'static str> {

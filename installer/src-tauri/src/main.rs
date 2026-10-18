@@ -295,8 +295,11 @@ fn inspect_app_update() -> app_update::Availability {
     app_update::inspect()
 }
 #[tauri::command]
-fn request_app_update() -> Result<(), String> {
-    app_update::request().map_err(str::to_owned)
+async fn request_app_update() -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(app_update::request)
+        .await
+        .map_err(|_| "SDE request unavailable".to_owned())?
+        .map_err(str::to_owned)
 }
 #[tauri::command]
 async fn discover_app_update() -> Result<app_update::Discovery, String> {
@@ -313,6 +316,13 @@ async fn inspect_app_update_progress(request_id: String) -> Result<serde_json::V
     tauri::async_runtime::spawn_blocking(move || app_update::progress(&request_id))
         .await
         .map_err(|_| "SDE progress unavailable".to_owned())?
+        .map_err(str::to_owned)
+}
+#[tauri::command]
+async fn inspect_app_update_receipt() -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(app_update::receipt)
+        .await
+        .map_err(|_| "SDE receipt unavailable".to_owned())?
         .map_err(str::to_owned)
 }
 #[tauri::command]
@@ -431,6 +441,7 @@ fn main() {
             request_app_update,
             discover_app_update,
             inspect_app_update_progress,
+            inspect_app_update_receipt,
             close_for_app_update,
             run_operation,
             open_destination

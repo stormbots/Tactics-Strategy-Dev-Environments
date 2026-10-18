@@ -61,6 +61,23 @@ class RequestTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 broker.bounded_json(source, 9)
 
+    def test_disabled_gate_has_no_side_effects(self):
+        with patch.object(broker, 'trusted', side_effect=AssertionError('state accessed')), \
+                patch.object(broker.subprocess, 'Popen', side_effect=AssertionError('spawned')):
+            with self.assertRaisesRegex(RuntimeError, 'disabled'):
+                broker.create(1000)
+
+    def test_reader_acl_grants_only_original_uid(self):
+        import struct
+        with patch.object(broker.os, 'setxattr') as setter:
+            broker.reader_acl(123, 1000)
+        fd, name, raw = setter.call_args.args
+        self.assertEqual((fd, name), (123, 'system.posix_acl_access'))
+        self.assertEqual(struct.unpack('<I', raw[:4]), (2,))
+        self.assertEqual(list(struct.iter_unpack('<HHI', raw[4:])),
+                         [(1, 6, 4294967295), (2, 4, 1000), (4, 0, 4294967295),
+                          (16, 4, 4294967295), (32, 0, 4294967295)])
+
     def fixture(self, root):
         (root / 'app-only/runs').mkdir(parents=True)
         (root / 'app-only/request.gate').touch()
@@ -77,7 +94,7 @@ class RequestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.fixture(root)
-            with patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), patch.object(broker.subprocess, 'Popen') as spawn:
+            with patch.object(broker, 'EXECUTION_ENABLED', True), patch.object(broker, 'reader_acl'), patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), patch.object(broker.subprocess, 'Popen') as spawn:
                 identifier = broker.create(1000)
             args, kw = spawn.call_args
             run = root / 'app-only/runs' / identifier
@@ -93,6 +110,30 @@ class RequestTests(unittest.TestCase):
             self.assertEqual(request['deadlineMs'] - request['createdMs'], 900000)
             self.assertEqual((run / 'request.json').stat().st_mode & 0o777, 0o600)
             self.assertFalse((run / 'worker.log').exists())
+            self.assertEqual(json.loads((run / 'receipt.json').read_text())['status'], 'accepted')
+            self.assertEqual(json.loads((root / 'app-only/current-1000.json').read_text())['requestId'], identifier)
+
+    def test_failed_acceptance_preserves_pending_without_killing_or_replaying(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.fixture(root)
+            publish = broker.publish_reader_record
+            def fail_accept(path, value, uid):
+                if value.get('status') == 'accepted':
+                    raise OSError('mock fsync uncertainty')
+                publish(path, value, uid)
+            with patch.object(broker, 'EXECUTION_ENABLED', True), patch.object(broker, 'reader_acl'), \
+                    patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), \
+                    patch.object(broker, 'publish_reader_record', side_effect=fail_accept), \
+                    patch.object(broker.subprocess, 'Popen') as spawn:
+                with self.assertRaises(OSError):
+                    broker.create(1000)
+                spawn.assert_called_once()
+                spawn.return_value.kill.assert_not_called()
+                spawn.return_value.terminate.assert_not_called()
+            run = next((root / 'app-only/runs').iterdir())
+            self.assertEqual(json.loads((run / 'receipt.json').read_text())['status'], 'pending')
+            self.assertTrue((root / 'app-only/current-1000.json').exists())
 
     def test_capacity_stops_without_pruning_or_launching(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -100,7 +141,7 @@ class RequestTests(unittest.TestCase):
             self.fixture(root)
             for i in range(broker.MAX_RUNS):
                 (root / 'app-only/runs' / str(i)).mkdir()
-            with patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), patch.object(broker.subprocess, 'Popen') as spawn:
+            with patch.object(broker, 'EXECUTION_ENABLED', True), patch.object(broker, 'reader_acl'), patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), patch.object(broker.subprocess, 'Popen') as spawn:
                 with self.assertRaises(RuntimeError):
                     broker.create(1000)
                 spawn.assert_not_called()
@@ -110,7 +151,7 @@ class RequestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.fixture(root)
-            with patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), patch.object(broker.subprocess, 'Popen', side_effect=OSError('mock failure')) as spawn:
+            with patch.object(broker, 'EXECUTION_ENABLED', True), patch.object(broker, 'reader_acl'), patch.object(broker, 'ROOT', root), patch.object(broker, 'trusted'), patch.object(broker.subprocess, 'Popen', side_effect=OSError('mock failure')) as spawn:
                 with self.assertRaises(OSError):
                     broker.create(1000)
                 self.assertEqual(spawn.call_count, 1)
@@ -118,6 +159,10 @@ class RequestTests(unittest.TestCase):
             self.assertEqual(len(runs), 1)
             self.assertTrue((runs[0] / 'request.json').is_file())
             self.assertTrue((runs[0] / 'sde-update-trust').is_file())
+            self.assertEqual(json.loads((runs[0] / 'receipt.json').read_text())['status'], 'pending')
+            with patch.object(broker, 'trusted'):
+                with self.assertRaises(FileNotFoundError):
+                    broker.current_slot(root / 'app-only', 1000)
 
 
 if __name__ == '__main__':

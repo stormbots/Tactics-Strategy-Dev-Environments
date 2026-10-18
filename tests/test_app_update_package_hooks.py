@@ -16,6 +16,88 @@ SPEC.loader.exec_module(bootstrap)
 
 
 class PackageHooks(unittest.TestCase):
+    def test_disabled_deployment_upgrade_and_removal_preserve_gate_and_evidence(self):
+        # All filesystem activity is in a disposable user-owned temp fixture.
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            parent = base / 'state'
+            parent.mkdir(mode=0o755)
+            parent.chmod(0o755)
+            root = parent / 'self-update'
+            source = base / 'broker'
+            source.write_bytes(b'EXECUTION_ENABLED = False\n# old')
+            policy = base / 'policy'
+            policy.write_bytes(b'policy fixture')
+            targets = base / 'targets'
+            targets.mkdir(mode=0o755)
+            targets.chmod(0o755)
+            entry, action = targets / 'entry', targets / 'action'
+            sources = {entry: (source, 65536, 0o755), action: (policy, 8192, 0o644)}
+            with patch.object(bootstrap, 'ROOT', root), patch.object(bootstrap, 'APP_ENTRY', entry), \
+                    patch.object(bootstrap, 'app_sources', return_value=sources), patch.object(bootstrap, 'trusted'), \
+                    patch.object(bootstrap.subprocess, 'run', side_effect=AssertionError('command ran')):
+                bootstrap.deploy_app_only()
+                gate = root / 'app-only/request.gate'
+                inode = gate.stat().st_ino
+                evidence = root / 'app-only/runs/retained'
+                evidence.mkdir()
+                source.write_bytes(b'EXECUTION_ENABLED = False\n# new')
+                bootstrap.deploy_app_only()
+                self.assertEqual(entry.read_bytes(), source.read_bytes())
+                self.assertEqual(gate.stat().st_ino, inode)
+                self.assertFalse((root / 'app-only-capabilities.json').exists())
+                self.assertFalse(json.loads((root / 'app-only-deployment.json').read_text())['executionEnabled'])
+                bootstrap.remove_app_only()
+                self.assertFalse(entry.exists())
+                self.assertFalse(action.exists())
+                self.assertTrue(evidence.exists())
+                self.assertEqual(gate.stat().st_ino, inode)
+
+    def test_explicit_disabled_deployment_does_not_enter_maintenance(self):
+        for flag, method in [('--deploy-app-only-disabled', 'deploy_app_only'),
+                             ('--remove-app-only-disabled', 'remove_app_only')]:
+            with self.subTest(flag=flag), patch.object(bootstrap.os, 'geteuid', return_value=0), \
+                    patch.object(bootstrap.sys, 'argv', ['bootstrap.py', flag]), \
+                    patch.object(bootstrap.os, 'umask'), patch.object(bootstrap, method) as action, \
+                    patch.object(bootstrap, 'app_only_installation', side_effect=AssertionError('maintenance entered')), \
+                    patch.object(bootstrap.subprocess, 'run', side_effect=AssertionError('command ran')):
+                bootstrap.main()
+                action.assert_called_once_with()
+
+    def test_atomic_exact_declared_mode_with_private_umask(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(bootstrap, 'trusted'):
+            path = Path(temp) / 'file'
+            previous = os.umask(0o077)
+            try:
+                for mode in (0o600, 0o644, 0o755):
+                    bootstrap.atomic(path, b'disabled fixture', mode)
+                    self.assertEqual(stat.S_IMODE(path.stat().st_mode), mode)
+            finally:
+                os.umask(previous)
+
+    def test_deployment_unknown_file_refuses_overwrite(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, target = root / 'source', root / 'target'
+            source.write_bytes(b'EXECUTION_ENABLED = False')
+            target.write_bytes(b'foreign')
+            with patch.object(bootstrap, 'deployment_record', return_value=None), \
+                    patch.object(bootstrap, 'APP_ENTRY', target), patch.object(bootstrap, 'trusted'), \
+                    patch.object(bootstrap, 'app_sources', return_value={target: (source, 1024, 0o755)}):
+                with self.assertRaisesRegex(RuntimeError, 'Unknown installed'):
+                    bootstrap.deployment_plan()
+            self.assertEqual(target.read_bytes(), b'foreign')
+
+    def test_removal_unknown_deployment_preserves_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            target = Path(temp) / 'foreign'
+            target.write_bytes(b'evidence')
+            with patch.object(bootstrap, 'deployment_record', return_value=None), \
+                    patch.object(bootstrap, 'app_sources', return_value={target: None}):
+                with self.assertRaisesRegex(RuntimeError, 'Unrecorded'):
+                    bootstrap.remove_app_only()
+            self.assertEqual(target.read_bytes(), b'evidence')
+
     def read_intent(self, value):
         with tempfile.TemporaryFile() as stream:
             stream.write(value)

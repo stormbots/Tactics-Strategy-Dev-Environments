@@ -65,3 +65,14 @@ it("even a successful close reply cannot cause GUI exit", async () => {
     requestId: "00000000-0000-4000-8000-000000000001",
   });
 });
+
+it("receipt lookup has no caller parameters and rejects malformed identity", async () => {
+  const { inspectAppUpdateReceipt } = await import("./bridge");
+  vi.mocked(invoke).mockResolvedValue(null);
+  expect(await inspectAppUpdateReceipt()).toBeNull();
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("inspect_app_update_receipt");
+  vi.mocked(invoke).mockResolvedValue({ requestId: "forged" });
+  await expect(inspectAppUpdateReceipt()).rejects.toThrow(
+    "Unverified request receipt",
+  );
+});

@@ -136,3 +136,13 @@ run reported 58 passed/one ignored before the added standalone notification-budg
 regression also passed. Both crates pass all-target Clippy and Rustfmt; TypeScript,
 Prettier and actionlint pass. No installed native update, external release discovery,
 root fixture provisioning or desktop UAT was executed by these local checks.
+
+## Disabled Linux receipt/deployment wiring follow-up
+
+The previously pending receipt correlation now has a protected per-user lookup
+and normal Schedule reconnection; the fixed OS launch transport and disabled
+broker/policy deployment/removal hooks are wired. This supersedes earlier wording
+that these source paths were entirely unwired. It does not establish native
+capability migration, restricted-startup presentation, worker lifetime, ACL support,
+package behavior or protected close. Both execution source gates and close remain
+false. See [the minimum native authorization packet](../validation/ISSUE72-LINUX-DISABLED-REQUEST-GATE.md).

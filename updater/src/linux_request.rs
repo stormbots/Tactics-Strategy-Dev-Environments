@@ -384,6 +384,134 @@ pub fn app_only_observation(id: &str) -> Result<ProgressObservation> {
     let (boot, ms) = now()?;
     project_progress(p, id, unsafe { libc::getuid() }, &boot, ms)
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ReceiptIndex {
+    schema_version: u32,
+    request_id: String,
+    uid: u32,
+    boot_id: String,
+}
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+enum ReceiptStatus {
+    Pending,
+    Accepted,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct StoredReceipt {
+    schema_version: u32,
+    request_id: String,
+    uid: u32,
+    boot_id: String,
+    created_ms: u64,
+    deadline_ms: u64,
+    status: ReceiptStatus,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReceiptObservation {
+    schema_version: u32,
+    request_id: String,
+    boot_id: String,
+    created_ms: u64,
+    deadline_ms: u64,
+    status: ReceiptStatus,
+    expired: bool,
+}
+fn receipt_view(
+    p: StoredReceipt,
+    id: &str,
+    uid: u32,
+    boot: &str,
+    ms: u64,
+) -> Result<ReceiptObservation> {
+    if p.schema_version != 1
+        || !uuid(id)
+        || p.request_id != id
+        || p.uid != uid
+        || uid == 0
+        || uid == u32::MAX
+        || !uuid(boot)
+        || p.boot_id != boot
+        || p.created_ms > ms
+        || p.created_ms.checked_add(OVERALL_MS) != Some(p.deadline_ms)
+        || p.deadline_ms > 9_007_199_254_740_991
+    {
+        return Err("Protected request receipt identity or clock mismatch".into());
+    }
+    Ok(ReceiptObservation {
+        schema_version: 1,
+        request_id: p.request_id,
+        boot_id: p.boot_id,
+        created_ms: p.created_ms,
+        deadline_ms: p.deadline_ms,
+        status: p.status,
+        expired: ms >= p.deadline_ms,
+    })
+}
+/// Fixed real-UID lookup, never a URL/local-storage supplied receipt. Missing
+/// namespaces are distinct from untrusted/inaccessible ones. No intent is cleared.
+pub fn app_only_current_receipt() -> Result<Option<ReceiptObservation>> {
+    let uid = unsafe { libc::getuid() };
+    let index_path = Path::new(RUNS)
+        .parent()
+        .ok_or("Missing app-only namespace")?
+        .join(format!("current-{uid}.json"));
+    for path in index_path.ancestors() {
+        match std::fs::symlink_metadata(path) {
+            Ok(_) => native::trusted(path)?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+            Err(_) => return Err("Protected request lookup unavailable".into()),
+        }
+    }
+    match std::fs::symlink_metadata(&index_path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("Protected request lookup unavailable".into()),
+        Ok(_) => (),
+    }
+    let index: ReceiptIndex = read(&index_path)?;
+    let (boot, ms) = now()?;
+    if index.schema_version != 1
+        || index.uid != uid
+        || index.boot_id != boot
+        || !uuid(&index.request_id)
+    {
+        return Err("Protected request index identity mismatch".into());
+    }
+    let receipt: StoredReceipt =
+        read(&Path::new(RUNS).join(&index.request_id).join("receipt.json"))?;
+    receipt_view(receipt, &index.request_id, uid, &boot, ms).map(Some)
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct BrokerReply {
+    schema_version: u32,
+    request_id: String,
+}
+fn confirm_reply(
+    bytes: &[u8],
+    lookup: impl FnOnce() -> Result<Option<ReceiptObservation>>,
+) -> Result<ReceiptObservation> {
+    if bytes.len() > 1024 {
+        return Err("Broker reply bound exceeded".into());
+    }
+    let reply: BrokerReply =
+        serde_json::from_slice(bytes).map_err(|_| "Unconfirmed broker reply")?;
+    if reply.schema_version != 1 || !uuid(&reply.request_id) {
+        return Err("Unconfirmed broker correlation".into());
+    }
+    let receipt = lookup()?.ok_or("Protected request receipt missing")?;
+    if receipt.request_id != reply.request_id || receipt.status != ReceiptStatus::Accepted {
+        return Err("Broker reply has no matching accepted protected receipt".into());
+    }
+    Ok(receipt)
+}
+pub fn app_only_confirm_request(bytes: &[u8]) -> Result<ReceiptObservation> {
+    confirm_reply(bytes, app_only_current_receipt)
+}
 fn worker_directory(exe: &Path) -> Result<PathBuf> {
     native::trusted_file(exe)?;
     let dir = exe.parent().ok_or("Missing worker snapshot")?;
@@ -681,6 +809,63 @@ mod tests {
             "Progress publication bound exceeded"
         );
         assert_eq!(p.sequence, 32);
+    }
+    fn stored_receipt() -> StoredReceipt {
+        let r = request();
+        StoredReceipt {
+            schema_version: 1,
+            request_id: r.request_id,
+            uid: r.uid,
+            boot_id: r.boot_id,
+            created_ms: r.created_ms,
+            deadline_ms: r.deadline_ms,
+            status: ReceiptStatus::Accepted,
+        }
+    }
+    #[test]
+    fn receipt_is_observation_not_liveness_and_expiry_does_not_clear_it() {
+        let r = stored_receipt();
+        let id = r.request_id.clone();
+        let boot = r.boot_id.clone();
+        assert!(receipt_view(r, &id, 1000, &boot, 910_000).unwrap().expired);
+        for case in 0..5 {
+            let mut r = stored_receipt();
+            let id = r.request_id.clone();
+            let boot = r.boot_id.clone();
+            match case {
+                0 => r.uid = 1001,
+                1 => r.boot_id = uuid::Uuid::new_v4().to_string(),
+                2 => r.deadline_ms += 1,
+                3 => r.created_ms = 30_000,
+                _ => r.schema_version = 2,
+            }
+            assert!(receipt_view(r, &id, 1000, &boot, 20_000).is_err());
+        }
+    }
+    #[test]
+    fn stdout_is_never_sufficient_without_matching_protected_accepted_receipt() {
+        let r = stored_receipt();
+        let id = r.request_id.clone();
+        let boot = r.boot_id.clone();
+        let reply =
+            serde_json::to_vec(&serde_json::json!({"schemaVersion":1,"requestId":id})).unwrap();
+        let view = receipt_view(r, &id, 1000, &boot, 20_000).unwrap();
+        assert!(confirm_reply(&reply, || Ok(Some(view))).is_ok());
+        assert!(confirm_reply(&reply, || Ok(None)).is_err());
+        let r = stored_receipt();
+        let id2 = r.request_id.clone();
+        let boot2 = r.boot_id.clone();
+        assert!(
+            confirm_reply(&reply, || receipt_view(r, &id2, 1000, &boot2, 20_000)
+                .map(Some))
+            .is_err()
+        );
+        for bytes in [b"{}".as_slice(), b"{\"schemaVersion\":true}", b"not json"] {
+            assert!(confirm_reply(bytes, || panic!(
+                "malformed reply must not query protected namespace"
+            ))
+            .is_err());
+        }
     }
     fn observation_fixture() -> Progress {
         let r = request();

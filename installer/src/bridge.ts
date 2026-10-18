@@ -182,10 +182,21 @@ export async function inspectAppUpdate(): Promise<
   return parseAppUpdate(await invoke("inspect_app_update"));
 }
 
-export async function requestAppUpdate(): Promise<never> {
-  if (native) await invoke("request_app_update");
-  // Even an unexpected success reply is not evidence of an authorized worker.
-  throw new Error("No app-only update request was confirmed.");
+export async function requestAppUpdate(): Promise<
+  import("./appUpdate").RequestReceipt
+> {
+  if (!native) throw new Error("No app-only update request was confirmed.");
+  const value = await invoke("request_app_update");
+  const { parseRequestReceipt } = await import("./appUpdate");
+  let receipt;
+  try {
+    receipt = parseRequestReceipt(value);
+  } catch {
+    /* Never accept stdout-shaped or malformed success. */
+  }
+  if (!receipt || receipt.status !== "accepted")
+    throw new Error("No app-only update request was confirmed.");
+  return receipt;
 }
 
 export async function discoverAppUpdate(): Promise<
@@ -212,4 +223,11 @@ export async function closeForAppUpdate(requestId: string): Promise<never> {
   if (native && requestIdPattern.test(requestId))
     await invoke("close_for_app_update", { requestId });
   throw new Error("Closing for installation remains disabled.");
+}
+
+/** Fixed per-user protected lookup; no caller-selected receipt path or identity. */
+export async function inspectAppUpdateReceipt() {
+  const { parseRequestReceipt } = await import("./appUpdate");
+  if (!isTauri()) return null;
+  return parseRequestReceipt(await invoke("inspect_app_update_receipt"));
 }

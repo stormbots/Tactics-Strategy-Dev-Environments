@@ -184,3 +184,44 @@ export function acceptProgress(
   }
   return next;
 }
+
+/** Correlation only: accepted is not readiness, liveness or close authority. */
+export type RequestReceipt = {
+  schemaVersion: 1;
+  requestId: string;
+  bootId: string;
+  createdMs: number;
+  deadlineMs: number;
+  status: "pending" | "accepted";
+  expired: boolean;
+};
+export function parseRequestReceipt(value: unknown): RequestReceipt | null {
+  if (value === null) return null;
+  if (
+    !object(value) ||
+    !exact(value, [
+      "schemaVersion",
+      "requestId",
+      "bootId",
+      "createdMs",
+      "deadlineMs",
+      "status",
+      "expired",
+    ]) ||
+    value.schemaVersion !== 1 ||
+    typeof value.requestId !== "string" ||
+    !requestIdPattern.test(value.requestId) ||
+    typeof value.bootId !== "string" ||
+    !requestIdPattern.test(value.bootId) ||
+    typeof value.createdMs !== "number" ||
+    !Number.isSafeInteger(value.createdMs) ||
+    value.createdMs < 0 ||
+    typeof value.deadlineMs !== "number" ||
+    !Number.isSafeInteger(value.deadlineMs) ||
+    value.deadlineMs !== value.createdMs + 900000 ||
+    (value.status !== "pending" && value.status !== "accepted") ||
+    typeof value.expired !== "boolean"
+  )
+    throw new Error("Unverified request receipt");
+  return value as RequestReceipt;
+}

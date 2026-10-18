@@ -1,7 +1,11 @@
 import { AppReleaseCheck } from "./AppReleaseCheck";
 import { AppUpdateProgress } from "./AppUpdateProgress";
 import { useEffect, useRef, useState } from "react";
-import { inspectAppUpdate, requestAppUpdate } from "./bridge";
+import {
+  inspectAppUpdate,
+  inspectAppUpdateReceipt,
+  requestAppUpdate,
+} from "./bridge";
 import { unavailableAppUpdate, type AppUpdateAvailability } from "./appUpdate";
 
 /** Initial disabled integration. Consent is exercised only with mocked
@@ -12,6 +16,9 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
   const [phase, setPhase] = useState<
     "idle" | "consent" | "authorizing" | "blocked"
   >("idle");
+  const [receipt, setReceipt] = useState<
+    import("./appUpdate").RequestReceipt | null
+  >(null);
   const [consent, setConsent] = useState(false);
   const inFlight = useRef(false);
   const mounted = useRef(false);
@@ -34,6 +41,24 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
     };
   }, []);
   useEffect(() => {
+    let active = true;
+    const deadline = setTimeout(() => {
+      active = false;
+    }, 5000);
+    void inspectAppUpdateReceipt().then(
+      (value) => {
+        if (active && !inFlight.current) setReceipt(value);
+      },
+      () => {
+        /* Unknown receipt never creates request or close authority. */
+      },
+    );
+    return () => {
+      active = false;
+      clearTimeout(deadline);
+    };
+  }, []);
+  useEffect(() => {
     if (phase === "consent") confirmHeading.current?.focus();
   }, [phase]);
   async function authorize() {
@@ -47,7 +72,8 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
     inFlight.current = true;
     setPhase("authorizing");
     try {
-      await requestAppUpdate();
+      const accepted = await requestAppUpdate();
+      if (mounted.current) setReceipt(accepted);
     } catch {
       // Never display raw privilege errors or infer that a worker was cancelled.
     } finally {
@@ -65,8 +91,21 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
           : availability.reason === "native_validation_pending"
             ? "Update Now is not enabled on this installation. Native validation and deployment are pending."
             : "Update Now availability could not be confirmed. No request has been submitted.";
-  if (requestId)
-    return <AppUpdateProgress key={requestId} requestId={requestId} />;
+  const correlation = receipt?.requestId ?? requestId;
+  if (correlation)
+    return (
+      <>
+        {receipt && (
+          <p role="status">
+            Protected request recorded ({receipt.status}).
+            {receipt.expired
+              ? " Its preparation deadline has passed; this does not confirm cancellation."
+              : " Acceptance does not confirm readiness or installation."}
+          </p>
+        )}
+        <AppUpdateProgress key={correlation} requestId={correlation} />
+      </>
+    );
   return (
     <div
       className="app-update-control"

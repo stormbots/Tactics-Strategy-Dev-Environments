@@ -10,16 +10,19 @@ import {
 import { AppUpdateControl } from "./AppUpdateControl";
 import {
   inspectAppUpdate,
+  inspectAppUpdateReceipt,
   requestAppUpdate,
   inspectAppUpdateProgress,
 } from "./bridge";
 import { parseAppUpdate } from "./appUpdate";
 vi.mock("./bridge", () => ({
+  inspectAppUpdateReceipt: vi.fn(async () => null),
   inspectAppUpdate: vi.fn(),
   requestAppUpdate: vi.fn(),
   inspectAppUpdateProgress: vi.fn(),
 }));
 beforeEach(() => {
+  vi.mocked(inspectAppUpdateReceipt).mockReset().mockResolvedValue(null);
   vi.mocked(inspectAppUpdate).mockReset();
   vi.mocked(requestAppUpdate).mockReset();
   vi.mocked(inspectAppUpdateProgress).mockReset();
@@ -166,4 +169,27 @@ it("does not attach progress from URL or local storage without a correlated requ
     history.replaceState({}, "", previous);
     localStorage.removeItem("sde-update-request");
   }
+});
+
+it("reconnects only to a protected receipt and never enables close", async () => {
+  vi.mocked(inspectAppUpdate).mockResolvedValue({
+    enabled: false,
+    reason: "native_validation_pending",
+  });
+  vi.mocked(inspectAppUpdateReceipt).mockResolvedValue({
+    schemaVersion: 1,
+    requestId: "00000000-0000-4000-8000-000000000001",
+    bootId: "00000000-0000-4000-8000-000000000002",
+    createdMs: 1,
+    deadlineMs: 900001,
+    status: "pending",
+    expired: true,
+  });
+  vi.mocked(inspectAppUpdateProgress).mockRejectedValue(
+    new Error("unavailable"),
+  );
+  render(<AppUpdateControl />);
+  await screen.findByText(/Protected request recorded/);
+  expect(screen.getByText(/does not confirm cancellation/)).toBeTruthy();
+  expect(requestAppUpdate).not.toHaveBeenCalled();
 });
