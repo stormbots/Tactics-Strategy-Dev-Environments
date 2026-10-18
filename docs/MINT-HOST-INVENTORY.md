@@ -1072,3 +1072,35 @@ Local procedure/model review: 129 mocked/static checks passed, focused actionlin
 and git diff --check passed. No host inspector/executor or native archival test
 was invoked. Native atomicity, process quiescence and durable recovery remain
 explicit proof obligations, separate from permission diagnostic success.
+
+### Archival model review corrections
+
+The model now requires journalAbsent=true for the fixed sibling journal
+/home/sde-runner/mint-session-archive-39132131036.json, in addition to archive
+absence. Device/inode numbers are exact positive unsigned-64-bit integers, not
+booleans/coerced strings; source and legacy identities must differ. This bounds
+exported numeric fields and rejects observations that alias both evidence trees.
+The plan explicitly returns operationsAreExecutable=false, the fixed journal
+name, 16KiB record limit and 30-second transition budget. Its operation list is a
+high-level description, not a complete syscall sequence: the ordered prose
+procedure's preflight, revalidation, durable journal, fsync and stop gates remain
+mandatory. No native executor may simply iterate the listed operations.
+
+The model deliberately requires fresh default-ACL observations on root/home/home
+creation ancestors; the checkout report's null values are not evidence of ACL
+absence there. Legacy evidence contents are never scanned or modified by the
+procedure. Inspector exceptions propagate without retry; a future controller
+must sanitize/report them as stopped, not Pass or authorization. Oversized or
+malformed native input needs bounds before decoding in that future inspector;
+this pure in-memory model neither acquires nor serializes host evidence.
+
+Review QA: **132 mocked/static checks passed**, including eleven planner tests
+with missing/unknown gates, journal collision, bounded/non-coerced IDs, aliased
+sessions, malformed observations, exact schema/account/group contracts and
+inspector failure. Static checks forbid imports, generic execution calls and CLI
+entrypoints in the model. Focused workflow lint/whitespace and exact full-branch
+infrastructure-scope checks passed; mixed application/key changes still require
+application CI. This review changes no host, launcher, media validator/transport,
+activation setting or production code. Atomic no-replace rename, process-state
+inspection, persistence/interruption handling and native recovery are still
+unimplemented/unvalidated, not inferred from model acceptance.

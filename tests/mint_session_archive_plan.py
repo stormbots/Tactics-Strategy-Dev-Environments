@@ -8,6 +8,9 @@ SOURCE = HOME + '/mint-prep-runner-private-session'
 LEGACY = HOME + '/mint-prep-runner-session'
 ARCHIVE = HOME + '/mint-prep-runner-private-session-checkout-39132131036'
 WORK = SOURCE + '/_work-private'
+JOURNAL = HOME + '/mint-session-archive-39132131036.json'
+RECORD_LIMIT = 16 * 1024
+MAX_ID = (1 << 64) - 1
 IDENTITY = (66306, 12088154)  # owner-supplied successful observer evidence
 REASON = 'SESSION_ARCHIVE_STOP'
 
@@ -23,8 +26,8 @@ def need(ok):
 
 def identity(row):
     need(type(row) is dict)
-    need(type(row.get('device')) is int and row['device'] > 0 and
-         type(row.get('inode')) is int and row['inode'] > 0)
+    need(type(row.get('device')) is int and 0 < row['device'] <= MAX_ID and
+         type(row.get('inode')) is int and 0 < row['inode'] <= MAX_ID)
     return row['device'], row['inode']
 
 
@@ -67,15 +70,18 @@ def prepare(inspect):
     # The older failed session is recorded/preserved, never traversed or changed.
     legacy = dirs[LEGACY]
     identity(legacy)
-    need(legacy.get('kind') == 'directory' and legacy.get('uid') == 1001 and
+    need(legacy.get('kind') == 'directory' and type(legacy.get('uid')) is int and
+         legacy['uid'] == 1001 and identity(legacy) != IDENTITY and
          legacy.get('mode') == '0700')
-    need(obs.get('archiveAbsent') is True and
+    need(obs.get('archiveAbsent') is True and obs.get('journalAbsent') is True and
          obs.get('noReplaceRenameAvailable') is True and
          obs.get('sameFilesystem') is True and
          identity(dirs[HOME])[0] == IDENTITY[0])
     return {
         'kind': 'session-archive-setup-plan', 'executionAuthorized': False,
-        'source': SOURCE, 'destination': ARCHIVE,
+        'source': SOURCE, 'destination': ARCHIVE, 'journal': JOURNAL,
+        'recordLimitBytes': RECORD_LIMIT, 'transitionBudgetSeconds': 30,
+        'operationsAreExecutable': False,
         'sourceIdentity': list(IDENTITY), 'legacyIdentity': list(identity(legacy)),
         'preserve': [LEGACY, ARCHIVE], 'recursiveChanges': False,
         'operations': [

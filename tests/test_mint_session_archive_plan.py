@@ -18,7 +18,7 @@ def observed():
         remoteRunnerAbsent=True, noQueuedOrActiveJobs=True,
         dedicatedAccountQuiescent=True, localRegistrationAbsent=True,
         scanComplete=True, scanStable=True, scanSeconds=1,
-        archiveAbsent=True, noReplaceRenameAvailable=True, sameFilesystem=True,
+        archiveAbsent=True, journalAbsent=True, noReplaceRenameAvailable=True, sameFilesystem=True,
         directories={'/':directory(0,'0755',2), '/home':directory(0,'0755',11927553),
             p.HOME:directory(1001,'0750',12064907),
             p.SOURCE:directory(1001,'0700',12088154),
@@ -32,6 +32,10 @@ class ArchivePlan(unittest.TestCase):
         inspect.assert_called_once_with();self.assertEqual(obs,before)
         self.assertFalse(plan['executionAuthorized']);self.assertFalse(plan['nativeValidated'])
         self.assertFalse(plan['recursiveChanges'])
+        self.assertFalse(plan['operationsAreExecutable'])
+        self.assertEqual(plan['journal'],p.JOURNAL)
+        self.assertEqual(plan['recordLimitBytes'],16384)
+        self.assertEqual(plan['transitionBudgetSeconds'],30)
         self.assertEqual(plan['preserve'],[p.LEGACY,p.ARCHIVE])
         self.assertEqual([r['op'] for r in plan['operations']],
                          ['rename-no-replace','verify-identity','mkdir-exclusive','mkdir-exclusive'])
@@ -73,6 +77,30 @@ class ArchivePlan(unittest.TestCase):
             else:del obs['directories'][p.LEGACY]
             with self.assertRaises(p.Stop):p.prepare(Mock(return_value=obs))
 
+    def test_identities_are_bounded_distinct_and_not_coerced(self):
+        for path in observed()['directories']:
+            for field in ('device','inode'):
+                for bad in (True,0,-1,'66306',1 << 64):
+                    obs=observed();obs['directories'][path][field]=bad
+                    with self.subTest(path=path,field=field,bad=bad),self.assertRaises(p.Stop):
+                        p.prepare(Mock(return_value=obs))
+        obs=observed();obs['directories'][p.LEGACY]=copy.deepcopy(obs['directories'][p.SOURCE])
+        with self.assertRaises(p.Stop):p.prepare(Mock(return_value=obs))
+
+    def test_exact_schema_and_group_contract(self):
+        for key,bad in [('schema',True),('schema','1'),('schema',2),
+                        ('groups',['kvm','sde-runner','users','users']),
+                        ('uid',True),('scanSeconds',True),('scanSeconds',-1)]:
+            obs=observed();obs[key]=bad
+            with self.subTest(key=key,bad=bad),self.assertRaises(p.Stop):p.prepare(Mock(return_value=obs))
+
+    def test_malformed_observation_shapes_stop(self):
+        for bad in (None,[],False,'synthetic'):
+            with self.subTest(value=bad),self.assertRaises(p.Stop):p.prepare(Mock(return_value=bad))
+        for bad in (None,[],{'/':{}},dict(observed()['directories'], **{p.LEGACY:None})):
+            obs=observed();obs['directories']=bad
+            with self.subTest(value=bad),self.assertRaises(p.Stop):p.prepare(Mock(return_value=obs))
+
     def test_inspector_failure_not_retried(self):
         inspect=Mock(side_effect=OSError('synthetic'))
         with self.assertRaises(OSError):p.prepare(inspect)
@@ -84,7 +112,12 @@ class ArchivePlan(unittest.TestCase):
             self.assertNotIsInstance(node,(ast.Import,ast.ImportFrom))
             if isinstance(node,ast.Call):
                 if isinstance(node.func,ast.Attribute):
+                    self.assertIsInstance(node.func.value,ast.Name)
                     self.assertEqual(node.func.attr,'get')
+                else:
+                    self.assertIsInstance(node.func,ast.Name)
+                    self.assertIn(node.func.id,{'need','Stop','type','identity','directory',
+                                               'set','list','inspect'})
         self.assertFalse(hasattr(p,'main'))
 
 
