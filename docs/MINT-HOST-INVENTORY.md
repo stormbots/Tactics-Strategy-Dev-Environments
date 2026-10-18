@@ -1104,3 +1104,12 @@ application CI. This review changes no host, launcher, media validator/transport
 activation setting or production code. Atomic no-replace rename, process-state
 inspection, persistence/interruption handling and native recovery are still
 unimplemented/unvalidated, not inferred from model acceptance.
+
+Final merge-readiness review: **134 mocked/static checks passed**, including
+explicit rejection of unknown/coerced ACL absence on every creation ancestor and
+bounded serialized plan output with maximum accepted identity values. Unexported
+extra observation fields are not echoed. The retained legacy directory's unchecked
+ACL is not substituted for a creation-ancestor ACL check. No additional model
+implementation defects were found; focused workflow lint and whitespace passed.
+Merge readiness applies only to documentation/pure planning and mocked CI, not
+native archival, quiescence verification, persistent recovery or execution approval.

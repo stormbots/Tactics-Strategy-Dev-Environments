@@ -1,6 +1,7 @@
 """Mocked observations and static checks only; no filesystem/process mutations."""
 import ast
 import copy
+import json
 from pathlib import Path
 import unittest
 from unittest.mock import Mock
@@ -100,6 +101,27 @@ class ArchivePlan(unittest.TestCase):
         for bad in (None,[],{'/':{}},dict(observed()['directories'], **{p.LEGACY:None})):
             obs=observed();obs['directories']=bad
             with self.subTest(value=bad),self.assertRaises(p.Stop):p.prepare(Mock(return_value=obs))
+
+    def test_acl_absence_must_be_observed_on_each_creation_ancestor(self):
+        for path in ('/','/home',p.HOME,p.SOURCE):
+            for bad in (None,True,0,'false'):
+                obs=observed();obs['directories'][path]['defaultAcl']=bad
+                with self.subTest(path=path,bad=bad),self.assertRaises(p.Stop):
+                    p.prepare(Mock(return_value=obs))
+        # Legacy is retained, not used as a creation ancestor or silently repaired.
+        obs=observed();obs['directories'][p.LEGACY]['defaultAcl']=None
+        self.assertFalse(p.prepare(Mock(return_value=obs))['executionAuthorized'])
+
+    def test_maximum_identity_export_is_bounded_and_ignores_unexported_input(self):
+        obs=observed()
+        obs['directories'][p.LEGACY]['device']=p.MAX_ID
+        obs['directories'][p.LEGACY]['inode']=p.MAX_ID
+        obs['untrustedExtra']='synthetic secret'
+        plan=p.prepare(Mock(return_value=obs))
+        raw=json.dumps(plan,ensure_ascii=True)
+        self.assertLess(len(raw.encode('ascii')),p.RECORD_LIMIT)
+        self.assertNotIn('synthetic secret',raw)
+        self.assertEqual(plan['legacyIdentity'],[p.MAX_ID,p.MAX_ID])
 
     def test_inspector_failure_not_retried(self):
         inspect=Mock(side_effect=OSError('synthetic'))
