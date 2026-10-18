@@ -1,0 +1,43 @@
+# Checkout observation only. Disabled until separate execution authorization.
+name: Approved Mint checkout permission validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: spare-mint-host
+  cancel-in-progress: false
+jobs:
+  observe:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' &&
+      github.ref == 'refs/heads/main' &&
+      github.workflow_ref == 'stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-checkout-validation.yml@refs/heads/main' &&
+      github.sha == github.workflow_sha &&
+      github.run_attempt == 1 &&
+      vars.MINT_CHECKOUT_ENABLED == 'true' &&
+      vars.MINT_CHECKOUT_ACCESS_READY == 'verified' &&
+      github.sha == vars.MINT_CHECKOUT_APPROVED_SHA &&
+      vars.MINT_CHECKOUT_BUNDLE_SHA256 != ''
+    environment: mint-host-access
+    runs-on:
+      group: org/sde-mint-isolated
+      labels: sde-mint-prep
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Observe checkout permissions and source hashes only
+        shell: bash --noprofile --norc -e -o pipefail {0}
+        env:
+          CHECKOUT_ENABLED: ${{ vars.MINT_CHECKOUT_ENABLED }}
+          CHECKOUT_ACCESS_READY: ${{ vars.MINT_CHECKOUT_ACCESS_READY }}
+          CHECKOUT_APPROVED_SHA: ${{ vars.MINT_CHECKOUT_APPROVED_SHA }}
+          CHECKOUT_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          CHECKOUT_BUNDLE_SHA256: ${{ vars.MINT_CHECKOUT_BUNDLE_SHA256 }}
+        run: /usr/bin/python3 -I -B tests/observe_mint_checkout.py

@@ -726,3 +726,101 @@ retained unchanged; no normalization or retry is authorized. The new launcher by
 require a fresh independently approved file and five-file bundle hash after any
 separately authorized merge. Keep #78 and #73 draft/unmerged; activation, runners,
 dispatch, downloads, guests, application builds/packages/releases remain deferred.
+
+## Fixed checkout-only validation added to PR #78
+
+This addition prepares the next permission diagnostic only; no native execution
+is authorized or performed. The earlier SOURCE_OWNER run remains a stopped
+failure. #78 and #73 remain draft/unmerged, and the failed host checkout is
+untouched. This diagnostic precedes any proposed media retry.
+
+`.github/workflows/mint-checkout-validation.yml` has only workflow_dispatch, no
+inputs, contents-read permissions, the existing non-cancelling spare-mint-host
+concurrency group, protected mint-host-access environment, restricted
+org/sde-mint-isolated group and routing label sde-mint-prep. Its observe job has a
+10-minute limit and an identical pinned checkout step/configuration to the media
+workflow; sparse checkout or different Git options are not substituted for the
+permission-creation behavior under examination. Normal Actions/repository fetches
+would occur in a future authorized run, but no ISO, package or development-tool
+installation is included. Automatic events cannot schedule this observer.
+
+New independent activation candidates, all left unset/disabled now:
+
+- MINT_CHECKOUT_ENABLED=true and MINT_CHECKOUT_ACCESS_READY=verified.
+- MINT_CHECKOUT_APPROVED_SHA equal to the separately reviewed final main SHA.
+- MINT_CHECKOUT_BUNDLE_SHA256 equal to an independently calculated six-file bundle.
+
+The event/repo/ref/workflow-ref must match this exact manual main workflow, source
+and workflow SHA must match approval, and attempt must be 1. MINT_PREP_* values
+cannot activate it. The observer rechecks the gates and accepts no arguments.
+The existing media workflow and source guard are unchanged. A later authorized
+execution must replace the group's sole selected workflow with
+stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-checkout-validation.yml@refs/heads/main,
+not add broad/all-workflow access. Selected repository, required-reviewer,
+main-only and no-bypass controls and any freshly approved single-reviewer exception
+must be verified independently. No controls or settings were changed here.
+
+`tests/observe_mint_checkout.py` is standalone standard-library code. It neither
+imports nor executes repository helper modules. It reads/hashes their bounded
+source bytes as inert data, with root/current-user-owned non-writable ancestors,
+no symlink/special-file substitution, identity/change checks and descriptor
+closure. New private-session/checkout directories additionally must be owned by
+the dedicated account with mode 0700 and no default ACL; source files must have
+no group/other permissions. It reports fixed-path metadata before rejecting a
+bad component, avoiding the earlier unlocalized SOURCE_OWNER diagnostic. These
+are stricter diagnostic checks, not a relaxation of the preparation source guard.
+
+The observer requires the dedicated non-privileged account on Linux x86_64 and
+bounded root-owned Mint RELEASE=22.3 metadata. It reads only Umask from the fixed
+/proc/self/status path (never changes umask or exports raw proc data), requires
+0077, and verifies the expected private-session/_work-private repository location.
+It records bounded UID/account/groups, actual path modes/owners/inode identities,
+default-ACL presence, source sizes/hashes, Actions run/attempt/job name and SHA.
+It creates no workspace/file/manifest and prints one sanitized JSON record <=64
+KiB. File snapshots <=128 KiB each, host metadata <=8 KiB, proc status <=16 KiB,
+path inventory <=32 and an observer budget of 30 seconds bound checked stages.
+Blocking filesystem/account operations are not claimed hard-real-time; the
+independent ten-minute workflow limit remains necessary. Cancellation or missing
+export is unknown/failure, not permission-validation Pass or cleanup proof.
+
+Bundle contract is deliberately independent of media preparation:
+SHA256(b'mint-checkout-bundle-v1\0' + each ASCII path + NUL + decimal byte length +
+NUL + exact bytes), in this fixed order:
+
+1. tests/observe_mint_checkout.py
+2. tests/run_mint_media_console.py
+3. tests/mint_media_console.py
+4. tests/mint_media_native.py
+5. tests/start_mint_preparation_runner.py
+6. tests/fixtures/linuxmint-iso-signing.asc
+
+The media caller retains its separate five-file mint-prep-bundle-v1 contract.
+Neither an old source approval nor one bundle hash substitutes for the other.
+Approval must be calculated after any authorized merge, from final source bytes,
+not self-approved by the running job. Local verified launcher delivery, new
+private session/empty work root, fresh one-job registration, approved queued run,
+manual listener start and deregistration remain separate authorization gates.
+No existing registration, worktree or stopped run may be reused automatically.
+
+Pass requires all source/identity/private-mode/ACL/mask/hash/context checks and
+complete bounded export. Failure retains bounded offending metadata where
+available and stops without repair, fallback or automatic retry. Every outcome
+marks media authentication NotRun, guestExecuted=false, productionReady=false,
+cleanupCorrectness=NotValidated and no whole-host cleanup claim. No GPG/curl,
+KVM/ioctl, socket/network client, subprocess, package, disk creation, console,
+guest, updater or build/release operation exists in this observer. Successful
+permission observation would not authorize the media phase or establish its
+cryptographic safety, process cleanup or usable console behavior.
+
+Local review/QA: **118 mocked/static checks passed** (102 prior checks plus 16
+observer/workflow cases), focused actionlint and whitespace checks passed. Cases
+cover disabled/default/wrong approvals/events/refs/attempt/location/account,
+mask/release/digest mismatch, original shared modes, symlinks/default ACL, short/
+changed sources, close uncertainty, deadline, proc bounds, argument rejection,
+failure sanitization/export size and six-file tamper sensitivity. Static checks
+verify the identical pinned checkout and only observer command, no repository
+imports or native execution ports. Only the three exact new workflow/observer/test
+paths join automatic mocked policy coverage and installer-skip scope. Actual native
+runner inheritance, filesystem/ACL/account behavior, log retrieval and closeout
+remain unvalidated. Activation, runners, dispatch, downloads, guests, #73 merge,
+application builds/packages/releases remain deferred.

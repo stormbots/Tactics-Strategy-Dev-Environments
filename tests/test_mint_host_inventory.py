@@ -90,7 +90,8 @@ class InventoryPolicy(unittest.TestCase):
             'python3 -m unittest discover -s tests -p test_ci_scope.py -v\n'
             'python3 -m unittest discover -s tests -p test_mint_media_console.py -v\n'
             'python3 -m unittest discover -s tests -p test_mint_media_workflow.py -v\n'
-            'python3 -m unittest discover -s tests -p test_mint_runner_permissions.py -v\n'])
+            'python3 -m unittest discover -s tests -p test_mint_runner_permissions.py -v\n'
+            'python3 -m unittest discover -s tests -p test_mint_checkout_observer.py -v\n'])
         self.assertEqual(job['steps'][0]['with']['persist-credentials'], 'false')
 
     def test_scope_exception_does_not_expand_to_native_or_application_work(self):

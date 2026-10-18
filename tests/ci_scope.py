@@ -26,6 +26,10 @@ MINT_INFRA_PATHS = {
     'tests/test_mint_media_workflow.py',
     'tests/start_mint_preparation_runner.py',
     'tests/test_mint_runner_permissions.py',
+    '.github/workflows/mint-checkout-validation.yml',
+    'tests/observe_mint_checkout.py',
+    'tests/test_mint_checkout_observer.py',
+
 
 
     'docs/MINT-HOST-INVENTORY.md',
