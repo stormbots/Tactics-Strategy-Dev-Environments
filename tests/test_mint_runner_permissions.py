@@ -73,6 +73,17 @@ class Inspection(unittest.TestCase):
             self.assertTrue(opened.call_args.args[1] & p.os.O_NOFOLLOW)
             close.assert_called_once_with(8)
 
+    def test_special_settings_file_is_nonblocking_and_rejected_before_read(self):
+        fifo=S(st_mode=0o010600,st_uid=1001,st_nlink=1,st_size=1)
+        with patch.object(p.os,'open',return_value=8) as opened,patch.object(p.os,'fstat',return_value=fifo), \
+             patch.object(p.os,'read') as read,patch.object(p.os,'close') as close, \
+             self.assertRaisesRegex(p.Stop,'SETTINGS_OWNER'):
+            p.read_settings(SESSION/'.runner',1001)
+        flags=opened.call_args.args[1]
+        self.assertTrue(flags & p.os.O_NONBLOCK);self.assertTrue(flags & p.os.O_NOCTTY)
+        self.assertTrue(flags & p.os.O_NOFOLLOW)
+        read.assert_not_called();close.assert_called_once_with(8)
+
     def test_oversized_or_duplicate_settings_rejected(self):
         st=S(st_mode=0o100600,st_uid=1001,st_nlink=1,st_size=p.LIMIT+1)
         with patch.object(p.os,'open',return_value=8),patch.object(p.os,'fstat',return_value=st), \
@@ -119,10 +130,10 @@ class Launch(unittest.TestCase):
         masks=[];at_exec=[]
         def mask(value):
             old=masks[-1] if masks else 0o002;masks.append(value);return old
-        def replaced(path,argv):
+        def replaced(path,argv,env):
             at_exec.append((masks[-1],path,argv));raise RuntimeError('synthetic exec boundary')
         with patch.object(p.os,'umask',side_effect=mask),patch.object(p.os,'chdir'), \
-             patch.object(p.os,'execv',side_effect=replaced),patch.object(p.sys,'argv',['launcher']), \
+             patch.object(p.os,'execve',side_effect=replaced),patch.object(p.sys,'argv',['launcher']), \
              patch('sys.stdout',io.StringIO()):self.assertEqual(p.main(),1)
         self.assertEqual(at_exec,[(0o077,str(SESSION/'run.sh'),[str(SESSION/'run.sh')])])
         self.assertEqual(0o777 & ~at_exec[0][0],0o700)
@@ -131,16 +142,56 @@ class Launch(unittest.TestCase):
 
     def test_failed_preflight_never_executes_and_restores_mask(self):
         with patch.object(p,'inspect_runner',side_effect=p.Stop('WORK_NOT_EMPTY')), \
-             patch.object(p.os,'umask',return_value=0o002) as mask,patch.object(p.os,'execv') as execute, \
+             patch.object(p.os,'umask',return_value=0o002) as mask,patch.object(p.os,'execve') as execute, \
              patch.object(p.sys,'argv',['launcher']),patch('sys.stdout',io.StringIO()):self.assertEqual(p.main(),1)
         self.assertEqual([x.args[0] for x in mask.call_args_list],[0o077,0o002]);execute.assert_not_called()
 
     def test_wrong_account_or_cli_stops_before_mask_or_exec(self):
         for argv,uid in [(['launcher','--path=other'],1001),(['launcher'],0)]:
             with patch.object(p.sys,'argv',argv),patch.object(p.os,'getuid',return_value=uid), \
-                 patch.object(p.os,'umask') as mask,patch.object(p.os,'execv') as execute, \
+                 patch.object(p.os,'umask') as mask,patch.object(p.os,'execve') as execute, \
                  patch('sys.stdout',io.StringIO()):self.assertEqual(p.main(),1)
             mask.assert_not_called();execute.assert_not_called()
+
+    def test_privileged_group_or_effective_uid_mismatch_stops_before_listener(self):
+        cases=[(1001,name) for name in ('root','sudo','admin','docker','lxd','libvirt')]+[(0,'sde-runner')]
+        for effective_uid,group in cases:
+            with self.subTest(euid=effective_uid,group=group), \
+                 patch.object(p.os,'geteuid',return_value=effective_uid), \
+                 patch.object(p.grp,'getgrgid',return_value=S(gr_name=group)), \
+                 patch.object(p.os,'umask') as mask,patch.object(p.os,'execve') as execute, \
+                 patch.object(p.sys,'argv',['launcher']),patch('sys.stdout',io.StringIO()):
+                self.assertEqual(p.main(),1)
+            mask.assert_not_called();execute.assert_not_called()
+
+    def test_startup_hooks_removed_while_proxy_and_ca_are_preserved(self):
+        supplied={name:'synthetic-hook' for name in p.STARTUP_HOOKS}
+        supplied.update({'BASH_FUNC_cp%%':'synthetic-function', 'HTTPS_PROXY':'https://proxy.invalid',
+                         'SSL_CERT_FILE':'/synthetic/ca.pem', 'PATH':'/usr/bin:/bin'})
+        with patch.dict(p.os.environ,supplied,clear=True),patch.object(p.os,'umask',return_value=0o002), \
+             patch.object(p.os,'chdir'),patch.object(p.os,'execve',side_effect=OSError('synthetic')) as execute, \
+             patch.object(p.sys,'argv',['launcher']),patch('sys.stdout',io.StringIO()):self.assertEqual(p.main(),1)
+        self.assertEqual(execute.call_args.args[2],{'HTTPS_PROXY':'https://proxy.invalid',
+            'SSL_CERT_FILE':'/synthetic/ca.pem','PATH':'/usr/bin:/bin'})
+
+    def test_failed_mask_restoration_is_sanitized_and_not_retried(self):
+        output=io.StringIO()
+        with patch.object(p,'inspect_runner',side_effect=p.Stop('WORK_NOT_EMPTY')), \
+             patch.object(p.os,'umask',side_effect=[0o002,OSError('synthetic secret text')]) as mask, \
+             patch.object(p.os,'execve') as execute,patch.object(p.sys,'argv',['launcher']), \
+             patch('sys.stdout',output):self.assertEqual(p.main(),1)
+        result=json.loads(output.getvalue())
+        self.assertEqual(result['reason'],'UMASK_RESTORE_UNCERTAIN')
+        self.assertFalse(result['started']);self.assertFalse(result['retryAuthorized'])
+        self.assertEqual(mask.call_count,2);execute.assert_not_called()
+        self.assertNotIn('secret',output.getvalue())
+
+    def test_unexpected_exec_return_is_a_failure(self):
+        output=io.StringIO()
+        with patch.object(p.os,'umask',return_value=0o002),patch.object(p.os,'chdir'), \
+             patch.object(p.os,'execve',return_value=None),patch.object(p.sys,'argv',['launcher']), \
+             patch('sys.stdout',output):self.assertEqual(p.main(),1)
+        self.assertEqual(json.loads(output.getvalue())['reason'],'EXEC_RETURNED')
 
 
 if __name__=='__main__':unittest.main()

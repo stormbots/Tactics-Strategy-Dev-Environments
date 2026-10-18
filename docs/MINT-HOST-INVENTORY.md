@@ -687,3 +687,42 @@ key or unknown path retains application CI. Keep this infrastructure PR unmerged
 activation disabled, and runner operations, dispatch, media, guests, #73 merge,
 application builds/packages/releases deferred. No source-guard permission rule was
 relaxed and no spare-host permission was changed.
+
+### PR #78 permission/security review follow-up
+
+The review preserved the strict source-ownership policy and found three launcher
+startup gaps, fixed before any native use:
+
+1. Inherited BASH_ENV/ENV, shell option/function exports, NODE_OPTIONS and dynamic
+   loader hooks could influence the script/worker environment before checkout.
+   The launcher now uses execve with those hooks removed while retaining ordinary
+   runner context and configured proxy/CA settings. This is launch-time filtering,
+   not attestation or modification of a persisted runner .env file. Future runner
+   configuration still requires a trusted clean shell, verified archive and fresh
+   private session; malicious same-account/root changes are outside this boundary.
+2. An unexpected FIFO or terminal at .runner could block or acquire terminal state
+   before fstat rejected it. Opening now includes O_NONBLOCK and O_NOCTTY as well as
+   O_NOFOLLOW/CLOEXEC; only a bounded owned private regular file can be read.
+3. Failure while restoring the earlier umask could bypass structured failure
+   reporting. Restoration is now attempted before the failure record is emitted,
+   and any uncertainty is reported as UMASK_RESTORE_UNCERTAIN without exposing
+   native exception text or retrying. Successful exec still never returns and
+   retains the restrictive mask. An unexpected exec return fails explicitly.
+
+QA: **102 mocked/static tests passed** (39 helper, 30 caller/workflow, 16 launcher/
+permission, 8 policy, 9 scope), focused actionlint and whitespace checks passed.
+New cases cover hook filtering with proxy/CA preservation, nonblocking special-file
+rejection, mask restoration uncertainty, unexpected exec return, every disallowed
+privileged group and effective-UID mismatch. All OS/process/mask operations in
+these launcher tests are mocked. Workflow definitions and activation gates are
+unchanged. Both infrastructure-only installer skipping and mixed app/key controls
+remain checked, and the original source-reader function remains unchanged.
+
+No actual umask inheritance, native runner/script/environment/settings/ACL behavior,
+permission modification, startup, cancellation, authentication or cleanup is proven
+by these checks. A future approved native run must still stop if a stored runner
+environment or runner/action code changes creation policy. The failed checkout is
+retained unchanged; no normalization or retry is authorized. The new launcher bytes
+require a fresh independently approved file and five-file bundle hash after any
+separately authorized merge. Keep #78 and #73 draft/unmerged; activation, runners,
+dispatch, downloads, guests, application builds/packages/releases remain deferred.

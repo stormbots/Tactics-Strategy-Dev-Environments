@@ -15,6 +15,8 @@ SESSION = 'mint-prep-runner-private-session'
 WORK = '_work-private'
 ORG = 'https://github.com/stormbots'
 LIMIT = 16 * 1024
+STARTUP_HOOKS = {'BASH_ENV', 'ENV', 'SHELLOPTS', 'BASHOPTS', 'NODE_OPTIONS',
+                 'LD_PRELOAD', 'LD_LIBRARY_PATH'}
 
 
 class Stop(Exception):
@@ -27,7 +29,7 @@ def require(ok, reason):
 
 
 def read_settings(path, uid):
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK | os.O_NOCTTY)
     try:
         before = os.fstat(fd)
         require(stat.S_ISREG(before.st_mode) and before.st_uid == uid and
@@ -88,6 +90,7 @@ def inspect_runner(home, uid, *, reader=read_settings):
 
 def main():
     old_mask = None
+    reason = None
     try:
         require(len(sys.argv) == 1, 'NO_ARGUMENTS')
         uid = os.getuid()
@@ -100,15 +103,22 @@ def main():
         os.chdir(session)
         # exec retains the mask for run.sh, listener, worker, checkout and git.
         # It never returns on success. No user-supplied command or arguments.
-        os.execv(str(session / 'run.sh'), [str(session / 'run.sh')])
+        # Keep proxy/CA and ordinary runner context, but not inherited code hooks.
+        env = {name: value for name, value in os.environ.items()
+               if name not in STARTUP_HOOKS and not name.startswith('BASH_FUNC_')}
+        os.execve(str(session / 'run.sh'), [str(session / 'run.sh')], env)
         raise Stop('EXEC_RETURNED')
     except Exception as error:
         reason = str(error) if isinstance(error, Stop) else 'LAUNCH_STOPPED'
-        print(json.dumps({'started': False, 'reason': reason, 'retryAuthorized': False}))
-        return 1
     finally:
         if old_mask is not None:
-            os.umask(old_mask)
+            try:
+                os.umask(old_mask)
+            except OSError:
+                reason = 'UMASK_RESTORE_UNCERTAIN'
+    # Emit only after restoration was attempted; never leak native exception text.
+    print(json.dumps({'started': False, 'reason': reason, 'retryAuthorized': False}))
+    return 1
 
 
 if __name__ == '__main__':
