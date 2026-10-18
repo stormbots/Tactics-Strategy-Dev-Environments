@@ -119,6 +119,44 @@ class Observer(unittest.TestCase):
                     self.assertEqual(o.source_snapshot(CHECKOUT,o.SOURCES[0],1001,SESSION,evidence,lambda:0,10),b'abc')
                     self.assertEqual(evidence['files'][0]['sha256'],o.hashlib.sha256(b'abc').hexdigest())
 
+    def test_acl_evidence_distinguishes_unchecked_and_failed_query(self):
+        path=CHECKOUT/o.SOURCES[0]
+        paths={x:st(0o40755,0) for x in path.parents}
+        paths[HOME]=st(0o40750)
+        for x in path.parents:
+            if x==SESSION or SESSION in x.parents:paths[x]=st(0o40700)
+        paths[path]=st()
+        evidence={'paths':{},'files':[]}
+        with patch.object(o.Path,'lstat',autospec=True,side_effect=lambda p:paths[p]), \
+             patch.object(o.os,'listxattr',side_effect=OSError('private detail')) as acl, \
+             patch.object(o,'read_regular') as read,self.assertRaises(OSError):
+            o.source_snapshot(CHECKOUT,o.SOURCES[0],1001,SESSION,evidence,lambda:0,10)
+        acl.assert_called_once_with(SESSION,follow_symlinks=False)
+        read.assert_not_called()
+        self.assertIsNone(evidence['paths'][str(HOME)]['defaultAcl'])
+        self.assertIsNone(evidence['paths'][str(SESSION)]['defaultAcl'])
+        self.assertEqual(evidence['paths'][str(SESSION)]['mode'],'0700')
+
+    def test_ancestry_change_and_inventory_bound_stop_before_source_read(self):
+        path=CHECKOUT/o.SOURCES[0]
+        evidence={'paths':{'/':{'changed':True}},'files':[]}
+        with patch.object(o.Path,'lstat',return_value=st(0o40755,0)), \
+             patch.object(o,'read_regular') as read,self.assertRaisesRegex(o.Stop,'ANCESTRY_CHANGED'):
+            o.source_snapshot(CHECKOUT,o.SOURCES[0],1001,SESSION,evidence,lambda:0,10)
+        read.assert_not_called()
+        evidence={'paths':{str(i):{} for i in range(32)},'files':[]}
+        with patch.object(o.Path,'lstat',return_value=st(0o40755,0)), \
+             patch.object(o,'read_regular') as read,self.assertRaisesRegex(o.Stop,'EVIDENCE_BOUND'):
+            o.source_snapshot(CHECKOUT,o.SOURCES[0],1001,SESSION,evidence,lambda:0,10)
+        self.assertEqual(len(evidence['paths']),32);read.assert_not_called()
+
+    def test_deadline_during_read_closes_once_without_retry(self):
+        with patch.object(o.os,'open',return_value=8),patch.object(o.os,'fstat',return_value=st()), \
+             patch.object(o.os,'read') as read,patch.object(o.os,'close') as close, \
+             self.assertRaisesRegex(o.Stop,'DEADLINE'):
+            o.read_regular(Path('/fixed'),1001,10,Mock(side_effect=[0,10]),10)
+        read.assert_not_called();close.assert_called_once_with(8)
+
     def test_deadline_stops_before_snapshot_metadata(self):
         with patch.object(o.Path,'lstat') as metadata,self.assertRaisesRegex(o.Stop,'DEADLINE'):
             o.source_snapshot(CHECKOUT,o.SOURCES[0],1001,SESSION,{'paths':{},'files':[]},lambda:10,10)
@@ -174,7 +212,8 @@ class Observer(unittest.TestCase):
 
     def test_umask_is_read_from_fixed_proc_path_without_mutation(self):
         for raw,reason in [(b'Name:\tpython\nUmask:\t0077\n',None),
-                           (b'Umask:\t0077\nUmask:\t0002\n','UMASK_MISSING'),(b'x'*16385,'STATUS_BOUND')]:
+                           (b'Umask:\t0077\nUmask:\t0002\n','UMASK_MISSING'),
+                           (b'Umask:\n0077\n','UMASK_MISSING'),(b'x'*16385,'STATUS_BOUND')]:
             with patch.object(o.os,'open',return_value=8) as opened,patch.object(o.os,'read',return_value=raw), \
                  patch.object(o.os,'close') as close,patch.object(o.os,'umask',side_effect=AssertionError('mutation')):
                 if reason:

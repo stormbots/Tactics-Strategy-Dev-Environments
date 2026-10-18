@@ -81,16 +81,18 @@ def source_snapshot(root, name, uid, session, evidence, clock, deadline):
         need(clock() < deadline, 'DEADLINE')
         info=parent.lstat()
         private=parent == session or session in parent.parents
-        acl='system.posix_acl_default' in os.listxattr(parent,follow_symlinks=False) if private else False
         row={'path':str(parent),'uid':info.st_uid,'mode':format(stat.S_IMODE(info.st_mode),'04o'),
-             'defaultAcl':acl,'device':info.st_dev,'inode':info.st_ino}
+             'defaultAcl':None,'device':info.st_dev,'inode':info.st_ino}
         need(len(evidence['paths']) < 32 or str(parent) in evidence['paths'], 'EVIDENCE_BOUND')
         old=evidence['paths'].setdefault(str(parent),row)
-        need(old == row, 'ANCESTRY_CHANGED')
         need(stat.S_ISDIR(info.st_mode) and info.st_uid in {0,uid} and
              not stat.S_IMODE(info.st_mode) & 0o022, 'SOURCE_OWNER')
+        # Retain the location even when the ACL query fails. None means unchecked.
         if private:
-            need(info.st_uid == uid and stat.S_IMODE(info.st_mode) == 0o700 and not acl, 'PRIVATE_DIRECTORY')
+            row['defaultAcl']='system.posix_acl_default' in os.listxattr(parent,follow_symlinks=False)
+        need(old == row, 'ANCESTRY_CHANGED')
+        if private:
+            need(info.st_uid == uid and stat.S_IMODE(info.st_mode) == 0o700 and row['defaultAcl'] is False, 'PRIVATE_DIRECTORY')
     before=path.lstat()
     evidence['files'].append({'path':name,'uid':before.st_uid,
         'mode':format(stat.S_IMODE(before.st_mode),'04o'),'bytes':before.st_size})
@@ -109,7 +111,7 @@ def observed_umask(clock, deadline):
     try:
         raw=os.read(fd,16385)
         need(0 < len(raw) <= 16384 and clock() < deadline, 'STATUS_BOUND')
-        values=re.findall(rb'^Umask:\s*([0-7]{4})$',raw,re.MULTILINE)
+        values=re.findall(rb'^Umask:[ \t]+([0-7]{4})$',raw,re.MULTILINE)
         need(len(values) == 1, 'UMASK_MISSING')
         return values[0].decode('ascii')
     finally:

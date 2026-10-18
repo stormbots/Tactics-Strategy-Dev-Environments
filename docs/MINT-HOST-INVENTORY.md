@@ -824,3 +824,24 @@ paths join automatic mocked policy coverage and installer-skip scope. Actual nat
 runner inheritance, filesystem/ACL/account behavior, log retrieval and closeout
 remain unvalidated. Activation, runners, dispatch, downloads, guests, #73 merge,
 application builds/packages/releases remain deferred.
+
+
+### Checkout observer review follow-up
+
+The observer now reports defaultAcl=null when no ACL query was completed, rather
+than claiming absence on ancestors outside the private session. It retains the
+failing directory's bounded mode/owner/identity metadata before querying ACLs,
+and validates directory type/ownership/mode before that query. An ACL-query
+error still stops with sanitized failure; it does not authorize a fallback or
+source read. A checked private directory reports true/false as observed.
+The fixed proc Umask parser now accepts horizontal whitespace only, rejecting a
+malformed value on a different line.
+
+Local QA: **121 mocked/static checks passed**, including added cases for failed
+ACL-query evidence, unchecked ACL reporting, ancestry changes, the 32-directory
+inventory limit, mid-read deadline closure without retry, and multiline Umask
+rejection. No observer, listener, checkout action or host preparation was executed.
+Approval gates and workflow commands are unchanged; group/reviewer/settings must
+still be verified before separately authorized execution. These local results do
+not validate native inheritance, ACL support, deregistration, cleanup correctness
+or authentication safety. The stopped media preparation result remains unchanged.
