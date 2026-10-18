@@ -384,3 +384,37 @@ confused with authorization to run the new preparation helpers.
 
 No native helper activation, spare-host access, guest boot or application packaging
 was performed in this review. Both #73 and #76 remain draft and unmerged.
+
+## Explicit native-fixture dispatch boundary
+
+PR #76 now supersedes the trigger-only assessment above. The legacy fixture
+workflow keeps its existing PR/push path filters, but automatic events can reach
+only `workflow-checks` (hosted Ubuntu checkout and actionlint). Both native jobs
+require the canonical repository, `workflow_dispatch`, and the typed boolean
+`run_native == true`; the required input defaults to false. They depend on a
+successful static job. Missing/false input, PR/push events, workflow calls and
+fork repositories cannot enable native jobs. No dispatch was performed.
+
+This job boundary applies even when an infrastructure PR edits the native
+workflow itself, so publishing the boundary does not launch the old media/package
+steps. Manual native checks retain their existing Windows/Mint fixture semantics,
+including Mint media acquisition, extraction, container dependencies and cleanup;
+none are moved into the automatic job. They are not application installer builds,
+spare-host validation, or guest-desktop tests. A future operator must separately
+authorize those native operations before selecting the opt-in input. The manual
+entry point becomes available on the default branch only after an authorized
+merge; both current PRs remain unmerged.
+
+The exact native-fixture workflow path is also included in infrastructure-only
+main-push classification, preventing installer packaging after a future authorized
+infrastructure-only merge. Unknown/application/signing-key paths still retain
+application CI. The policy workflow watches and lints this gate file on PR/main,
+and tests enumerate event/repository/boolean combinations, verify static-only
+steps and successful-static dependencies, and inspect actual installer gates.
+No self-hosted runner, environment activation or application workflow was changed.
+
+Local validation: 55 checks passed (38 mocked helper, 9 scope, 8 policy), focused
+actionlint and diff whitespace checks passed. This establishes local policy and
+mocked coverage only; native preparation-helper authentication/cleanup/console
+claims remain unvalidated. Historical fixture success and #72 findings remain
+historical evidence, not proof of the new preparation helpers.

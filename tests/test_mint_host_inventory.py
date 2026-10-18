@@ -114,6 +114,51 @@ class InventoryPolicy(unittest.TestCase):
                             step.get('run') == 'python3 tests/ci_scope.py'
                             for step in scope['steps']))
 
+    def test_native_fixture_jobs_require_explicit_dispatch_and_opt_in(self):
+        w = load('native-uat-fixtures.yml')
+        self.assertEqual(set(w['on']), {'push', 'pull_request', 'workflow_dispatch'})
+        inputs = w['on']['workflow_dispatch']['inputs']
+        self.assertEqual(set(inputs), {'run_native'})
+        self.assertEqual(inputs['run_native']['type'], 'boolean')
+        self.assertEqual(inputs['run_native']['default'], 'false')
+        self.assertEqual(inputs['run_native']['required'], 'true')
+        self.assertEqual(w['permissions'], {'contents': 'read'})
+        self.assertEqual(set(w['jobs']), {'workflow-checks', 'windows-fixtures', 'mint-fixtures'})
+        for name, runner in [('windows-fixtures', 'windows-2022'),
+                             ('mint-fixtures', 'ubuntu-24.04')]:
+            job = w['jobs'][name]
+            self.assertEqual(job['needs'], 'workflow-checks')
+            self.assertEqual(job['runs-on'], runner)
+            expression = job['if']
+            self.assertEqual(expression, "github.event_name == 'workflow_dispatch' && "
+                "github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' && inputs.run_native == true")
+            for event in ('pull_request', 'pull_request_target', 'push', 'workflow_run', 'workflow_call', 'workflow_dispatch'):
+                for repo in ('stormbots/Tactics-Strategy-Dev-Environments', 'fork/repo'):
+                    for opt_in in (False, True):
+                        check = expression.replace('github.event_name', repr(event)).replace(
+                            'github.repository', repr(repo)).replace('inputs.run_native', repr(opt_in))
+                        result = eval(check.replace('&&', ' and ').replace('== true', '== True'),
+                                      {'__builtins__': {}}, {})
+                        self.assertEqual(result, event == 'workflow_dispatch' and
+                            repo == 'stormbots/Tactics-Strategy-Dev-Environments' and opt_in)
+
+    def test_automatic_fixture_job_is_static_only(self):
+        w = load('native-uat-fixtures.yml')
+        job = w['jobs']['workflow-checks']
+        self.assertEqual(job['runs-on'], 'ubuntu-24.04')
+        self.assertEqual(job['timeout-minutes'], '5')
+        self.assertNotIn('environment', job)
+        self.assertEqual(len(job['steps']), 2)
+        self.assertEqual(job['steps'][0], {'uses': 'actions/checkout@v4'})
+        self.assertEqual(job['steps'][1]['uses'], 'docker://rhysd/actionlint:1.7.7')
+        self.assertEqual(job['steps'][1]['with']['args'],
+            '-color .github/workflows/build-dev-setup.yml .github/workflows/native-uat-fixtures.yml')
+        self.assertNotIn('run', job['steps'][1])
+        # Gate policy changes receive automatic static/mocked validation too.
+        for event in ('pull_request', 'push'):
+            self.assertIn('.github/workflows/native-uat-fixtures.yml',
+                load('mint-host-inventory-checks.yml')['on'][event]['paths'])
+
 
 if __name__ == '__main__':
     unittest.main()

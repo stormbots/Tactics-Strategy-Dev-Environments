@@ -16,6 +16,7 @@ MINT_INFRA_PATHS = {
     '.github/actionlint.yaml',
     '.github/workflows/mint-host-inventory.yml',
     '.github/workflows/mint-host-inventory-checks.yml',
+    '.github/workflows/native-uat-fixtures.yml',
     'tests/test_mint_host_inventory.py',
     'tests/mint_media_console.py',
     'tests/mint_media_native.py',

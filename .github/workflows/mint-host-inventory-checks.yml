@@ -5,6 +5,7 @@ on:
       - '.github/actionlint.yaml'
       - '.github/workflows/mint-host-inventory.yml'
       - '.github/workflows/mint-host-inventory-checks.yml'
+      - '.github/workflows/native-uat-fixtures.yml'
       - 'tests/test_mint_host_inventory.py'
       - 'tests/mint_media_console.py'
       - 'tests/mint_media_native.py'
@@ -19,6 +20,7 @@ on:
       - '.github/actionlint.yaml'
       - '.github/workflows/mint-host-inventory.yml'
       - '.github/workflows/mint-host-inventory-checks.yml'
+      - '.github/workflows/native-uat-fixtures.yml'
       - 'tests/test_mint_host_inventory.py'
       - 'tests/mint_media_console.py'
       - 'tests/mint_media_native.py'
@@ -49,4 +51,4 @@ jobs:
       - name: Lint only the infrastructure workflows
         uses: docker://rhysd/actionlint:1.7.7
         with:
-          args: -color .github/workflows/mint-host-inventory.yml .github/workflows/mint-host-inventory-checks.yml
+          args: -color .github/workflows/mint-host-inventory.yml .github/workflows/mint-host-inventory-checks.yml .github/workflows/native-uat-fixtures.yml
