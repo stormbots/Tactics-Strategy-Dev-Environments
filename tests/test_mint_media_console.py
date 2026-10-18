@@ -369,6 +369,29 @@ class NativeAdapterMockTests(unittest.TestCase):
             w.create('report.json')
         self.assertEqual(w.files,{})
 
+    def test_create_inspection_failure_closes_untracked_descriptor_once(self):
+        for failure in (OSError('synthetic fstat failure'),
+                        SimpleNamespace(st_uid=0, st_nlink=1, st_mode=0o100600)):
+            w=object.__new__(n.Workspace);w.fd=3;w.uid=1001;w.files={}
+            with self.subTest(failure=failure), patch.object(w,'check'), \
+                 patch.object(n.os,'open',return_value=8), \
+                 patch.object(n.os,'fstat',side_effect=failure if isinstance(failure,Exception) else None,
+                              return_value=failure), patch.object(n.os,'close') as close, \
+                 self.assertRaises((OSError,c.Stop)):
+                w.create('report.json')
+            close.assert_called_once_with(8)
+            self.assertEqual(w.files,{})
+
+    def test_create_inspection_cleanup_uncertainty_is_explicit(self):
+        w=object.__new__(n.Workspace);w.fd=3;w.uid=1001;w.files={}
+        with patch.object(w,'check'), patch.object(n.os,'open',return_value=8), \
+             patch.object(n.os,'fstat',side_effect=OSError('synthetic inspection failure')), \
+             patch.object(n.os,'close',side_effect=OSError('synthetic close failure')) as close, \
+             self.assertRaisesRegex(c.Stop,'DESCRIPTOR_CLEANUP_UNCERTAIN'):
+            w.create('report.json')
+        close.assert_called_once_with(8)
+        self.assertEqual(w.files,{})
+
     def test_native_readback_checks_actual_file_bytes(self):
         w=object.__new__(n.Workspace)
         with patch.object(w,'check'),patch.object(w,'_file',return_value=8), \

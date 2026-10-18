@@ -361,3 +361,26 @@ Remaining gates and limits:
 Diagnostic result: local mocked checks Pass. Native media authentication: NotRun.
 Native cleanup correctness/authentication safety: unproven. Whole-host cleanup:
 NotRun. Production readiness: false. Historical #72 failures remain preserved.
+
+
+## PR #76 review
+
+Review found and fixed an untracked descriptor leak when `Workspace.create`
+fails its initial `fstat`/ownership inspection. Rejection now closes the descriptor
+once before propagating failure; a failed close explicitly reports cleanup
+uncertainty. Mocked fault checks cover inspection failure, ownership rejection,
+and close uncertainty. Actual application-workflow gate/output/dependency checks
+were added so path classification alone is not treated as installer-skip proof.
+
+The preparation policy job runs static/mocked checks only on hosted Ubuntu.
+Separately, changing `tests/ci_scope.py` triggers the pre-existing Native UAT
+fixture workflow: Windows filesystem/ACL checks and a hosted Mint-userland
+container job, including its existing media preparation/dependency installation.
+Those are not mocked-only checks and are not spare-host or guest-desktop proof.
+No new native workflow or native operation is introduced by this PR. Application
+installer jobs and release jobs are independently gated and were observed skipped.
+The older fixture workflow's automatic native scope is unchanged; it must not be
+confused with authorization to run the new preparation helpers.
+
+No native helper activation, spare-host access, guest boot or application packaging
+was performed in this review. Both #73 and #76 remain draft and unmerged.

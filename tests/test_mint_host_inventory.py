@@ -3,7 +3,7 @@ import ast
 from pathlib import Path
 import unittest
 import yaml
-from ci_scope import MINT_INFRA_PATHS, application_required
+from ci_scope import APPLICATION_JOBS, GATE, MINT_INFRA_PATHS, application_required
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -98,6 +98,21 @@ class InventoryPolicy(unittest.TestCase):
                      'installer/src/App.tsx', 'backend/linux/self-update.py'):
             self.assertTrue(application_required([path]), path)
             self.assertTrue(application_required(['tests/mint_media_native.py', path]), path)
+
+    def test_actual_installer_jobs_require_positive_scope_result(self):
+        w = load('build-dev-setup.yml')
+        for name in APPLICATION_JOBS:
+            self.assertEqual(w['jobs'][name]['needs'], 'scope')
+            self.assertEqual(w['jobs'][name]['if'], GATE)
+        self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'release'})
+        self.assertEqual(set(w['jobs']['release']['needs']), set(APPLICATION_JOBS))
+        self.assertNotIn('always()', w['jobs']['release']['if'])
+        scope = w['jobs']['scope']
+        self.assertEqual(scope['outputs']['application_required'],
+                         '${{ steps.scope.outputs.application_required }}')
+        self.assertTrue(any(step.get('id') == 'scope' and
+                            step.get('run') == 'python3 tests/ci_scope.py'
+                            for step in scope['steps']))
 
 
 if __name__ == '__main__':

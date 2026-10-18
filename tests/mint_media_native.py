@@ -134,9 +134,18 @@ class Workspace:
         require(name in NAMES and name not in self.files, 'FILE_NAME')
         fd = os.open(name, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
                      0o600, dir_fd=self.fd)
-        st = os.fstat(fd)
-        self.files[name] = (fd, identity(st))
-        require(st.st_uid == self.uid and st.st_nlink == 1 and stat.S_ISREG(st.st_mode), 'FILE_OWNER')
+        try:
+            st = os.fstat(fd)
+            require(st.st_uid == self.uid and st.st_nlink == 1 and stat.S_ISREG(st.st_mode), 'FILE_OWNER')
+            self.files[name] = (fd, identity(st))
+        except BaseException:
+            # No descriptor may escape before it enters the tracked inventory.
+            # Preserve the path for investigation; never retry an uncertain close.
+            try:
+                os.close(fd)
+            except OSError:
+                raise Stop('DESCRIPTOR_CLEANUP_UNCERTAIN') from None
+            raise
 
     def write(self, name, data):
         self.check()
