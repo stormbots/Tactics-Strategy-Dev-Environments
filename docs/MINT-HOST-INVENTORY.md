@@ -1250,7 +1250,7 @@ The two immutable helper inputs are pinned to merged commit
 | --- | --- |
 | mint_session_archive_plan.py | ae5cbb7766e6aec5fc29d31e4685100cb1a244e214c94e236eef8c4ef266664a |
 | mint_session_archive_native.py | 5eefa2077f47ee28d035c446b9fc0a4b69af6dd1879df2870228c951c711d292 |
-| Prepared mint_archive_supervisor.py | 275e93971271ba542a821a22f9c857d32436180813a4ea2a63e018e351b6b7a4 |
+| Prepared mint_archive_supervisor.py | e9c1ca0e9b9ad0fa2dbaffdf9e554a07731be8224a7105a334d041f69eb9aafb |
 
 The controller digest is an independent review reference, not a runtime
 self-approval. It must be recomputed after any code change and bound to the final
@@ -1366,3 +1366,29 @@ existing successful checkout evidence is not proof of this supervisor. Unsupport
 prerequisites or an unexpected observation stop without mechanism substitution.
 Keep activation, runner operations, dispatch, downloads, guests, builds, packages,
 releases and #73 merging deferred. Sole-maintainer self-approval stays allowed.
+
+
+### Delivery/supervisor review corrections
+
+Before creating pipes or forking, require default SIGCHLD handling so the normal
+standalone Python caller owns child reaping; ignored/custom/unknown dispositions
+stop instead of assuming a PID cannot be recycled. This is not a guarantee against
+same-UID/root native runtime interference, concurrent external waiters or custom
+sigaction flags outside the trusted isolated single-threaded caller contract.
+A successful worker result is accepted only with consistent reaped/armed/pidfd
+ownership evidence and a positive child PID. Preserve the worker's reported Pass
+separately if later supervisor cleanup fails; never relabel it as worker failure.
+Unknown Stop payloads are not copied into report reasons: only fixed internal
+reason codes are exported. The provenance field is helperSourceSha, explicitly
+identifying frozen helper code rather than claiming the controller existed at
+that older commit. The controller digest above supersedes the implementation
+reference after these source corrections.
+
+Review QA: **194 mocked/static checks passed**, including29 delivery/supervisor
+checks. Added coverage includes nondefault reaping-policy refusal before fork,
+inconsistent child ownership/reap outcomes, independent worker/supervisor cleanup
+results and unknown-reason sanitization. Focused actionlint, whitespace and full
+branch infrastructure-scope checks passed. No native child, signal, inspector,
+filesystem transition or host execution ran. Native lifetime/durability behavior,
+verified final caller delivery and actual OS process-state assumptions remain
+unvalidated. Keep publication separate from any execution authorization.

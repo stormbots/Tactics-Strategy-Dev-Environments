@@ -39,6 +39,60 @@ def need(ok, reason):
         raise Stop(reason)
 
 
+SAFE_REASONS = {
+    'ACCOUNT',
+    'ARM_STOP',
+    'BUNDLE_DIGEST',
+    'BUNDLE_FILES',
+    'CHILD_OUTPUT_DEADLINE',
+    'CHILD_OUTPUT_STOP',
+    'CHILD_UNCONFIRMED',
+    'DELIVERY_ACL',
+    'DELIVERY_CHANGED',
+    'DELIVERY_CLOSE',
+    'DELIVERY_FILE',
+    'DELIVERY_OWNER',
+    'DELIVERY_PATH_CHANGED',
+    'EXPORT_BOUND',
+    'HELPER_PRELOADED',
+    'IDENTITY_OUTCOME',
+    'IDENTITY_SCHEMA',
+    'INTERRUPTED',
+    'NOT_ARMED',
+    'NOT_AUTHORIZED',
+    'NOT_STARTED',
+    'OUTPUT_BOUND',
+    'PARENT_CHANGED',
+    'PIDFD_UNSUPPORTED',
+    'PROCESS_CLOSE',
+    'REPORT_BOUND',
+    'REPORT_CHANGED',
+    'REPORT_READBACK',
+    'REPORT_SHORT_WRITE',
+    'RESULT_BOUND',
+    'RESULT_CLEANUP',
+    'RESULT_DUPLICATE',
+    'RESULT_ERRNO',
+    'RESULT_PASS',
+    'RESULT_SCHEMA',
+    'RESULT_TEXT',
+    'SIGCHLD_POLICY',
+    'START_STOP',
+    'TERMINATION_SCHEMA',
+    'WAIT_IDENTITY',
+    'WORKER_EXIT',
+    'WORKER_TIMEOUT',
+}
+
+
+def safe_reason(error):
+    args = error.args
+    if (type(error) is Stop and len(args) == 1 and type(args[0]) is str and
+            args[0] in SAFE_REASONS):
+        return args[0]
+    return 'SUPERVISOR_STOPPED'
+
+
 def signature(s):
     return (s.st_dev, s.st_ino, s.st_uid, s.st_mode, s.st_nlink,
             s.st_size, s.st_mtime_ns, s.st_ctime_ns)
@@ -247,6 +301,7 @@ class Process:
     def start(self, snapshots, gates, inherited):
         need(self.pid is None and hasattr(os,'pidfd_open') and
              hasattr(signal,'pidfd_send_signal'), 'PIDFD_UNSUPPORTED')
+        need(signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL,'SIGCHLD_POLICY')
         verify_bundle(snapshots)
         self.deadline = self.clock()+WALL
         parent_pid = os.getpid()
@@ -285,7 +340,8 @@ class Process:
         self.barrier = write;self.result = out
         self.close(read);self.close(send)
         self.pidfd = self.keep(os.pidfd_open(self.pid,0))
-        # The child cannot exit/start native work until parent pins its instance.
+        # Child may exit early, but cannot start native work before arm. Default
+        # SIGCHLD policy keeps an exited child unreaped until our own waitpid.
         need(not self.stop_requested and self.clock() < self.deadline,'START_STOP')
         need(os.write(write,b'A') == 1, 'ARM_STOP')
         self.armed = True
@@ -365,7 +421,7 @@ class Process:
 def supervise(delivery, process, gates, *, authorized=False):
     """Explicit injected entrypoint only. Native execution remains unauthorized."""
     report = dict(kind='archive-supervision',passed=False,reason='NOT_AUTHORIZED',
-                  sourceSha=SOURCE_SHA,helpersSha256=dict(PINS),worker=None,
+                  helperSourceSha=SOURCE_SHA,helpersSha256=dict(PINS),worker=None,
                   childTermination='NotStarted',childIdentity=None,reportPersistence='NotAttempted',
                   nativeValidated=False,wholeHostCleanupPerformed=False,retryAuthorized=False,
                   returnedAfterCloseout=False,
@@ -391,7 +447,7 @@ def supervise(delivery, process, gates, *, authorized=False):
         verify_bundle(snapshots)
         report_attempted=True
         delivery.create_report()
-        delivery.persist(dict(kind='archive-supervision-start',sourceSha=SOURCE_SHA,
+        delivery.persist(dict(kind='archive-supervision-start',helperSourceSha=SOURCE_SHA,
                               helpersSha256=dict(PINS),nativeExecutionAuthorizedByCaller=True))
         initial_recorded=True
         checkpoint()
@@ -401,7 +457,7 @@ def supervise(delivery, process, gates, *, authorized=False):
         report['passed']=report['worker']['passed']
         report['reason']='WORKER_REPORTED' if report['passed'] else 'WORKER_FAILED'
     except (Exception,KeyboardInterrupt) as error:
-        report['reason']=str(error) if isinstance(error,Stop) else 'SUPERVISOR_STOPPED'  # never echo exception contents
+        report['reason']=safe_reason(error)  # never echo exception contents
     finally:
         if started:
             try:
@@ -419,6 +475,10 @@ def supervise(delivery, process, gates, *, authorized=False):
                      all(type(identity[k]) is bool for k in ('armed','pidfdRetained','reaped')),
                      'IDENTITY_SCHEMA')
                 report['childIdentity']=identity
+                if report['passed']:
+                    need(report['childTermination'] == 'ReapedAsReported' and
+                         identity['pid'] is not None and identity['armed'] and
+                         identity['pidfdRetained'] and identity['reaped'],'IDENTITY_OUTCOME')
         except (Exception,KeyboardInterrupt):
             report['passed']=False;report['reason']='IDENTITY_UNCONFIRMED'
         try:
@@ -433,7 +493,8 @@ def supervise(delivery, process, gates, *, authorized=False):
                 try:
                     report['reportPersistence']='RecordedPendingCloseout'
                     persisted=dict(report,cleanupStatus=dict(report['cleanupStatus']),
-                                   passed=False,workerReportedPass=report['passed'],
+                                   passed=False,workerReportedPass=(report['worker'] is not None and
+                                                              report['worker']['passed']),
                                    finalAuthority='returned-report-after-closeout')
                     delivery.persist(persisted)
                 except (Exception,KeyboardInterrupt):

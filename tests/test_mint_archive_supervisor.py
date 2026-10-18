@@ -51,6 +51,8 @@ class Supervisor(unittest.TestCase):
     def test_healthy_verified_bytes_and_non_authoritative_durable_record(self):
         report=self.run_supervisor()
         self.assertTrue(report['passed']);self.assertFalse(report['nativeValidated'])
+        self.assertEqual(report['helperSourceSha'],s.SOURCE_SHA)
+        self.assertNotIn('sourceSha',report)
         self.process.start.assert_called_once_with(SOURCES,self.gates,(5,6))
         records=self.delivery.persist.call_args_list
         self.assertEqual(len(records),2)
@@ -109,6 +111,35 @@ class Supervisor(unittest.TestCase):
         report=self.run_supervisor()
         self.assertFalse(report['passed']);self.delivery.persist.assert_not_called()
         self.process.start.assert_not_called();self.delivery.cleanup.assert_called_once_with()
+
+    def test_inconsistent_child_evidence_cannot_promote_worker_pass(self):
+        for key,bad in [('pid',None),('armed',False),('pidfdRetained',False),('reaped',False)]:
+            identity=dict(pid=101,armed=True,pidfdRetained=True,reaped=True)
+            identity[key]=bad
+            self.process.evidence.return_value=identity
+            with self.subTest(key=key):
+                report=self.run_supervisor()
+                self.assertFalse(report['passed'])
+                self.assertEqual(report['reason'],'IDENTITY_UNCONFIRMED')
+        self.process.evidence.return_value=dict(pid=101,armed=True,pidfdRetained=True,reaped=True)
+        self.process.stop.return_value='NotStarted'
+        self.assertFalse(self.run_supervisor()['passed'])
+
+    def test_worker_result_survives_supervisor_close_failure_in_durable_record(self):
+        self.process.cleanup.side_effect=OSError()
+        report=self.run_supervisor()
+        self.assertFalse(report['passed']);self.assertTrue(report['worker']['passed'])
+        persisted=self.delivery.persist.call_args_list[-1].args[0]
+        self.assertTrue(persisted['workerReportedPass']);self.assertFalse(persisted['passed'])
+        self.assertEqual(report['cleanupStatus']['processDescriptors'],'Uncertain')
+
+    def test_unknown_stop_reason_is_not_reflected_into_evidence(self):
+        self.process.collect.side_effect=s.Stop('SECRET_TOKEN')
+        report=self.run_supervisor()
+        self.assertFalse(report['passed'])
+        self.assertEqual(report['reason'],'SUPERVISOR_STOPPED')
+        self.assertNotIn('SECRET_TOKEN',json.dumps(report))
+        self.assertNotIn('SECRET_TOKEN',json.dumps(self.delivery.persist.call_args_list[-1].args[0]))
 
     def test_sigterm_requests_stop_and_restores_handlers(self):
         def signalled():
@@ -222,6 +253,14 @@ class Delivery(unittest.TestCase):
 
 
 class Process(unittest.TestCase):
+    def test_nondefault_reaping_policy_stops_before_pipes_or_fork(self):
+        for policy in (s.signal.SIG_IGN,None,lambda *args:None):
+            p=s.Process(clock=Mock(return_value=0))
+            with patch.object(s.signal,'getsignal',return_value=policy), \
+                 patch.object(s.os,'pipe2') as pipe,patch.object(s.os,'fork') as fork, \
+                 self.assertRaisesRegex(s.Stop,'SIGCHLD_POLICY'):p.start(SOURCES,Mock(),())
+            pipe.assert_not_called();fork.assert_not_called()
+
     def test_parent_death_binding_and_original_parent_check(self):
         fn=Mock(return_value=0)
         with patch.object(s.ctypes,'CDLL',return_value=S(prctl=fn)), \
@@ -251,6 +290,7 @@ class Process(unittest.TestCase):
         events=[]
         with patch.object(s,'PINS',PINS),patch.object(s.os,'pipe2',side_effect=[(10,11),(12,13)]), \
              patch.object(s.os,'fork',return_value=101) as fork,patch.object(s.os,'getpid',return_value=100), \
+             patch.object(s.signal,'getsignal',return_value=s.signal.SIG_DFL), \
              patch.object(s.os,'close'), \
              patch.object(s.os,'pidfd_open',side_effect=lambda *a:events.append('pidfd') or 14), \
              patch.object(s.os,'write',side_effect=lambda *a:events.append('arm') or 1):
