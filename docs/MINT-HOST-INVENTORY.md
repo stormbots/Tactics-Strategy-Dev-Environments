@@ -1232,3 +1232,137 @@ passed. No native inspector, rename, archival, process scan, runner or host acti
 was executed. The earlier 162-check implementation result remains historical;
 current local results still do not validate kernel atomicity, native proc/pidfd
 behavior, durable crash recovery or execution-supervisor/report delivery.
+
+## Prepared verified delivery and external archival supervision
+
+`tests/mint_archive_supervisor.py` adds fixed delivery/report/process ports and an
+injected supervise entrypoint, with no CLI, downloader or import-time host I/O.
+This section prepares code and a delivery contract only; no host, process, source
+session, registration or activation was touched. Mocked/static tests alone do not
+validate any native mechanism described below.
+
+### Delivery contract and provenance
+
+The two immutable helper inputs are pinned to merged commit
+887ebc9485ec2b18064cb9f3515929dd37436e61:
+
+| File | SHA-256 |
+| --- | --- |
+| mint_session_archive_plan.py | ae5cbb7766e6aec5fc29d31e4685100cb1a244e214c94e236eef8c4ef266664a |
+| mint_session_archive_native.py | 5eefa2077f47ee28d035c446b9fc0a4b69af6dd1879df2870228c951c711d292 |
+| Prepared mint_archive_supervisor.py | 275e93971271ba542a821a22f9c857d32436180813a4ea2a63e018e351b6b7a4 |
+
+The controller digest is an independent review reference, not a runtime
+self-approval. It must be recomputed after any code change and bound to the final
+reviewed controller commit before delivery. SOURCE_SHA identifies the frozen
+helper provenance; it does not pretend the newly prepared controller existed at
+that older commit. No approved packet/authorization is implied by these hashes.
+
+Future delivery sequence, requiring separate authorization:
+1. Create a fresh owner-only0700 /home/sde-runner/mint-archive-control-39132131036
+   under umask0077; an existing path/report stops, never reuse or remove it.
+   Preserve both existing sessions. Acquisition of these reviewed small source
+   files is distinct from runner/media/package acquisition; no fetch is done by
+   this module. No activation or runner is needed for this local operation.
+2. Place the two helper sources as owner1001/mode0600 regular single-link files
+   with their exact names. Deliver the reviewed controller separately and verify
+   its approved hash BEFORE loading it; executing a controller that merely
+   claims to verify itself is not verified delivery. The future trusted caller
+   must use isolated root-trusted Python and immutable hash-verified controller
+   bytes, not a mutable branch import or unverified bootstrap. That final caller/
+   copy-paste packet remains a review item; no execution command is supplied here.
+3. Delivery.open pins the fixed root/home/control ancestry without following
+   symlinks and rejects wrong owner/mode/default control ACL. Snapshot each helper
+   through no-follow/nonblocking/no-controlling-terminal/CLOEXEC descriptors,
+   <=128KiB each, owned1001/mode0600/nlink1, stable metadata and complete reads.
+   Verify the fixed hashes. The worker re-verifies the byte snapshots, refuses
+   preloaded helper modules and compiles only those bytes into isolated named
+   modules; it never reopens/imports mutable helper pathnames. Only standard
+   library/root-trusted runtime imports remain outside the source bundle.
+4. A trusted caller supplies explicit authorization and refreshed owner-attested
+   control facts through the gates provider inherited by the child: all activation
+   disabled, no remote runner and no queued/active job. This provider must satisfy
+   the merged helper's freshness contract, not silently turn missing API access
+   into true. No GitHub credential/API, autonomous settings verification or
+   authenticated IPC is added. Required environment approval/self-approval policy
+   remains unchanged for later workflows; no self-review toggle is needed.
+
+### Bounded report persistence and completion authority
+
+Create only control/supervisor-report.jsonl, exclusive/no-follow0600, with parent
+fsync and a cumulative16KiB limit. Persist a source/hash-bound initial record and
+read it back before any child starts. A short write, fsync/readback/identity/mode/
+link/size failure stops with no retry or report repair; initial failure prevents
+forking and no further append is attempted to that uncertain report. Retain it.
+
+After the worker has stopped, append at most one bounded outcome record, rechecking
+pinned control ancestry, report ownership/identity/link/size and existing bytes,
+then fsync and exact readback. The record includes bounded worker outcome,
+termination/child PID/armed/pidfd/reap evidence and cleanup state observed so far.
+If child termination is unconfirmed, do not start another blocking report write;
+return uncertainty and retain the initial record plus native journal if present.
+
+A durable outcome record is deliberately marked passed=false,
+workerReportedPass=<worker result>, returnedAfterCloseout=false and
+finalAuthority=returned-report-after-closeout: it precedes final report-descriptor
+closure and signal/umask restoration. It MUST NOT be promoted to final success on
+its own. The returned <=16KiB report is produced after closeout attempts and has
+returnedAfterCloseout=true; independent process/delivery descriptor, umask and
+signal outcomes remain visible. A future trusted caller must capture that bounded
+return as the completion acknowledgement. Missing acknowledgement, report-only
+completion or any close uncertainty is unknown/failure requiring reconciliation,
+not permission to retry. There is no recursive cleanup or automatic recovery.
+
+### External worker lifetime and failure rules
+
+The sole fork child waits behind a one-byte arm barrier. Parent retains a pidfd
+before arming it; no helper/archive mutation runs before that point. Child closes
+inherited delivery/report descriptors, resets its signal handlers and requests
+Linux PR_SET_PDEATHSIG=SIGKILL with an original-parent check before reading the
+barrier. Unsupported setup or changed/dead parent stops before helper execution.
+No alternate command, executable, PID target or process group may be supplied.
+
+The parent observes an independent35-second wall-clock deadline starting before
+fork, drains <=16KiB of nonblocking worker data, and requires EOF plus a reaped
+zero exit and the exact validated helper schema. Duplicate/partial/oversized/
+invalid JSON, a false pass/cleanup combination or nonzero exit cannot pass. EOF
+waits poll the retained pidfd rather than spinning on a closed data pipe.
+
+On timeout/interruption/failure, TERM then KILL are sent ONLY through the retained
+pidfd, with at most2seconds grace each and nonblocking child reaping. Never signal
+a numeric PID or launch a second worker. Parent TERM/INT handlers defer interruption
+to checked boundaries; worker parent-death behavior covers controller loss.
+An uncertain barrier close never prevents attempted pidfd termination and is never
+retried. All owned closes are attempted once and prior close uncertainty remains
+sticky. A closed barrier without a pidfd can prevent unarmed work but does not by
+itself prove reap/termination; report Unconfirmed if that cannot be established.
+
+These are userspace deadline/termination bounds, not a guarantee against scheduler
+failure or an uninterruptible kernel syscall. SIGKILL may remain pending; power
+loss can prevent export. CHILD_UNCONFIRMED always fails and no successor action
+may proceed. Preserve journal/archive/source/control/report/partial directories
+for separately authorized read-only reconciliation. Authentication safety,
+whole-host cleanup, crash durability and usable guest/console behavior remain
+unvalidated. No media, guest, package, updater or production feature runs here.
+
+### Local evidence and remaining gates
+
+**190 mocked/static checks passed**, including25 supervisor/delivery tests. All
+fork, pidfd signaling, pipe/proc/filesystem/process supervision and signal/umask
+operations under test are mocked; synthetic worker module execution uses inert
+stub bytes only. No actual verified helper worker or native inspector executed.
+Tests cover fixed source hashes, source tampering/preload, immutable snapshot
+loading, result schema/duplicates/bounds/EOF/exit, initial/final persistence faults,
+exclusive files/short writes/readback, parent-death ABI/check, barrier-before-arm
+pidfd order, timeout escalation, uncertain closes, interrupted closeout and no
+runner/download/generic command path. Automatic CI adds only exact mocked-suite
+paths; manual workflows and application/package gates are unchanged.
+
+Before any native action: independently review this layer and its final delivery/
+caller packet; bind the final controller hash plus frozen helper hashes; obtain
+fresh live control attestations and explicit one-operation archival authorization.
+Native parent-death/pidfd/barrier/timeout/fsync/reap behavior still needs proof;
+existing successful checkout evidence is not proof of this supervisor. Unsupported
+prerequisites or an unexpected observation stop without mechanism substitution.
+Keep activation, runner operations, dispatch, downloads, guests, builds, packages,
+releases and #73 merging deferred. Sole-maintainer self-approval stays allowed.

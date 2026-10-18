@@ -22,6 +22,8 @@ on:
       - 'tests/test_mint_session_archive_plan.py'
       - 'tests/mint_session_archive_native.py'
       - 'tests/test_mint_session_archive_native.py'
+      - 'tests/mint_archive_supervisor.py'
+      - 'tests/test_mint_archive_supervisor.py'
       - 'tests/fixtures/linuxmint-iso-signing.asc'
       - 'tests/ci_scope.py'
       - 'tests/test_ci_scope.py'
@@ -49,6 +51,8 @@ on:
       - 'tests/test_mint_session_archive_plan.py'
       - 'tests/mint_session_archive_native.py'
       - 'tests/test_mint_session_archive_native.py'
+      - 'tests/mint_archive_supervisor.py'
+      - 'tests/test_mint_archive_supervisor.py'
       - 'tests/fixtures/linuxmint-iso-signing.asc'
       - 'tests/ci_scope.py'
       - 'tests/test_ci_scope.py'
@@ -77,6 +81,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_mint_checkout_observer.py -v
           python3 -m unittest discover -s tests -p test_mint_session_archive_plan.py -v
           python3 -m unittest discover -s tests -p test_mint_session_archive_native.py -v
+          python3 -m unittest discover -s tests -p test_mint_archive_supervisor.py -v
       - name: Lint only the infrastructure workflows
         uses: docker://rhysd/actionlint:1.7.7
         with:
