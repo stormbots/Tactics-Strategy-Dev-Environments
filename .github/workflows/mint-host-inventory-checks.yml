@@ -1,0 +1,43 @@
+name: Mint host inventory policy checks
+on:
+  pull_request:
+    paths:
+      - '.github/actionlint.yaml'
+      - '.github/workflows/mint-host-inventory.yml'
+      - '.github/workflows/mint-host-inventory-checks.yml'
+      - 'tests/test_mint_host_inventory.py'
+      - 'tests/ci_scope.py'
+      - 'tests/test_ci_scope.py'
+      - 'docs/MINT-HOST-INVENTORY.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/actionlint.yaml'
+      - '.github/workflows/mint-host-inventory.yml'
+      - '.github/workflows/mint-host-inventory-checks.yml'
+      - 'tests/test_mint_host_inventory.py'
+      - 'tests/ci_scope.py'
+      - 'tests/test_ci_scope.py'
+      - 'docs/MINT-HOST-INVENTORY.md'
+permissions:
+  contents: read
+jobs:
+  policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install 'PyYAML==6.0.2'
+      - name: Static workflow and scope checks only
+        run: |
+          python3 -m unittest discover -s tests -p test_mint_host_inventory.py -v
+          python3 -m unittest discover -s tests -p test_ci_scope.py -v
+      - name: Lint only the infrastructure workflows
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color .github/workflows/mint-host-inventory.yml .github/workflows/mint-host-inventory-checks.yml

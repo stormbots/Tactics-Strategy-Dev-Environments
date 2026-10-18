@@ -1,0 +1,4 @@
+# Routing label only; workflow/group policy supplies authorization.
+self-hosted-runner:
+  labels:
+    - sde-mint-inventory
