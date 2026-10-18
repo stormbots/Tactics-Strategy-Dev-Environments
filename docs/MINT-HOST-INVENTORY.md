@@ -482,9 +482,9 @@ runner absent and all preparation flags unset/disabled until those gates pass.
 
 The checkout is pinned to `github.sha`, does not persist credentials, and disables
 submodules/LFS. The caller runs under `/usr/bin/python3 -I -B`, with no CLI args.
-Before loading native ports it verifies the fixed Actions context and four
-bounded regular non-symlink source snapshots (caller, core, native ports, public
-signing key), rejecting writable/untrusted ancestry and changing identities.
+Before loading native ports it verifies the fixed Actions context and five
+bounded regular non-symlink source snapshots (caller, core, native ports, local
+launcher, public signing key), rejecting writable/untrusted ancestry and changing identities.
 The bundle framing is `SHA256(b'mint-prep-bundle-v1\0' + each fixed path's ASCII
 name + NUL + ASCII decimal byte length + NUL + raw bytes)`, in the `SOURCES` order
 in the caller. It compiles only the approved helper snapshots, not a second
@@ -869,3 +869,247 @@ Approval gates and workflow commands are unchanged; group/reviewer/settings must
 still be verified before separately authorized execution. These local results do
 not validate native inheritance, ACL support, deregistration, cleanup correctness
 or authentication safety. The stopped media preparation result remains unchanged.
+
+## Checkout-only native evidence and next media proposal
+
+### Completed checkout diagnostic (not media authentication)
+
+Run [39132131036](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/39132131036),
+job 117689277573, executed observe once on source/workflow SHA
+c8e0134a3de8f36981a83bea1546b5b9a9daf1d6, attempt 1. GitHub API confirmed success
+and explicit environment approval by rdpollard under standing self-approval.
+The owner supplied the observer JSON because integration log retrieval was denied.
+It reports pass=true, reason=CHECKOUT_VALIDATED and bundle SHA-256
+27689dc72c1b72d30a031ed1bbd807130c0a21ec4ae5bce54df3b718ba66f445.
+
+Observed Mint 22.3 account sde-runner UID 1001, groups kvm/sde-runner/users,
+effective umask 0077. All six fixed source files were owned by UID 1001 with
+mode 0600 and expected sizes/hashes. The session, _work-private, repository
+ancestors, tests and fixtures directories were UID 1001/mode 0700 with
+no default ACLs. Root/home were root-owned 0755; the account home was UID
+1001/mode 0750. ACL=null on those outer ancestors means unchecked, not absent.
+This validates permission creation through this actual runner/worker/checkout
+schedule; it does not prove every possible filesystem or runner configuration.
+The earlier SOURCE_OWNER media failure is preserved as a separate stopped run.
+
+Closeout evidence is deliberately separated:
+- Owner terminal showed runner 2.338.0, observe succeeded, local .credentials
+  and .runner removed, listener exit 0. This is terminal evidence, not a complete
+  process/descriptor inventory or whole-host cleanup proof.
+- Owner confirmed MINT_CHECKOUT_ENABLED=false. Variable API readback is unavailable
+  to the integration; this is owner-attested, not independently verified.
+- Remote sde-mint-prep-once remained listed after local exit. Owner manually
+  removed it and confirmed absence. Do not claim automatic deregistration passed.
+- JSON explicitly reports cleanupCorrectness=NotValidated,
+  mediaAuthentication=NotRun, guestExecuted=false, productionReady=false and
+  wholeHostCleanupPerformed=false. Permission diagnostic completion, cleanup
+  correctness and authentication safety remain distinct.
+
+No ISO, guest, package, application build or release operation was part of this
+run. The private checkout and earlier failed media checkout remain retained.
+PR #73 remains draft/unmerged. No follow-on execution is authorized.
+
+### Proposed next bounded phase — preparation only
+
+Reuse the existing fixed media workflow/caller and the validated private-launcher
+permission approach; do not weaken source checks or apply chmod/chown repairs.
+Permit a future separately authorized single media-authentication/offline-plan
+job only after the following setup gate is resolved and controls reverified.
+
+**Fresh-session blocker:** mint-prep-runner-private-session now exists and contains
+this evidence. The launcher rejects nonempty _work-private; neither old session
+may be reused or silently deleted. Proposed smallest preparation is a separately
+reviewed local archive procedure with mocked-only coverage: verify dedicated
+account, no active listener/job, absent registration files, expected ownership,
+non-symlink ancestry and retained evidence identity; verify a collision-free
+run-bound sibling destination; move the whole completed session without overwrite
+or recursive modification/deletion; retain a source/destination identity record.
+Unexpected identities, inability to establish quiescence, destination collision
+or rename uncertainty stop without retry/fallback. Same-UID/root mutation remains
+outside this procedure's trust boundary. Actual archival and fresh-session
+creation require separate explicit authorization; neither happened here.
+
+Afterward, a newly created fixed-name 0700 session/empty work root, verified
+runner archive and local launcher hash, token-safe ephemeral registration,
+offline group-membership verification, exact SHA/bundle approvals and one
+protected dispatch would be needed. Do not turn this proposal into host commands
+until the archive/setup procedure has been reviewed. Keep the failed media-run
+session untouched as well.
+
+Control changes proposed only: replace the group's sole selected workflow with
+stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-media-console-prep.yml@refs/heads/main;
+retain only this selected repository, explicit public-repository access, required
+rdpollard approval with self-approval allowed, main-only environment and no admin
+bypass. Keep checkout/inventory activation off. Future MINT_PREP_ENABLED=true
+is set last, only after MINT_PREP_ACCESS_READY=verified, approved final main SHA
+and independent MINT_PREP_HELPERS_SHA256 are bound. No settings changed here.
+
+At c8e0134 the five-file mint-prep-bundle-v1 digest is
+1eaf77cd1379b60d191bfadeda74066cab598daf2e91acf1e6a33dbcacab4c7c;
+launcher SHA-256 remains
+d6fcdbc5bf8edd3f583206292eb8f4fcbf8fa95b503f2201707399d6b85d736b.
+These are proposal references, not activation approval. Recalculate from the
+final approved main commit after any documentation/implementation merge; do not
+reuse the consumed checkout or failed media authorization.
+
+Future native scope: fixed mirrors.kernel.org/linuxmint/stable/22.3 checksum,
+detached signature and linuxmint-22.3-cinnamon-64bit.iso acquisition; fixed
+pinned signing key fingerprint 27DEB15644C6B3CF3BD7D291300F846BA25BAE09;
+isolated GPG verification, ISO SHA-256 readback, private UUID-bound workspace,
+bounded report/ownership manifest and offline console-plan data only. Existing
+host gates include Mint 22.3/x86_64, dedicated nonprivileged account, KVM API 12,
+trusted tools, >=6 GiB available memory and >=40 GiB available disk. No tool
+installation or alternate mirror is an automatic fallback.
+
+Limits: workflow/helper budget 25 minutes, checksum fetch 60 seconds/signature
+60 seconds/ISO 900 seconds (also bounded by overall deadline); checksums <=64 KiB,
+signature <=8 KiB, ISO <=6 GiB, workspace <=8 GiB and stdout export <=64 KiB.
+Existing same-origin/same-path bounded redirects only; no mirror substitution.
+Quiescence/host/settings/signature/digest/resource/deadline/ownership failure,
+interruption, missing export, extra dispatch or unexpected process stops without
+resume or automatic retry. Retain bounded owned partial evidence, not recursive
+cleanup. An expired forced workflow cannot itself prove process cleanup.
+
+Pass requires the pinned signature and digest verification, completed bounded
+readback/export and run-bound report/ownership evidence. An offline plan must
+retain diskCreated=false, qemuStarted=false, consoleValidatedNatively=false and
+launchAuthorized=false. No guest image creation, VM boot, console socket launch,
+package operations, elevation, service/task registration, updater execution,
+application build, release or #73 merge is included. Media success would not
+validate a usable console, guest behavior or Update Now production readiness.
+Closeout separately disables media activation and verifies local runner exit,
+remote removal (manual if necessary), owned process/descriptor results and
+retained workspace status; no whole-host restoration claim is inferred.
+
+### Reviewed archival/setup procedure — no execution authorized
+
+Review of the recorded evidence supports the observed checkout permission Pass,
+not media verification or automatic deregistration. The next media proposal
+retains the fixed source/transport/validator limits; its five-file bundle is
+separate from the six-file observer bundle. Successful checkout does not waive
+rechecking host tools, available resources, KVM, controls or signature validity.
+Manual remote runner removal is an observed closeout requirement, not an assumed
+automatic success. The old media authorization remains consumed.
+
+Prepared `tests/mint_session_archive_plan.py` is a pure plan validator with an
+injected observer, no host inspector, mutation executor, imports or CLI. It does
+not scan this environment or the spare host. Its eight mocked/static tests
+exercise acceptance/rejection rules; they do not validate native rename, ACL,
+process enumeration, persistence, race handling or recovery. The observations
+are not authenticated by this model. A plan returns executionAuthorized=false.
+No runner setup or media operation is embedded in it.
+
+Fixed paths (no caller-supplied destinations):
+- Source: /home/sde-runner/mint-prep-runner-private-session
+- Archive: /home/sde-runner/mint-prep-runner-private-session-checkout-39132131036
+- Older failed session, never moved/traversed/modified:
+  /home/sde-runner/mint-prep-runner-session
+- Fresh work root after archival: source/_work-private
+
+Future procedure, requiring separate authorization and a reviewed native executor:
+
+1. Keep all activation disabled. Verify the remote registration is absent and no
+   approved/unapproved job is queued or active. Under the dedicated account,
+   establish no other account processes or active runner/service exist (excluding
+   only the identified inspector/controller); unknown or inaccessible observations
+   stop. Scan process/registration state completely and stably within 30 seconds.
+   A prior terminal exit alone is insufficient. No process is killed by this
+   procedure. Same-UID/root interference remains outside the trust boundary;
+   quiescence observations are not a permanent kernel-enforced freeze.
+2. Pin root/home/source directories through descriptor-relative no-follow opens.
+   Validate root-owned non-writable root/home ancestors, UID1001 home0750 and
+   source0700, no inherited default ACL on creation ancestors, expected account
+   groups and no elevation. Require source device66306/inode12088154 from the
+   retained observer evidence; a changed identity stops for review, not automatic
+   adoption. Bound fixed metadata reads; never enumerate checkout contents
+   recursively or read credential contents. Check registration names are absent.
+   Record the older failed session's directory identity without traversing it.
+3. Verify archive destination absent, same filesystem, and native atomic
+   no-replace rename supported. A separate existence test followed by ordinary
+   rename/mv is NOT sufficient: it could overwrite an intervening destination.
+   Do not copy, merge, remove or recursively chmod/chown either tree. Unsupported
+   no-replace semantics stop rather than substituting another mechanism.
+4. Prepare an exclusive owner-only, no-follow bounded phase journal alongside
+   the session, outside the moved tree. Its fixed run-bound name must be absent;
+   collision stops. Persist approved run/source/destination identities and
+   preconditions before mutation; cap journal/report at 16KiB each and overall
+   metadata/transition work at 30 seconds. Recheck gates, identities and absence
+   immediately before the native no-replace rename. Use a pinned home descriptor
+   and same-parent names; flush the parent after rename.
+5. Read back archive identity and verify it equals the original session identity;
+   source must now be absent and older failed-session identity unchanged. Persist
+   the archived phase. The entire checkout/listener diagnostic evidence remains
+   in the archive with its original ownership/modes; do not restart it there.
+6. Exclusively create the fresh source0700 and empty _work-private0700 under
+   umask0077. Pin/read back each newly created directory, owner/mode/identity and
+   default-ACL absence. Flush directories/parent and persist final identities and
+   completion phase. Do not populate/download/configure a runner in this step.
+   Fresh session identity must differ from archived identity. Verify the archived
+   and older session directory identities are unchanged.
+7. On any interruption, uncertain syscall/close/fsync/journal outcome or failed
+   postcondition: stop, report the last known phase, retain all state. No rollback,
+   retry, deletion, alternate destination or automatic recovery. A lost export is
+   unknown, not Pass. Separate read-only reconciliation must inspect source,
+   destination and journal after uncertainty; never replay operations blindly.
+   Cancellation must not be represented as restoration or cleanup success.
+
+Allowed normal outcomes: (a) preflight rejection with no mutations; (b) archive
+verified and fresh empty private directories durably recorded. Failure after
+rename may leave only the archive, or archive plus a partially created new
+session; both require reconciliation and are not healthy setup. No previous
+session contents may be modified. Fixed-path directory identity checks establish
+metadata preservation, not a new cryptographic inventory of every retained byte.
+
+Before any future native implementation/execution, review the actual no-replace
+rename binding, bounded inspector/journal, stop propagation and descriptor
+cleanup. Their OS behavior remains unimplemented/unvalidated here. This is a
+bounded local procedure/model, not authorization to extend into guest testing or
+a general session maintenance tool. Application/updater code, existing launcher,
+media transport/validator and approval gates are unchanged. Only exact planner/
+test paths join automatic mocked checks and infrastructure-only scope.
+
+Local procedure/model review: 129 mocked/static checks passed, focused actionlint
+and git diff --check passed. No host inspector/executor or native archival test
+was invoked. Native atomicity, process quiescence and durable recovery remain
+explicit proof obligations, separate from permission diagnostic success.
+
+### Archival model review corrections
+
+The model now requires journalAbsent=true for the fixed sibling journal
+/home/sde-runner/mint-session-archive-39132131036.json, in addition to archive
+absence. Device/inode numbers are exact positive unsigned-64-bit integers, not
+booleans/coerced strings; source and legacy identities must differ. This bounds
+exported numeric fields and rejects observations that alias both evidence trees.
+The plan explicitly returns operationsAreExecutable=false, the fixed journal
+name, 16KiB record limit and 30-second transition budget. Its operation list is a
+high-level description, not a complete syscall sequence: the ordered prose
+procedure's preflight, revalidation, durable journal, fsync and stop gates remain
+mandatory. No native executor may simply iterate the listed operations.
+
+The model deliberately requires fresh default-ACL observations on root/home/home
+creation ancestors; the checkout report's null values are not evidence of ACL
+absence there. Legacy evidence contents are never scanned or modified by the
+procedure. Inspector exceptions propagate without retry; a future controller
+must sanitize/report them as stopped, not Pass or authorization. Oversized or
+malformed native input needs bounds before decoding in that future inspector;
+this pure in-memory model neither acquires nor serializes host evidence.
+
+Review QA: **132 mocked/static checks passed**, including eleven planner tests
+with missing/unknown gates, journal collision, bounded/non-coerced IDs, aliased
+sessions, malformed observations, exact schema/account/group contracts and
+inspector failure. Static checks forbid imports, generic execution calls and CLI
+entrypoints in the model. Focused workflow lint/whitespace and exact full-branch
+infrastructure-scope checks passed; mixed application/key changes still require
+application CI. This review changes no host, launcher, media validator/transport,
+activation setting or production code. Atomic no-replace rename, process-state
+inspection, persistence/interruption handling and native recovery are still
+unimplemented/unvalidated, not inferred from model acceptance.
+
+Final merge-readiness review: **134 mocked/static checks passed**, including
+explicit rejection of unknown/coerced ACL absence on every creation ancestor and
+bounded serialized plan output with maximum accepted identity values. Unexported
+extra observation fields are not echoed. The retained legacy directory's unchecked
+ACL is not substituted for a creation-ancestor ACL check. No additional model
+implementation defects were found; focused workflow lint and whitespace passed.
+Merge readiness applies only to documentation/pure planning and mocked CI, not
+native archival, quiescence verification, persistent recovery or execution approval.

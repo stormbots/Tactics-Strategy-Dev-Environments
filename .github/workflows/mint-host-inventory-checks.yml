@@ -18,6 +18,8 @@ on:
       - '.github/workflows/mint-checkout-validation.yml'
       - 'tests/observe_mint_checkout.py'
       - 'tests/test_mint_checkout_observer.py'
+      - 'tests/mint_session_archive_plan.py'
+      - 'tests/test_mint_session_archive_plan.py'
       - 'tests/fixtures/linuxmint-iso-signing.asc'
       - 'tests/ci_scope.py'
       - 'tests/test_ci_scope.py'
@@ -41,6 +43,8 @@ on:
       - '.github/workflows/mint-checkout-validation.yml'
       - 'tests/observe_mint_checkout.py'
       - 'tests/test_mint_checkout_observer.py'
+      - 'tests/mint_session_archive_plan.py'
+      - 'tests/test_mint_session_archive_plan.py'
       - 'tests/fixtures/linuxmint-iso-signing.asc'
       - 'tests/ci_scope.py'
       - 'tests/test_ci_scope.py'
@@ -67,6 +71,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_mint_media_workflow.py -v
           python3 -m unittest discover -s tests -p test_mint_runner_permissions.py -v
           python3 -m unittest discover -s tests -p test_mint_checkout_observer.py -v
+          python3 -m unittest discover -s tests -p test_mint_session_archive_plan.py -v
       - name: Lint only the infrastructure workflows
         uses: docker://rhysd/actionlint:1.7.7
         with:
