@@ -344,11 +344,15 @@ Remaining gates and limits:
    enforced by a filesystem quota. No kernel-level storage-reservation claim.
 4. No secure console controller, guest installation, real login/polkit interaction
    or guest cleanup has been implemented. The offline plan is not console proof.
-5. Do not create a PR against main with these new helper paths until a separate
-   infrastructure change has reviewed their exact CI scope classification and
-   mocked-only checks. Otherwise main's historical pipeline would classify these
-   paths as application changes and prepare installers. No CI classifier or
-   active workflow is changed by this helper implementation.
+5. Infrastructure integration adds only the three exact helper/test paths to the
+   existing CI scope exception. Hosted Ubuntu automatically runs static policy
+   checks and mocked helper tests; it never invokes the native ports. Both PR and
+   main-push path filters include these files. The signing-key fixture also
+   triggers these checks, but remains outside the installer-skip exception.
+   Unknown paths and mixed application changes retain application CI. The fixed
+   spare-host inventory workflow and its activation gates are unchanged. This
+   infrastructure PR must remain unmerged pending review; it authorizes no native
+   media or host operation.
 6. The next implementation-integration step must preserve fresh explicit approval
    for any runner registration/start, dispatch or self-review exception. ENABLED
    remains reported false; #73 remains draft/unmerged. Application/native-package

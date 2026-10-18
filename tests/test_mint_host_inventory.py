@@ -74,6 +74,31 @@ class InventoryPolicy(unittest.TestCase):
             self.assertFalse(application_required([path]))
             self.assertTrue(application_required([path, 'installer/src/App.tsx']))
 
+    def test_preparation_checks_are_automatic_mocked_only(self):
+        w = load('mint-host-inventory-checks.yml')
+        self.assertEqual(set(w['jobs']), {'policy'})
+        job = w['jobs']['policy']
+        self.assertNotIn('environment', job)
+        self.assertEqual(job['timeout-minutes'], '5')
+        self.assertEqual(w['on']['push']['branches'], ['main'])
+        for event in ('pull_request', 'push'):
+            self.assertEqual(set(w['on'][event]['paths']),
+                             MINT_INFRA_PATHS | {'tests/fixtures/linuxmint-iso-signing.asc'})
+        commands = [s['run'] for s in job['steps'] if 'run' in s]
+        self.assertEqual(commands, ["python3 -m pip install 'PyYAML==6.0.2'",
+            'python3 -m unittest discover -s tests -p test_mint_host_inventory.py -v\n'
+            'python3 -m unittest discover -s tests -p test_ci_scope.py -v\n'
+            'python3 -m unittest discover -s tests -p test_mint_media_console.py -v\n'])
+        self.assertEqual(job['steps'][0]['with']['persist-credentials'], 'false')
+
+    def test_scope_exception_does_not_expand_to_native_or_application_work(self):
+        for path in ('tests/fixtures/linuxmint-iso-signing.asc',
+                     'tests/mint_media_other.py',
+                     '.github/workflows/mint-media-prepare.yml',
+                     'installer/src/App.tsx', 'backend/linux/self-update.py'):
+            self.assertTrue(application_required([path]), path)
+            self.assertTrue(application_required(['tests/mint_media_native.py', path]), path)
+
 
 if __name__ == '__main__':
     unittest.main()
