@@ -263,3 +263,97 @@ or package/guest activity, or failed evidence persistence are stopping condition
 Current authorization ends with this preparation. It does not cover implementing
 or executing that workflow, creating a VM, guest package operations, updater
 fixtures, installed SDE changes, application builds/signing/releases or #73 merge.
+
+## Isolated helper implementation and local review
+
+The preparation-only proposal above now has isolated helper code; no executable
+entry point or workflow has been added. These modules are test infrastructure,
+not production updater code:
+
+- `tests/mint_media_console.py`: Mint-specific host gates, approved source/helper
+  bindings, pinned public-key hash, bounded transfer orchestration, strict GPG
+  status validation, exact Cinnamon selection, sealed-file read-back hashing,
+  stopped-run evidence and an offline console manifest. It does not launch QEMU.
+- `tests/mint_media_native.py`: explicitly constructed future native ports for
+  secure run-owned files, read-only host collection, fixed curl/GPG subprocesses
+  and bounded process/descriptor handling. Imports do not perform I/O. There is
+  no CLI, default activation, generic shell, package/runner executor or QEMU
+  launch method. Only curl and GPG are in the process allowlist.
+- `tests/test_mint_media_console.py`: in-memory orchestration tests and mocked
+  native adapters. Synthetic ISO bytes, detached-signature placeholders and GPG
+  status records are explicitly fixtures, not real authentication evidence.
+
+A future reviewed caller must collect actual host facts before workspace creation,
+validate the reviewed source SHA and helper hash against trusted approval values,
+supply the reviewed key bytes, and construct the ports explicitly. The helper
+compares those bindings; it does not independently establish Git provenance from
+arbitrary caller-supplied strings. Use Workspace as a context manager and propagate
+all close/cleanup exceptions. No such native caller is shipped in this step.
+
+Review fixes made before completion:
+
+- curl's first option disables ambient curlrc; redirects are handled explicitly,
+  never followed by curl. HTTPS/proxy/CA settings are preserved without logging
+  credentials. Fixed-origin/path redirects are limited to three; HTTP failures,
+  oversized/ambiguous headers, body-length mismatch and unexpected encoding stop.
+- Private GPG snapshots and a fresh keyring avoid interpreting a different
+  downloaded metadata pathname after signature verification. No ambient options,
+  auto key retrieval or autostart; the signer must match the pinned primary
+  fingerprint. Unknown ownertrust is not replaced with manufactured trust.
+- File identity/owner/mode/link checks, exclusive creation and collision refusal
+  precede writes. Transfer bounds are enforced before writing; received bytes
+  and sealed-file read-back hashes must both match. Final ISO publication never
+  overwrites an existing pathname. Failures retain unpromoted partial files.
+- Root directory identity excludes the link-count change caused by creating its
+  own GPG child directory; inode/device/owner/mode replacement still stops.
+  Directory inventories are bounded while iterating, not after an unbounded list.
+- Selector-initialization failure still reaps the owned tool child. Deadlines,
+  output overflow and uncertain process cleanup close the pipe/selector and
+  attempt cleanup of that child only. There is no installer/guest kill path.
+- Context-manager close attempts all tracked descriptors once, reports uncertain
+  closure and never retries a possibly reused descriptor number. Manifest-write
+  failure or failed failure-evidence persistence cannot return preparation Pass.
+- Console paths are canonical and argument-safe, sockets fit the Unix length
+  bound, and disk/socket collisions stop. The generated fixed argv has no NIC,
+  public socket, shared filesystem, SPICE or arbitrary extra configuration.
+  It is a proposal requiring fresh validation and authorization before any launch.
+
+Local QA: **36 mocked helper checks + 9 CI-scope checks + 3 existing inventory
+policy checks passed**. Python syntax/AST and staged whitespace checks passed.
+Mock coverage includes healthy orchestration, source/key/platform/privileged-group
+rejection, signer/expiry/duplicate metadata rejection, redirect limits, partial
+and corrupt transfers, deadlines/size bounds, disk read-back corruption,
+ownership replacement, socket injection/collision, fsync/manifest failure,
+selector failure, descriptor/process cleanup uncertainty and Mint host collection
+with all file/KVM operations mocked. No real download, GPG/curl process, ioctl,
+owned-native-filesystem experiment, QEMU process or spare-host action was run.
+
+Remaining gates and limits:
+
+1. Native mirror/TLS/proxy behavior, actual Mint GPG status/keyring filenames,
+   signed Cinnamon digest, host tool ancestry/dependencies, ext4/fsync/link
+   behavior and real child cleanup are unvalidated. Stop on unsupported behavior;
+   these mocks do not establish cryptographic or kernel correctness.
+2. Isolation assumes the dedicated account and reviewed helper/caller are trusted.
+   This is not a defense against malicious same-UID processes or a compromised
+   root host. chmod/read-back/identity checks are not immutable hardware attestation.
+3. Deadlines bound owned tool processes and checked stages; blocking filesystem
+   calls cannot be claimed hard-real-time. A future workflow needs the independent
+   25-minute bound and must treat interruption as an uncertain, non-resumable run.
+   GPG keyring growth is monitored/audited (1 MiB, fixed known public key), not
+   enforced by a filesystem quota. No kernel-level storage-reservation claim.
+4. No secure console controller, guest installation, real login/polkit interaction
+   or guest cleanup has been implemented. The offline plan is not console proof.
+5. Do not create a PR against main with these new helper paths until a separate
+   infrastructure change has reviewed their exact CI scope classification and
+   mocked-only checks. Otherwise main's historical pipeline would classify these
+   paths as application changes and prepare installers. No CI classifier or
+   active workflow is changed by this helper implementation.
+6. The next implementation-integration step must preserve fresh explicit approval
+   for any runner registration/start, dispatch or self-review exception. ENABLED
+   remains reported false; #73 remains draft/unmerged. Application/native-package
+   workflows, guest tests, build/signing/release work remain deferred.
+
+Diagnostic result: local mocked checks Pass. Native media authentication: NotRun.
+Native cleanup correctness/authentication safety: unproven. Whole-host cleanup:
+NotRun. Production readiness: false. Historical #72 failures remain preserved.
