@@ -1211,3 +1211,24 @@ verified delivery/gate-attestation/report supervisor; then separately authorized
 native setup with read-only reconciliation on any uncertainty. No host/session
 operation, activation change, runner action, dispatch, media download, guest,
 package/build/release operation or #73 merge is authorized or performed here.
+
+### Inspector/executor source review corrections
+
+Revalidation now checks journal linked identity/mode/link count/size and exact
+persisted bytes before allowing the next mutation; it no longer assumes a journal
+is safe merely because creation succeeded. Work-root creation repeats archived
+path/process/journal revalidation before using the fresh source descriptor.
+Same-length journal content replacement is detected before another append, and
+journal replacement/readback failure prevents progression. The return report now
+retains separate descriptor, umask and signal restoration outcomes so simultaneous
+cleanup uncertainties cannot overwrite one another. ClosedAsReported refers only
+to this invocation's owned descriptors, not whole-host cleanup or native proof.
+
+Review QA: **165 mocked/static checks passed**, including 31 inspector/controller
+checks. Added cases verify pre-append journal-content rejection, journal validation
+at revalidation/work-creation boundaries and simultaneous cleanup failure evidence.
+Focused infrastructure actionlint, whitespace and full-branch exact scope checks
+passed. No native inspector, rename, archival, process scan, runner or host action
+was executed. The earlier 162-check implementation result remains historical;
+current local results still do not validate kernel atomicity, native proc/pidfd
+behavior, durable crash recovery or execution-supervisor/report delivery.

@@ -99,6 +99,14 @@ class Controller(unittest.TestCase):
         self.umask.side_effect=[0o022,OSError('uncertain')]
         self.assertEqual(self.execute()['reason'],'UMASK_RESTORE_UNCERTAIN')
 
+    def test_multiple_cleanup_uncertainties_are_preserved(self):
+        self.ports.cleanup.side_effect=OSError('descriptor uncertain')
+        self.umask.side_effect=[0o022,OSError('mask uncertain')]
+        report=self.execute()
+        self.assertFalse(report['passed'])
+        self.assertEqual(report['cleanupStatus'],dict(descriptors='Uncertain',
+                         umask='Uncertain',signals='Restored'))
+
     def test_sigterm_handler_stops_and_is_restored(self):
         def interrupt():
             handler=self.signal.call_args_list[0].args[1]
@@ -230,6 +238,30 @@ class Ports(unittest.TestCase):
         with patch.object(n.os,'mkdir') as mkdir,self.assertRaisesRegex(n.Stop,'DEADLINE'):
             ports.create_directory('fixed',7)
         mkdir.assert_not_called()
+
+    def test_journal_content_tampering_is_rejected_before_append(self):
+        ports=self.native();ports.journal=10;ports.journal_bytes=b'abc'
+        correct=info(mode=0o100600,ino=77,size=3)
+        ports.journal_signature=n.sig(correct)
+        with patch.object(n.os,'fstat',return_value=correct), \
+             patch.object(n.os,'stat',return_value=correct), \
+             patch.object(n.os,'pread',return_value=b'bad'), \
+             patch.object(n.os,'write') as write,self.assertRaisesRegex(n.Stop,'JOURNAL_READBACK'):
+            ports.record('rename-pending',{})
+        write.assert_not_called()
+
+    def test_revalidation_requires_journal_and_work_creation_revalidation(self):
+        ports=self.native();ports.pinned=[]
+        with patch.object(ports,'quiescence'),patch.object(ports,'local_registration_absent'), \
+             patch.object(ports,'journal_info',side_effect=n.Stop('JOURNAL_CHANGED')) as journal, \
+             self.assertRaisesRegex(n.Stop,'JOURNAL_CHANGED'):
+            ports.revalidate(archived=True,journal=True)
+        journal.assert_called_once_with()
+        with patch.object(ports,'revalidate',side_effect=n.Stop('JOURNAL_CHANGED')) as revalidate, \
+             patch.object(n.os,'stat') as metadata,patch.object(n.os,'mkdir') as mkdir, \
+             self.assertRaisesRegex(n.Stop,'JOURNAL_CHANGED'):ports.create_work()
+        revalidate.assert_called_once_with(archived=True,journal=True)
+        metadata.assert_not_called();mkdir.assert_not_called()
 
     def test_proc_parser_uses_kernel_uid_parent_and_start_time(self):
         ports=self.native()

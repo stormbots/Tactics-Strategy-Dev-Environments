@@ -259,7 +259,9 @@ class Native:
         self.local_registration_absent()
         if not archived:
             self.absent(self.home, ARCHIVE)
-        if not journal:
+        if journal:
+            self.journal_info()
+        else:
             self.absent(self.home, JOURNAL)
 
     def create_journal(self):
@@ -279,6 +281,8 @@ class Native:
              stat.S_IMODE(info.st_mode) == 0o600 and info.st_nlink == 1 and
              linked.st_nlink == 1 and sig(info) == sig(linked) == self.journal_signature and
              info.st_size == len(self.journal_bytes), 'JOURNAL_CHANGED')
+        need(os.pread(self.journal, plan.RECORD_LIMIT + 1, 0) == self.journal_bytes,
+             'JOURNAL_READBACK')
 
     def record(self, phase, data):
         self.journal_info()
@@ -324,6 +328,7 @@ class Native:
         return list(sig(os.fstat(self.fresh))[:2])
 
     def create_work(self):
+        self.revalidate(archived=True, journal=True)
         need(sig(os.stat(SOURCE, dir_fd=self.home, follow_symlinks=False)) ==
              sig(os.fstat(self.fresh)), 'FRESH_PATH_CHANGED')
         self.work = self.create_directory('_work-private', self.fresh)
@@ -356,6 +361,7 @@ def execute(ports, gates, *, authorized=False):
     reason = 'NOT_AUTHORIZED'
     old_mask = None
     handlers = []
+    cleanup_status = dict(descriptors='NotAttempted', umask='Unchanged', signals='Unchanged')
     opened = False
     ready = False
     requested = False
@@ -429,21 +435,28 @@ def execute(ports, gates, *, authorized=False):
         try:
             if opened:
                 ports.cleanup()
+                cleanup_status['descriptors'] = 'ClosedAsReported'
         except (Exception, KeyboardInterrupt):
             passed = False
             reason = 'CLOSE_UNCERTAIN'
+            cleanup_status['descriptors'] = 'Uncertain'
         if old_mask is not None:
             try:
                 os.umask(old_mask)
+                cleanup_status['umask'] = 'Restored'
             except (Exception, KeyboardInterrupt):
                 passed = False
                 reason = 'UMASK_RESTORE_UNCERTAIN'
+                cleanup_status['umask'] = 'Uncertain'
+        if handlers:
+            cleanup_status['signals'] = 'Restored'
         for signum, previous in reversed(handlers):
             try:
                 signal.signal(signum, previous)
             except (Exception, KeyboardInterrupt):
                 passed = False
                 reason = 'SIGNAL_RESTORE_UNCERTAIN'
+                cleanup_status['signals'] = 'Uncertain'
         if passed:
             try:
                 ports.check()
@@ -454,5 +467,6 @@ def execute(ports, gates, *, authorized=False):
     if type(rename_errno) is not int or not 0 <= rename_errno <= 4095:
         rename_errno = None
     return dict(renameErrno=rename_errno, passed=passed, reason=reason, lastKnownPhase=phase,
+                cleanupStatus=cleanup_status,
                 nativeValidated=False, authenticationSafety='NotValidated',
                 wholeHostCleanupPerformed=False, retryAuthorized=False)
