@@ -1,6 +1,7 @@
 """Read-only regression checks for the provisioning safety contract."""
 from pathlib import Path
 import re, unittest
+import yaml
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
@@ -34,7 +35,11 @@ class Backends(unittest.TestCase):
         self.assertNotIn('fs:',cap)
     def test_release_gate(self):
         workflow=self.text('.github/workflows/build-dev-setup.yml')
-        self.assertIn('needs: [checks, native, update-trust]',workflow)
+        release = yaml.load(workflow, Loader=yaml.BaseLoader)['jobs']['release']
+        self.assertTrue({'checks', 'native', 'update-trust', 'desktop-check'} <= set(release['needs']))
+        self.assertIn("github.event_name == 'workflow_dispatch'", release['if'])
+        for choice in ('build_installers', 'run_native_packages', 'publish_prerelease'):
+            self.assertIn('inputs.' + choice, release['if'])
         self.assertIn('environment: sde-release-signing',workflow)
         self.assertIn('dist/sde-update.json dist/sde-update.json.minisig',workflow)
         self.assertIn('--verify-tag --prerelease',workflow)

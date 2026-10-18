@@ -5,12 +5,25 @@ on:
     tags: ['v1.1.*', 'v1.2.*', '!v1.2.2', '!v1.2.3']
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_installers:
+        description: Build unsigned NSIS/DEB installer artifacts (no publication by default)
+        type: boolean
+        default: false
+      run_native_packages:
+        description: Execute disposable native installs/upgrades and maintenance integration tests (requires build_installers)
+        type: boolean
+        default: false
+      publish_prerelease:
+        description: Sign and publish a prerelease (requires both options above, an eligible release ref and signing approval)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 concurrency:
-  group: dev-setup-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: dev-setup-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   scope:
@@ -18,6 +31,20 @@ jobs:
     outputs:
       application_required: ${{ steps.scope.outputs.application_required }}
     steps:
+      - name: Validate explicit dispatch choices
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          BUILD_INSTALLERS: ${{ inputs.build_installers }}
+          RUN_NATIVE_PACKAGES: ${{ inputs.run_native_packages }}
+          PUBLISH_PRERELEASE: ${{ inputs.publish_prerelease }}
+        run: |
+          set -euo pipefail
+          if [[ "$RUN_NATIVE_PACKAGES" = true || "$PUBLISH_PRERELEASE" = true ]]; then
+            test "$BUILD_INSTALLERS" = true
+          fi
+          if [[ "$PUBLISH_PRERELEASE" = true ]]; then
+            test "$RUN_NATIVE_PACKAGES" = true
+          fi
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -41,6 +68,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install workflow-policy test dependency
+        run: python3 -m pip install 'PyYAML==6.0.2'
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -58,7 +90,11 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_metadata.py'
           python3 -m unittest discover -s tests -p 'test_linux_runtime.py'
           python3 -m unittest discover -s tests -p 'test_schedule.py'
-          sudo env SDE_REQUIRE_SCHEDULE_SYSTEMD=1 python3 -m unittest discover -s tests -p 'test_schedule.py'
+          python3 -m unittest discover -s tests -p 'test_app_update_package_hooks.py'
+          python3 -m unittest discover -s tests -p 'test_app_only_request.py'
+          python3 -m unittest discover -s tests -p 'test_ci_boundaries.py'
+          python3 -m unittest discover -s tests -p 'test_ci_failure_report.py'
+          python3 -m unittest discover -s tests -p 'test_native_ci_evidence.py'
           cd linux
           sha256sum --check SHA256SUMS
       - name: Validate Actions definitions
@@ -92,10 +128,14 @@ jobs:
         with:
           workspaces: updater -> target
       - name: Native cross-process coordination contracts
+        shell: bash
         env:
           SDE_REQUIRE_COORDINATION: ${{ runner.os == 'Windows' && '1' || '' }}
         run: |
-          cargo test --locked --manifest-path coordination/Cargo.toml
+          if ! cargo test --locked --manifest-path coordination/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/coordination-tests.log"; then
+            python3 tests/report_ci_failure.py "$RUNNER_TEMP/coordination-tests.log"
+            exit 1
+          fi
           cargo fmt --manifest-path coordination/Cargo.toml --check
           cargo clippy --locked --manifest-path coordination/Cargo.toml --all-targets -- -D warnings
       - name: Root-owned coordination contracts
@@ -117,21 +157,50 @@ jobs:
         run: |
           sudo env "PATH=$PATH" "CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}" "RUSTUP_HOME=${RUSTUP_HOME:-$HOME/.rustup}" SDE_REQUIRE_PROTECTED_STAGING=1 cargo test --locked --manifest-path updater/Cargo.toml --lib -- --nocapture
       - name: Verifier formatting and static analysis
+        shell: bash
         run: |
           cargo fmt --manifest-path updater/Cargo.toml --check
           cargo clippy --locked --manifest-path updater/Cargo.toml --all-targets -- -D warnings
-      - name: Build pinned-key verifier
-        run: cargo build --release --locked --manifest-path updater/Cargo.toml
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sde-update-trust-${{ runner.os }}
-          path: |
-            updater/target/release/sde-update-trust
-            updater/target/release/sde-update-trust.exe
-          if-no-files-found: error
-  native:
+      - name: Windows package-hook parser contracts (no packaging execution)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/Test-AppUpdatePackageHooksLocal.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Windows hook local checks failed.' }
+  desktop-check:
     needs: scope
     if: needs.scope.outputs.application_required == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: installer/src-tauri -> target
+      - name: Linux development dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Prepare frontend assets for compilation
+        working-directory: installer
+        run: npm ci && npm run build
+      - name: Compile desktop and test targets without bundling
+        run: cargo check --locked --manifest-path installer/src-tauri/Cargo.toml --all-targets
+      - name: Desktop Rust unit tests (no installed update fixture)
+        run: cargo test --locked --manifest-path installer/src-tauri/Cargo.toml
+  native:
+    needs: [scope, checks, update-trust, desktop-check]
+    if: github.event_name == 'workflow_dispatch' && inputs.build_installers
     strategy:
       fail-fast: false
       matrix:
@@ -163,15 +232,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - name: Initialize coordination on disposable native runners
+        if: inputs.run_native_packages
         run: cargo build --release --locked --manifest-path coordination/Cargo.toml
       - name: Prepare Windows coordination fixtures
-        if: runner.os == 'Windows'
+        if: inputs.run_native_packages && runner.os == 'Windows'
         shell: pwsh
         run: |
           ./coordination/target/release/sde-coordination.exe init
           if ($LASTEXITCODE -ne 0) { throw 'Coordination initialization failed.' }
       - name: Prepare Linux coordination fixtures
-        if: runner.os == 'Linux'
+        if: inputs.run_native_packages && runner.os == 'Linux'
         run: sudo coordination/target/release/sde-coordination init
       - name: Package the existing Chocolatey backend
         if: runner.os == 'Windows'
@@ -182,6 +252,10 @@ jobs:
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
           $errors = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error
           if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
+      - name: Windows maintenance integration on disposable runner
+        if: inputs.run_native_packages && runner.os == 'Windows'
+        shell: pwsh
+        run: |
           & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-CoordinationCI.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Coordination supervision failed.' }
           ./tests/Test-BackendContracts.ps1
@@ -239,7 +313,7 @@ jobs:
           sha256sum "$ASSET" > "$ASSET.sha256"
           sha256sum --check "$ASSET.sha256"
       - name: Verify Windows application bootstrap without applying a baseline
-        if: runner.os == 'Windows'
+        if: inputs.run_native_packages && runner.os == 'Windows'
         shell: pwsh
         run: |
           $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
@@ -294,11 +368,8 @@ jobs:
             cargo test --locked --manifest-path updater/Cargo.toml --lib host::tests::installed_native_fixture_identity -- --exact --nocapture
             if ($LASTEXITCODE -ne 0) { throw 'Installed native identity failed before provisioning.' }
           } finally { Remove-Item Env:SDE_APPONLY_IDENTITY_FIXTURE }
-      - name: Rust tests
-        run: cargo test --locked -- --nocapture
-        working-directory: installer/src-tauri
       - name: Build unpublished newer Windows fixture and verify signed SYSTEM upgrade
-        if: runner.os == 'Windows'
+        if: inputs.run_native_packages && runner.os == 'Windows'
         shell: pwsh
         run: |
           $override = Join-Path $env:RUNNER_TEMP 'sde-native-fixture.json'
@@ -321,9 +392,10 @@ jobs:
           & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File tests/Test-WindowsSelfUpdateCI.ps1 -FixtureRoot $fixture -TestExecutable $binaries[0].executable
           if ($LASTEXITCODE -ne 0) { throw 'Required signed SYSTEM upgrade failed.' }
       - name: Verify Linux application bootstrap without applying a baseline
-        if: runner.os == 'Linux'
+        if: inputs.run_native_packages && runner.os == 'Linux'
         shell: bash
         run: |
+          sudo env SDE_REQUIRE_SCHEDULE_SYSTEMD=1 python3 -m unittest discover -s tests -p 'test_schedule.py'
           test ! -e /var/lib/skyview-robotics/student-dev/version
           sudo apt-get install -y ./dist/Skyview-Dev-Setup-LinuxMint-amd64.deb
           test -r /var/lib/skyview-robotics-coordination/sessions.gate
@@ -331,7 +403,7 @@ jobs:
           test "$(coordination/target/release/sde-coordination status)" = '"idle"'
           test ! -e /var/lib/skyview-robotics/student-dev/version
       - name: Required signed upgrade on Linux Mint 22.3
-        if: runner.os == 'Linux'
+        if: inputs.run_native_packages && runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -347,6 +419,11 @@ jobs:
           bash tests/Prepare-MintNativeCI.sh
           mkdir -p "$RUNNER_TEMP/sde-evidence"
           docker run --rm --user 0 -e GITHUB_ACTIONS=true --mount "type=bind,src=$PWD,dst=/work,readonly" --mount "type=bind,src=$RUNNER_TEMP/sde-evidence,dst=/evidence" --entrypoint /bin/bash sde-mint22.3-native /work/tests/Test-LinuxSelfUpdateCI.sh
+      - name: Explicitly authorized desktop native package integration
+        if: inputs.run_native_packages && runner.os == 'Windows'
+        env:
+          SDE_RUN_NATIVE_PACKAGES: '1'
+        run: cargo test --locked --manifest-path installer/src-tauri/Cargo.toml github_runner_ -- --ignored --test-threads=1
       - name: Retain Windows native verification evidence
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
@@ -369,8 +446,8 @@ jobs:
             dist/${{ matrix.asset }}.sha256
           if-no-files-found: error
   release:
-    needs: [checks, native, update-trust]
-    if: github.ref != 'refs/heads/release/v1.2.uat' && github.ref != 'refs/tags/v1.2.2' && github.ref != 'refs/tags/v1.2.3' && (startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.') || startsWith(github.ref, 'refs/tags/v1.2.') || startsWith(github.ref, 'refs/heads/release/v1.2.'))
+    needs: [checks, native, update-trust, desktop-check]
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_prerelease && inputs.build_installers && inputs.run_native_packages && github.ref != 'refs/heads/release/v1.2.uat' && github.ref != 'refs/tags/v1.2.2' && github.ref != 'refs/tags/v1.2.3' && (startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.') || startsWith(github.ref, 'refs/tags/v1.2.') || startsWith(github.ref, 'refs/heads/release/v1.2.'))
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     permissions:

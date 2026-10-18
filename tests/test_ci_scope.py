@@ -66,7 +66,7 @@ class CiScope(unittest.TestCase):
             with self.subTest(change=change):
                 before, after = self.workflows()
                 if change == "steps":
-                    after["jobs"]["native"]["steps"].append({"run": "new build step"})
+                    after["jobs"]["desktop-check"]["steps"].append({"run": "new build step"})
                 elif change == "release":
                     after["jobs"]["release"]["if"] = "always"
                 elif change == "trigger":

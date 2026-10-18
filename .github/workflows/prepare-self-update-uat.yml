@@ -1,17 +1,11 @@
 name: Prepare signed self-update UAT pair
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/prepare-self-update-uat.yml'
-      - 'tests/prepare_uat_version.py'
-      - 'tests/test_uat_version.py'
-      - 'tests/Probe-NativeUpgrade.ps1'
-      - 'tests/Test-MintUatPairCI.sh'
-      - 'linux/self-update/**'
-      - 'linux/lib/schedule.py'
-      - 'tests/test_schedule.py'
   workflow_dispatch:
     inputs:
+      publish_prerelease:
+        description: Sign and publish candidates after native validation and signing approval (default builds/tests only)
+        type: boolean
+        default: false
       compact_controls:
         description: Publish only the new 1.2.9 compact appearance candidate; 1.2.8 is an unpublished upgrade fixture
         type: boolean
@@ -47,7 +41,7 @@ jobs:
   source:
     runs-on: ubuntu-24.04
     steps:
-      - name: Require reviewed main source for signing dispatch
+      - name: Validate candidate choice and reviewed source before publication
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -57,6 +51,7 @@ jobs:
           LOGS_MIGRATION: ${{ inputs.logs_migration }}
           MIGRATION: ${{ inputs.migration }}
           CORRECTION: ${{ inputs.correction }}
+          PUBLISH_PRERELEASE: ${{ inputs.publish_prerelease }}
         run: |
           set -euo pipefail
           selected=0
@@ -64,16 +59,18 @@ jobs:
             if [[ "$option" = true ]]; then selected=$((selected + 1)); fi
           done
           test "$selected" -le 1
-          test "$GITHUB_REF" = refs/heads/release/v1.2.uat
-          main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
-          test "$main" = "$GITHUB_SHA"
+          if [[ "$PUBLISH_PRERELEASE" = true ]]; then
+            test "$GITHUB_REF" = refs/heads/release/v1.2.uat
+            main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            test "$main" = "$GITHUB_SHA"
+          fi
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s tests -p 'test_uat_version.py'
 
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: ${{ (inputs.compact_controls || github.event_name == 'pull_request') && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
+      BUILD_VERSIONS: ${{ inputs.compact_controls && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
     strategy:
       fail-fast: false
       matrix:
@@ -175,7 +172,7 @@ jobs:
           if-no-files-found: warn
 
   sign-publish:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_prerelease
     needs: [source, build-pair]
     runs-on: ubuntu-24.04
     environment: sde-release-signing
@@ -189,7 +186,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Require successful full repository/native checks on this exact main commit
+      - name: Require automatic validation and explicit native upgrade proof on this exact main commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -202,6 +199,8 @@ jobs:
           runs = json.load(open(sys.argv[1]))['workflow_runs']
           assert any(r['head_branch'] == 'main' for r in runs), 'Successful main verification required'
           PY
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-dev-setup.yml/runs?head_sha=$GITHUB_SHA&status=success&event=workflow_dispatch&per_page=100" > "$RUNNER_TEMP/native-runs.json"
+          python3 tests/verify_native_ci.py "$RUNNER_TEMP/native-runs.json"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: uat-pair-*

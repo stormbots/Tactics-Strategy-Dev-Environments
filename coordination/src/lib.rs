@@ -28,7 +28,7 @@ impl std::fmt::Display for Error {
             }
             Self::Untrusted => "SDE coordination storage failed its security checks.",
             Self::NeedsRepair => {
-                "Existing maintenance needs one mentor-approved Repair to enable safe coordination."
+                "Installed components do not support safe coordination. Mentor review or a compatible update is required."
             }
         })
     }
@@ -51,9 +51,10 @@ pub fn root() -> PathBuf {
 pub struct Lease {
     _file: File,
 }
-/// Retains both gates; dropping either after a failed acquisition leaves no lock.
+/// Retains installation ownership through postchecks and durable completion.
 #[derive(Debug)]
 pub struct Installation {
+    _admission: Option<Lease>,
     _operation: Lease,
     _sessions: Lease,
     directory: PathBuf,
@@ -73,7 +74,95 @@ pub fn initialize() -> Result<()> {
     initialize_at(&root())
 }
 pub fn session() -> Result<Lease> {
-    acquire_at(&root(), "sessions.gate", true)
+    session_at(&root())
+}
+/// Preparation owns O without blocking existing or new sessions.
+#[derive(Debug)]
+pub struct Preparation {
+    operation: Lease,
+    directory: PathBuf,
+}
+/// Admission is closed. Busy session acquisition retains O and A for the caller's
+/// bounded wait; dropping this value safely releases both before commitment.
+#[derive(Debug)]
+pub struct Admission {
+    preparation: Preparation,
+    admission: Lease,
+}
+/// Coordination prerequisite only, not full Update Now feature enablement.
+/// Platform bootstrap, request, deadline and package-hook validation remain gates.
+pub fn prepare_app_only() -> Result<Preparation> {
+    let dir = root();
+    let preparation = prepare_at(&dir)?;
+    compatible_maintenance_marker("# SDE_COORDINATION_ADMISSION_V2")?;
+    // Missing admission support is not silently repaired or treated as legacy-safe.
+    drop(acquire_at(&dir, "admission.gate", true)?);
+    Ok(preparation)
+}
+fn prepare_at(dir: &Path) -> Result<Preparation> {
+    let operation = acquire_at(dir, "operations.gate", false)?;
+    no_interruption(dir)?;
+    Ok(Preparation {
+        operation,
+        directory: dir.to_path_buf(),
+    })
+}
+impl Preparation {
+    pub fn close_admission(self) -> Result<Admission> {
+        let admission = acquire_at(&self.directory, "admission.gate", false)?;
+        no_interruption(&self.directory)?;
+        Ok(Admission {
+            preparation: self,
+            admission,
+        })
+    }
+}
+impl Admission {
+    /// Consuming transition returns ownership on failure, including Busy. No
+    /// lease is reacquired and no caller may accidentally lose admission while
+    /// polling existing sessions. The future worker must enforce its deadline.
+    pub fn try_installation(self) -> std::result::Result<Installation, (Error, Self)> {
+        let sessions = match no_interruption(&self.preparation.directory)
+            .and_then(|()| acquire_at(&self.preparation.directory, "sessions.gate", false))
+        {
+            Ok(lease) => lease,
+            Err(error) => return Err((error, self)),
+        };
+        Ok(Installation {
+            _operation: self.preparation.operation,
+            _admission: Some(self.admission),
+            _sessions: sessions,
+            directory: self.preparation.directory,
+        })
+    }
+}
+fn startup<L>(
+    mut intent: impl FnMut() -> Result<()>,
+    mut gate: impl FnMut(bool) -> Result<L>,
+) -> Result<L> {
+    intent()?;
+    let admission = gate(true)?;
+    intent()?;
+    let session = gate(false)?;
+    intent()?;
+    drop(admission);
+    Ok(session)
+}
+fn session_at(dir: &Path) -> Result<Lease> {
+    startup(
+        || no_interruption(dir),
+        |admission| {
+            acquire_at(
+                dir,
+                if admission {
+                    "admission.gate"
+                } else {
+                    "sessions.gate"
+                },
+                true,
+            )
+        },
+    )
 }
 pub fn operation() -> Result<Lease> {
     let dir = root();
@@ -87,28 +176,28 @@ pub fn installation() -> Result<Installation> {
     Ok(lease)
 }
 pub fn status() -> Status {
-    let dir = root();
-    match acquire_at(&dir, "operations.gate", false).and_then(|_lease| no_interruption(&dir)) {
-        Ok(()) => match acquire_at(&dir, "sessions.gate", false) {
-            Ok(_) => match compatible_maintenance() {
-                Ok(()) => Status::Idle,
-                Err(_) => Status::NeedsRepair,
-            },
-            Err(Error::Busy) => Status::Busy,
-            Err(Error::Untrusted) => Status::Untrusted,
-            Err(_) => Status::Unavailable,
-        },
+    match idle_at(&root(), compatible_maintenance) {
+        Ok(()) => Status::Idle,
         Err(Error::Busy) => Status::Busy,
         Err(Error::Interrupted) => Status::Interrupted,
         Err(Error::Untrusted) => Status::Untrusted,
+        Err(Error::NeedsRepair) => Status::NeedsRepair,
         Err(_) => Status::Unavailable,
     }
+}
+
+fn idle_at(dir: &Path, compatible: impl FnOnce() -> Result<()>) -> Result<()> {
+    let _installation = installation_at(dir)?;
+    compatible()
 }
 
 /// An older deployed scheduler cannot participate in new locks. Never report
 /// installation readiness until its existing entry point has been migrated by
 /// an explicit mentor baseline Repair; app installation does not apply a baseline.
 fn compatible_maintenance() -> Result<()> {
+    compatible_maintenance_marker("# SDE_COORDINATION_V1")
+}
+fn compatible_maintenance_marker(marker: &str) -> Result<()> {
     #[cfg(unix)]
     let paths = [
         "/usr/local/sbin/skyview-student-dev-update",
@@ -119,14 +208,23 @@ fn compatible_maintenance() -> Result<()> {
         r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1",
         r"C:\ProgramData\SkyviewRobotics\Coordination.ps1",
     ];
-    if !Path::new(paths[0])
-        .try_exists()
-        .map_err(|_| Error::NeedsRepair)?
-    {
-        return Ok(());
+    compatible_maintenance_at(&paths.map(Path::new), marker)
+}
+fn compatible_maintenance_at(paths: &[&Path; 2], marker: &str) -> Result<()> {
+    // lstat distinguishes true absence from a dangling link. A partial deployment
+    // is not an application-only machine with no maintenance installation.
+    let present = paths.map(|path| match std::fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(_) => Err(Error::NeedsRepair),
+    });
+    match (present[0], present[1]) {
+        (Ok(false), Ok(false)) => return Ok(()),
+        (Ok(true), Ok(true)) => (),
+        _ => return Err(Error::NeedsRepair),
     }
     for name in paths {
-        let path = Path::new(name);
+        let path = *name;
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
@@ -146,20 +244,26 @@ fn compatible_maintenance() -> Result<()> {
         File::open(path)
             .and_then(|file| file.take(65537).read_to_end(&mut bytes))
             .map_err(|_| Error::NeedsRepair)?;
-        if bytes.len() > 65536 || !String::from_utf8_lossy(&bytes).contains("# SDE_COORDINATION_V1")
-        {
+        if bytes.len() > 65536 || !has_marker(&bytes, marker) {
             return Err(Error::NeedsRepair);
         }
     }
     Ok(())
 }
+fn has_marker(bytes: &[u8], marker: &str) -> bool {
+    std::str::from_utf8(bytes).is_ok_and(|text| text.lines().any(|line| line == marker))
+}
+
 fn no_interruption(dir: &Path) -> Result<()> {
     let entries = std::fs::read_dir(dir).map_err(|_| Error::Unavailable)?;
     for (count, entry) in entries.enumerate() {
         if count > 32 {
             return Err(Error::Untrusted);
         }
-        if entry.map_err(|_| Error::Unavailable)?.file_name() == "transaction.json" {
+        if matches!(
+            entry.map_err(|_| Error::Unavailable)?.file_name().to_str(),
+            Some("transaction.json" | "installation-scope.json")
+        ) {
             return Err(Error::Interrupted);
         }
     }
@@ -170,6 +274,7 @@ fn installation_at(dir: &Path) -> Result<Installation> {
     no_interruption(dir)?;
     let sessions = acquire_at(dir, "sessions.gate", false)?;
     Ok(Installation {
+        _admission: None,
         _operation: operation,
         _sessions: sessions,
         directory: dir.to_path_buf(),
@@ -201,7 +306,7 @@ fn initialize_at(dir: &Path) -> Result<()> {
         Err(_) => return Err(Error::Unavailable),
     }
     validate_dir(dir)?;
-    for name in ["sessions.gate", "operations.gate"] {
+    for name in ["sessions.gate", "operations.gate", "admission.gate"] {
         match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -274,37 +379,76 @@ pub struct Transaction<'a> {
     _installation: &'a Installation,
     file: Option<File>,
     path: PathBuf,
+    scope_path: Option<PathBuf>,
 }
+fn create_intent(path: &Path) -> Result<File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        if unsafe { libc::geteuid() } != 0 {
+            return Err(Error::Untrusted);
+        }
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(path)
+            .map_err(|_| Error::Interrupted)
+    }
+    #[cfg(windows)]
+    {
+        windows::journal(path)
+    }
+}
+
 impl Installation {
     pub fn begin_transaction(&self) -> Result<Transaction<'_>> {
+        self.begin_transaction_with_scope(false)
+    }
+    /// App-only package hooks must preserve maintenance configuration. Only an
+    /// admission-owning Installation can publish this scoped transaction.
+    pub fn begin_app_only_transaction(&self) -> Result<Transaction<'_>> {
+        if self._admission.is_none() {
+            return Err(Error::NeedsRepair);
+        }
+        self.begin_transaction_with_scope(true)
+    }
+    fn begin_transaction_with_scope(&self, app_only: bool) -> Result<Transaction<'_>> {
         use std::io::Write;
         let path = self.directory.join("transaction.json");
-        #[cfg(unix)]
-        let mut file = {
-            use std::os::unix::fs::OpenOptionsExt;
-            if unsafe { libc::geteuid() } != 0 {
-                return Err(Error::Untrusted);
-            }
-            std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .mode(0o600)
-                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
-                .open(&path)
-                .map_err(|_| Error::Interrupted)?
-        };
-        #[cfg(windows)]
-        let mut file = windows::journal(&path)?;
-        let record =
+        let mut file = create_intent(&path)?;
+        let mut record =
             serde_json::json!({"schema": 1, "pid": std::process::id(), "kind": "installation"});
+        if app_only {
+            record["scope"] = serde_json::json!("app_only");
+        }
         file.write_all(record.to_string().as_bytes())
             .and_then(|_| file.sync_all())
             .map_err(|_| Error::Unavailable)?;
         sync_directory(&self.directory)?;
+        #[cfg(windows)]
+        let file = windows::seal_journal(file, &path)?;
+        // A separate closed hint is readable by packaging even when an older
+        // updater retains its legacy exclusive journal handle. No legacy worker
+        // publishes this hint. Native launch occurs only after both are durable.
+        let scope_path = if app_only {
+            let path = self.directory.join("installation-scope.json");
+            let mut hint = create_intent(&path)?;
+            hint.write_all(br#"{"schema":1,"kind":"installation","scope":"app_only"}"#)
+                .and_then(|_| hint.sync_all())
+                .map_err(|_| Error::Unavailable)?;
+            drop(hint);
+            sync_directory(&self.directory)?;
+            Some(path)
+        } else {
+            None
+        };
         Ok(Transaction {
             _installation: self,
             file: Some(file),
             path,
+            scope_path,
         })
     }
 }
@@ -312,11 +456,19 @@ impl Transaction<'_> {
     /// Call only after the native installer and all package children end with a
     /// known outcome. Unknown completion must retain the record.
     pub fn complete(mut self) -> Result<()> {
-        self.file
-            .take()
-            .ok_or(Error::Unavailable)?
-            .sync_all()
-            .map_err(|_| Error::Unavailable)?;
+        // Remove the hint first, while the journal still blocks legacy/new
+        // workers. A failure must never remove the recovery barrier first.
+        if let Some(path) = &self.scope_path {
+            std::fs::remove_file(path).map_err(|_| Error::Unavailable)?;
+            sync_directory(path.parent().ok_or(Error::Unavailable)?)?;
+        }
+        let file = self.file.take().ok_or(Error::Unavailable)?;
+        // Windows retains a read-only handle after the creation writer is
+        // durably flushed. FlushFileBuffers requires write access; there are no
+        // subsequent journal writes to flush. Close before terminal deletion.
+        #[cfg(not(windows))]
+        file.sync_all().map_err(|_| Error::Unavailable)?;
+        drop(file);
         std::fs::remove_file(&self.path).map_err(|_| Error::Unavailable)?;
         sync_directory(self.path.parent().ok_or(Error::Unavailable)?)
     }
@@ -387,18 +539,293 @@ mod tests {
         }
     }
     #[test]
+    fn startup_checks_each_boundary_and_releases_every_temporary_lease() {
+        use std::cell::{Cell, RefCell};
+        use std::rc::Rc;
+        struct Token(Rc<Cell<usize>>);
+        impl Drop for Token {
+            fn drop(&mut self) {
+                self.0.set(self.0.get() - 1);
+            }
+        }
+        for blocked_check in 0..=3 {
+            let checks = Cell::new(0);
+            let live = Rc::new(Cell::new(0));
+            let order = RefCell::new(Vec::new());
+            let result = startup(
+                || {
+                    checks.set(checks.get() + 1);
+                    order.borrow_mut().push("I");
+                    if checks.get() == blocked_check {
+                        Err(Error::Interrupted)
+                    } else {
+                        Ok(())
+                    }
+                },
+                |admission| {
+                    order.borrow_mut().push(if admission { "A" } else { "S" });
+                    live.set(live.get() + 1);
+                    Ok(Token(live.clone()))
+                },
+            );
+            if blocked_check == 0 {
+                assert!(result.is_ok());
+                assert_eq!(*order.borrow(), ["I", "A", "I", "S", "I"]);
+                assert_eq!(live.get(), 1);
+            } else {
+                assert!(matches!(result, Err(Error::Interrupted)));
+                assert_eq!(checks.get(), blocked_check);
+                assert_eq!(live.get(), 0);
+            }
+            drop(result);
+            assert_eq!(live.get(), 0);
+        }
+    }
+    #[test]
+    fn startup_propagates_gate_failures_without_admitting_session() {
+        for failed_gate in [true, false] {
+            let result = startup(
+                || Ok(()),
+                |admission| {
+                    if admission == failed_gate {
+                        Err(Error::Busy)
+                    } else {
+                        Ok(())
+                    }
+                },
+            );
+            assert_eq!(result.unwrap_err(), Error::Busy);
+        }
+    }
+    #[test]
+    fn admission_retains_ownership_and_intent_blocks_reopen() {
+        let Some(f) = Fixture::new() else { return };
+        let gui = session_at(&f.path).unwrap();
+        let preparation = prepare_at(&f.path).unwrap();
+        drop(session_at(&f.path).unwrap()); // preparation permits startup
+        let admission = preparation.close_admission().unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Busy);
+        let (error, admission) = admission.try_installation().unwrap_err();
+        assert_eq!(error, Error::Busy);
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Busy);
+        drop(gui);
+        let installation = admission.try_installation().unwrap();
+        // Package initialization must preserve the live identities/locks.
+        initialize_at(&f.path).unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Busy);
+        drop(installation.begin_transaction().unwrap());
+        drop(installation);
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Interrupted);
+        assert_eq!(prepare_at(&f.path).unwrap_err(), Error::Interrupted);
+    }
+    #[test]
+    fn admission_deferral_reopens_without_replacing_gates() {
+        let Some(f) = Fixture::new() else { return };
+        let admission = prepare_at(&f.path).unwrap().close_admission().unwrap();
+        drop(admission);
+        drop(session_at(&f.path).unwrap());
+        drop(prepare_at(&f.path).unwrap());
+        std::fs::remove_file(f.path.join("admission.gate")).unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Unavailable);
+    }
+    #[test]
+    fn idle_query_retains_both_leases_during_compatibility_check() {
+        let Some(f) = Fixture::new() else { return };
+        idle_at(&f.path, || {
+            assert_eq!(
+                acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+                Error::Busy
+            );
+            assert_eq!(
+                acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+                Error::Busy
+            );
+            Ok(())
+        })
+        .unwrap();
+        drop(installation_at(&f.path).unwrap());
+    }
+    #[test]
+    fn maintenance_markers_require_complete_utf8_lines() {
+        assert!(has_marker(
+            b"#!/bin/sh\n# SDE_COORDINATION_V1\r\n",
+            "# SDE_COORDINATION_V1"
+        ));
+        for bytes in [
+            b"echo '# SDE_COORDINATION_V1'".as_slice(),
+            b"# SDE_COORDINATION_V10",
+            b"# SDE_COORDINATION_V1\xff",
+        ] {
+            assert!(!has_marker(bytes, "# SDE_COORDINATION_V1"));
+        }
+    }
+    #[test]
+    fn partial_or_legacy_maintenance_never_enables_manual_preparation() {
+        let Some(f) = Fixture::new() else { return };
+        let entry = f.path.join("maintenance");
+        let helper = f.path.join("helper");
+        let paths = [entry.as_path(), helper.as_path()];
+        let v1 = "# SDE_COORDINATION_V1";
+        let v2 = "# SDE_COORDINATION_ADMISSION_V2";
+        assert!(compatible_maintenance_at(&paths, v2).is_ok());
+        // Ordinary Windows file creation assigns the runner's personal SID,
+        // which is intentionally not a trusted installed-component owner.
+        #[cfg(windows)]
+        drop(windows::journal(&helper).unwrap());
+        std::fs::write(&helper, v1).unwrap();
+        assert_eq!(
+            compatible_maintenance_at(&paths, v2),
+            Err(Error::NeedsRepair)
+        );
+        #[cfg(windows)]
+        drop(windows::journal(&entry).unwrap());
+        std::fs::write(&entry, v1).unwrap();
+        assert!(compatible_maintenance_at(&paths, v1).is_ok());
+        assert_eq!(
+            compatible_maintenance_at(&paths, v2),
+            Err(Error::NeedsRepair)
+        );
+        std::fs::write(&entry, format!("{v1}\n{v2}\n")).unwrap();
+        std::fs::write(&helper, format!("{v1}\n{v2}\n")).unwrap();
+        assert!(compatible_maintenance_at(&paths, v2).is_ok());
+        #[cfg(unix)]
+        {
+            std::fs::remove_file(&entry).unwrap();
+            std::os::unix::fs::symlink("missing", &entry).unwrap();
+            assert_eq!(
+                compatible_maintenance_at(&paths, v2),
+                Err(Error::NeedsRepair)
+            );
+        }
+    }
+    #[test]
+    fn app_only_intent_requires_admission_and_survives_package_initialization() {
+        let Some(f) = Fixture::new() else { return };
+        let scheduled = installation_at(&f.path).unwrap();
+        assert!(matches!(
+            scheduled.begin_app_only_transaction(),
+            Err(Error::NeedsRepair)
+        ));
+        assert!(!f.path.join("transaction.json").exists());
+        drop(scheduled);
+        let install = prepare_at(&f.path)
+            .unwrap()
+            .close_admission()
+            .unwrap()
+            .try_installation()
+            .unwrap();
+        let transaction = install.begin_app_only_transaction().unwrap();
+        let path = f.path.join("transaction.json");
+        let before = std::fs::read(&path).unwrap();
+        let record: serde_json::Value = serde_json::from_slice(&before).unwrap();
+        assert_eq!(record["scope"], "app_only");
+        // A separate packaging child initializes while its parent retains O/A/S/I.
+        let hook = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "tests::process_probe", "--nocapture"])
+            .env("SDE_TEST_COORDINATION_DIR", &f.path)
+            .env("SDE_TEST_COORDINATION_MODE", "initialize")
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            hook.status.success(),
+            "{}",
+            String::from_utf8_lossy(&hook.stderr)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert_eq!(
+            acquire_at(&f.path, "admission.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        assert_eq!(
+            acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+            Error::Busy
+        );
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        transaction.complete().unwrap();
+        drop(install);
+        drop(session_at(&f.path).unwrap());
+    }
+    #[cfg(windows)]
+    #[test]
+    fn published_intent_allows_hook_readers_but_rejects_writers_and_deletion() {
+        let Some(f) = Fixture::new() else { return };
+        let install = installation_at(&f.path).unwrap();
+        let transaction = install.begin_transaction().unwrap();
+        let path = f.path.join("transaction.json");
+        assert!(!std::fs::read(&path).unwrap().is_empty());
+        assert!(std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .is_err());
+        assert!(std::fs::remove_file(&path).is_err());
+        transaction.complete().unwrap();
+        assert!(!path.exists());
+    }
+    #[test]
+    fn scoped_hint_is_durable_and_clears_before_journal() {
+        let Some(f) = Fixture::new() else { return };
+        let install = prepare_at(&f.path)
+            .unwrap()
+            .close_admission()
+            .unwrap()
+            .try_installation()
+            .unwrap();
+        let transaction = install.begin_app_only_transaction().unwrap();
+        let hint = f.path.join("installation-scope.json");
+        let content: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&hint).unwrap()).unwrap();
+        assert_eq!(content["scope"], "app_only");
+        transaction.complete().unwrap();
+        assert!(!hint.exists());
+        assert!(!f.path.join("transaction.json").exists());
+        let transaction = install.begin_app_only_transaction().unwrap();
+        drop(transaction);
+        drop(install);
+        assert!(hint.exists());
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Interrupted);
+        // A retained/orphan hint is itself a startup barrier.
+        std::fs::remove_file(f.path.join("transaction.json")).unwrap();
+        assert_eq!(session_at(&f.path).unwrap_err(), Error::Interrupted);
+    }
+    #[test]
+    fn failed_scoped_hint_cleanup_retains_journal() {
+        let Some(f) = Fixture::new() else { return };
+        let install = prepare_at(&f.path)
+            .unwrap()
+            .close_admission()
+            .unwrap()
+            .try_installation()
+            .unwrap();
+        let transaction = install.begin_app_only_transaction().unwrap();
+        let hint = f.path.join("installation-scope.json");
+        std::fs::remove_file(&hint).unwrap();
+        std::fs::create_dir(&hint).unwrap();
+        assert!(transaction.complete().is_err());
+        assert!(f.path.join("transaction.json").exists());
+    }
+    #[test]
     fn process_probe() {
         let Some(dir) = std::env::var_os("SDE_TEST_COORDINATION_DIR") else {
             return;
         };
         let dir = PathBuf::from(dir);
         let mode = std::env::var("SDE_TEST_COORDINATION_MODE").unwrap();
-        let _lease = if mode == "session" {
-            acquire_at(&dir, "sessions.gate", true)
+        let _lease = if mode == "initialize" {
+            initialize_at(&dir).unwrap();
+            None
+        } else if mode == "session" {
+            Some(acquire_at(&dir, "sessions.gate", true).unwrap())
         } else {
-            acquire_at(&dir, "operations.gate", false)
-        }
-        .unwrap();
+            Some(acquire_at(&dir, "operations.gate", false).unwrap())
+        };
         println!("SDE_LEASE_READY");
         std::io::stdout().flush().unwrap();
         let mut b = [0u8];

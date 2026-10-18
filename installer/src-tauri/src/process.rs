@@ -131,11 +131,23 @@ mod tests {
     #[cfg(windows)]
     static CHOCOLATEY_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
     #[cfg(windows)]
+    fn require_native_package_test() {
+        assert_eq!(
+            std::env::var("GITHUB_ACTIONS").as_deref(),
+            Ok("true"),
+            "Native package tests require a disposable GitHub runner"
+        );
+        assert_eq!(
+            std::env::var("SDE_RUN_NATIVE_PACKAGES").as_deref(),
+            Ok("1"),
+            "Native package tests require explicit dispatch authorization"
+        );
+    }
+    #[cfg(windows)]
     #[test]
+    #[ignore = "Requires explicitly dispatched native package operations"]
     fn github_runner_migrates_real_node26_to_node24_with_clean_environment() {
-        if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
-            return;
-        }
+        require_native_package_test();
         let _guard = CHOCOLATEY_TEST_LOCK.lock().unwrap();
         let temp =
             std::env::temp_dir().join(format!("Skyview Node migration {}", uuid::Uuid::new_v4()));
@@ -155,6 +167,7 @@ mod tests {
         .arg(powershell_path(&test));
         windows_system_environment(&mut cmd, &temp);
         cmd.env("GITHUB_ACTIONS", "true");
+        cmd.env("SDE_RUN_NATIVE_PACKAGES", "1");
         let mut lines = Vec::new();
         assert_eq!(
             stream(cmd, |line| {
@@ -243,13 +256,12 @@ mod tests {
     }
     #[cfg(windows)]
     #[test]
+    #[ignore = "Requires explicitly dispatched native package operations"]
     fn github_runner_installs_chocolatey_fixture_with_clean_environment() {
         // Real package-manager coverage only on the disposable Windows runner,
         // never on a developer/student workstation. The fixture has no tools or
         // dependencies and changes only Chocolatey's own test package records.
-        if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
-            return;
-        }
+        require_native_package_test();
         let _guard = CHOCOLATEY_TEST_LOCK.lock().unwrap();
         let root =
             std::env::temp_dir().join(format!("Skyview Chocolatey test {}", uuid::Uuid::new_v4()));
