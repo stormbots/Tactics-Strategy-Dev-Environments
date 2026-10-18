@@ -980,3 +980,95 @@ validate a usable console, guest behavior or Update Now production readiness.
 Closeout separately disables media activation and verifies local runner exit,
 remote removal (manual if necessary), owned process/descriptor results and
 retained workspace status; no whole-host restoration claim is inferred.
+
+### Reviewed archival/setup procedure — no execution authorized
+
+Review of the recorded evidence supports the observed checkout permission Pass,
+not media verification or automatic deregistration. The next media proposal
+retains the fixed source/transport/validator limits; its five-file bundle is
+separate from the six-file observer bundle. Successful checkout does not waive
+rechecking host tools, available resources, KVM, controls or signature validity.
+Manual remote runner removal is an observed closeout requirement, not an assumed
+automatic success. The old media authorization remains consumed.
+
+Prepared `tests/mint_session_archive_plan.py` is a pure plan validator with an
+injected observer, no host inspector, mutation executor, imports or CLI. It does
+not scan this environment or the spare host. Its eight mocked/static tests
+exercise acceptance/rejection rules; they do not validate native rename, ACL,
+process enumeration, persistence, race handling or recovery. The observations
+are not authenticated by this model. A plan returns executionAuthorized=false.
+No runner setup or media operation is embedded in it.
+
+Fixed paths (no caller-supplied destinations):
+- Source: /home/sde-runner/mint-prep-runner-private-session
+- Archive: /home/sde-runner/mint-prep-runner-private-session-checkout-39132131036
+- Older failed session, never moved/traversed/modified:
+  /home/sde-runner/mint-prep-runner-session
+- Fresh work root after archival: source/_work-private
+
+Future procedure, requiring separate authorization and a reviewed native executor:
+
+1. Keep all activation disabled. Verify the remote registration is absent and no
+   approved/unapproved job is queued or active. Under the dedicated account,
+   establish no other account processes or active runner/service exist (excluding
+   only the identified inspector/controller); unknown or inaccessible observations
+   stop. Scan process/registration state completely and stably within 30 seconds.
+   A prior terminal exit alone is insufficient. No process is killed by this
+   procedure. Same-UID/root interference remains outside the trust boundary;
+   quiescence observations are not a permanent kernel-enforced freeze.
+2. Pin root/home/source directories through descriptor-relative no-follow opens.
+   Validate root-owned non-writable root/home ancestors, UID1001 home0750 and
+   source0700, no inherited default ACL on creation ancestors, expected account
+   groups and no elevation. Require source device66306/inode12088154 from the
+   retained observer evidence; a changed identity stops for review, not automatic
+   adoption. Bound fixed metadata reads; never enumerate checkout contents
+   recursively or read credential contents. Check registration names are absent.
+   Record the older failed session's directory identity without traversing it.
+3. Verify archive destination absent, same filesystem, and native atomic
+   no-replace rename supported. A separate existence test followed by ordinary
+   rename/mv is NOT sufficient: it could overwrite an intervening destination.
+   Do not copy, merge, remove or recursively chmod/chown either tree. Unsupported
+   no-replace semantics stop rather than substituting another mechanism.
+4. Prepare an exclusive owner-only, no-follow bounded phase journal alongside
+   the session, outside the moved tree. Its fixed run-bound name must be absent;
+   collision stops. Persist approved run/source/destination identities and
+   preconditions before mutation; cap journal/report at 16KiB each and overall
+   metadata/transition work at 30 seconds. Recheck gates, identities and absence
+   immediately before the native no-replace rename. Use a pinned home descriptor
+   and same-parent names; flush the parent after rename.
+5. Read back archive identity and verify it equals the original session identity;
+   source must now be absent and older failed-session identity unchanged. Persist
+   the archived phase. The entire checkout/listener diagnostic evidence remains
+   in the archive with its original ownership/modes; do not restart it there.
+6. Exclusively create the fresh source0700 and empty _work-private0700 under
+   umask0077. Pin/read back each newly created directory, owner/mode/identity and
+   default-ACL absence. Flush directories/parent and persist final identities and
+   completion phase. Do not populate/download/configure a runner in this step.
+   Fresh session identity must differ from archived identity. Verify the archived
+   and older session directory identities are unchanged.
+7. On any interruption, uncertain syscall/close/fsync/journal outcome or failed
+   postcondition: stop, report the last known phase, retain all state. No rollback,
+   retry, deletion, alternate destination or automatic recovery. A lost export is
+   unknown, not Pass. Separate read-only reconciliation must inspect source,
+   destination and journal after uncertainty; never replay operations blindly.
+   Cancellation must not be represented as restoration or cleanup success.
+
+Allowed normal outcomes: (a) preflight rejection with no mutations; (b) archive
+verified and fresh empty private directories durably recorded. Failure after
+rename may leave only the archive, or archive plus a partially created new
+session; both require reconciliation and are not healthy setup. No previous
+session contents may be modified. Fixed-path directory identity checks establish
+metadata preservation, not a new cryptographic inventory of every retained byte.
+
+Before any future native implementation/execution, review the actual no-replace
+rename binding, bounded inspector/journal, stop propagation and descriptor
+cleanup. Their OS behavior remains unimplemented/unvalidated here. This is a
+bounded local procedure/model, not authorization to extend into guest testing or
+a general session maintenance tool. Application/updater code, existing launcher,
+media transport/validator and approval gates are unchanged. Only exact planner/
+test paths join automatic mocked checks and infrastructure-only scope.
+
+Local procedure/model review: 129 mocked/static checks passed, focused actionlint
+and git diff --check passed. No host inspector/executor or native archival test
+was invoked. Native atomicity, process quiescence and durable recovery remain
+explicit proof obligations, separate from permission diagnostic success.

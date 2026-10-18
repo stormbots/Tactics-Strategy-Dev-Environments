@@ -29,6 +29,8 @@ MINT_INFRA_PATHS = {
     '.github/workflows/mint-checkout-validation.yml',
     'tests/observe_mint_checkout.py',
     'tests/test_mint_checkout_observer.py',
+    'tests/mint_session_archive_plan.py',
+    'tests/test_mint_session_archive_plan.py',
 
 
 
