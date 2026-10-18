@@ -110,8 +110,10 @@ class InventoryPolicy(unittest.TestCase):
         for name in APPLICATION_JOBS:
             self.assertEqual(w['jobs'][name]['needs'], 'scope')
             self.assertEqual(w['jobs'][name]['if'], GATE)
-        self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'release'})
-        self.assertEqual(set(w['jobs']['release']['needs']), set(APPLICATION_JOBS))
+        self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'native', 'release'})
+        self.assertEqual(set(w['jobs']['release']['needs']), {'native', *APPLICATION_JOBS})
+        self.assertIn("github.event_name == 'workflow_dispatch'", w['jobs']['native']['if'])
+        self.assertIn('inputs.build_installers', w['jobs']['native']['if'])
         self.assertNotIn('always()', w['jobs']['release']['if'])
         scope = w['jobs']['scope']
         self.assertEqual(scope['outputs']['application_required'],

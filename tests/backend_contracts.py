@@ -1,6 +1,6 @@
 """Read-only regression checks for the provisioning safety contract."""
 from pathlib import Path
-import re, unittest
+import json, re, unittest
 import yaml
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
@@ -33,6 +33,22 @@ class Backends(unittest.TestCase):
         cap=self.text('installer/src-tauri/capabilities/main.json')
         self.assertNotIn('shell:',cap)
         self.assertNotIn('fs:',cap)
+    def test_desktop_command_manifest_handlers_and_local_permissions_agree(self):
+        # Compiling handlers alone does not prove the webview may invoke them.
+        manifest = self.text('installer/src-tauri/build.rs')
+        commands = set(re.findall(r'"([a-z_]+)"', manifest))
+        main = self.text('installer/src-tauri/src/main.rs')
+        handler = main.split('tauri::generate_handler![', 1)[1].split(']', 1)[0]
+        registered = set(re.findall(r'\b[a-z_]+\b', handler))
+        capability = json.loads(self.text('installer/src-tauri/capabilities/main.json'))
+        allowed = {p.removeprefix('allow-').replace('-', '_')
+                   for p in capability['permissions'] if p.startswith('allow-')}
+        self.assertEqual(commands, registered)
+        self.assertEqual(allowed, commands)
+        self.assertEqual(capability['windows'], ['main'])
+        self.assertNotIn('remote', capability)
+        self.assertIn('inspect_app_update', commands)
+        self.assertIn('request_app_update', commands)
     def test_release_gate(self):
         workflow=self.text('.github/workflows/build-dev-setup.yml')
         release = yaml.load(workflow, Loader=yaml.BaseLoader)['jobs']['release']

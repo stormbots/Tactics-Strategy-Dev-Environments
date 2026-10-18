@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod app_update;
 mod process;
 mod protocol;
 mod schedule;
@@ -290,6 +291,14 @@ async fn inspect_self_update() -> Result<sde_update_trust::observation::Status, 
         .map_err(|_| "SDE update status could not be read. Please refresh.".to_string())
 }
 #[tauri::command]
+fn inspect_app_update() -> app_update::Availability {
+    app_update::inspect()
+}
+#[tauri::command]
+fn request_app_update() -> Result<(), String> {
+    app_update::request().map_err(str::to_owned)
+}
+#[tauri::command]
 async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
     let root = backend(&app)?;
     tauri::async_runtime::spawn_blocking(move || schedule::inspect(&root))
@@ -397,6 +406,8 @@ fn main() {
             inspect_system,
             inspect_schedule,
             inspect_self_update,
+            inspect_app_update,
+            request_app_update,
             run_operation,
             open_destination
         ])

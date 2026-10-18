@@ -9,6 +9,8 @@
     "allow-inspect-system",
     "allow-inspect-schedule",
     "allow-inspect-self-update",
+    "allow-inspect-app-update",
+    "allow-request-app-update",
     "allow-run-operation",
     "allow-open-destination"
   ]

@@ -151,7 +151,7 @@ trigger a permission fallback or an unbounded replacement experiment.
 
 ## Next native gates / stopping conditions
 
-Before activation or Schedule UI wiring, review this implementation, then validate
+Before activation, review this implementation, then validate
 on disposable Mint 22 storage supporting POSIX ACLs and polkit with a real active
 session/authorization agent. Separate authorization is needed to provision/remove
 the fixed root launcher/policy/fixture directories. Start with denial, exact fixed
@@ -173,3 +173,10 @@ Historical W2h stays an authentication counterexample. W2i-W2l remain limited;
 W2m immediate cleanup remains Fail; W2n N1/N2 remain NotRun. Local diagnostic
 completion, cleanup correctness, authentication safety and production readiness
 remain separate. This feature is not production-ready or enabled by local tests.
+
+## Parallel disabled Schedule integration — 2026-10-18
+
+The owner now authorizes UI/backend work in parallel with native validation; the
+previous prohibition on Schedule wiring is superseded only for capability-disabled
+development. The decision record documents the sequencing adjustment. Native
+proof, deployed compatibility and privilege gates still block enablement.

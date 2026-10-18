@@ -4,6 +4,8 @@ fn main() {
             "inspect_system",
             "inspect_schedule",
             "inspect_self_update",
+            "inspect_app_update",
+            "request_app_update",
             "run_operation",
             "open_destination",
         ]),

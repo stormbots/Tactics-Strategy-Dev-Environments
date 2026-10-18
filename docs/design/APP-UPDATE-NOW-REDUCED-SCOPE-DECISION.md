@@ -240,6 +240,17 @@ another experiment series automatically.
 | 5. Schedule integration and native UAT | Consent/progress/Close/restricted-startup/results and accessibility. | Behavior contradicts consent or accessibility/native acceptance fails. |
 | 6. Second platform | Same common contract with platform-specific proof. | Any corresponding gate fails; first-platform evidence never certifies another platform. |
 
+### Authorized sequencing adjustment — 2026-10-18
+
+The owner authorized capability-disabled Schedule/backend integration in parallel
+with native validation. Phase 5's UI contract, consent, accessibility and mocked
+checks can therefore start during Phases 3/4. This does not enable a privileged
+request or certify eligibility: native authorization, deployment, compatibility,
+admission, recovery and package-preservation proof remain gates before enabling
+installation. Desktop UAT still follows a separately authorized testing build.
+Pause optional runner/media/VM logistics unless a specific required test needs it.
+Historical research and its failures remain unchanged. No product choice changes.
+
 Select the first native platform by available disposable access. Give Windows
 privilege feasibility early attention; without a suitable environment report its
 proof unavailable rather than substituting Linux/mocks. Do not invent a schedule

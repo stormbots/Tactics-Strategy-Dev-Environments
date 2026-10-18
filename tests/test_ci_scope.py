@@ -18,7 +18,8 @@ class CiScope(unittest.TestCase):
                 self.assertFalse(application_required([path]))
 
     def test_application_mixed_unknown_and_renamed_paths_require_builds(self):
-        for path in ("installer/src/App.tsx", "linux/lib/common.sh", "updater/Cargo.toml",
+        for path in ("installer/src/App.tsx", "installer/src/AppUpdateControl.tsx",
+                     "installer/src-tauri/src/app_update.rs", "linux/lib/common.sh", "updater/Cargo.toml",
                      "tests/Prepare-MintNativeCI.sh", ".github/workflows/prepare-self-update-uat.yml",
                      "docs/RELEASE-NOTES-1.2.8.md", "unrecognized.txt", "old_fixture_name.py"):
             with self.subTest(path=path):

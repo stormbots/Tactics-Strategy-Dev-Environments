@@ -173,3 +173,17 @@ export async function inspectSelfUpdate(): Promise<
     action: "Preview mode cannot read workstation SDE update history.",
   };
 }
+
+export async function inspectAppUpdate(): Promise<
+  import("./appUpdate").AppUpdateAvailability
+> {
+  const { parseAppUpdate } = await import("./appUpdate");
+  if (!native) return { enabled: false, reason: "preview" };
+  return parseAppUpdate(await invoke("inspect_app_update"));
+}
+
+export async function requestAppUpdate(): Promise<never> {
+  if (native) await invoke("request_app_update");
+  // Even an unexpected success reply is not evidence of an authorized worker.
+  throw new Error("No app-only update request was confirmed.");
+}

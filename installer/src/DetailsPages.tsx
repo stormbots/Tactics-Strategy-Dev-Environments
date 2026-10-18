@@ -1,3 +1,4 @@
+import { AppUpdateControl } from "./AppUpdateControl";
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
@@ -140,6 +141,7 @@ export function SchedulePage({
       {!loading && (
         <SelfUpdatePanel data={selfUpdate} error={selfUpdateError} />
       )}
+      <AppUpdateControl />
       {!loading && data && (
         <>
           {data.note && <p className="notice">{data.note}</p>}
