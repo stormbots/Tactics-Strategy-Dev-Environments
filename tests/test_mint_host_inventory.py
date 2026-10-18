@@ -3,7 +3,7 @@ import ast
 from pathlib import Path
 import unittest
 import yaml
-from ci_scope import MINT_INFRA_PATHS, application_required
+from ci_scope import APPLICATION_JOBS, GATE, MINT_INFRA_PATHS, application_required
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -73,6 +73,91 @@ class InventoryPolicy(unittest.TestCase):
         for path in MINT_INFRA_PATHS:
             self.assertFalse(application_required([path]))
             self.assertTrue(application_required([path, 'installer/src/App.tsx']))
+
+    def test_preparation_checks_are_automatic_mocked_only(self):
+        w = load('mint-host-inventory-checks.yml')
+        self.assertEqual(set(w['jobs']), {'policy'})
+        job = w['jobs']['policy']
+        self.assertNotIn('environment', job)
+        self.assertEqual(job['timeout-minutes'], '5')
+        self.assertEqual(w['on']['push']['branches'], ['main'])
+        for event in ('pull_request', 'push'):
+            self.assertEqual(set(w['on'][event]['paths']),
+                             MINT_INFRA_PATHS | {'tests/fixtures/linuxmint-iso-signing.asc'})
+        commands = [s['run'] for s in job['steps'] if 'run' in s]
+        self.assertEqual(commands, ["python3 -m pip install 'PyYAML==6.0.2'",
+            'python3 -m unittest discover -s tests -p test_mint_host_inventory.py -v\n'
+            'python3 -m unittest discover -s tests -p test_ci_scope.py -v\n'
+            'python3 -m unittest discover -s tests -p test_mint_media_console.py -v\n'])
+        self.assertEqual(job['steps'][0]['with']['persist-credentials'], 'false')
+
+    def test_scope_exception_does_not_expand_to_native_or_application_work(self):
+        for path in ('tests/fixtures/linuxmint-iso-signing.asc',
+                     'tests/mint_media_other.py',
+                     '.github/workflows/mint-media-prepare.yml',
+                     'installer/src/App.tsx', 'backend/linux/self-update.py'):
+            self.assertTrue(application_required([path]), path)
+            self.assertTrue(application_required(['tests/mint_media_native.py', path]), path)
+
+    def test_actual_installer_jobs_require_positive_scope_result(self):
+        w = load('build-dev-setup.yml')
+        for name in APPLICATION_JOBS:
+            self.assertEqual(w['jobs'][name]['needs'], 'scope')
+            self.assertEqual(w['jobs'][name]['if'], GATE)
+        self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'release'})
+        self.assertEqual(set(w['jobs']['release']['needs']), set(APPLICATION_JOBS))
+        self.assertNotIn('always()', w['jobs']['release']['if'])
+        scope = w['jobs']['scope']
+        self.assertEqual(scope['outputs']['application_required'],
+                         '${{ steps.scope.outputs.application_required }}')
+        self.assertTrue(any(step.get('id') == 'scope' and
+                            step.get('run') == 'python3 tests/ci_scope.py'
+                            for step in scope['steps']))
+
+    def test_native_fixture_jobs_require_explicit_dispatch_and_opt_in(self):
+        w = load('native-uat-fixtures.yml')
+        self.assertEqual(set(w['on']), {'push', 'pull_request', 'workflow_dispatch'})
+        inputs = w['on']['workflow_dispatch']['inputs']
+        self.assertEqual(set(inputs), {'run_native'})
+        self.assertEqual(inputs['run_native']['type'], 'boolean')
+        self.assertEqual(inputs['run_native']['default'], 'false')
+        self.assertEqual(inputs['run_native']['required'], 'true')
+        self.assertEqual(w['permissions'], {'contents': 'read'})
+        self.assertEqual(set(w['jobs']), {'workflow-checks', 'windows-fixtures', 'mint-fixtures'})
+        for name, runner in [('windows-fixtures', 'windows-2022'),
+                             ('mint-fixtures', 'ubuntu-24.04')]:
+            job = w['jobs'][name]
+            self.assertEqual(job['needs'], 'workflow-checks')
+            self.assertEqual(job['runs-on'], runner)
+            expression = job['if']
+            self.assertEqual(expression, "github.event_name == 'workflow_dispatch' && "
+                "github.repository == 'stormbots/Tactics-Strategy-Dev-Environments' && inputs.run_native == true")
+            for event in ('pull_request', 'pull_request_target', 'push', 'workflow_run', 'workflow_call', 'workflow_dispatch'):
+                for repo in ('stormbots/Tactics-Strategy-Dev-Environments', 'fork/repo'):
+                    for opt_in in (False, True):
+                        check = expression.replace('github.event_name', repr(event)).replace(
+                            'github.repository', repr(repo)).replace('inputs.run_native', repr(opt_in))
+                        result = eval(check.replace('&&', ' and ').replace('== true', '== True'),
+                                      {'__builtins__': {}}, {})
+                        self.assertEqual(result, event == 'workflow_dispatch' and
+                            repo == 'stormbots/Tactics-Strategy-Dev-Environments' and opt_in)
+
+    def test_automatic_fixture_job_is_static_only(self):
+        w = load('native-uat-fixtures.yml')
+        job = w['jobs']['workflow-checks']
+        self.assertEqual(job['runs-on'], 'ubuntu-24.04')
+        self.assertEqual(job['timeout-minutes'], '5')
+        self.assertNotIn('environment', job)
+        self.assertEqual(len(job['steps']), 2)
+        self.assertEqual(job['steps'][0], {'uses': 'actions/checkout@v4'})
+        self.assertEqual(job['steps'][1]['uses'], 'docker://rhysd/actionlint:1.7.7')
+        self.assertEqual(job['steps'][1]['with']['args'],
+            '-color .github/workflows/build-dev-setup.yml .github/workflows/native-uat-fixtures.yml')
+        self.assertNotIn('run', job['steps'][1])
+        # Gate policy changes receive automatic static/mocked validation too.
+        for event in ('pull_request', 'push'):
+            self.assertIn('.github/workflows/native-uat-fixtures.yml',
+                load('mint-host-inventory-checks.yml')['on'][event]['paths'])
 
 
 if __name__ == '__main__':
