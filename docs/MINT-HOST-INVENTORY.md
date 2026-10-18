@@ -1,5 +1,29 @@
 # Spare Mint host inventory: disabled infrastructure only
 
+## Current approval policy — sole maintainer
+
+The owner authorizes the sole maintainer, rdpollard, to approve their own
+mint-host-access runs. This standing policy supersedes earlier temporary
+self-review-exception and restoration instructions in historical evidence below.
+One-time administrator change: uncheck **Prevent self-review** for this repository's
+mint-host-access environment and save protection rules. Leave it unchecked;
+Codex must not request re-enabling it without a concrete, material reason.
+
+Keep rdpollard as a required reviewer, administrator bypass disabled, and the
+sole deployment branch rule main. Self-approval remains an explicit approval of
+the exact queued job, source SHA and bounded operation; it does not authorize
+runner registration/start, dispatch or native operations by itself. Retain the
+selected-repository/exact-workflow runner-group restrictions, reviewed SHA/hash
+bindings, first-attempt-only checks, disabled-by-default activation and fresh
+single-job ephemeral runner requirements. No checkbox toggling is part of run
+setup or closeout. After each authorized job, disable activation and verify
+local credential cleanup and remote deregistration separately.
+
+This policy change authorizes no activation or execution. Historical reports of
+prevent_self_review=true remain accurate records of earlier observations, not
+instructions for the current setup. Recheck live settings before an authorized
+run; a user-reported change is distinct from independent API verification.
+
 This workflow registers its name on main so an organization administrator can
 select it in a restricted runner group. It does not enable or deploy #72, merge
 #73, register/start runners, provision guests or install application packages.
@@ -27,8 +51,8 @@ Before setting ACCESS_READY, an organization administrator must verify:
 
 2. Main is protected against unreviewed/direct/force changes and deletion,
    including workflow code-owner review and no routine administrator bypass.
-3. Environment `mint-host-access` already exists, has an independent required
-   reviewer, prevents self-review, permits main only, has no secrets, and disables
+3. Environment `mint-host-access` already exists, has required reviewer
+   rdpollard, allows self-approval, permits main only, has no secrets, and disables
    administrator bypass where supported. GitHub can create unprotected environments
    automatically: naming an environment in YAML does NOT establish these settings.
 4. The exact SHA and live settings have been reviewed. Only then set ACCESS_READY,
@@ -122,7 +146,8 @@ and approved the waiting run. No administrator-bypass setting was enabled.
 The owner has now restored prevent-self-review and Codex verified restoration
 through the environment API. Do not describe this run as independently reviewed:
 it used an expressly approved single-operator exception. That exception has ended
-and does not authorize self-review for any future run.
+and did not authorize future self-review at that time. The current standing
+sole-maintainer policy above now supersedes that restriction.
 
 No runner is to be restarted/re-registered and no workflow is to be dispatched
 under the closed inventory authorization. The remaining runner directory,
@@ -244,12 +269,10 @@ Leave ENABLED=false until those gates pass; main changes invalidate the old
 approved SHA. Evidence must name the actual executed source SHA, account/group,
 run/job ID and all report-source limitations.
 
-The single-reviewer limitation must be handled **before** dispatch: either an
-independent permitted reviewer is available, or the owner explicitly approves a
-new narrowly scoped, temporary self-review exception. The past exception is not
-reusable consent. Require owner confirmation of the protected environment's
-approval, restore prevent-self-review immediately after approval, disable
-activation after the job, and verify deregistration again. Inspect for an
+Before dispatch, verify required approval by rdpollard with self-approval allowed.
+Require explicit approval of the exact protected-environment job, disable
+activation after the job, and verify deregistration again. No temporary
+self-review exception or checkbox restoration is needed. Inspect for an
 unexpected second dispatch; cancel any unapproved waiting duplicate before
 runner startup. No automatic workflow rerun or re-registration on failure.
 
@@ -354,7 +377,8 @@ Remaining gates and limits:
    infrastructure PR must remain unmerged pending review; it authorizes no native
    media or host operation.
 6. The next implementation-integration step must preserve fresh explicit approval
-   for any runner registration/start, dispatch or self-review exception. ENABLED
+   for any runner registration/start or dispatch. Required environment approval
+   permits sole-maintainer self-approval under the current policy. ENABLED
    remains reported false; #73 remains draft/unmerged. Application/native-package
    workflows, guest tests, build/signing/release work remain deferred.
 
@@ -452,8 +476,8 @@ this job. The event/repository/ref/workflow-ref must be the fixed manual main
 workflow, workflow SHA must equal source SHA, and run attempt must be 1. A rerun
 is refused; an authorized retry requires a new reviewed dispatch/owned run.
 The environment reviewer must inspect the exact queued commit and operation.
-The sole-reviewer exception remains separately authorized per execution; removing
-PR approval requirements did not waive this environment protection. Leave the
+The required reviewer may approve their own run under the standing sole-maintainer
+policy; PR approval settings do not waive required environment approval. Leave the
 runner absent and all preparation flags unset/disabled until those gates pass.
 
 The checkout is pinned to `github.sha`, does not persist credentials, and disables
@@ -655,9 +679,9 @@ the launcher's earlier umask. Successful exec carries 0077 into the listener.
    file; do not depend on a checkout that has not happened yet or fetch mutable
    branch code at listener startup. The future start invocation is isolated
    `/usr/bin/python3 -I -B <verified-local-launcher>` with no arguments. Approve
-   the exact waiting environment job and restore self-review protection before
-   invoking it. Do not bypass this launcher with direct run.sh or set a weaker
-   umask for registration/listener startup.
+   the exact waiting environment job using sole-maintainer self-approval before
+   invoking it; do not toggle Prevent self-review. Do not bypass this launcher
+   with direct run.sh or set a weaker umask for registration/listener startup.
 5. Observe actual creation modes and strict source-guard results in the newly
    authorized bounded run. A runner/action resetting umask, unexpected ACL,
    serialization mismatch or any other native difference stops; never apply a
@@ -757,7 +781,7 @@ The existing media workflow and source guard are unchanged. A later authorized
 execution must replace the group's sole selected workflow with
 stormbots/Tactics-Strategy-Dev-Environments/.github/workflows/mint-checkout-validation.yml@refs/heads/main,
 not add broad/all-workflow access. Selected repository, required-reviewer,
-main-only and no-bypass controls and any freshly approved single-reviewer exception
+main-only and no-bypass controls, with sole-maintainer self-approval allowed,
 must be verified independently. No controls or settings were changed here.
 
 `tests/observe_mint_checkout.py` is standalone standard-library code. It neither
