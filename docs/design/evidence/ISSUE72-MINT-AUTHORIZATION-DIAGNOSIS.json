@@ -18,7 +18,11 @@
       "active": true,
       "state": "active"
     },
-    "polkitDaemon": {"pid": 649, "activeState": "active", "subState": "running"},
+    "polkitDaemon": {
+      "pid": 649,
+      "activeState": "active",
+      "subState": "running"
+    },
     "fixedActionPresent": false,
     "fixedBrokerPresent": false,
     "fixedPolicyPresent": false,
@@ -26,8 +30,16 @@
     "transactionPresent": false,
     "installationScopePresent": false,
     "externalMaintenance": {
-      "/usr/local/sbin/skyview-student-dev-update": {"uid": 0, "mode": "0755", "admissionV2Marker": false},
-      "/usr/local/lib/skyview-student-dev/coordination.py": {"uid": 0, "mode": "0644", "admissionV2Marker": false}
+      "/usr/local/sbin/skyview-student-dev-update": {
+        "uid": 0,
+        "mode": "0755",
+        "admissionV2Marker": false
+      },
+      "/usr/local/lib/skyview-student-dev/coordination.py": {
+        "uid": 0,
+        "mode": "0644",
+        "admissionV2Marker": false
+      }
     },
     "installedAgents": {
       "policykit-1-gnome": {
@@ -64,7 +76,11 @@
     "replacementFixturePlan": "Unpublished same-version 1.2.9 prerequisite baseline and synthetic 1.2.10 candidate; no release version allocation",
     "existingExternalHelperBytesKnown": false,
     "privateRecoveryStateInspected": false,
-    "safeToMigrateOrInstall": false
+    "safeToMigrateOrInstall": false,
+    "polkit124LocalSessionRequirement": "Seat association; Remote=no and Active=yes alone do not suffice",
+    "xrdpPrediction": "No seat selects implicit-any=no under the fixed action; denial without GUI is expected",
+    "originalAttemptSessionEstablished": false,
+    "physicalConsolePrerequisites": "Reported seat0/lightdm/:0 meets session prerequisite; GUI authorization still unproven"
   },
   "executionBoundaries": {
     "originalAuthorizationAttemptRepeated": false,
@@ -75,5 +91,36 @@
     "authenticationSafety": "Unproven",
     "productionReady": false
   },
-  "nextGate": "Read-only process UID/session and system-bus owner identification; no second agent launch, guessed repair or pkexec retry. A retry still requires its exact reviewed packet and specific authorization."
+  "nextGate": "Reviewed two-file disabled-broker packet from physical console, only after specific owner authorization. No agent repair or package operation.",
+  "subsequentSessionProbe": {
+    "provenance": "Owner-pasted read-only loginctl/process/bus output",
+    "uid": 1000,
+    "id": "c11",
+    "display": ":10.0",
+    "seat": "",
+    "service": "xrdp-sesman",
+    "active": true,
+    "remote": false,
+    "cinnamonPid": 15648,
+    "cinnamonSystemBusOwner": ":1.190",
+    "cinnamonSessionPid": 15380,
+    "standaloneAgentVisible": false,
+    "registeredAgentOwnerDirectlyAttested": false
+  },
+  "physicalConsoleProbe": {
+    "provenance": "Latest owner-pasted loginctl output; no authorization attempt",
+    "uid": 1000,
+    "seat": "seat0",
+    "display": ":0",
+    "service": "lightdm",
+    "type": "x11",
+    "active": true,
+    "remote": false,
+    "sessionIdNotSupplied": true
+  },
+  "sourceReferences": [
+    "https://github.com/polkit-org/polkit/blob/124/src/polkitbackend/polkitbackendsessionmonitor-systemd.c",
+    "https://github.com/polkit-org/polkit/blob/124/src/polkitbackend/polkitbackendinteractiveauthority.c",
+    "https://github.com/linuxmint/cinnamon/blob/6.6.0/js/ui/polkitAuthenticationAgent.js"
+  ]
 }

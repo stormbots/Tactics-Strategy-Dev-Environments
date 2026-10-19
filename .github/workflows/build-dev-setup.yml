@@ -111,6 +111,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_app_update_package_hooks.py'
           python3 -m unittest discover -s tests -p 'test_app_only_request.py'
           python3 -m unittest discover -s tests -p 'test_app_only_artifacts.py'
+          python3 -m unittest discover -s tests -p 'test_mint_disabled_broker_gate.py'
           python3 -m unittest discover -s tests -p 'test_ci_boundaries.py'
           python3 -m unittest discover -s tests -p 'test_ci_failure_report.py'
           python3 -m unittest discover -s tests -p 'test_native_ci_evidence.py'
