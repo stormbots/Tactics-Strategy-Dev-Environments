@@ -37,8 +37,8 @@ fn validate_pins(pins: &Pins) -> Result<()> {
     };
     if pins.schema_version != 1
         || pins.purpose != PURPOSE
-        || pins.baseline_version != "1.2.1"
-        || pins.candidate_version != "1.2.2"
+        || pins.baseline_version != "1.2.9"
+        || pins.candidate_version != "1.2.10"
         || pins.source_commit.len() != 40
         || !pins.source_commit.bytes().all(|b| b.is_ascii_hexdigit())
         || pins.files.len() != expected.len()
@@ -294,8 +294,8 @@ fn fixture_pin_schema_cannot_select_other_paths_or_unreviewed_versions() {
         schema_version: 1,
         purpose: PURPOSE.into(),
         source_commit: "a".repeat(40),
-        baseline_version: "1.2.1".into(),
-        candidate_version: "1.2.2".into(),
+        baseline_version: "1.2.9".into(),
+        candidate_version: "1.2.10".into(),
         files: BTreeMap::from([
             (format!("baseline/{INSTALLER}"), "a".repeat(64)),
             (format!("candidate/{INSTALLER}"), "a".repeat(64)),

@@ -40,7 +40,12 @@ class Preparation(unittest.TestCase):
             log = root / 'build.jsonl'
             log.write_text(json.dumps({'reason': 'compiler-artifact', 'profile': {'test': True},
                                       'target': {'kind': ['lib']}, 'executable': str(binary)}) + '\n')
-            for role, version in [('baseline', '1.2.1'), ('candidate', '1.2.2')]:
+            configs = root / 'configs'
+            artifacts.configurations(configs)
+            self.assertEqual(json.loads((configs / 'baseline.json').read_text()), {'version': '1.2.9'})
+            self.assertEqual(json.loads((configs / 'candidate.json').read_text()), {'version': '1.2.10'})
+            for role, version in [('baseline', artifacts.BASELINE_VERSION),
+                                  ('candidate', artifacts.CANDIDATE_VERSION)]:
                 directory = root / role
                 directory.mkdir()
                 build = root / (role + '-build')
@@ -61,6 +66,8 @@ class Preparation(unittest.TestCase):
                 artifacts.package(log, root)
             pins = json.loads((root / 'pins.json').read_text())
             self.assertEqual(pins['purpose'], 'unpublished-linux-app-only-core-fixture')
+            self.assertEqual(pins['baselineVersion'], '1.2.9')
+            self.assertEqual(pins['candidateVersion'], '1.2.10')
             self.assertEqual(set(pins['baselineInstalledFiles']), set(artifacts.BASELINE_FILES))
             self.assertEqual(pins['files']['native-tests'], artifacts.digest(binary))
             self.assertEqual(pins['packageHooks']['/postinst'], artifacts.digest(Path('installer/src-tauri/hooks/postinst')))

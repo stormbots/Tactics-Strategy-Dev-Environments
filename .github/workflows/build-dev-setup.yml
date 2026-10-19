@@ -16,7 +16,7 @@ on:
         options: [all, linux, windows]
         default: all
       build_linux_fixture_pair:
-        description: Also build unpublished 1.2.1/1.2.2 Linux app-only fixtures and test driver; never execute them
+        description: Build unpublished 1.2.9/1.2.10 Linux app-only fixtures and test driver; never execute them
         type: boolean
         default: false
       run_native_packages:
@@ -292,8 +292,16 @@ jobs:
           cargo build --release --locked --manifest-path updater/Cargo.toml
           install -m 0755 updater/target/release/sde-update-trust linux/self-update/sde-update-trust
       - name: Build native installer
+        if: ${{ !inputs.build_linux_fixture_pair }}
         run: npm run tauri build -- --bundles ${{ matrix.bundle }}
         working-directory: installer
+      - name: Build unpublished Linux fixture baseline without downgrade
+        if: inputs.build_linux_fixture_pair && runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tests/package_app_only_fixtures.py --write-configs "$RUNNER_TEMP/sde-app-only-configs"
+          npm --prefix installer run tauri build -- --config "$RUNNER_TEMP/sde-app-only-configs/baseline.json" --bundles deb
       - name: Verify Windows installer version
         if: runner.os == 'Windows'
         shell: pwsh
@@ -330,12 +338,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(python3 -c 'import json; print(json.load(open("installer/src-tauri/tauri.conf.json"))["version"])')" = 1.2.1
           mkdir -p app-only-fixtures/baseline app-only-fixtures/candidate
           cp dist/Skyview-Dev-Setup-LinuxMint-amd64.deb app-only-fixtures/baseline/
-          printf '{"version":"1.2.2"}\n' > "$RUNNER_TEMP/sde-app-only-fixture.json"
-          npm --prefix installer run tauri build -- --config "$RUNNER_TEMP/sde-app-only-fixture.json" --bundles deb
-          mapfile -t candidates < <(find installer/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*1.2.2*.deb')
+          npm --prefix installer run tauri build -- --config "$RUNNER_TEMP/sde-app-only-configs/candidate.json" --bundles deb
+          mapfile -t candidates < <(find installer/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*1.2.10*.deb')
           test "${#candidates[@]}" = 1
           cp "${candidates[0]}" app-only-fixtures/candidate/Skyview-Dev-Setup-LinuxMint-amd64.deb
           cargo test --release --locked --manifest-path updater/Cargo.toml --lib --no-run --message-format=json > "$RUNNER_TEMP/sde-app-only-tests.jsonl"

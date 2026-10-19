@@ -9,6 +9,21 @@ the handoff's blanket deferrals. It does **not** repeat the stopped spare-Mint
 attempt: that still needs a reviewed exact plan and specific authorization.
 Additional concrete privileged/package operations are presented when needed.
 
+Follow-up, 2026-10-19: [owner-supplied Mint diagnosis](../design/evidence/ISSUE72-MINT-AUTHORIZATION-DIAGNOSIS.json)
+establishes installed SDE **1.2.9** and V1 external maintenance helpers. The first
+build at `427b3f2` remains evidence for its synthetic 1.2.1/1.2.2 artifacts, but
+those artifacts are **unsuitable for the installed spare** and must not be used
+to force a downgrade. The next fixture build uses a same-version 1.2.9 testing
+baseline and synthetic 1.2.10 candidate. These numbers identify unpublished test
+packages; no release version is allocated or published. No replacement build is
+dispatched merely to investigate the authorization agent.
+
+The supplied agent launch returned “an authentication agent already exists for
+the given subject.” This disproves an inference of no registered agent from the
+limited process scan. The existing agent's identity remains unknown. The
+accessibility-bus warning names `/root/.cache/at-spi/bus_10.0`; it is not proof of
+the cause of the earlier polkit failure and does not authorize permission repair.
+
 ## Shortest remaining route
 
 1. Produce Linux artifacts and the pinned shared-core driver below. Leave Windows
@@ -54,11 +69,15 @@ GitHub-hosted build dependencies are installed by the existing Linux build job.
 
 Artifacts:
 
-* `Skyview-Dev-Setup-LinuxMint-amd64.deb`: current-source disabled application,
-  version 1.2.1, plus checksum. Do not install it over a newer deployed version.
-* `linux-app-only-unpublished-fixtures`: the same baseline, synthetic 1.2.2
-  candidate, updater library `native-tests` binary and `pins.json`. These reuse
-  the existing native fixture version pair; neither is a proposed release.
+* With `build_linux_fixture_pair=true`, `Skyview-Dev-Setup-LinuxMint-amd64.deb`
+  is a current-source **unpublished 1.2.9 testing baseline**, plus checksum.
+  Without that option, ordinary installer builds keep the source configuration.
+* `linux-app-only-unpublished-fixtures`: that 1.2.9 baseline, synthetic 1.2.10
+  candidate, updater library `native-tests` binary and `pins.json`. Neither is a
+  proposed release. The baseline is new code with different bytes from installed
+  official 1.2.9: using it would require an explicitly reviewed same-version
+  prerequisite reinstall. It is not already proven compatible by matching a
+  version string.
 * `pins.json` binds source commit, both DEBs, compiled test driver, exact baseline
   installed-file bytes and the DEB postinst/prerm hashes. Preparation streams the
   archives without extracting or executing hooks. The fixture's Windows-named
@@ -87,7 +106,13 @@ The fixed action is expected to be absent after the reported cleanup.
 
 Interpret the facts together: active original-user session, existing packaged
 agent executable, effective autostart override and actual visible agent process.
-An absent process alone cannot prove the cause. If a packaged agent needs launch,
+An absent process alone cannot prove the cause. The observed foreground GNOME
+agent launch failed because another agent is already registered. Do not start
+another instance or guess an agent repair. Next, read selected desktop session
+addresses, `loginctl` leader/service/display/seat properties, process names/UIDs
+without command arguments, and system-bus owner rows for polkit/Cinnamon. These
+checks need no sudo, registration, service activation or package operation. If a
+future packaged agent needs launch after the existing registration is understood,
 name its observed exact path, user/session, how its PID is retained and how only
 that new owned process is stopped. Present that operation and any two-file
 registration/retry packet for specific authorization; no sudo fallback or guessed

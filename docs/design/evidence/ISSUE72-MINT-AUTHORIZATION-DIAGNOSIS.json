@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-10-19",
+  "provenance": "Owner-pasted terminal output; not direct Codex host observation",
+  "host": "ryan-ThinkCentre-M910q",
+  "diagnostic": {
+    "sourceCommit": "427b3f2050fc6511988d11b7a21ec51b6ae95796",
+    "scriptSha256": "ad381059280625fa2b29cfe15daeb4a13d2d459e294c52cb3f3ef840c44e2361",
+    "ownerReportedChecksumPassed": true,
+    "readOnly": true,
+    "authorizationAttempted": false,
+    "uid": 1000,
+    "session": {
+      "id": "c11",
+      "type": "x11",
+      "currentDesktop": "X-Cinnamon",
+      "remote": false,
+      "active": true,
+      "state": "active"
+    },
+    "polkitDaemon": {"pid": 649, "activeState": "active", "subState": "running"},
+    "fixedActionPresent": false,
+    "fixedBrokerPresent": false,
+    "fixedPolicyPresent": false,
+    "installedSdeVersion": "1.2.9",
+    "transactionPresent": false,
+    "installationScopePresent": false,
+    "externalMaintenance": {
+      "/usr/local/sbin/skyview-student-dev-update": {"uid": 0, "mode": "0755", "admissionV2Marker": false},
+      "/usr/local/lib/skyview-student-dev/coordination.py": {"uid": 0, "mode": "0644", "admissionV2Marker": false}
+    },
+    "installedAgents": {
+      "policykit-1-gnome": {
+        "version": "0.105-7ubuntu5",
+        "executable": "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1",
+        "autostartOnlyShowIn": "XFCE;Unity;X-Cinnamon;"
+      },
+      "mate-polkit": {
+        "version": "1.26.1+mint1",
+        "executable": "/usr/libexec/polkit-mate-authentication-agent-1",
+        "autostartOnlyShowIn": "MATE;"
+      }
+    },
+    "visibleAgentProcesses": [],
+    "processVisibilityLimited": true
+  },
+  "subsequentAgentStart": {
+    "provenance": "Owner-pasted output of the requested unelevated foreground launch",
+    "command": "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1",
+    "reportedPid": 58089,
+    "reportedExitCode": null,
+    "accessibilityWarning": "Could not connect to /root/.cache/at-spi/bus_10.0: Permission denied",
+    "registrationError": "GDBus.Error:org.freedesktop.PolicyKit1.Error.Failed: An authentication agent already exists for the given subject",
+    "newAgentRegistered": false,
+    "existingAgentReportedByPolkit": true,
+    "existingAgentIdentified": false
+  },
+  "conclusions": {
+    "missingAgentEstablished": false,
+    "priorProcessScanIncomplete": true,
+    "rootCauseOfOriginalMissingPrompt": "Unknown",
+    "accessibilityWarningExplainsPolkitFailure": "Not established",
+    "old121To122FixtureSuitableForInstalledHost": false,
+    "replacementFixturePlan": "Unpublished same-version 1.2.9 prerequisite baseline and synthetic 1.2.10 candidate; no release version allocation",
+    "existingExternalHelperBytesKnown": false,
+    "privateRecoveryStateInspected": false,
+    "safeToMigrateOrInstall": false
+  },
+  "executionBoundaries": {
+    "originalAuthorizationAttemptRepeated": false,
+    "newPolkitDeployment": false,
+    "packageOperation": false,
+    "settingsRepair": false,
+    "productionEnablement": false,
+    "authenticationSafety": "Unproven",
+    "productionReady": false
+  },
+  "nextGate": "Read-only process UID/session and system-bus owner identification; no second agent launch, guessed repair or pkexec retry. A retry still requires its exact reviewed packet and specific authorization."
+}

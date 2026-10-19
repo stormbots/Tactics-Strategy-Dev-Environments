@@ -70,6 +70,14 @@ class CiBoundaries(unittest.TestCase):
         self.assertIn('test "$RUN_NATIVE_PACKAGES" = false', validation)
         self.assertIn('test "$PUBLISH_PRERELEASE" = false', validation)
         self.assertIn('test "$INSTALLER_PLATFORM" = all', validation)
+        baseline = next(s for s in steps if s.get('name') == 'Build unpublished Linux fixture baseline without downgrade')
+        ordinary = next(s for s in steps if s.get('name') == 'Build native installer')
+        self.assertIn('!inputs.build_linux_fixture_pair', ordinary['if'])
+        self.assertEqual(baseline['if'], step['if'])
+        self.assertIn('--write-configs', baseline['run'])
+        self.assertIn('sde-app-only-configs/baseline.json', baseline['run'])
+        self.assertIn('sde-app-only-configs/candidate.json', step['run'])
+        self.assertNotRegex(baseline['run'], r'--ignored|sudo|pkexec|apt-get|release create')
 
     def test_native_package_and_registration_steps_require_separate_opt_in(self):
         jobs = self.build['jobs']

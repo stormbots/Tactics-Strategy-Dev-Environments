@@ -9,6 +9,10 @@ import sys
 import tarfile
 
 ASSET = 'Skyview-Dev-Setup-LinuxMint-amd64.deb'
+# Synthetic test identities, chosen to avoid downgrading the observed spare.
+# These do not allocate or publish a release version.
+BASELINE_VERSION = '1.2.9'
+CANDIDATE_VERSION = '1.2.10'
 BASELINE_FILES = [
     '/usr/bin/skyview-dev-setup',
     '/usr/lib/Skyview Dev Setup/backend/linux/self-update/bootstrap.py',
@@ -21,6 +25,12 @@ BASELINE_FILES = [
 def digest(path):
     with path.open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def configurations(root):
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    for role, version in [('baseline', BASELINE_VERSION), ('candidate', CANDIDATE_VERSION)]:
+        (root / (role + '.json')).write_text(json.dumps({'version': version}) + '\n')
 
 
 def archive_hashes(package, switch, wanted):
@@ -55,7 +65,7 @@ def package(build_log, root):
         raise ValueError('Expected one native updater library test binary')
     expected_hooks = {'/' + name: digest(Path('installer/src-tauri/hooks') / name)
                       for name in ['postinst', 'prerm']}
-    for role, version in [('baseline', '1.2.1'), ('candidate', '1.2.2')]:
+    for role, version in [('baseline', BASELINE_VERSION), ('candidate', CANDIDATE_VERSION)]:
         deb = root / role / ASSET
         identity = subprocess.check_output(['/usr/bin/dpkg-deb', '-f', str(deb),
                                              'Package', 'Version', 'Architecture'], text=True)
@@ -72,7 +82,7 @@ def package(build_log, root):
              'candidate/Skyview-Dev-Setup-Windows-x64.exe', 'native-tests']
     manifest = {'schemaVersion': 1, 'purpose': 'unpublished-linux-app-only-core-fixture',
                 'sourceCommit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
-                'baselineVersion': '1.2.1', 'candidateVersion': '1.2.2',
+                'baselineVersion': BASELINE_VERSION, 'candidateVersion': CANDIDATE_VERSION,
                 'files': {name: digest(root / name) for name in files},
                 'baselineInstalledFiles': archive_hashes(root / ('baseline/' + ASSET),
                                                         '--fsys-tarfile', BASELINE_FILES),
@@ -84,4 +94,7 @@ def package(build_log, root):
 if __name__ == '__main__':
     if os.geteuid() == 0:
         raise ValueError('Artifact preparation does not need root')
-    package(Path(sys.argv[1]), Path(sys.argv[2]))
+    if len(sys.argv) == 3 and sys.argv[1] == '--write-configs':
+        configurations(Path(sys.argv[2]))
+    else:
+        package(Path(sys.argv[1]), Path(sys.argv[2]))
