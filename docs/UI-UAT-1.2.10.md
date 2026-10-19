@@ -2,11 +2,21 @@
 
 ## Candidate status
 
-**Preparation only: publication and authentication are pending.** Do not install
-until Codex supplies the exact source/run and verifies all five published assets.
-Expected [testing release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.10).
-The source SHA, run URL, signature result and asset hashes will be recorded in
-the publication handoff. An unsigned Actions artifact is not that handoff.
+**Published/authenticated; owner UAT returned October 19, 2026.**
+[Testing release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.10)
+is from source `35a2228070ea2391668e88d617adbd382aeb3c99`.
+[Protected run 39326251992](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/39326251992)
+passed, including authentication of all five published assets. Codex independently
+verified the pinned-key signature, both installers, checksums and GitHub asset
+digests; [PR #83](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/83)
+records the complete publication receipt and hashes.
+
+The owner reported **Windows Pass, Mint Pass for every results row below**.
+They then explicitly rejected the perfectly square icon shape and supplied
+`skyview_logo_rounded_square.svg` as an acceptable rounded-square design.
+This finding qualifies the icon/overall acceptance rows: themes, zoom and
+guidance are accepted; #63 and milestone acceptance await the revised icon.
+See [v1.2.11 focused icon UAT](UI-UAT-1.2.11.md); do not repeat accepted UI checks.
 
 The changed product behavior since accepted v1.2.9 is the **white-background
 application icon**. Existing themes, five zoom values and validation guidance
@@ -103,16 +113,20 @@ run Repair solely to test guidance. Known-failure fixture cases require the
 
 | Field | Windows | Mint |
 | --- | --- | --- |
-| Candidate version / source / authentication | Pending handoff | Pending handoff |
-| OS / webview / desktop / OS scale | Not reported | Not reported |
-| Prior app version; baseline; pause/schedule | Not reported | Not reported |
-| Installation / displayed version | Not run | Not run |
-| White icon on dark/light taskbar or dock | Not run | Not run |
-| Themes / persistence / zoom / layout | Not run | Not run |
-| Keyboard / speech / contrast / reduced motion | Not run | Not run |
-| Validate continuity / guidance / settings retained | Not run | Not run |
-| Findings or explicitly accepted limitations | Pending | Pending |
-| Owner acceptance / date | Pending | Pending |
+| Candidate version / source / authentication | Owner: Pass | Owner: Pass |
+| OS / webview / desktop / OS scale | Owner: Pass | Owner: Pass |
+| Prior app version; baseline; pause/schedule | Owner: Pass | Owner: Pass |
+| Installation / displayed version | Owner: Pass | Owner: Pass |
+| White icon on dark/light taskbar or dock | Owner: Pass; square shape rejected | Owner: Pass; square shape rejected |
+| Themes / persistence / zoom / layout | Owner: Pass | Owner: Pass |
+| Keyboard / speech / contrast / reduced motion | Owner: Pass | Owner: Pass |
+| Validate continuity / guidance / settings retained | Owner: Pass | Owner: Pass |
+| Findings or explicitly accepted limitations | Owner: Pass; rounded icon requested | Owner: Pass; rounded icon requested |
+| Owner acceptance / date | October 19: UI accepted; icon revision pending | October 19: UI accepted; icon revision pending |
+
+These are the owner's aggregate results, not independently observed native tests.
+Exact OS/webview versions, scale values and individual assistive-technology
+observations were not supplied; no values or per-tool results are inferred.
 
 Pass/Fail/Blocked/Not run plus plain-language observations are sufficient; Codex
 interprets logs and maintains the record. Include page/theme/zoom/window size for
