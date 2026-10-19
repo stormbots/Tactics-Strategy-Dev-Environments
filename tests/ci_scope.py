@@ -10,7 +10,7 @@ import yaml
 
 WORKFLOW = ".github/workflows/build-dev-setup.yml"
 GATE = "needs.scope.outputs.application_required == 'true'"
-APPLICATION_JOBS = ("checks", "native", "update-trust")
+APPLICATION_JOBS = ("checks", "update-trust", "desktop-check")
 # Narrow infrastructure exception: never broaden to arbitrary workflows/tests.
 MINT_INFRA_PATHS = {
     '.github/actionlint.yaml',
@@ -57,7 +57,7 @@ FIXTURE_PATHS = {
 
 
 def unchanged_application_workflow(before, after):
-    """Permit only scope-job introduction and the three explicit job gates."""
+    """Permit only scope-job introduction and the automatic validation job gates."""
     before = copy.deepcopy(before)
     after = copy.deepcopy(after)
     for workflow in (before, after):

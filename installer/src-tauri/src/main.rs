@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod app_update;
 mod process;
 mod protocol;
 mod schedule;
@@ -290,6 +291,66 @@ async fn inspect_self_update() -> Result<sde_update_trust::observation::Status, 
         .map_err(|_| "SDE update status could not be read. Please refresh.".to_string())
 }
 #[tauri::command]
+fn inspect_app_update() -> app_update::Availability {
+    app_update::inspect()
+}
+#[tauri::command]
+async fn request_app_update(state: tauri::State<'_, Busy>) -> Result<serde_json::Value, String> {
+    let guard = state.enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        app_update::request()
+    })
+    .await
+    .map_err(|_| "SDE request unavailable".to_owned())?
+    .map_err(str::to_owned)
+}
+#[tauri::command]
+async fn discover_app_update() -> Result<app_update::Discovery, String> {
+    tauri::async_runtime::spawn_blocking(app_update::discover)
+        .await
+        .map_err(|_| "SDE release check unavailable".to_owned())?
+        .map_err(str::to_owned)
+}
+#[tauri::command]
+async fn inspect_app_update_progress(request_id: String) -> Result<serde_json::Value, String> {
+    if request_id.len() != 36 {
+        return Err("Invalid request correlation".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || app_update::progress(&request_id))
+        .await
+        .map_err(|_| "SDE progress unavailable".to_owned())?
+        .map_err(str::to_owned)
+}
+#[tauri::command]
+async fn inspect_app_update_receipt() -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(app_update::receipt)
+        .await
+        .map_err(|_| "SDE receipt unavailable".to_owned())?
+        .map_err(str::to_owned)
+}
+#[tauri::command]
+async fn close_for_app_update(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Busy>,
+    request_id: String,
+) -> Result<(), String> {
+    let guard = state.enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        // Keep operation exclusion through the exit request. S remains owned by
+        // the process until exit; do not manually drop/reacquire a session lease.
+        let _guard = guard;
+        app_update::close(&request_id).map_err(str::to_owned)?;
+        // Fail closed if native exit is delayed: no new GUI operation may start
+        // between validation and process termination. Never release S manually.
+        std::mem::forget(_guard);
+        app.exit(0);
+        Ok(())
+    })
+    .await
+    .map_err(|_| "Protected close unavailable; SDE remains open".to_owned())?
+}
+#[tauri::command]
 async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
     let root = backend(&app)?;
     tauri::async_runtime::spawn_blocking(move || schedule::inspect(&root))
@@ -382,7 +443,7 @@ fn main() {
         Ok(lease) => lease,
         Err(e) => {
             let message = if e == sde_coordination::Error::Busy {
-                "SDE is being updated. Please reopen it shortly.".to_string()
+                app_update::startup_message().to_string()
             } else {
                 e.to_string()
             };
@@ -397,6 +458,12 @@ fn main() {
             inspect_system,
             inspect_schedule,
             inspect_self_update,
+            inspect_app_update,
+            request_app_update,
+            discover_app_update,
+            inspect_app_update_progress,
+            inspect_app_update_receipt,
+            close_for_app_update,
             run_operation,
             open_destination
         ])

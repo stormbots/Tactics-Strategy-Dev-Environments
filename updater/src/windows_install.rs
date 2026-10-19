@@ -432,86 +432,178 @@ mod native {
             report.outcome = coordination_outcome(e).into();
             format!("Installation deferred or requires repair: {e}")
         })?;
-        if policy()? {
-            report.outcome = "paused".into();
-            return Ok(());
+        install_in_context(
+            crate::install_core::Context::scheduled(&lease),
+            directory,
+            candidate,
+            report,
+            authenticate,
+            identity,
+        )
+    }
+
+    /// No bootstrap/CLI is exposed in Phase 1. Later admission and authorization
+    /// supply the installation lease; this boundary never reacquires it.
+    #[allow(dead_code)]
+    fn install_app_only(
+        lease: &sde_coordination::Installation,
+        directory: &Path,
+        candidate: &Candidate,
+        report: &mut Report,
+    ) -> Result<()> {
+        system()?;
+        report.tool_exit =
+            crate::install_core::tools_for(crate::install_core::Scope::AppOnly, tool_maintenance)?;
+        install_in_context(
+            crate::install_core::Context::app_only(lease),
+            directory,
+            candidate,
+            report,
+            crate::authenticate,
+            || {
+                host::installed()
+                    .map(|i| i.version)
+                    .map_err(|_| "Installed identity unavailable".into())
+            },
+        )
+    }
+
+    fn install_in_context(
+        context: crate::install_core::Context<'_>,
+        directory: &Path,
+        candidate: &Candidate,
+        report: &mut Report,
+        authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
+        identity: impl Fn() -> Result<String>,
+    ) -> Result<()> {
+        crate::install_core::install(
+            context,
+            &mut WindowsBackend {
+                directory,
+                candidate,
+                report,
+                authenticate: Some(authenticate),
+                identity,
+            },
+        )
+    }
+
+    struct WindowsBackend<'a, F, I> {
+        directory: &'a Path,
+        candidate: &'a Candidate,
+        report: &'a mut Report,
+        authenticate: Option<F>,
+        identity: I,
+    }
+    impl<F, I> crate::install_core::Backend for WindowsBackend<'_, F, I>
+    where
+        F: FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
+        I: Fn() -> Result<String>,
+    {
+        type Verified = AuthenticatedManifest;
+        fn target_version(&self) -> &str {
+            &self.candidate.version
         }
-        let before = identity()?;
-        if semver::Version::parse(&candidate.version).map_err(|_| "Invalid candidate")?
-            <= semver::Version::parse(&before).map_err(|_| "Invalid installed version")?
-        {
-            report.outcome = "current".into();
-            return Ok(());
+        fn phase(&mut self, phase: crate::observation::Phase) {
+            self.report.phase = phase;
         }
-        report.outcome = "failed".into();
-        let manifest = authenticate_staged(directory, candidate, authenticate)?;
-        let asset = &manifest.metadata().platforms["windows-x86_64"];
-        report.outcome = "failed".into();
-        let journal = lease.begin_transaction().map_err(|e| e.to_string())?;
-        atomic_json(
-            &Path::new(ROOT).join("installation.json"),
-            &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":candidate.version,"sha256":asset.sha256,"transaction":directory.file_name().and_then(|s|s.to_str()),"startedAt":report.checked_at}),
-        )?;
-        if policy()? {
+        fn paused(&mut self) -> Result<bool> {
+            policy()
+        }
+        fn installed_version(&mut self) -> Result<String> {
+            (self.identity)()
+        }
+        fn mark_paused(&mut self) {
+            self.report.outcome = "paused".into();
+        }
+        fn record_paused_intent(&mut self) -> Result<()> {
             atomic_json(
                 &Path::new(ROOT).join("installation.json"),
-                &serde_json::json!({"schemaVersion":1,"stage":"paused","candidateVersion":candidate.version}),
+                &serde_json::json!({"schemaVersion":1,"stage":"paused","candidateVersion":self.candidate.version}),
+            )
+        }
+        fn mark_current(&mut self) {
+            self.report.outcome = "current".into();
+        }
+        fn mark_failed(&mut self) {
+            self.report.outcome = "failed".into();
+        }
+        fn authenticate(&mut self) -> Result<AuthenticatedManifest> {
+            authenticate_staged(
+                self.directory,
+                self.candidate,
+                self.authenticate
+                    .take()
+                    .ok_or("Authentication already consumed")?,
+            )
+        }
+        fn preflight(&mut self, _verified: &AuthenticatedManifest) -> Result<bool> {
+            Ok(true)
+        }
+        fn record_intent(&mut self, before: &str, manifest: &AuthenticatedManifest) -> Result<()> {
+            atomic_json(
+                &Path::new(ROOT).join("installation.json"),
+                &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":self.candidate.version,"sha256":manifest.metadata().platforms["windows-x86_64"].sha256,"transaction":self.directory.file_name().and_then(|s|s.to_str()),"startedAt":self.report.checked_at}),
+            )
+        }
+        fn launch(&mut self) -> Result<i32> {
+            // env is fixed; no relaunch, destination override, UI or reboot switches.
+            let mut command = Command::new(self.directory.join(INSTALLER));
+            system_environment(&mut command);
+            command.current_dir(self.directory).args(["/S", "/UPDATE"]);
+            // No timeout/kill: unknown child completion retains coordination intent.
+            command
+                .status()
+                .map_err(|_| "Native installer completion unknown; mentor review required")?
+                .code()
+                .ok_or_else(|| "Native installer completion unknown".into())
+        }
+        fn native_finished(&mut self, before: &str, code: i32) -> Result<()> {
+            self.report.native_exit = Some(code);
+            self.report.reboot_required = code == 3010;
+            atomic_json(
+                &Path::new(ROOT).join("installation.json"),
+                &serde_json::json!({"schemaVersion":1,"stage":"postcheck","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code,"transaction":self.directory.file_name().and_then(|s|s.to_str())}),
             )?;
-            journal.complete().map_err(|e| e.to_string())?;
-            report.outcome = "paused".into();
-            return Ok(());
+            if native_outcome(code) != NativeOutcome::Success {
+                return Err(format!(
+                    "Native installer returned {code}; mentor review required"
+                ));
+            }
+            Ok(())
         }
-        report.phase = crate::observation::Phase::Installer;
-        // env is fixed; no relaunch, destination override, UI or reboot switches.
-        let mut command = Command::new(directory.join(INSTALLER));
-        system_environment(&mut command);
-        command.current_dir(directory).args(["/S", "/UPDATE"]);
-        // Wait indefinitely; never kill an installer to enforce a timeout. A
-        // supervisor crash keeps the private coordination intent and blocks retry.
-        let status = command
-            .status()
-            .map_err(|_| "Native installer completion unknown; mentor review required")?;
-        let code = status.code().ok_or("Native installer completion unknown")?;
-        report.native_exit = Some(code);
-        report.reboot_required = code == 3010;
-        atomic_json(
-            &Path::new(ROOT).join("installation.json"),
-            &serde_json::json!({"schemaVersion":1,"stage":"postcheck","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code,"transaction":directory.file_name().and_then(|s|s.to_str())}),
-        )?;
-        if native_outcome(code) != NativeOutcome::Success {
-            return Err(format!(
-                "Native installer returned {code}; mentor review required"
-            ));
+        fn postcheck(&mut self) -> Result<()> {
+            if (self.identity)()? != self.candidate.version {
+                return Err("Post-install version mismatch; mentor review required".into());
+            }
+            resources(&self.candidate.version)
         }
-        report.phase = crate::observation::Phase::Postcheck;
-        if identity()? != candidate.version {
-            return Err("Post-install version mismatch; mentor review required".into());
+        fn record_success(&mut self, before: &str, code: i32) -> Result<()> {
+            let recovery = Path::new(ROOT).join("recovery.json");
+            if recovery.exists() {
+                let previous: serde_json::Value =
+                    serde_json::from_slice(&crate::read_bounded(&recovery, 4096)?)
+                        .map_err(|_| "Recovery state invalid")?;
+                atomic_json(&Path::new(ROOT).join("previous-recovery.json"), &previous)?;
+            }
+            atomic_json(
+                &recovery,
+                &serde_json::json!({"schemaVersion":1,"version":self.candidate.version,"transaction":self.directory.file_name().and_then(|s|s.to_str())}),
+            )?;
+            atomic_json(
+                &Path::new(ROOT).join("installation.json"),
+                &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":self.candidate.version,"nativeExit":code}),
+            )
         }
-        resources(&candidate.version)?;
-        let recovery = Path::new(ROOT).join("recovery.json");
-        if recovery.exists() {
-            let previous: serde_json::Value =
-                serde_json::from_slice(&crate::read_bounded(&recovery, 4096)?)
-                    .map_err(|_| "Recovery state invalid")?;
-            atomic_json(&Path::new(ROOT).join("previous-recovery.json"), &previous)?;
+        fn mark_updated(&mut self) {
+            self.report.application_version = self.candidate.version.clone();
+            self.report.outcome = "updated".into();
+            if !self.report.recovery_available {
+                self.report.detail =
+                    "Verified previous-version installer unavailable; reduced recovery capability"
+                        .into();
+            }
         }
-        atomic_json(
-            &recovery,
-            &serde_json::json!({"schemaVersion":1,"version":candidate.version,"transaction":directory.file_name().and_then(|s|s.to_str())}),
-        )?;
-        atomic_json(
-            &Path::new(ROOT).join("installation.json"),
-            &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code}),
-        )?;
-        journal.complete().map_err(|e| e.to_string())?;
-        report.application_version = candidate.version.clone();
-        report.outcome = "updated".into();
-        if !report.recovery_available {
-            report.detail =
-                "Verified previous-version installer unavailable; reduced recovery capability"
-                    .into();
-        }
-        Ok(())
     }
     fn prune_staging(root: &Path) -> Result<()> {
         let mut keep = Vec::new();
@@ -621,7 +713,10 @@ mod native {
             }),
         };
         let result = (|| {
-            report.tool_exit = tool_maintenance()?;
+            report.tool_exit = crate::install_core::tools_for(
+                crate::install_core::Scope::ScheduledMaintenance,
+                tool_maintenance,
+            )?;
             report.phase = crate::observation::Phase::Identity;
             let installed =
                 host::installed().map_err(|e| format!("Installed identity unavailable: {e:?}"))?;

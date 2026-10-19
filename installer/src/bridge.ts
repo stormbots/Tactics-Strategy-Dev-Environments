@@ -173,3 +173,61 @@ export async function inspectSelfUpdate(): Promise<
     action: "Preview mode cannot read workstation SDE update history.",
   };
 }
+
+export async function inspectAppUpdate(): Promise<
+  import("./appUpdate").AppUpdateAvailability
+> {
+  const { parseAppUpdate } = await import("./appUpdate");
+  if (!native) return { enabled: false, reason: "preview" };
+  return parseAppUpdate(await invoke("inspect_app_update"));
+}
+
+export async function requestAppUpdate(): Promise<
+  import("./appUpdate").RequestReceipt
+> {
+  if (!native) throw new Error("No app-only update request was confirmed.");
+  const value = await invoke("request_app_update");
+  const { parseRequestReceipt } = await import("./appUpdate");
+  let receipt;
+  try {
+    receipt = parseRequestReceipt(value);
+  } catch {
+    /* Never accept stdout-shaped or malformed success. */
+  }
+  if (!receipt || receipt.status !== "accepted")
+    throw new Error("No app-only update request was confirmed.");
+  return receipt;
+}
+
+export async function discoverAppUpdate(): Promise<
+  import("./appUpdate").ReleaseCheck
+> {
+  if (!native)
+    throw new Error("Release checking is unavailable in browser preview.");
+  const { parseReleaseCheck } = await import("./appUpdate");
+  return parseReleaseCheck(await invoke("discover_app_update"));
+}
+export async function inspectAppUpdateProgress(
+  requestId: string,
+): Promise<import("./appUpdate").UpdateProgress> {
+  const { parseUpdateProgress, requestIdPattern } = await import("./appUpdate");
+  if (!native || !requestIdPattern.test(requestId))
+    throw new Error("Protected progress unavailable");
+  return parseUpdateProgress(
+    await invoke("inspect_app_update_progress", { requestId }),
+    requestId,
+  );
+}
+export async function closeForAppUpdate(requestId: string): Promise<never> {
+  const { requestIdPattern } = await import("./appUpdate");
+  if (native && requestIdPattern.test(requestId))
+    await invoke("close_for_app_update", { requestId });
+  throw new Error("Closing for installation remains disabled.");
+}
+
+/** Fixed per-user protected lookup; no caller-selected receipt path or identity. */
+export async function inspectAppUpdateReceipt() {
+  const { parseRequestReceipt } = await import("./appUpdate");
+  if (!isTauri()) return null;
+  return parseRequestReceipt(await invoke("inspect_app_update_receipt"));
+}

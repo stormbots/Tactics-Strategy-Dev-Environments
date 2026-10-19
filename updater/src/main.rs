@@ -9,6 +9,24 @@ fn run() -> Result<(), String> {
     if args.as_slice() == ["maintain-linux"] {
         std::process::exit(sde_update_trust::maintain_linux()?);
     }
+    #[cfg(target_os = "linux")]
+    if args.as_slice() == ["app-only-linux"] {
+        return sde_update_trust::app_only_linux();
+    }
+    #[cfg(target_os = "linux")]
+    if args.len() == 2 && args[0] == "app-only-progress" {
+        println!("{}", sde_update_trust::app_only_progress(&args[1])?);
+        return Ok(());
+    }
+    #[cfg(target_os = "linux")]
+    if args.as_slice() == ["app-only-current-receipt"] {
+        println!(
+            "{}",
+            serde_json::to_string(&sde_update_trust::app_only_current_receipt()?)
+                .map_err(|_| "Receipt encoding failed")?
+        );
+        return Ok(());
+    }
     #[cfg(windows)]
     if args.as_slice() == ["maintain-windows"] {
         std::process::exit(sde_update_trust::maintain_windows()?);

@@ -164,3 +164,39 @@ for (const width of [1140, 520]) {
     });
   });
 }
+
+test("Schedule Update Now stays disabled and accessible at compact and wide sizes", async ({
+  page,
+}) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Schedule", exact: true }).click();
+    const button = page.getByRole("button", {
+      name: "Update Now",
+      exact: true,
+    });
+    await expect(button).toBeVisible();
+    await expect(button).toBeDisabled();
+    await expect(button).toHaveAttribute(
+      "aria-describedby",
+      "app-update-availability",
+    );
+    await expect(
+      page.getByText("Update Now is unavailable in browser preview."),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Check SDE release" }).click();
+    await expect(
+      page.getByText(
+        "Release metadata could not be verified. No update request was submitted.",
+      ),
+    ).toBeVisible();
+    await expect(button).toBeDisabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await audit(page);
+  }
+});

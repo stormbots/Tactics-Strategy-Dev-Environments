@@ -1,0 +1,92 @@
+{
+  "date_utc": "2026-10-17",
+  "base_commit": "c2ad534b2157e0ddbc91c796b14169ac1eb594a2",
+  "scope": "Phase 3 Linux implementation and local QA only; no activation, installed update, workflow dispatch or publication",
+  "environment": {
+    "os": "Linux",
+    "kernel": "6.18.44",
+    "machine": "x86_64",
+    "privileged_operations_performed": false
+  },
+  "review_fixes": [
+    "Commit guard after native preflight and final pause, before intent",
+    "Terminal reporting error cannot relabel successful installation Deferred",
+    "Read-only package probes bounded by remaining request lifetime; installation never timed out",
+    "Unknown intent inspection errors treated conservatively",
+    "No world/shared-group progress permission fallback"
+  ],
+  "qa": {
+    "updater_local_library": {
+      "passed": 47,
+      "failed": 0,
+      "ignored": 1,
+      "filtered": 4,
+      "core_tests": 20,
+      "ignored_case": "linux_request::tests::named_reader_acl_roundtrips_on_an_unprivileged_owned_file",
+      "command": "cargo test --offline --locked --manifest-path updater/Cargo.toml --lib -- --skip signed_upgrade_on_native_mint --skip signed_upgrade_under_system --skip e2e:: --skip staging::tests::authenticated_stage_and_failed_download_cleanup --skip staging::tests::pinned_key_does_not_accept_test_signature_or_leave_files"
+    },
+    "python": {
+      "broker_mocked": 7,
+      "package_hooks_mocked": 7,
+      "ci_scope_boundaries_and_reporter": 17,
+      "native_ci_evidence_parser": 4,
+      "backend_contracts": 6,
+      "metadata": 9,
+      "linux_runtime": 3,
+      "schedule_local": 9,
+      "schedule_protected_skipped": 4
+    },
+    "rustfmt": "Pass",
+    "clippy_all_targets_warnings_denied": "Pass",
+    "windows_gnu_all_targets_check": "Pass (cross compilation only; not Windows execution or MSVC validation of these changes)",
+    "actionlint": "Pass",
+    "linux_existing_integrity_checks": "Pass",
+    "git_diff_check": "Pass",
+    "acl_owned_file_probe": {
+      "initial_result": "Fail",
+      "syscall": "fsetxattr(system.posix_acl_access)",
+      "errno": 95,
+      "error": "Operation not supported",
+      "python_owned_file_confirmation": "EOPNOTSUPP (95)",
+      "scratch_files_removed": true,
+      "disposition": "Preserved failure; filesystem-dependent Rust case is explicitly ignored by ordinary checks, separately selectable on supported disposable storage. No fallback permissions. Native progress ACL gate remains unproven."
+    }
+  },
+  "remaining_native_gates": [
+    "polkit authorization/denial and alternate-admin requester identity",
+    "root-owned per-UID ACL cross-user read/tamper proof on Mint storage",
+    "independent worker survival across GUI/authorization-agent loss and replacement",
+    "native request replay/contention, deadlines/suspend and protected admission",
+    "capability migration and exact current/candidate hooks",
+    "native package-child/recovery/postcheck and complete app-only upgrade"
+  ],
+  "not_run": [
+    "root app-only worker",
+    "polkit policy/launcher installation or registration",
+    "installed application update or package operation",
+    "native N1/N2 or W2m rerun",
+    "application builds or native package workflows",
+    "Windows Phase 3 privilege implementation"
+  ],
+  "outcome_distinctions": {
+    "local_checks": "Pass except retained unsupported-filesystem ACL probe",
+    "native_cleanup_correctness": "Unproven",
+    "authentication_safety": "Unproven",
+    "production_ready": false,
+    "feature_enabled": false,
+    "historical_W2h": "Counterexample preserved",
+    "historical_W2m": "Immediate cleanup Fail preserved",
+    "historical_W2n_N1_N2": "NotRun"
+  },
+  "file_sha256": {
+    "updater/src/install_core.rs": "14e966adb9c89786af55a736373da77f6b0b9df9053e763c984aacb302d579c6",
+    "updater/src/linux_install.rs": "1cee4fba7fbd368541e085ac7e20468d8789ef621bc9dc67de4e384f5cf2d0e1",
+    "updater/src/linux_request.rs": "ea2723b5e53ee8ea0b7dbfb15ed9f3bccf2877107792a3c4d4c8384ec922b0d9",
+    "updater/src/main.rs": "49eb7a7ea2a40924aef43dbad3872b9dd9a968a776a0d071035791195b335f9b",
+    "updater/src/lib.rs": "509e90f293e820479c180b44cbf8188655798d718f97656b54c580904fbe9d19",
+    "linux/self-update/app_request.py": "5aa84c9d2ad1d54a15e66359a37e234a87e3ded6b0d6d86ed2a3b32ea56c9eb7",
+    "linux/polkit/org.skyviewrobotics.sde.app-update.policy": "50900fa7d3f8f92c8646c8ae821b6ed6ac9356639abed17c9091b7ee17b25187",
+    "tests/test_app_only_request.py": "eb0185db7c437a88602fa9ba02fe6f50c0904003d98e6cb183cfeabad1f4d034",
+    ".github/workflows/build-dev-setup.yml": "380af3f90adee036ca30da783e28b4d8356c0bdcc8979898cfdb0dd93c4c631e"
+  }
+}

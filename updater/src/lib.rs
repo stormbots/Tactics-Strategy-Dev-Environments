@@ -4,8 +4,18 @@ pub mod discovery;
 #[cfg(test)]
 mod e2e;
 pub mod host;
+mod install_core;
 #[cfg(target_os = "linux")]
 mod linux_install;
+#[cfg(target_os = "linux")]
+mod linux_request;
+#[cfg(target_os = "linux")]
+pub use linux_request::{
+    app_only_check_close, app_only_confirm_request, app_only_current_receipt, app_only_linux,
+    app_only_observation, app_only_prerequisites, app_only_progress, ProgressObservation,
+    ReceiptObservation,
+};
+pub mod notification;
 pub mod observation;
 pub mod staging;
 #[cfg(target_os = "linux")]

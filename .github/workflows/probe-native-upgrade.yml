@@ -1,11 +1,5 @@
 name: Probe native SDE upgrade contract
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/probe-native-upgrade.yml'
-      - 'tests/Probe-NativeUpgrade.ps1'
-      - 'tests/probe_native_upgrade.sh'
-      - 'docs/SELF-UPDATE-ARCHITECTURE.md'
   workflow_dispatch:
 permissions:
   contents: read

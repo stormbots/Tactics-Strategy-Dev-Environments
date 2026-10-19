@@ -200,13 +200,14 @@ pub(super) fn initialize(dir: &Path) -> Result<()> {
     validate_acl(Path::new(r"C:\ProgramData"), true)?;
     create(dir, true)?;
     validate_parents(dir)?;
-    for name in ["sessions.gate", "operations.gate"] {
+    for name in ["sessions.gate", "operations.gate", "admission.gate"] {
         create(&dir.join(name), false)?;
         drop(open_checked(
             dir,
             name,
             READ_CONTROL | FILE_READ_ATTRIBUTES,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            true,
         )?);
     }
     Ok(())
@@ -217,9 +218,10 @@ pub(super) fn acquire(dir: &Path, name: &str, shared: bool) -> Result<File> {
         name,
         GENERIC_READ | READ_CONTROL,
         if shared { FILE_SHARE_READ } else { 0 },
+        true,
     )
 }
-fn open_checked(dir: &Path, name: &str, access: u32, sharing: u32) -> Result<File> {
+fn open_checked(dir: &Path, name: &str, access: u32, sharing: u32, empty: bool) -> Result<File> {
     validate_parents(dir)?;
     let handle = unsafe {
         CreateFileW(
@@ -244,8 +246,7 @@ fn open_checked(dir: &Path, name: &str, access: u32, sharing: u32) -> Result<Fil
     if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0
         || info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY) != 0
         || info.nNumberOfLinks != 1
-        || info.nFileSizeHigh != 0
-        || info.nFileSizeLow != 0
+        || (empty && (info.nFileSizeHigh != 0 || info.nFileSizeLow != 0))
     {
         return Err(Error::Untrusted);
     }
@@ -311,4 +312,17 @@ pub(super) fn journal(path: &Path) -> Result<File> {
         return Err(Error::Interrupted);
     }
     Ok(unsafe { File::from_raw_handle(handle) })
+}
+
+/// The writer was already flushed. Retain an immutable handle across package
+/// hooks: readers may open it, but writers and deletion remain excluded.
+pub(super) fn seal_journal(file: File, path: &Path) -> Result<File> {
+    drop(file);
+    open_checked(
+        path.parent().ok_or(Error::Untrusted)?,
+        "transaction.json",
+        GENERIC_READ | READ_CONTROL,
+        FILE_SHARE_READ,
+        false,
+    )
 }

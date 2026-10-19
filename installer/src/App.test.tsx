@@ -8,9 +8,20 @@ import {
 } from "@testing-library/react";
 import axe from "axe-core";
 import App from "./App";
-import { inspect, operate, inspectSchedule, open } from "./bridge";
+import {
+  inspect,
+  operate,
+  inspectSchedule,
+  inspectAppUpdate,
+  open,
+} from "./bridge";
 vi.mock("./bridge", () => ({
+  inspectAppUpdateReceipt: vi.fn(async () => null),
   native: false,
+  inspectAppUpdate: vi.fn(async () => ({ enabled: false, reason: "preview" })),
+  requestAppUpdate: vi.fn(async () => {
+    throw new Error("Disabled");
+  }),
   appVersion: "1.2.0",
   inspectSelfUpdate: vi.fn(async () => ({
     paused: true,
@@ -195,6 +206,7 @@ it("reads and refreshes Schedule, displays never-run history, and recovers from 
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   await screen.findByText("Test timer");
   expect(vi.mocked(open)).not.toHaveBeenCalled();
+  expect(vi.mocked(inspectAppUpdate)).toHaveBeenCalledTimes(1);
 });
 it("shows the version and approved external links on About", async () => {
   const { container } = render(<App />);

@@ -1,0 +1,62 @@
+name: Mint validation mocks and host preflight
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mint-preflight-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  mocked-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Mocked validation only
+        run: python3 -m unittest discover -s tests -p test_mint_update_validation.py -v
+  host-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Read-only host inventory (no media or guest execution)
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, 'tests')
+          from mint_validation.host_preflight import collect
+          from mint_validation.driver import host_check
+          facts = collect(Path('.'), disposable_ack=True)
+          report = host_check(facts)
+          report.update(observedAndDeclaredFacts=facts,
+                        declarationsAreAttestation=False,
+                        hostProbeExecuted=True,
+                        sourceCommit=__import__('os').environ['GITHUB_SHA'])
+          report['ready'] = False
+          report['blockers'].extend(['authenticated-media', 'guest-provisioning',
+                                    'guest-execution-authorization'])
+          Path('host-preflight.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps(report, indent=2))
+          # Publish the same small, non-secret report through the Checks API too.
+          # Artifact/log storage can be unavailable to restricted API clients.
+          notice = json.dumps(report, separators=(',', ':'))
+          assert len(notice.encode('utf-8')) <= 4096
+          notice = notice.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::notice title=Mint host preflight JSON::' + notice)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mint-host-preflight
+          path: host-preflight.json
+          if-no-files-found: error
+          retention-days: 7

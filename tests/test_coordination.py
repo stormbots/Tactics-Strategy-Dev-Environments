@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import call, patch
 
 REPO = Path(__file__).resolve().parents[1]
 ENGINE = REPO / 'linux/lib/coordination.py'
@@ -24,7 +25,7 @@ class Supervision(unittest.TestCase):
         self.fixture = tempfile.TemporaryDirectory(prefix='sde-coordination-test-', dir='/var/lib')
         self.root = Path(self.fixture.name)
         self.root.chmod(0o755)
-        for name in ('sessions.gate', 'operations.gate'):
+        for name in ('sessions.gate', 'operations.gate', 'admission.gate'):
             (self.root / name).touch(mode=0o444)
         self.old_root, self.old_journal = coordination.ROOT, coordination.JOURNAL
         coordination.ROOT = self.root
@@ -122,6 +123,23 @@ class Supervision(unittest.TestCase):
         coordination.JOURNAL.write_text('malformed stale state')
         with self.assertRaises(coordination.CoordinationError):
             coordination.run('operation', [sys.executable, '-c', 'raise Exception("must not start")'])
+    def test_closed_admission_blocks_new_session_but_retains_existing_session(self):
+        session = coordination.admitted_session()
+        admission = coordination.gate('admission.gate', False)
+        try:
+            with self.assertRaises(BlockingIOError):
+                coordination.admitted_session()
+            inherited = coordination.admitted_session(str(session))
+            os.close(inherited)
+            with self.assertRaises(BlockingIOError):
+                coordination.gate('sessions.gate', False)
+        finally:
+            os.close(admission)
+            os.close(session)
+    def test_orphan_scope_blocks_even_session_only_launch(self):
+        (self.root / 'installation-scope.json').write_text('unknown')
+        with self.assertRaises(coordination.CoordinationError):
+            coordination.run('session', [sys.executable, '-c', 'raise Exception("must not start")'])
     def test_unsafe_modes_and_symlinks_rejected(self):
         (self.root / 'operations.gate').chmod(0o644)
         with self.assertRaises(coordination.CoordinationError):
@@ -130,6 +148,36 @@ class Supervision(unittest.TestCase):
         (self.root / 'operations.gate').symlink_to('sessions.gate')
         with self.assertRaises(OSError):
             coordination.gate('operations.gate', False)
+
+@unittest.skipUnless(sys.platform == 'linux', 'Linux adapter')
+class AdmissionOrdering(unittest.TestCase):
+    def test_new_session_checks_intent_on_each_side_of_both_gates(self):
+        with patch.object(coordination, 'no_interruption') as intent, \
+                patch.object(coordination, 'gate', side_effect=[11, 12]) as gate, \
+                patch.object(coordination.os, 'close') as close:
+            events = unittest.mock.Mock()
+            events.attach_mock(intent, 'intent')
+            events.attach_mock(gate, 'gate')
+            events.attach_mock(close, 'close')
+            self.assertEqual(coordination.admitted_session(), 12)
+            self.assertEqual(events.mock_calls, [call.intent(), call.gate('admission.gate', True),
+                call.intent(), call.gate('sessions.gate', True, None), call.intent(), call.close(11)])
+
+    def test_late_intent_releases_both_acquired_descriptors(self):
+        with patch.object(coordination, 'no_interruption',
+                          side_effect=[None, None, coordination.CoordinationError('intent')]), \
+                patch.object(coordination, 'gate', side_effect=[11, 12]), \
+                patch.object(coordination.os, 'close') as close:
+            with self.assertRaises(coordination.CoordinationError):
+                coordination.admitted_session()
+            self.assertEqual(close.call_args_list, [call(12), call(11)])
+
+    def test_existing_session_does_not_reenter_admission(self):
+        with patch.object(coordination, 'no_interruption'), \
+                patch.object(coordination, 'gate', return_value=12) as gate:
+            self.assertEqual(coordination.admitted_session('9'), 12)
+            gate.assert_called_once_with('sessions.gate', True, '9')
+
 
 if __name__ == '__main__':
     if os.environ.get('SDE_REQUIRE_COORDINATION') and (sys.platform != 'linux' or os.geteuid() != 0):
