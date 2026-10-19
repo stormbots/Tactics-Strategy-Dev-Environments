@@ -2,9 +2,11 @@
 
 ## Current handoff — October 19, 2026
 
-Milestone 1 now contains #4 (themes), #5 (zoom), #6 (validation guidance),
-#63 (white-background application icon), and closed #57 (banner removal).
-Themes, zoom and guidance are already merged. The approved PR #69 button
+Milestone 1 contains #4 (themes), #5 (zoom), #6 (validation guidance),
+#63 (white-background application icon), and #57 (banner removal).
+The owner returned v1.2.10 UAT on Windows 11 and Mint Cinnamon with Pass for
+every results row on October 19. Themes, zoom and guidance are accepted and
+#4/#5/#6 are closed. #57 was already closed. The approved PR #69 button
 controls supersede the original radio/slider interactions in the old issues.
 
 The published [v1.2.9 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.9)
@@ -14,18 +16,20 @@ below are historical; they are not a request to repeat completed testing. The
 release statement does not supply individual platform/screen-reader result
 cells, so those missing details are not invented as passes.
 
-The remaining implementation is #63: white-backed platform icons derived from
-the unchanged artwork. A new **v1.2.10 testing candidate** is being prepared;
-publication and authentication must be confirmed before installation. Use the
-[focused candidate UAT/results sheet](UI-UAT-1.2.10.md) for the new handoff and
+The published, authenticated [v1.2.10 record](UI-UAT-1.2.10.md) preserves that
+owner report. The owner explicitly rejected the square icon shape despite its
+white-background visibility passing. They supplied a rounded-square SVG, now
+used for packaged platform icons with a white tile and transparent outer corners.
+A new **v1.2.11 testing candidate** needs publication/authentication confirmation
+before installation. Use the [focused icon UAT/results sheet](UI-UAT-1.2.11.md) and
 [completion plan](UI-MILESTONE-COMPLETION-PLAN.md) for delivery/closeout.
 
-Keep #4/#5/#6/#63 and the milestone open until the owner accepts this handoff
+Keep #63 and the milestone open until the owner accepts the revised icon
 and any specifically named limitations. No historical unrun native case is
 silently converted to Pass. The detailed matrix below remains a reference for
 unresolved cases and investigating findings, rather than a new mandatory repeat
-of every previously accepted check. Current desktop availability must be checked
-at handoff; the October 15 availability statements below are historical.
+of every previously accepted check. The owner confirmed both Windows 11 and Mint
+Cinnamon and reported Pass on both; October 15 availability statements are historical.
 
 ## Historical October 15 audit and detailed test reference
 

@@ -6,6 +6,13 @@ The owner performs desktop UAT after the candidate handoff.
 
 ## Finish line
 
+October 19 progress: authenticated v1.2.10 delivered; the owner returned Pass
+for every UAT row on Windows 11 and Mint Cinnamon, then rejected the square icon
+shape. Themes, zoom and guidance are accepted. Use the supplied rounded-square
+SVG for #63 and deliver a fresh v1.2.11 candidate through the same review/signing
+gates; [focused follow-up UAT](UI-UAT-1.2.11.md) covers installation and icon shape.
+Keep #63 and the milestone open until that finding is accepted as resolved.
+
 Deliver a reviewed, authenticated Windows/Mint testing candidate and a concise
 UAT checklist. After owner UAT, fix reported defects, record the tested scope
 and explicitly accepted limitations, and close the accepted issues and milestone.
