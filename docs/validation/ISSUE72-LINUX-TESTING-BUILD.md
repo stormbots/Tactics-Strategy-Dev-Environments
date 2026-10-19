@@ -24,6 +24,14 @@ limited process scan. The existing agent's identity remains unknown. The
 accessibility-bus warning names `/root/.cache/at-spi/bus_10.0`; it is not proof of
 the cause of the earlier polkit failure and does not authorize permission repair.
 
+The subsequent read-only report identifies c11 as XRDP with no seat. Polkit 124
+requires a seat for locality; this predicts denial under the fixed action's
+implicit-any=no rule despite Remote=no/Active=yes. The original attempt's session
+was not captured. The latest owner report is the physical lightdm X11 console,
+seat0/display :0, UID 1000, active and Remote=no. It meets that prerequisite.
+Use the [specific two-file console proposal](ISSUE72-MINT-CONSOLE-DISABLED-GATE.md)
+only after the owner's required explicit approval; no new agent or repair.
+
 ## Shortest remaining route
 
 1. Produce Linux artifacts and the pinned shared-core driver below. Leave Windows
