@@ -1,5 +1,34 @@
 # Accessibility and UI Usability: audit and native UAT
 
+## Current handoff — October 19, 2026
+
+Milestone 1 now contains #4 (themes), #5 (zoom), #6 (validation guidance),
+#63 (white-background application icon), and closed #57 (banner removal).
+Themes, zoom and guidance are already merged. The approved PR #69 button
+controls supersede the original radio/slider interactions in the old issues.
+
+The published [v1.2.9 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.9)
+records the owner's completed UAT and stable-promotion authorization on
+October 15. Preserve that acceptance. The older pending-candidate statements
+below are historical; they are not a request to repeat completed testing. The
+release statement does not supply individual platform/screen-reader result
+cells, so those missing details are not invented as passes.
+
+The remaining implementation is #63: white-backed platform icons derived from
+the unchanged artwork. A new **v1.2.10 testing candidate** is being prepared;
+publication and authentication must be confirmed before installation. Use the
+[focused candidate UAT/results sheet](UI-UAT-1.2.10.md) for the new handoff and
+[completion plan](UI-MILESTONE-COMPLETION-PLAN.md) for delivery/closeout.
+
+Keep #4/#5/#6/#63 and the milestone open until the owner accepts this handoff
+and any specifically named limitations. No historical unrun native case is
+silently converted to Pass. The detailed matrix below remains a reference for
+unresolved cases and investigating findings, rather than a new mandatory repeat
+of every previously accepted check. Current desktop availability must be checked
+at handoff; the October 15 availability statements below are historical.
+
+## Historical October 15 audit and detailed test reference
+
 ## Current acceptance state — audited 2026-10-15
 
 GitHub milestone **Accessibility and UI Usability** contains four issues: #57

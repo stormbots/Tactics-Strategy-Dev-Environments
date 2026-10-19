@@ -1,5 +1,11 @@
 # System-aware themes (#4)
 
+This is the original implementation's engineering record. PR #69 subsequently
+replaced the radio group with named System/Light/Dark icon buttons and compact
+Appearance settings; see [approved controls](UI-APPEARANCE-CONTROLS.md) and the
+[current acceptance record](UI-MILESTONE-UAT.md). Retain the earlier test results
+below as historical evidence, not instructions to restore the radio interaction.
+
 ## Implemented behavior
 
 The Theme radio group at the top of every page provides System, Light, and Dark.

@@ -12,6 +12,10 @@ on:
       - 'tests/test_schedule.py'
   workflow_dispatch:
     inputs:
+      ui_completion:
+        description: Publish only the new 1.2.10 white-background icon candidate; 1.2.9 is an unpublished upgrade fixture
+        type: boolean
+        default: false
       compact_controls:
         description: Publish only the new 1.2.9 compact appearance candidate; 1.2.8 is an unpublished upgrade fixture
         type: boolean
@@ -51,6 +55,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
+          UI_COMPLETION: ${{ inputs.ui_completion }}
           COMPACT_CONTROLS: ${{ inputs.compact_controls }}
           UI_MILESTONE: ${{ inputs.ui_milestone }}
           BANNER_REMOVAL: ${{ inputs.banner_removal }}
@@ -60,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           selected=0
-          for option in "$COMPACT_CONTROLS" "$UI_MILESTONE" "$BANNER_REMOVAL" "$LOGS_MIGRATION" "$MIGRATION" "$CORRECTION"; do
+          for option in "$UI_COMPLETION" "$COMPACT_CONTROLS" "$UI_MILESTONE" "$BANNER_REMOVAL" "$LOGS_MIGRATION" "$MIGRATION" "$CORRECTION"; do
             if [[ "$option" = true ]]; then selected=$((selected + 1)); fi
           done
           test "$selected" -le 1
@@ -73,7 +78,7 @@ jobs:
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: ${{ (inputs.compact_controls || github.event_name == 'pull_request') && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
+      BUILD_VERSIONS: ${{ (inputs.ui_completion || github.event_name == 'pull_request') && '1.2.9 1.2.10' || inputs.compact_controls && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
     strategy:
       fail-fast: false
       matrix:
@@ -180,8 +185,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     env:
-      CANDIDATE_VERSIONS: ${{ inputs.compact_controls && '1.2.9' || inputs.ui_milestone && '1.2.8' || inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
-      CANDIDATE_NOTES: ${{ inputs.compact_controls && 'docs/RELEASE-NOTES-1.2.9.md' || inputs.ui_milestone && 'docs/RELEASE-NOTES-1.2.8.md' || inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
+      CANDIDATE_VERSIONS: ${{ inputs.ui_completion && '1.2.10' || inputs.compact_controls && '1.2.9' || inputs.ui_milestone && '1.2.8' || inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
+      CANDIDATE_NOTES: ${{ inputs.ui_completion && 'docs/RELEASE-NOTES-1.2.10.md' || inputs.compact_controls && 'docs/RELEASE-NOTES-1.2.9.md' || inputs.ui_milestone && 'docs/RELEASE-NOTES-1.2.8.md' || inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
     permissions:
       contents: write
       actions: read

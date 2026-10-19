@@ -1,5 +1,11 @@
 # Five-step UI zoom (#5)
 
+This is the original slider implementation's engineering record. The owner-
+approved PR #69 replaced the slider with minus/percentage/plus buttons, retaining
+the same five scales. See [approved controls](UI-APPEARANCE-CONTROLS.md) and the
+[current acceptance record](UI-MILESTONE-UAT.md). Slider/arrow-key checks below
+are historical; test Tab and Enter/Space on the current buttons.
+
 ## Behavior and implementation
 
 The UI zoom slider sits beside Theme, with visible − / + endpoints and the
