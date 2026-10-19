@@ -1,5 +1,11 @@
 # v1.2.9 testing prerelease: installation and owner UAT
 
+**Historical candidate instructions.** The published v1.2.9 release is now stable
+and records the owner's UAT-complete/stable-promotion authorization on October
+15, 2026. The prerelease/pending-publication language below describes its earlier
+handoff. Preserve that history; use [v1.2.10 UAT](UI-UAT-1.2.10.md) for the new
+white-background icon candidate and current milestone closeout.
+
 This guide becomes actionable only after Codex confirms the protected workflow
 has published and authenticated all five v1.2.9 assets. Until then, do not install
 unsigned Actions artifacts or an unpublished 1.2.8 fixture. The owner performs UAT;
