@@ -143,3 +143,19 @@ for the changed source must be assessed separately by automatic CI, not inferred
 from these Linux checks. Launch transport local coverage checks its fixed command;
 it does not yet simulate every child/output/deadline failure schedule. Those
 coverage limits are retained, not a claim that the transport is ready to enable.
+
+## Execution outcome and superseding next-session plan
+
+The original clean-host prerequisite failed on the spare Mint host because SDE
+and updater/coordination state were already present. A narrower two-file-only
+broker/policy attempt was performed under user authorization, without bootstrap.
+The action registered, but pkexec returned 127 without any GUI prompt. Neither
+cancellation nor approved broker entry was validated. Agent process-name and
+journal diagnostics did not establish the cause. User-pasted cleanup output
+confirms removal of both temporary files after recorded ownership/inode/mode/hash
+checks; sources and root journal were retained. Whole-host cleanup is not claimed.
+
+See the [bounded evidence](../design/evidence/ISSUE72-SPARE-MINT-DISABLED-BROKER.json)
+and [consolidated Linux-first plan](ISSUE72-LINUX-CONSOLIDATED-NATIVE-PLAN.md).
+This packet remains historical and must not be replayed blindly on the installed
+host. Authentication safety and the native ACL/package/worker gates remain open.

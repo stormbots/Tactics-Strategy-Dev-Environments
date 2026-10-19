@@ -295,11 +295,15 @@ fn inspect_app_update() -> app_update::Availability {
     app_update::inspect()
 }
 #[tauri::command]
-async fn request_app_update() -> Result<serde_json::Value, String> {
-    tauri::async_runtime::spawn_blocking(app_update::request)
-        .await
-        .map_err(|_| "SDE request unavailable".to_owned())?
-        .map_err(str::to_owned)
+async fn request_app_update(state: tauri::State<'_, Busy>) -> Result<serde_json::Value, String> {
+    let guard = state.enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        app_update::request()
+    })
+    .await
+    .map_err(|_| "SDE request unavailable".to_owned())?
+    .map_err(str::to_owned)
 }
 #[tauri::command]
 async fn discover_app_update() -> Result<app_update::Discovery, String> {
@@ -326,8 +330,25 @@ async fn inspect_app_update_receipt() -> Result<serde_json::Value, String> {
         .map_err(str::to_owned)
 }
 #[tauri::command]
-fn close_for_app_update(request_id: String) -> Result<(), String> {
-    app_update::close(&request_id).map_err(str::to_owned)
+async fn close_for_app_update(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, Busy>,
+    request_id: String,
+) -> Result<(), String> {
+    let guard = state.enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        // Keep operation exclusion through the exit request. S remains owned by
+        // the process until exit; do not manually drop/reacquire a session lease.
+        let _guard = guard;
+        app_update::close(&request_id).map_err(str::to_owned)?;
+        // Fail closed if native exit is delayed: no new GUI operation may start
+        // between validation and process termination. Never release S manually.
+        std::mem::forget(_guard);
+        app.exit(0);
+        Ok(())
+    })
+    .await
+    .map_err(|_| "Protected close unavailable; SDE remains open".to_owned())?
 }
 #[tauri::command]
 async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
@@ -422,7 +443,7 @@ fn main() {
         Ok(lease) => lease,
         Err(e) => {
             let message = if e == sde_coordination::Error::Busy {
-                "SDE is being updated. Please reopen it shortly.".to_string()
+                app_update::startup_message().to_string()
             } else {
                 e.to_string()
             };

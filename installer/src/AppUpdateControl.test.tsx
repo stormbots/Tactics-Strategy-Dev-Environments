@@ -193,3 +193,42 @@ it("reconnects only to a protected receipt and never enables close", async () =>
   expect(screen.getByText(/does not confirm cancellation/)).toBeTruthy();
   expect(requestAppUpdate).not.toHaveBeenCalled();
 });
+
+it("unknown protected receipt blocks new consent even with mocked eligibility", async () => {
+  vi.mocked(inspectAppUpdate).mockResolvedValue({
+    enabled: true,
+    reason: "unavailable",
+  });
+  vi.mocked(inspectAppUpdateReceipt).mockRejectedValue(
+    new Error("private path"),
+  );
+  render(<AppUpdateControl />);
+  await screen.findByText(/Protected request status is unavailable/);
+  expect(
+    (screen.getByRole("button", { name: "Update Now" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+  expect(screen.queryByText(/private path/)).toBeNull();
+  expect(requestAppUpdate).not.toHaveBeenCalled();
+});
+it("a single receipt recovery read reconnects after ambiguous authorization without retrying", async () => {
+  await consentFixture();
+  vi.mocked(requestAppUpdate).mockRejectedValue(new Error("ambiguous"));
+  vi.mocked(inspectAppUpdateReceipt).mockResolvedValue({
+    schemaVersion: 1,
+    requestId: "00000000-0000-4000-8000-000000000001",
+    bootId: "00000000-0000-4000-8000-000000000002",
+    createdMs: 1,
+    deadlineMs: 900001,
+    status: "pending",
+    expired: false,
+  });
+  vi.mocked(inspectAppUpdateProgress).mockRejectedValue(
+    new Error("unavailable"),
+  );
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Authorize update" }));
+  await screen.findByText(/Protected request recorded/);
+  expect(requestAppUpdate).toHaveBeenCalledTimes(1);
+  expect(inspectAppUpdateReceipt).toHaveBeenCalledTimes(2);
+});

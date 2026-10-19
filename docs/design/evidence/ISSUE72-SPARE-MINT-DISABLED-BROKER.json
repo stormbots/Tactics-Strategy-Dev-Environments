@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "dc078e37c06270ba711e4d7abe307805833d9a82",
+  "evidenceSource": "User-pasted spare-host terminal output; not independently observed by Codex",
+  "host": "ryan-ThinkCentre-M910q",
+  "mintRelease": "22.3 Cinnamon",
+  "requesterUid": 1000,
+  "desktopSession": {"active": true, "remote": false, "type": "x11"},
+  "originalPacket": "Stopped: installed SDE, self-update and coordination state already existed",
+  "narrowedScope": "Two absent fixed paths only; no bootstrap or existing installed-state modification",
+  "verifiedSourceDirectory": "/tmp/sde-disabled-broker.zFfx0ifQ",
+  "cleanupJournal": "/var/tmp/sde-disabled-broker-zFfx0ifQ",
+  "deployedFiles": [
+    {"path": "/usr/local/libexec/skyview-app-update-request", "sha256": "122bef3156eb03e258c1693af3eb177e082a0c84db9fe2d927ed8b039d581b10", "mode": "0755"},
+    {"path": "/usr/share/polkit-1/actions/org.skyviewrobotics.sde.app-update.policy", "sha256": "50900fa7d3f8f92c8646c8ae821b6ed6ac9356639abed17c9091b7ee17b25187", "mode": "0644"}
+  ],
+  "actionListing": {"present": true, "active": "auth_admin", "inactive": "no", "any": "no", "fixedExecutableAnnotation": true},
+  "authorizationAttempt": {"count": 1, "guiPromptAppeared": false, "exit": 127, "message": "Error executing command as another user: Not authorized", "cancellationValidated": false, "approvedEntryValidated": false},
+  "agentDiagnostic": "No matching process in supplied ps/grep output; polkit.service journal query returned no entries. Cause not established.",
+  "cleanup": {"classification": "VerifiedForTwoTemporaryFilesFromUserEvidence", "checked": ["root ownership", "inode/device", "mode", "hash", "trusted parent paths"], "removed": ["/usr/local/libexec/skyview-app-update-request", "/usr/share/polkit-1/actions/org.skyviewrobotics.sde.app-update.policy"], "journalAndSourcesRetained": true, "wholeHostCleanup": "NotClaimed"},
+  "diagnosticCompletion": "StoppedBlocked",
+  "authenticationSafety": "Unproven",
+  "packageHookValidation": "NotRun",
+  "workerReceiptAclValidation": "NotRun",
+  "updateExecution": "NotAuthorizedOrConfirmed",
+  "productionReady": false
+}

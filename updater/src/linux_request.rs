@@ -15,6 +15,11 @@ use std::{
 const RUNS: &str = "/var/lib/skyview-robotics/self-update/app-only/runs";
 const OVERALL_MS: u64 = 900_000;
 const READY_MS: u64 = 120_000;
+const READY_REPORT_MS: u64 = 5_000;
+fn ready_report_due(last: u64, ms: u64) -> bool {
+    ms.checked_sub(last)
+        .is_some_and(|elapsed| elapsed >= READY_REPORT_MS)
+}
 const FILES: [&str; 6] = [
     "/usr/local/libexec/skyview-app-update-request",
     "/usr/share/polkit-1/actions/org.skyviewrobotics.sde.app-update.policy",
@@ -107,14 +112,15 @@ fn valid_digest(value: &str) -> bool {
             .bytes()
             .all(|v| v.is_ascii_digit() || (b'a'..=b'f').contains(&v))
 }
-fn capabilities(candidate: Option<&str>) -> Result<()> {
-    // No bootstrap or package hook creates this enablement receipt. Native proof
-    // must bind exact deployed files AND exact candidate package bytes first.
-    let c: Capabilities = read(&Path::new(native::ROOT).join("app-only-capabilities.json"))?;
+fn validate_capability_record(
+    c: &Capabilities,
+    candidate: Option<&str>,
+    external: &[&str],
+    mut hash: impl FnMut(&str) -> Result<String>,
+) -> Result<()> {
     if c.schema_version != 1
         || c.native_validation != "linux-app-only-v1"
-        || c.files.len() < FILES.len()
-        || c.files.len() > FILES.len() + 2
+        || c.files.len() != FILES.len() + external.len()
         || c.validated_candidate_sha256.len() > 8
         || c.validated_candidate_sha256.is_empty()
         || c.validated_candidate_sha256
@@ -123,38 +129,38 @@ fn capabilities(candidate: Option<&str>) -> Result<()> {
     {
         return Err("App-only native compatibility validation is required".into());
     }
-    for path in FILES {
-        native::trusted_file(Path::new(path))?;
-        if c.files.get(path) != Some(&crate::hash_file(Path::new(path))?.1) {
+    // Compare the complete deployed set; a matching count cannot hide substitutions.
+    for path in FILES.into_iter().chain(external.iter().copied()) {
+        if c.files.get(path) != Some(&hash(path)?) {
             return Err(
                 "App-only deployed capability changed; mentor prerequisite upgrade required".into(),
             );
         }
     }
-    let mut expected = FILES.len();
+    if candidate.is_some_and(|digest| !c.validated_candidate_sha256.iter().any(|v| v == digest)) {
+        return Err("Candidate package hooks have not passed app-only native validation".into());
+    }
+    Ok(())
+}
+fn capabilities(candidate: Option<&str>) -> Result<()> {
+    // No bootstrap or package hook creates this enablement receipt. Native proof
+    // must bind exact deployed files AND exact candidate package bytes first.
+    let c: Capabilities = read(&Path::new(native::ROOT).join("app-only-capabilities.json"))?;
+    let mut external = Vec::new();
     for path in [
         "/usr/local/sbin/skyview-student-dev-update",
         "/usr/local/lib/skyview-student-dev/coordination.py",
     ] {
         match std::fs::symlink_metadata(path) {
-            Ok(_) => {
-                expected += 1;
-                native::trusted_file(Path::new(path))?;
-                if c.files.get(path) != Some(&crate::hash_file(Path::new(path))?.1) {
-                    return Err("External maintenance capability changed".into());
-                }
-            }
+            Ok(_) => external.push(path),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
             Err(_) => return Err("External maintenance capability unavailable".into()),
         }
     }
-    if c.files.len() != expected {
-        return Err("Unexpected capability file set".into());
-    }
-    if candidate.is_some_and(|digest| !c.validated_candidate_sha256.iter().any(|v| v == digest)) {
-        return Err("Candidate package hooks have not passed app-only native validation".into());
-    }
-    Ok(())
+    validate_capability_record(&c, candidate, &external, |path| {
+        native::trusted_file(Path::new(path))?;
+        Ok(crate::hash_file(Path::new(path))?.1)
+    })
 }
 /// Named-user POSIX ACL: root writes, only the requesting uid reads. The root
 /// parent path must separately permit traversal. No shared-primary-group grant.
@@ -512,6 +518,73 @@ fn confirm_reply(
 pub fn app_only_confirm_request(bytes: &[u8]) -> Result<ReceiptObservation> {
     confirm_reply(bytes, app_only_current_receipt)
 }
+/// Read-only compatibility guard, not enablement or installation authority.
+pub fn app_only_prerequisites() -> Result<()> {
+    capabilities(None)?;
+    if interrupted() {
+        return Err("Recovery review required before a new request".into());
+    }
+    Ok(())
+}
+fn validate_close(
+    receipt: &ReceiptObservation,
+    p: &Progress,
+    id: &str,
+    uid: u32,
+    boot: &str,
+    ms: u64,
+) -> Result<()> {
+    validate_progress(p, id, uid, boot, ms)?;
+    if receipt.request_id != id
+        || receipt.boot_id != boot
+        || receipt.status != ReceiptStatus::Accepted
+        || receipt.expired
+        || ms < receipt.created_ms
+        || ms >= receipt.deadline_ms
+        || p.deadline_ms != receipt.deadline_ms
+        || p.observed_ms < receipt.created_ms
+        || p.state != State::Ready
+        || ms - p.observed_ms > 10_000
+        || p.candidate.is_none()
+        || p.native_exit.is_some()
+        || p.ready_deadline_ms
+            .is_none_or(|d| d <= ms || d > p.observed_ms.saturating_add(READY_MS))
+    {
+        return Err("Protected readiness changed; keep SDE open and inspect status".into());
+    }
+    Ok(())
+}
+/// A fresh independent read before voluntarily closing this GUI. This is not a
+/// close grant, worker liveness proof or permission for a package operation.
+/// The root worker still owns and rechecks every lock/policy/intent boundary.
+pub fn app_only_check_close(id: &str) -> Result<()> {
+    if !uuid(id) {
+        return Err("Invalid request correlation".into());
+    }
+    let receipt = app_only_current_receipt()?.ok_or("Protected request receipt missing")?;
+    let p: Progress = read(&Path::new(RUNS).join(id).join("progress.json"))?;
+    let (boot, ms) = now()?;
+    validate_close(&receipt, &p, id, unsafe { libc::getuid() }, &boot, ms)?;
+    if interrupted() {
+        return Err("Recovery review required before closing".into());
+    }
+    capabilities(p.candidate.as_ref().map(|c| c.sha256.as_str()))?;
+    // Hashing deployment files can take time. Re-read at the last boundary;
+    // still not atomic with the worker, which alone decides whether to install.
+    let current = app_only_current_receipt()?.ok_or("Protected request receipt missing")?;
+    let latest: Progress = read(&Path::new(RUNS).join(id).join("progress.json"))?;
+    if latest.candidate.as_ref().map(|c| (&c.version, &c.sha256))
+        != p.candidate.as_ref().map(|c| (&c.version, &c.sha256))
+    {
+        return Err("Protected candidate changed before close".into());
+    }
+    let (boot, ms) = now()?;
+    validate_close(&current, &latest, id, unsafe { libc::getuid() }, &boot, ms)?;
+    if interrupted() {
+        return Err("Recovery review required before closing".into());
+    }
+    Ok(())
+}
 fn worker_directory(exe: &Path) -> Result<PathBuf> {
     native::trusted_file(exe)?;
     let dir = exe.parent().ok_or("Missing worker snapshot")?;
@@ -634,8 +707,14 @@ pub fn app_only_linux() -> Result<()> {
         request.live(Some(ready))?;
         publisher.borrow_mut().ready = Some(ready);
         publisher.borrow_mut().publish(State::Ready)?;
+        let mut last_ready_report = ready;
         let lease = loop {
             request.live(Some(ready))?;
+            let ms = now()?.1;
+            if ready_report_due(last_ready_report, ms) {
+                publisher.borrow_mut().publish(State::Ready)?;
+                last_ready_report = ms;
+            }
             match admission.try_installation() {
                 Ok(lease) => break lease,
                 Err((sde_coordination::Error::Busy, retained)) => {
@@ -886,6 +965,122 @@ mod tests {
             native_exit: None,
             detail: Some("not exported".into()),
         }
+    }
+    #[test]
+    fn compatibility_requires_exact_deployment_and_candidate_without_creating_markers() {
+        fn fixture() -> Capabilities {
+            Capabilities {
+                schema_version: 1,
+                native_validation: "linux-app-only-v1".into(),
+                files: FILES
+                    .iter()
+                    .map(|p| (p.to_string(), "a".repeat(64)))
+                    .collect(),
+                validated_candidate_sha256: vec!["b".repeat(64)],
+            }
+        }
+        let good = fixture();
+        assert!(
+            validate_capability_record(&good, Some(&"b".repeat(64)), &[], |_| Ok("a".repeat(64)))
+                .is_ok()
+        );
+        assert!(
+            validate_capability_record(&good, Some(&"c".repeat(64)), &[], |_| Ok("a".repeat(64)))
+                .is_err()
+        );
+        for case in 0..7 {
+            let mut c = fixture();
+            match case {
+                0 => c.schema_version = 2,
+                1 => c.native_validation = "pending".into(),
+                2 => c.validated_candidate_sha256.clear(),
+                3 => c.validated_candidate_sha256 = vec!["bad".into()],
+                4 => {
+                    c.files.remove(FILES[0]);
+                    c.files.insert("/tmp/substitution".into(), "a".repeat(64));
+                }
+                5 => {
+                    c.files.insert(FILES[1].into(), "c".repeat(64));
+                }
+                _ => c.validated_candidate_sha256 = vec!["b".repeat(64); 9],
+            }
+            assert!(
+                validate_capability_record(&c, None, &[], |_| Ok("a".repeat(64))).is_err(),
+                "case {case}"
+            );
+        }
+        let external = "/usr/local/sbin/skyview-student-dev-update";
+        assert!(
+            validate_capability_record(&good, None, &[external], |_| Ok("a".repeat(64))).is_err()
+        );
+        let mut c = fixture();
+        c.files.insert(external.into(), "a".repeat(64));
+        assert!(validate_capability_record(&c, None, &[external], |_| Ok("a".repeat(64))).is_ok());
+        assert!(validate_capability_record(&c, None, &[], |_| Ok("a".repeat(64))).is_err());
+        assert!(
+            validate_capability_record(&good, None, &[], |_| Err("untrusted file".into())).is_err()
+        );
+    }
+    #[test]
+    fn ready_reports_fit_existing_budget_without_extending_deadlines() {
+        let mut last = 0;
+        let mut reports = 0;
+        for ms in (0..READY_MS).step_by(50) {
+            if ready_report_due(last, ms) {
+                reports += 1;
+                last = ms;
+            }
+        }
+        assert_eq!(reports, 23);
+        // Preparing/downloading/verifying/initial Ready, commit/install/postcheck,
+        // terminal and one uncertainty report still fit the unchanged bound.
+        assert!(reports + 9 <= 32);
+        assert!(!ready_report_due(5000, 4999));
+        assert!(!ready_report_due(5000, 9999));
+        assert!(ready_report_due(5000, 10000));
+    }
+    #[test]
+    fn protected_close_rechecks_receipt_ready_identity_deadlines_and_candidate() {
+        let mut r = stored_receipt();
+        let p = observation_fixture();
+        // Fixtures normally use independent UUIDs: bind only this healthy case.
+        r.request_id = p.request_id.clone();
+        r.boot_id = p.boot_id.clone();
+        let receipt = receipt_view(r, &p.request_id, 1000, &p.boot_id, 20_000).unwrap();
+        assert!(validate_close(&receipt, &p, &p.request_id, 1000, &p.boot_id, 20_000).is_ok());
+        for case in 0..11 {
+            let mut p = observation_fixture();
+            p.request_id = receipt.request_id.clone();
+            p.boot_id = receipt.boot_id.clone();
+            match case {
+                0 => p.uid = 1001,
+                1 => p.state = State::Installing,
+                2 => p.state = State::RecoveryRequired,
+                3 => p.candidate = None,
+                4 => p.deadline_ms += 1,
+                5 => p.observed_ms = 1,
+                6 => p.ready_deadline_ms = Some(20_000),
+                7 => p.ready_deadline_ms = None,
+                8 => p.native_exit = Some(0),
+                9 => p.boot_id = uuid::Uuid::new_v4().to_string(),
+                _ => p.candidate.as_mut().unwrap().sha256 = "invalid".into(),
+            }
+            assert!(
+                validate_close(
+                    &receipt,
+                    &p,
+                    &receipt.request_id,
+                    1000,
+                    &receipt.boot_id,
+                    20_000
+                )
+                .is_err(),
+                "case {case}"
+            );
+        }
+        let mut pending = receipt;
+        pending.status = ReceiptStatus::Pending;
+        assert!(validate_close(&pending, &p, &p.request_id, 1000, &p.boot_id, 20_000).is_err());
     }
     #[test]
     fn observations_never_authorize_close_even_when_ready_and_fresh() {

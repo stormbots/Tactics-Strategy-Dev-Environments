@@ -146,3 +146,55 @@ that these source paths were entirely unwired. It does not establish native
 capability migration, restricted-startup presentation, worker lifetime, ACL support,
 package behavior or protected close. Both execution source gates and close remain
 false. See [the minimum native authorization packet](../validation/ISSUE72-LINUX-DISABLED-REQUEST-GATE.md).
+
+## Linux-first close/admission review and stopped native evidence
+
+The spare Mint attempt did not establish cancellation or approved entry: the
+policy registered but no graphical prompt appeared (exit 127). Its two temporary
+files were removed after recorded ownership/inode/mode/hash checks. Evidence is
+[user-reported and bounded](evidence/ISSUE72-SPARE-MINT-DISABLED-BROKER.json); no
+whole-host cleanup, authentication safety or installed update is inferred.
+
+The Linux close path is now prepared behind its independent **false** source gate.
+It validates accepted current-UID/current-boot receipt, canonical request ID, Ready
+state, complete candidate, matching overall/Ready deadlines, nonfuture/fresh
+publication, native capability hashes, candidate allowlist and unresolved recovery.
+After potentially slow hashing it rereads protected receipt/progress/time and checks
+again. Main holds the common GUI operation exclusion; on success it requests
+process exit while retaining exclusion. It never manually releases/reacquires S.
+The worker alone retains installation authority. No close grant or receipt lifetime
+is extended by these reads; a race after the last read remains subject to the
+worker's independent admission, deadline, pause and installation-core checks.
+
+Ready publications refresh at most every five seconds while the worker retains
+O/A and waits for S. The original 120-second/15-minute bounds remain; at most 23
+additional Ready publications fit the unchanged 32-publication budget. UI progress
+and Close remain disabled for execution; enabling is a separately reviewed step.
+Read-only compatibility validation now has direct pure coverage for missing,
+changed, substituted and external maintenance files and unvalidated candidates.
+No test/hook creates a real native-validation marker.
+
+Normal request submission now shares the existing GUI operation exclusion.
+Unknown/timed-out protected receipt lookup blocks new consent; after ambiguous
+submission, one bounded read-only recovery lookup may reconnect without resubmitting.
+Busy startup keeps its native notice and never admits a full webview without S;
+if a current protected receipt is readable the notice explains its limited meaning.
+A richer live restricted-startup webview is deferred rather than introducing an
+unguarded backend surface. Native dialog behavior and actual exit remain unproven.
+
+The [consolidated native plan](../validation/ISSUE72-LINUX-CONSOLIDATED-NATIVE-PLAN.md)
+separates authorization/agent repair, package-free ownership/ACL proof, the controlled
+package upgrade, and real feature UAT. It is not an executable authorization packet
+until source/artifact pins and the exact native driver exist. Stable-only discovery
+and candidate-hook proof remain real dependencies; no fixture or prerelease is
+silently treated as a stable candidate. Optional infrastructure remains paused.
+
+Focused local QA for this follow-up: 142 UI tests, 18 ordinary Linux desktop Rust
+tests, 64 updater library tests (one native POSIX-ACL case intentionally ignored),
+three affected real Chromium Schedule/accessibility cases, ten broker mocks,
+twelve hook mocks, seven backend contracts, ten CI-boundary and nine CI-scope
+checks passed. Both crates pass Rustfmt and all-target Clippy with warnings denied;
+TypeScript, affected-file Prettier, actionlint and whitespace checks pass. These
+are development/local fixture checks, not native authorization, actual GUI exit,
+package installation, receipt cross-user ACL proof or desktop UAT. No source gate,
+activation setting, workflow or package-operation selection was enabled/changed.

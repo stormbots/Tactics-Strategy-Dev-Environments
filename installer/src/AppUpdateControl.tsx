@@ -19,6 +19,9 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
   const [receipt, setReceipt] = useState<
     import("./appUpdate").RequestReceipt | null
   >(null);
+  const [receiptStatus, setReceiptStatus] = useState<
+    "loading" | "known" | "unknown"
+  >("loading");
   const [consent, setConsent] = useState(false);
   const inFlight = useRef(false);
   const mounted = useRef(false);
@@ -44,13 +47,21 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
     let active = true;
     const deadline = setTimeout(() => {
       active = false;
+      setReceiptStatus("unknown");
     }, 5000);
     void inspectAppUpdateReceipt().then(
       (value) => {
-        if (active && !inFlight.current) setReceipt(value);
+        if (active && !inFlight.current) {
+          clearTimeout(deadline);
+          setReceipt(value);
+          setReceiptStatus("known");
+        }
       },
       () => {
-        /* Unknown receipt never creates request or close authority. */
+        if (active) {
+          clearTimeout(deadline);
+          setReceiptStatus("unknown");
+        }
       },
     );
     return () => {
@@ -64,6 +75,8 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
   async function authorize() {
     if (
       !availability?.enabled ||
+      receiptStatus !== "known" ||
+      receipt !== null ||
       !consent ||
       inFlight.current ||
       phase !== "consent"
@@ -75,7 +88,25 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
       const accepted = await requestAppUpdate();
       if (mounted.current) setReceipt(accepted);
     } catch {
-      // Never display raw privilege errors or infer that a worker was cancelled.
+      // One read-only recovery lookup, never another authorization/worker launch.
+      // The existing mount guard discards a late result; no cancellation inferred.
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const recovered = await Promise.race([
+          inspectAppUpdateReceipt(),
+          new Promise<never>((_, reject) => {
+            timeout = setTimeout(
+              () => reject(new Error("Receipt unavailable")),
+              5000,
+            );
+          }),
+        ]);
+        if (mounted.current) setReceipt(recovered);
+      } catch {
+        /* Preserve the uncertain outcome and prohibit retries. */
+      } finally {
+        clearTimeout(timeout);
+      }
     } finally {
       if (mounted.current) setPhase("blocked");
       // No automatic retry after an ambiguous authorization outcome.
@@ -85,7 +116,11 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
     availability === null
       ? "Checking Update Now availability…"
       : availability.enabled
-        ? "Update SDE only. Development tools and the maintenance schedule are unchanged."
+        ? receiptStatus === "known"
+          ? "Update SDE only. Development tools and the maintenance schedule are unchanged."
+          : receiptStatus === "loading"
+            ? "Checking protected request status…"
+            : "Protected request status is unavailable. Update Now remains disabled; ask a mentor to inspect it."
         : availability.reason === "preview"
           ? "Update Now is unavailable in browser preview."
           : availability.reason === "native_validation_pending"
@@ -120,7 +155,7 @@ export function AppUpdateControl({ requestId }: { requestId?: string } = {}) {
         <button
           ref={updateButton}
           className="secondary"
-          disabled={!availability?.enabled}
+          disabled={!availability?.enabled || receiptStatus !== "known"}
           aria-describedby="app-update-availability"
           onClick={() => setPhase("consent")}
         >

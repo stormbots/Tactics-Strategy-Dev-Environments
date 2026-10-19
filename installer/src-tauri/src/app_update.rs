@@ -27,6 +27,8 @@ pub fn request() -> Result<serde_json::Value, &'static str> {
     }
     #[cfg(target_os = "linux")]
     {
+        sde_update_trust::app_only_prerequisites()
+            .map_err(|_| "App-only compatibility or recovery prerequisites are not satisfied")?;
         launch::request()
     }
     #[cfg(not(target_os = "linux"))]
@@ -106,9 +108,37 @@ pub fn receipt() -> Result<serde_json::Value, &'static str> {
         Err("Protected app-only receipts are not supported on this platform yet")
     }
 }
-pub fn close(_id: &str) -> Result<(), &'static str> {
-    // Never exit a GUI or release its S lease based on an observation.
-    Err("Close for installation is disabled pending native validation")
+const CLOSE_ENABLED: bool = false;
+pub fn close(id: &str) -> Result<(), &'static str> {
+    close_with(CLOSE_ENABLED, || {
+        #[cfg(target_os = "linux")]
+        {
+            sde_update_trust::app_only_check_close(id)
+                .map_err(|_| "Protected readiness unavailable; SDE remains open")
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = id;
+            Err("Protected app-only close is not supported on this platform yet")
+        }
+    })
+}
+fn close_with(
+    enabled: bool,
+    check: impl FnOnce() -> Result<(), &'static str>,
+) -> Result<(), &'static str> {
+    if !enabled {
+        return Err("Close for installation is disabled pending native validation");
+    }
+    check()
+}
+/// Native restricted-startup notice only; never constructs a normal GUI without S.
+pub fn startup_message() -> &'static str {
+    #[cfg(target_os = "linux")]
+    if let Ok(Some(_)) = sde_update_trust::app_only_current_receipt() {
+        return "SDE admission is closed. A protected update request is recorded, but its receipt does not prove the worker is running or installation succeeded. Reopen later; ask a mentor if this persists. No update was submitted by reopening.";
+    }
+    "SDE admission is closed by an update or maintenance operation. Please reopen shortly; ask a mentor if this persists."
 }
 
 #[cfg(test)]
@@ -146,6 +176,12 @@ mod tests {
     #[test]
     fn malformed_progress_correlation_rejects_before_protected_reads() {
         assert!(progress("../../policy.json").is_err());
+    }
+    #[test]
+    fn close_gate_precedes_reads_and_rechecks_do_not_turn_failure_into_success() {
+        assert!(close_with(false, || panic!("disabled gate must precede reads")).is_err());
+        assert!(close_with(true, || Err("stale")).is_err());
+        assert!(close_with(true, || Ok(())).is_ok());
     }
     #[test]
     fn direct_close_requests_always_refused_without_exiting() {
