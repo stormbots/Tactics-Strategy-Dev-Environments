@@ -8,7 +8,7 @@ for size in 32 128 256; do
   name="${size}x${size}.png"
   if [[ "$size" = 256 ]]; then name=128x128@2x.png; fi
   magick "$source_image" -resize "${size}x${size}" \
-    -background white -alpha remove -alpha off "$output/$name"
+    -background white -alpha remove -alpha on "PNG32:$output/$name"
 done
-magick "$source_image" -background white -alpha remove -alpha off \
+magick "$source_image" -background white -alpha remove -alpha on \
   -define icon:auto-resize=256,128,64,48,32,16 "$output/icon.ico"
