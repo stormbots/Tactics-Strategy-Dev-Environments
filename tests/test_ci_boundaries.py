@@ -14,10 +14,12 @@ def load(name):
     return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
 
 
-def gate(expression, event, build=False, native=False, publish=False, ref='refs/heads/main'):
+def gate(expression, event, build=False, native=False, publish=False, ref='refs/heads/main',
+         fixture=False, platform='all', runner='Windows'):
     values = {'github.event_name': event, 'github.ref': ref,
               'inputs.build_installers': build, 'inputs.run_native_packages': native,
-              'inputs.publish_prerelease': publish, 'runner.os': 'Windows'}
+              'inputs.publish_prerelease': publish, 'runner.os': runner,
+              'inputs.build_linux_fixture_pair': fixture, 'inputs.installer_platform': platform}
     for key, value in values.items():
         expression = expression.replace(key, repr(value))
     expression = expression.replace('&&', ' and ').replace('||', ' or ')
@@ -39,11 +41,35 @@ class CiBoundaries(unittest.TestCase):
                                  event == 'workflow_dispatch' and build)
 
     def test_dispatch_defaults_cannot_build_install_or_publish(self):
-        for name in ['build_installers', 'run_native_packages', 'publish_prerelease']:
+        for name in ['build_installers', 'run_native_packages', 'publish_prerelease', 'build_linux_fixture_pair']:
             self.assertEqual(self.build['on']['workflow_dispatch']['inputs'][name]['default'], 'false')
         self.assertEqual(self.uat['on']['workflow_dispatch']['inputs']['publish_prerelease']['default'], 'false')
         self.assertFalse(gate(self.build['jobs']['native']['if'], 'workflow_dispatch'))
         self.assertFalse(gate(self.build['jobs']['release']['if'], 'workflow_dispatch', ref='refs/tags/v1.2.10'))
+
+    def test_linux_artifact_selection_cannot_start_windows_packaging(self):
+        import json
+        expression = self.build['jobs']['native']['strategy']['matrix']['include']
+        expression = expression.removeprefix('${{ fromJSON(').removesuffix(') }}')
+        for selected, expected in [('linux', ['ubuntu-24.04']), ('windows', ['windows-2022']),
+                                   ('all', ['windows-2022', 'ubuntu-24.04'])]:
+            value = expression.replace('inputs.installer_platform', repr(selected))
+            value = value.replace('&&', ' and ').replace('||', ' or ')
+            matrix = json.loads(eval(value, {'__builtins__': {}}, {}))
+            self.assertEqual([item['os'] for item in matrix], expected)
+            for item in matrix:
+                self.assertEqual(item['bundle'], 'deb' if item['os'] == 'ubuntu-24.04' else 'nsis')
+        steps = self.build['jobs']['native']['steps']
+        step = next(s for s in steps if s.get('name') == 'Build unpublished Linux app-only fixture pair without execution')
+        self.assertFalse(gate(step['if'], 'workflow_dispatch', build=True, fixture=True, platform='linux'))
+        self.assertTrue(gate(step['if'], 'workflow_dispatch', build=True, fixture=True, platform='linux', runner='Linux'))
+        self.assertIn('--lib --no-run', step['run'])
+        self.assertNotRegex(step['run'], r'--ignored|sudo|pkexec|apt-get|release create')
+        validation = self.build['jobs']['scope']['steps'][0]['run']
+        self.assertIn('test "$INSTALLER_PLATFORM" = linux', validation)
+        self.assertIn('test "$RUN_NATIVE_PACKAGES" = false', validation)
+        self.assertIn('test "$PUBLISH_PRERELEASE" = false', validation)
+        self.assertIn('test "$INSTALLER_PLATFORM" = all', validation)
 
     def test_native_package_and_registration_steps_require_separate_opt_in(self):
         jobs = self.build['jobs']

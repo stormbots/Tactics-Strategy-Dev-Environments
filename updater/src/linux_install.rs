@@ -19,6 +19,9 @@ pub(super) const ROOT: &str = "/var/lib/skyview-robotics/self-update";
 pub(super) const INSTALLER: &str = "Skyview-Dev-Setup-LinuxMint-amd64.deb";
 const BUNDLE: &str = "/usr/lib/Skyview Dev Setup/backend/linux";
 
+#[cfg(test)]
+mod app_only_native;
+
 pub(super) fn trusted(path: &Path) -> Result<()> {
     for ancestor in path.ancestors() {
         host::validate(ancestor).map_err(|_| "Untrusted maintenance path")?;

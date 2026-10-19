@@ -41,7 +41,7 @@ struct Request {
 fn uuid(value: &str) -> bool {
     uuid::Uuid::parse_str(value).is_ok_and(|id| id.to_string() == value)
 }
-fn now() -> Result<(String, u64)> {
+pub(crate) fn now() -> Result<(String, u64)> {
     let boot = std::fs::read_to_string("/proc/sys/kernel/random/boot_id")
         .map_err(|_| "Boot identity unavailable")?;
     let boot = boot.trim().to_string();

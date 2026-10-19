@@ -1,6 +1,6 @@
 16bb2b1b7310770c8af32c349e073c341b12637c688259a7bc1fd3d2db8653d0  ./Install-SkyviewStudentDev.sh
 7893f2bfb948bb59313cb8ca1554a466b8f0143ad0929f6936ffca67badccb33  ./README.md
-6ee25ea1e3f92eefe879dba40175a7bdcb272afabe6b2b7b2a548f77b315b426  ./Update-SkyviewStudentDev.sh
+f2916734a6af289e432998a81a077826ada1b6d51edc2accbd70d05cd33df5df  ./Update-SkyviewStudentDev.sh
 6cf4e084b47f33c9b02ef79279d157833868f8f70514169a768be353ee328fea  ./VERSION
 d6524ab7ff537eeaed09df8efefed516f73352bb670564f92ccfb74153c51751  ./Validate-SkyviewStudentDev.sh
 e2ec535e9adfeb038740bedde85eea42763d9666f80acfbcfeb83138bdd64a86  ./config/codium-settings.json
@@ -12,5 +12,5 @@ bf093aebdc461592347cf379499c8579dfd3f22892299794bf4ba4209138ee08  ./systemd/skyv
 4297414bb9dc3fa66f2243c49ef0924a265e461556360b121a84ab8bd56e5427  Configure-SkyviewUser.sh
 dda9c38dcdf20826daefb19066a5cddf17e207b9800ac56f706daf43290d4850  ./lib/tool_records.py
 342f0005f6e7aa4ad5183dacd3775e611714ca83044f6590851230fb556d28c9  ./lib/schedule.py
-be4468faf69d5548495c62f0f9e34723c131a62481f4639e9fcd1475f9125fec  ./lib/coordination.py
+f7300be61f7fca308420cd13fa131ae0edacad3dce01400a04eb39c310460c9d  ./lib/coordination.py
 fa66bc699fce61943ad055772a54cb61072dd5f9935495fafc597a56076035b6  ./lib/coordination.sh

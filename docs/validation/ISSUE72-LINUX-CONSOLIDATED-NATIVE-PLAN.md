@@ -1,5 +1,12 @@
 # Linux-first consolidated native session — proposal, not execution authority
 
+Continuation: [Linux testing build and next native gate](ISSUE72-LINUX-TESTING-BUILD.md)
+records the owner's newer authorization, Linux-only artifact/driver implementation
+and targeted read-only agent diagnosis. It supersedes this proposal's blanket
+build/native/release deferrals; the stopped spare-host retry still requires its
+specific reviewed packet. The historical evidence and native proof gates below
+remain applicable.
+
 The owner approved Linux-first engineering behind disabled gates and preparation
 of this session. Package operations, enablement, installer dispatch and releases
 still require separate authorization. PR #73 remains draft/unmerged. Windows,

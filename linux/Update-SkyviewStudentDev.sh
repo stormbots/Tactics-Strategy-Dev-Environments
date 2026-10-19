@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # SDE_COORDINATION_V1
+# SDE_COORDINATION_ADMISSION_V2
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

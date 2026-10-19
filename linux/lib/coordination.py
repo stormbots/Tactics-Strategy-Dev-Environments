@@ -1,4 +1,5 @@
 # SDE_COORDINATION_V1
+# SDE_COORDINATION_ADMISSION_V2
 """Fixed machine gates; never elevates or interprets state as commands.
 
 The Bash entry points supervise their children here. Inherited descriptors retain
@@ -70,6 +71,33 @@ def check():
         for fd in leases:
             os.close(fd)
 
+def no_interruption():
+    # Scope alone is also a recovery barrier. Never ignore inaccessible state.
+    for path in (JOURNAL, ROOT / 'installation-scope.json'):
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            continue
+        raise CoordinationError('An interrupted system operation needs mentor review before another change.')
+
+def admitted_session(inherited=None):
+    no_interruption()
+    # An existing GUI retains S; asking it to enter A again would block normal
+    # operations during Ready. Its inherited descriptor still needs validation.
+    admission = None if inherited is not None else gate('admission.gate', True)
+    session = None
+    try:
+        no_interruption()
+        session = gate('sessions.gate', True, inherited)
+        no_interruption()
+        result, session = session, None
+        return result
+    finally:
+        if session is not None:
+            os.close(session)
+        if admission is not None:
+            os.close(admission)
+
 def sync_directory():
     fd = os.open(ROOT, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
@@ -78,7 +106,7 @@ def sync_directory():
         os.close(fd)
 
 def run(mode, command):
-    session = gate('sessions.gate', True, os.environ.get(SESSION))
+    session = admitted_session(os.environ.get(SESSION))
     operation = None
     journal = False
     try:
@@ -87,8 +115,7 @@ def run(mode, command):
         if mode != 'session':
             operation = gate('operations.gate', False)
             leases.append(operation)
-            if JOURNAL.exists() or JOURNAL.is_symlink():
-                raise CoordinationError('An interrupted system operation needs mentor review before another change.')
+            no_interruption()
             env[OPERATION] = str(operation)
             if mode == 'system':
                 if os.geteuid() != 0:

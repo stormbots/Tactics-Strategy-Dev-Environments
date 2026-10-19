@@ -10,6 +10,15 @@ on:
         description: Build unsigned NSIS/DEB installer artifacts (no publication by default)
         type: boolean
         default: false
+      installer_platform:
+        description: Installer artifacts to build (automatic development checks still cover both platforms)
+        type: choice
+        options: [all, linux, windows]
+        default: all
+      build_linux_fixture_pair:
+        description: Also build unpublished 1.2.1/1.2.2 Linux app-only fixtures and test driver; never execute them
+        type: boolean
+        default: false
       run_native_packages:
         description: Execute disposable native installs/upgrades and maintenance integration tests (requires build_installers)
         type: boolean
@@ -37,6 +46,8 @@ jobs:
           BUILD_INSTALLERS: ${{ inputs.build_installers }}
           RUN_NATIVE_PACKAGES: ${{ inputs.run_native_packages }}
           PUBLISH_PRERELEASE: ${{ inputs.publish_prerelease }}
+          INSTALLER_PLATFORM: ${{ inputs.installer_platform }}
+          BUILD_LINUX_FIXTURE_PAIR: ${{ inputs.build_linux_fixture_pair }}
         run: |
           set -euo pipefail
           if [[ "$RUN_NATIVE_PACKAGES" = true || "$PUBLISH_PRERELEASE" = true ]]; then
@@ -44,6 +55,13 @@ jobs:
           fi
           if [[ "$PUBLISH_PRERELEASE" = true ]]; then
             test "$RUN_NATIVE_PACKAGES" = true
+            test "$INSTALLER_PLATFORM" = all
+          fi
+          if [[ "$BUILD_LINUX_FIXTURE_PAIR" = true ]]; then
+            test "$BUILD_INSTALLERS" = true
+            test "$INSTALLER_PLATFORM" = linux
+            test "$RUN_NATIVE_PACKAGES" = false
+            test "$PUBLISH_PRERELEASE" = false
           fi
       - uses: actions/checkout@v4
         with:
@@ -92,6 +110,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_schedule.py'
           python3 -m unittest discover -s tests -p 'test_app_update_package_hooks.py'
           python3 -m unittest discover -s tests -p 'test_app_only_request.py'
+          python3 -m unittest discover -s tests -p 'test_app_only_artifacts.py'
           python3 -m unittest discover -s tests -p 'test_ci_boundaries.py'
           python3 -m unittest discover -s tests -p 'test_ci_failure_report.py'
           python3 -m unittest discover -s tests -p 'test_native_ci_evidence.py'
@@ -204,13 +223,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-2022
-            bundle: nsis
-            asset: Skyview-Dev-Setup-Windows-x64.exe
-          - os: ubuntu-24.04
-            bundle: deb
-            asset: Skyview-Dev-Setup-LinuxMint-amd64.deb
+        include: ${{ fromJSON(inputs.installer_platform == 'linux' && '[{"os":"ubuntu-24.04","bundle":"deb","asset":"Skyview-Dev-Setup-LinuxMint-amd64.deb"}]' || inputs.installer_platform == 'windows' && '[{"os":"windows-2022","bundle":"nsis","asset":"Skyview-Dev-Setup-Windows-x64.exe"}]' || '[{"os":"windows-2022","bundle":"nsis","asset":"Skyview-Dev-Setup-Windows-x64.exe"},{"os":"ubuntu-24.04","bundle":"deb","asset":"Skyview-Dev-Setup-LinuxMint-amd64.deb"}]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -312,6 +325,28 @@ jobs:
           cd dist
           sha256sum "$ASSET" > "$ASSET.sha256"
           sha256sum --check "$ASSET.sha256"
+      - name: Build unpublished Linux app-only fixture pair without execution
+        if: inputs.build_linux_fixture_pair && runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(python3 -c 'import json; print(json.load(open("installer/src-tauri/tauri.conf.json"))["version"])')" = 1.2.1
+          mkdir -p app-only-fixtures/baseline app-only-fixtures/candidate
+          cp dist/Skyview-Dev-Setup-LinuxMint-amd64.deb app-only-fixtures/baseline/
+          printf '{"version":"1.2.2"}\n' > "$RUNNER_TEMP/sde-app-only-fixture.json"
+          npm --prefix installer run tauri build -- --config "$RUNNER_TEMP/sde-app-only-fixture.json" --bundles deb
+          mapfile -t candidates < <(find installer/src-tauri/target/release/bundle/deb -maxdepth 1 -name '*1.2.2*.deb')
+          test "${#candidates[@]}" = 1
+          cp "${candidates[0]}" app-only-fixtures/candidate/Skyview-Dev-Setup-LinuxMint-amd64.deb
+          cargo test --release --locked --manifest-path updater/Cargo.toml --lib --no-run --message-format=json > "$RUNNER_TEMP/sde-app-only-tests.jsonl"
+          python3 tests/package_app_only_fixtures.py "$RUNNER_TEMP/sde-app-only-tests.jsonl" app-only-fixtures
+      - name: Retain unpublished Linux app-only fixture pair
+        if: inputs.build_linux_fixture_pair && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-app-only-unpublished-fixtures
+          path: app-only-fixtures/
+          if-no-files-found: error
       - name: Verify Windows application bootstrap without applying a baseline
         if: inputs.run_native_packages && runner.os == 'Windows'
         shell: pwsh
