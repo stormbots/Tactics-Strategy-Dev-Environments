@@ -166,7 +166,7 @@ it("shows updates separately from successful validation, including both versions
   });
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Updates available",
+    name: "Ready",
   });
   expect(screen.getByText("Update available · 2.43.0 → 2.44.0")).toBeTruthy();
   expect(screen.getByText(/need attention/).textContent).toContain("0");
@@ -275,7 +275,7 @@ it("reviews Update for an available managed update without starting it", async (
   });
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Updates available",
+    name: "Ready",
   });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
   expect(screen.getByText("PASS")).toBeTruthy();
@@ -287,6 +287,10 @@ it("reviews Update for an available managed update without starting it", async (
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
   fireEvent.click(
     screen.getByRole("button", { name: "Update Development Tools" }),
+  );
+  expect(vi.mocked(operate)).not.toHaveBeenCalled();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Continue with Update" }),
   );
   await waitFor(() =>
     expect(vi.mocked(operate)).toHaveBeenCalledWith(

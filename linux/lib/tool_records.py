@@ -15,7 +15,7 @@ PYCHARM_API = "https://data.services.jetbrains.com/products/releases?code=PCP&la
 
 def command(*args):
     try:
-        p = subprocess.run(args, capture_output=True, text=True, timeout=15,
+        p = subprocess.run(args, capture_output=True, text=True, timeout=2,
                            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LC_ALL": "C"}, check=False)
         return p.stdout.strip() if p.returncode == 0 else None
     except (OSError, subprocess.TimeoutExpired):
@@ -38,13 +38,13 @@ def candidate_for(package):
         return None
     return result
 
-def records(check_updates):
+def records(check_updates, snapshot=None):
     for tool in TOOLS:
         current = available = None
         state = "notChecked" if not check_updates else "unavailable"
         if tool in PACKAGES:
             package = PACKAGES[tool]
-            installed = command("dpkg-query", "-W", "-f=${db:Status-Status}\t${Version}", package)
+            installed = ("installed\t" + snapshot[tool] if snapshot.get(tool) else None) if snapshot is not None else command("dpkg-query", "-W", "-f=${db:Status-Status}\t${Version}", package)
             if installed and installed.startswith("installed\t"):
                 current = installed.split("\t", 1)[1]
                 if check_updates:
@@ -55,17 +55,17 @@ def records(check_updates):
                         if command("dpkg", "--compare-versions", candidate, "gt", current) is not None:
                             available = candidate
         elif tool == "npm":
-            current = release_version(command("npm", "--version"))
+            current = snapshot.get(tool) if snapshot is not None else release_version(command("npm", "--version"))
             state = "native"  # npm ships with the managed Node runtime.
         elif tool == "PyCharm":
             try:
-                current = json.loads(Path("/opt/pycharm/product-info.json").read_text())["version"]
+                current = snapshot.get(tool) if snapshot is not None else json.loads(Path("/opt/pycharm/product-info.json").read_text())["version"]
             except (OSError, ValueError, KeyError):
                 pass
             if check_updates and current:
                 try:
                     with urllib.request.urlopen(PYCHARM_API, timeout=8) as response:
-                        latest = json.load(response)["PCP"][0]
+                        latest = json.loads(response.read(1048577))["PCP"][0]
                     candidate = latest["version"]
                     # Only compare stable numeric releases, never advertise a downgrade.
                     if re.fullmatch(r"\d+(?:\.\d+)+", current) and re.fullmatch(r"\d+(?:\.\d+)+", candidate) and latest["downloads"].get("linux"):
@@ -75,9 +75,14 @@ def records(check_updates):
                 except (OSError, ValueError, KeyError, IndexError):
                     pass
         yield {"tool": tool, "installedVersion": current, "availableVersion": available,
-               "updateAvailable": bool(available), "updateCheck": state}
+               "updateAvailable": bool(available), "updateCheck": state,
+               "updateReason": "noCandidate" if state == "unavailable" else None,
+               "source": "JetBrains releases" if tool == "PyCharm" else "Local APT metadata" if tool in PACKAGES else "Node runtime"}
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "--preview" in sys.argv:
+    snapshot = {r["tool"]: r["installedVersion"] for r in json.loads(sys.stdin.read(16384))}
+    print(json.dumps(list(records(True, snapshot))))
+elif __name__ == "__main__":
     for record in records("--check-updates" in sys.argv[1:]):
         print("SKYVIEW_EVENT|tool|" + record["tool"] + "|" + json.dumps(record, separators=(",", ":")))
         if record["updateAvailable"]:

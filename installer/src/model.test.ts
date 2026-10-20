@@ -130,9 +130,7 @@ describe("workstation state detection", () => {
       ]),
     ).toBe("Needs attention");
     expect(environmentStatus(checksFrom(valid))).toBe("Ready");
-    expect(environmentStatus(checksFrom(valid), true)).toBe(
-      "Updates available",
-    );
+    expect(environmentStatus(checksFrom(valid), true)).toBe("Ready");
   });
   it("does not fail optional identity or authentication", () =>
     expect(environmentStatus(checksFrom(valid))).toBe("Ready"));

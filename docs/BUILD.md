@@ -27,3 +27,19 @@ Windows releases ship unsigned by project decision, confirmed on 2026-10-07. Win
 Self-update release metadata is generated and signed only in the protected release
 job. See [SELF-UPDATE-SIGNING.md](SELF-UPDATE-SIGNING.md) for the pinned-key verifier,
 owner approval, secret recovery, and candidate promotion requirements.
+
+## Current stable download entry point
+
+README introductions use the official `/releases/latest` entry point and the two
+canonical installer names. Historical release/UAT/recovery links keep their exact
+versions. Run `python3 tests/stable_downloads.py` and
+`python3 -m unittest discover -s tests -p test_stable_downloads.py` for the source
+contract. Candidate CI must not demand that an unaccepted candidate be stable.
+
+Before and after a stable promotion, fetch GitHub's latest-release metadata with
+`gh api repos/stormbots/Tactics-Strategy-Dev-Environments/releases/latest` to a
+local JSON file and run `python3 tests/stable_downloads.py <that-file.json>`.
+After promotion, also verify that latest resolves to the accepted candidate and
+that its source tag and all five asset IDs/digests/sizes remain unchanged. Follow
+through both platform installer links; do not rewrite historical evidence or
+replace/re-sign an accepted asset to correct an introduction.

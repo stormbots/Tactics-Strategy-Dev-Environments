@@ -401,6 +401,13 @@ pub(crate) fn list_with(transport: &mut impl Transport) -> Result<Vec<Release>> 
 }
 /// Notification-only callers provide their running application's real package version.
 /// This function fetches release listings, but never downloads or runs an installer.
+/// A short, independent budget for the interactive notification path.
+pub fn notify(installed: &str, platform: &str) -> Result<Option<Candidate>> {
+    let mut transport = GitHub::new()?;
+    transport.deadline = Instant::now() + Duration::from_secs(20);
+    discover_with(&mut transport, installed, platform)
+}
+
 pub fn discover(installed: &str, platform: &str) -> Result<Option<Candidate>> {
     discover_with(&mut GitHub::new()?, installed, platform)
 }

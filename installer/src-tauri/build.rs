@@ -41,6 +41,10 @@ fn main() {
             "inspect_self_update",
             "run_operation",
             "open_destination",
+            "check_application",
+            "check_tools",
+            "open_release",
+            "check_update_preflight",
         ]),
     ))
     .expect("Tauri build configuration must be valid");

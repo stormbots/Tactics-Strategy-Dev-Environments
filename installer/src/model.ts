@@ -5,11 +5,14 @@ export type Check = {
 };
 export type Event = { kind: string; key: string; message: string };
 export type ToolRecord = {
+  updateReason?: string | null;
+  source?: string;
   tool: string;
   installedVersion: string | null;
   availableVersion: string | null;
   updateAvailable: boolean;
-  updateCheck: "current" | "notChecked" | "unavailable" | "native";
+  updateCheck:
+    "current" | "notChecked" | "unavailable" | "native" | "inconsistent";
 };
 export type Schedule = {
   status: "enabled" | "disabled" | "missing" | "unavailable";
@@ -58,9 +61,13 @@ export function toolRecord(e: Event | null): ToolRecord | null {
       !version(r.installedVersion) ||
       !version(r.availableVersion) ||
       typeof r.updateAvailable !== "boolean" ||
-      !["current", "notChecked", "unavailable", "native"].includes(
-        r.updateCheck,
-      ) ||
+      ![
+        "current",
+        "notChecked",
+        "unavailable",
+        "native",
+        "inconsistent",
+      ].includes(r.updateCheck) ||
       (r.updateAvailable &&
         (!r.installedVersion ||
           !r.availableVersion ||
@@ -116,7 +123,10 @@ export function updateInspectionIncomplete(
       if (c.status !== "PASS" || !name) return false;
       const record = tools.find((t) => t.tool === name);
       return (
-        !record || ["unavailable", "notChecked"].includes(record.updateCheck)
+        !record ||
+        ["unavailable", "notChecked", "inconsistent"].includes(
+          record.updateCheck,
+        )
       );
     })
   );
@@ -164,7 +174,7 @@ export function checksFrom(lines: string[]): Check[] {
       : [];
   });
 }
-export function environmentStatus(checks: Check[], updates = false) {
+export function environmentStatus(checks: Check[], _updates = false) {
   const managed = checks.filter((c) => toolForCheck(c));
   const installed = managed.filter((c) => c.status === "PASS").length;
   const missing = managed.filter((c) => {
@@ -182,7 +192,8 @@ export function environmentStatus(checks: Check[], updates = false) {
     return "Not installed";
   if (failed && installed > 0 && missing > 0) return "Partially installed";
   if (failed) return "Needs attention";
-  return updates ? "Updates available" : "Ready";
+  if (checks.some((c) => c.status === "WARNING")) return "Ready with warnings";
+  return "Ready";
 }
 export type State = {
   stage: "checking" | "idle" | "running" | "success" | "failure";

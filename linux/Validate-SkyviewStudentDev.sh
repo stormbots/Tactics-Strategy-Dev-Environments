@@ -128,7 +128,7 @@ if command -v git >/dev/null 2>&1; then
   fi
 fi
 
-if command -v gh >/dev/null 2>&1; then
+if [[ "${1:-}" == "--check-updates" ]] && command -v gh >/dev/null 2>&1; then
   if gh auth status >/dev/null 2>&1; then
     info "GitHub CLI is authenticated"
   else

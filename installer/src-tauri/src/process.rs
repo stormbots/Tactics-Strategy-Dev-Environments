@@ -370,6 +370,12 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
         trusted(&std::env::current_exe().map_err(|e| e.to_string())?)?;
         trusted(&backend)?;
     }
+    if operation == "update" {
+        let rows = crate::preflight::inspect(&backend)?;
+        if rows.iter().any(|r| r.status == "blocking") {
+            return Err("Update preflight found a blocker. No package changes were started. Check the update preview again.".into());
+        }
+    }
     let mut cmd = match operation {
         "install" | "repair" => {
             #[cfg(windows)]
