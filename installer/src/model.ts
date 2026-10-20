@@ -195,7 +195,20 @@ export function environmentStatus(checks: Check[], _updates = false) {
   if (checks.some((c) => c.status === "WARNING")) return "Ready with warnings";
   return "Ready";
 }
+export function reportPassed(report: Report): boolean {
+  return (
+    report.success &&
+    report.code === 0 &&
+    checksFrom(report.lines).length > 0 &&
+    !checksFrom(report.lines).some((c) => c.status === "FAIL") &&
+    report.lines.some((l) => {
+      const e = parseEvent(l);
+      return e?.kind === "summary" && e.key === "0";
+    })
+  );
+}
 export type State = {
+  validationComplete: boolean;
   stage: "checking" | "idle" | "running" | "success" | "failure";
   mode: Mode;
   progress: number;
@@ -210,6 +223,7 @@ export type State = {
   platform: Report["platform"];
 };
 export const initialState: State = {
+  validationComplete: false,
   stage: "checking",
   mode: "install",
   progress: 0,
@@ -233,6 +247,7 @@ export function reducer(s: State, a: Action): State {
   if (a.type === "initial")
     return {
       ...s,
+      validationComplete: reportPassed(a.report),
       stage: checksFrom(a.report.lines).length ? "idle" : "failure",
       error: checksFrom(a.report.lines).length
         ? ""
@@ -252,6 +267,7 @@ export function reducer(s: State, a: Action): State {
     return {
       ...s,
       stage: "running",
+      validationComplete: false,
       mode: a.mode,
       progress: 0,
       phase:
@@ -265,24 +281,23 @@ export function reducer(s: State, a: Action): State {
       updates: false,
       tools: [],
     };
-  if (a.type === "error") return { ...s, stage: "failure", error: a.message };
+  if (a.type === "error")
+    return {
+      ...s,
+      validationComplete: false,
+      stage: "failure",
+      error: a.message,
+    };
   if (a.type === "complete") {
     const checks = checksFrom(a.report.lines);
-    const valid =
-      a.report.success &&
-      a.report.code === 0 &&
-      checks.length > 0 &&
-      !checks.some((c) => c.status === "FAIL") &&
-      a.report.lines.some((l) => {
-        const e = parseEvent(l);
-        return e?.kind === "summary" && e.key === "0";
-      });
+    const valid = reportPassed(a.report);
     const errors = a.report.lines
       .map(parseEvent)
       .filter((e) => e?.kind === "error");
     return {
       ...s,
       stage: valid ? "success" : "failure",
+      validationComplete: valid,
       checks,
       logs: a.report.lines.slice(-2000),
       progress: valid ? 100 : s.progress,

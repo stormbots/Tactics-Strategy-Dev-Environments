@@ -173,7 +173,12 @@ export default function App() {
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const previousPage = useRef(page);
   const busy = s.stage === "running" || s.stage === "checking";
-  const status = environmentStatus(s.checks, s.updates);
+  const status =
+    !s.validationComplete &&
+    s.checks.length > 0 &&
+    !s.checks.some((c) => c.status === "FAIL")
+      ? "Validation incomplete"
+      : environmentStatus(s.checks, s.updates);
   const passes = s.checks.filter((c) => c.status === "PASS").length;
   const fails = s.checks.filter((c) => c.status === "FAIL").length;
   const discovery = useUpdateDiscovery(
@@ -443,6 +448,13 @@ export default function App() {
                       <span>Other updates not fully checked</span>
                     )}
                   </div>
+                  {s.stage === "idle" && !s.validationComplete && !fails && (
+                    <p role="status">
+                      Local validation did not complete successfully. Review
+                      details and run Validate again; passing individual checks
+                      does not establish full readiness.
+                    </p>
+                  )}
                   {s.stage === "idle" && (
                     <div className="result-actions">
                       <button

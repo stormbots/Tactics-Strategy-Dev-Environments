@@ -370,3 +370,23 @@ it("keeps command diagnostics ending in not found on the mentor path", async () 
   ).toBeTruthy();
   expect(screen.queryByRole("button", { name: /Review Repair/ })).toBeNull();
 });
+it("never reports ready from partial validation without a successful summary", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 1,
+    success: false,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.43.0",
+      "SKYVIEW_EVENT|error|operation|Validation stopped before completion",
+    ],
+    log_path: "test.log",
+    platform: { label: "Windows 11", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "Validation incomplete" });
+  expect(screen.queryByRole("heading", { name: "Ready" })).toBeNull();
+  expect(
+    screen.getByText(
+      /passing individual checks does not establish full readiness/,
+    ),
+  ).toBeTruthy();
+});

@@ -54,6 +54,9 @@ def records(check_updates, snapshot=None):
                         # dpkg's comparison handles epochs and Debian revisions.
                         if command("dpkg", "--compare-versions", candidate, "gt", current) is not None:
                             available = candidate
+                        elif command("dpkg", "--compare-versions", candidate, "le", current) is None:
+                            # A failed/unavailable comparison is not proof of current.
+                            state = "unavailable"
         elif tool == "npm":
             current = snapshot.get(tool) if snapshot is not None else release_version(command("npm", "--version"))
             state = "native"  # npm ships with the managed Node runtime.
