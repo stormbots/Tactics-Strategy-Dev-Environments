@@ -1,0 +1,54 @@
+name: Inspect Windows Shell icon rendering
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-windows-shell-icons.yml'
+      - 'tests/Inspect-WindowsShellIcons.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shell-icons:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: updater -> target
+      - name: Build repository-pinned release verifier
+        run: cargo build --release --locked --manifest-path updater/Cargo.toml
+      - name: Authenticate published fixtures and extract application executables without running installers
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($version in @('1.2.10', '1.2.11')) {
+            $folder = Join-Path $env:RUNNER_TEMP "shell-icons/$version"
+            New-Item -ItemType Directory -Force $folder | Out-Null
+            gh release download "v$version" --repo "$env:GITHUB_REPOSITORY" --dir $folder
+            if ($LASTEXITCODE -ne 0) { throw 'Release download failed' }
+            & ./updater/target/release/sde-update-trust.exe verify $folder "v$version"
+            if ($LASTEXITCODE -ne 0) { throw 'Authentication failed' }
+            & 7z e "$folder/Skyview-Dev-Setup-Windows-x64.exe" "-o$folder/application" skyview-dev-setup.exe
+            if ($LASTEXITCODE -ne 0) { throw 'Application extraction failed' }
+          }
+      - name: Render direct and Shell icons across an in-place replacement and cache refresh
+        shell: powershell
+        run: |
+          ./tests/Inspect-WindowsShellIcons.ps1 `
+            -PreviousExe "$env:RUNNER_TEMP/shell-icons/1.2.10/application/skyview-dev-setup.exe" `
+            -CandidateExe "$env:RUNNER_TEMP/shell-icons/1.2.11/application/skyview-dev-setup.exe" `
+            -OutputDirectory "$env:RUNNER_TEMP/shell-icons/evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-shell-icon-evidence
+          path: '${{ runner.temp }}/shell-icons/evidence/*.png'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-shell-icon-results
+          path: '${{ runner.temp }}/shell-icons/evidence/results.json'
