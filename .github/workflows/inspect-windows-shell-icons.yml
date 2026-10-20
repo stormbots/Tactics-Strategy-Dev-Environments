@@ -41,6 +41,7 @@ jobs:
           ./tests/Inspect-WindowsShellIcons.ps1 `
             -PreviousExe "$env:RUNNER_TEMP/shell-icons/1.2.10/application/skyview-dev-setup.exe" `
             -CandidateExe "$env:RUNNER_TEMP/shell-icons/1.2.11/application/skyview-dev-setup.exe" `
+            -CandidateIco "$PWD/installer/src-tauri/icons/icon.ico" `
             -OutputDirectory "$env:RUNNER_TEMP/shell-icons/evidence"
       - uses: actions/upload-artifact@v4
         if: always()

@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$PreviousExe,
     [Parameter(Mandatory = $true)][string]$CandidateExe,
+    [Parameter(Mandatory = $true)][string]$CandidateIco,
     [Parameter(Mandatory = $true)][string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -76,6 +77,9 @@ $previous = (Resolve-Path $PreviousExe).Path
 $candidate = (Resolve-Path $CandidateExe).Path
 $output = (Resolve-Path $OutputDirectory).Path
 $samePath = Join-Path $output 'same-name.exe'
+$linkPath = Join-Path $output 'application.lnk'
+$versionedIcon = Join-Path $output 'skyview-dev-setup-v1.2.11.ico'
+$shortcutShell = New-Object -ComObject WScript.Shell
 $rows = New-Object System.Collections.Generic.List[object]
 function Measure-Icons([string]$Stage, [string]$Exe) {
     foreach ($size in @(16, 32, 48, 256)) {
@@ -89,19 +93,37 @@ function Measure-Icons([string]$Stage, [string]$Exe) {
         }
     }
 }
+function Measure-Shortcut([string]$Stage) {
+    foreach ($size in @(16, 32)) {
+        $image = Join-Path $output "$Stage-shell-$size.png"
+        $corners = [SdeShellIconProbe]::Render($linkPath, $size, $true, $image)
+        $rounded = @($corners | Where-Object { $_ -ge 160 }).Count -eq 0
+        $rows.Add([pscustomobject]@{Stage=$Stage;Api='shell';Size=$size;CornerRed=$corners;Rounded=$rounded})
+    }
+}
 Copy-Item $previous $samePath
+$link = $shortcutShell.CreateShortcut($linkPath)
+$link.TargetPath = $samePath
+$link.IconLocation = "$samePath,0"
+$link.Save()
 Measure-Icons 'previous' $samePath
+Measure-Shortcut 'previous-shortcut'
 Copy-Item $candidate $samePath -Force
 Measure-Icons 'replacement' $samePath
 [SdeShellIconProbe]::Refresh()
 Measure-Icons 'refreshed' $samePath
 Measure-Icons 'fresh-path' $candidate
+Copy-Item (Resolve-Path $CandidateIco).Path $versionedIcon
+$link = $shortcutShell.CreateShortcut($linkPath)
+$link.IconLocation = "$versionedIcon,0"
+$link.Save()
+Measure-Shortcut 'versioned-shortcut'
 $rows | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $output 'results.json')
 $rows | Format-Table -AutoSize
 if (@($rows | Where-Object { $_.Stage -eq 'previous' -and $_.Api -eq 'direct' -and $_.Rounded }).Count) {
     throw 'Previous square-icon fixture did not render square.'
 }
-if (@($rows | Where-Object { $_.Stage -in @('fresh-path','refreshed') -and -not $_.Rounded }).Count) {
-    throw 'Rounded candidate rendered square after fresh extraction or Shell refresh; inspect evidence.'
+if (@($rows | Where-Object { $_.Stage -in @('fresh-path','versioned-shortcut') -and -not $_.Rounded }).Count) {
+    throw 'Rounded candidate or versioned shortcut rendered square; inspect evidence.'
 }
 Write-Output 'SDE_WINDOWS_SHELL_ICON_PROBE_OK'
