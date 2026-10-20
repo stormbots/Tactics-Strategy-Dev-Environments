@@ -256,3 +256,25 @@ it("honors a server supplied retry time", async () => {
     ).disabled,
   ).toBe(true);
 });
+it("malformed retry times remain a non-blocking unavailable check", async () => {
+  vi.mocked(checkApplication).mockResolvedValueOnce({
+    ...available(),
+    candidate: null,
+    failure: "rateLimited",
+    retryAt: Number.MAX_VALUE,
+  });
+  function Harness() {
+    const data = useUpdateDiscovery([], 0, false);
+    return <ApplicationUpdates data={data} about />;
+  }
+  render(<Harness />);
+  await screen.findByText(/GitHub temporarily limited/);
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Check for SDE updates",
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(false);
+  expect(screen.queryByText(/GitHub requested another check after/)).toBeNull();
+});
