@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       update_discovery:
-        description: Publish only the new 1.2.13 Part 1 update discovery candidate; 1.2.12 is an unpublished same-source upgrade fixture
+        description: Publish only the new 1.2.14 Part 1 sidebar correction; 1.2.13 is an unpublished same-source upgrade fixture
         type: boolean
         default: false
       icon_cache:
@@ -93,7 +93,7 @@ jobs:
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: ${{ (inputs.update_discovery || github.event_name == 'pull_request') && '1.2.12 1.2.13' || inputs.icon_cache && '1.2.11 1.2.12' || inputs.rounded_icon && '1.2.10 1.2.11' || inputs.ui_completion && '1.2.9 1.2.10' || inputs.compact_controls && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
+      BUILD_VERSIONS: ${{ (inputs.update_discovery || github.event_name == 'pull_request') && '1.2.13 1.2.14' || inputs.icon_cache && '1.2.11 1.2.12' || inputs.rounded_icon && '1.2.10 1.2.11' || inputs.ui_completion && '1.2.9 1.2.10' || inputs.compact_controls && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
     strategy:
       fail-fast: false
       matrix:
@@ -200,8 +200,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     env:
-      CANDIDATE_VERSIONS: ${{ inputs.update_discovery && '1.2.13' || inputs.icon_cache && '1.2.12' || inputs.rounded_icon && '1.2.11' || inputs.ui_completion && '1.2.10' || inputs.compact_controls && '1.2.9' || inputs.ui_milestone && '1.2.8' || inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
-      CANDIDATE_NOTES: ${{ inputs.update_discovery && 'docs/RELEASE-NOTES-1.2.13.md' || inputs.icon_cache && 'docs/RELEASE-NOTES-1.2.12.md' || inputs.rounded_icon && 'docs/RELEASE-NOTES-1.2.11.md' || inputs.ui_completion && 'docs/RELEASE-NOTES-1.2.10.md' || inputs.compact_controls && 'docs/RELEASE-NOTES-1.2.9.md' || inputs.ui_milestone && 'docs/RELEASE-NOTES-1.2.8.md' || inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
+      CANDIDATE_VERSIONS: ${{ inputs.update_discovery && '1.2.14' || inputs.icon_cache && '1.2.12' || inputs.rounded_icon && '1.2.11' || inputs.ui_completion && '1.2.10' || inputs.compact_controls && '1.2.9' || inputs.ui_milestone && '1.2.8' || inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
+      CANDIDATE_NOTES: ${{ inputs.update_discovery && 'docs/RELEASE-NOTES-1.2.14.md' || inputs.icon_cache && 'docs/RELEASE-NOTES-1.2.12.md' || inputs.rounded_icon && 'docs/RELEASE-NOTES-1.2.11.md' || inputs.ui_completion && 'docs/RELEASE-NOTES-1.2.10.md' || inputs.compact_controls && 'docs/RELEASE-NOTES-1.2.9.md' || inputs.ui_milestone && 'docs/RELEASE-NOTES-1.2.8.md' || inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
     permissions:
       contents: write
       actions: read

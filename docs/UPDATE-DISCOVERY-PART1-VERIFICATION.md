@@ -68,6 +68,6 @@ preservation, not Windows 11/Cinnamon interaction or assistive-technology passes
 
 The ordinary source application version remains the baseline build identity;
 the protected candidate recipe sets all application identity/lock inputs to
-1.2.12 then 1.2.13 in disposable checkouts. The 1.2.12 package is an unpublished
+1.2.13 then 1.2.14 in disposable checkouts. The 1.2.13 package is an unpublished
 same-source upgrade fixture, not a rebuild/replacement of the existing published
-v1.2.12. Only new v1.2.13 candidate assets may be published by this option.
+v1.2.13. Only new v1.2.14 candidate assets may be published by this option.

@@ -1,14 +1,14 @@
-# Part 1 — Windows 11 and Mint Cinnamon UAT, candidate 1.2.13
+# Part 1 — Windows 11 and Mint Cinnamon UAT, candidate 1.2.14
 
 ## Status and candidate identity
 
 **Preparation only. Do not install until the chat/PR confirms publication,
 protected signing and independent authentication of all five published assets.**
-Expected release: https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.13 .
+Expected release: https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.14 .
 CI artifacts and this document alone do not establish that handoff. Source SHA,
 full-main/native run URLs and downloaded asset hashes will be recorded in the PR.
 
-This candidate covers #11, #12, #30, #87, #90 and #91. Tool baseline remains 1.2.1.
+This candidate covers #11, #12, #30, #87, #90, #91 and the Linux sidebar UAT correction #97. Tool baseline remains 1.2.1.
 Keep your current application-update pause policy and schedule. Do not resume the
 fleet or run Repair to test an SDE application upgrade. Save work, close SDE
 normally, and let other maintenance/package work finish before installation.
@@ -31,7 +31,7 @@ Windows PowerShell in the download folder:
 
 ```powershell
 $worker = 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe'
-& $worker verify (Get-Location).Path v1.2.13
+& $worker verify (Get-Location).Path v1.2.14
 if ($LASTEXITCODE -ne 0) { throw 'Stop: candidate authentication failed.' }
 ```
 
@@ -49,7 +49,7 @@ assessment. Open SDE from Start as the ordinary student/shared user afterwards.
 Mint terminal in the download folder:
 
 ```bash
-'/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust' verify "$PWD" v1.2.13 &&
+'/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust' verify "$PWD" v1.2.14 &&
 sha256sum --check SHA256SUMS.txt
 ```
 
@@ -65,7 +65,7 @@ separate tool/configuration operations.
 
 ## Focused acceptance
 
-1. Confirm 1.2.13 in the app and preserved baseline, pause, schedule, theme/zoom and
+1. Confirm 1.2.14 in the app and preserved baseline, pause, schedule, theme/zoom and
    sample project/editor preferences. Existing rounded icons retain their
    previously accepted appearance.
 2. On launch, local validation completes and displays readiness separately from
@@ -104,13 +104,17 @@ separate tool/configuration operations.
    supported minimum window size. Check Narrator/Orca announcements as available:
    state changes should be understandable without repetitive speech or focus
    theft. Cancel closes the preview without launching changes.
+   On Linux and Windows at desktop width, confirm the sidebar reaches the window
+   bottom at all five zoom levels, including 130%, after scrolling and resizing.
+   A short window must allow scrolling the sidebar to its footer; compact windows
+   retain the top navigation layout.
 9. Follow the README's current stable link: expect the current accepted stable,
-   which may still be 1.2.12 while 1.2.13 is a prerelease. Both supported package
+   which may still be 1.2.12 while 1.2.14 is a prerelease. Both supported package
    names and the verification instructions must be easy to identify.
 
 ## Coverage limits to disposition explicitly
 
-While 1.2.13 is an unaccepted prerelease, it must not advertise itself as a newer
+While 1.2.14 is an unaccepted prerelease, it must not advertise itself as a newer
 stable release. Automated selector fixtures cover newer/current/equal/older,
 prerelease/draft filtering, missing assets, semantic ordering and offline/rate
 limit. UI fixtures cover download actions, per-version dismissal and a later
@@ -134,7 +138,7 @@ Use Pass, Fail, Not run or Accepted limitation, with details where applicable.
 | Update preflight / blockers or unknowns / acknowledgement | Pending | Pending |
 | PowerShell consistency or explicit unavailable drift case | Pending | Not applicable |
 | Confirmed managed-tool Update / actual results | Pending | Pending |
-| Themes / five zoom levels / keyboard / speech | Pending | Pending |
+| Themes / five zoom levels / sidebar height and scroll / keyboard / speech | Pending | Pending |
 | Public stable download instructions | Pending | Pending |
 | Findings / accepted evidence limits / owner acceptance/date | Pending | Pending |
 
