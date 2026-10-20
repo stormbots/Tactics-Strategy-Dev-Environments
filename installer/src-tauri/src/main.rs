@@ -2,6 +2,8 @@
 mod process;
 mod protocol;
 mod schedule;
+#[cfg(windows)]
+mod desktop_icon;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -390,7 +392,15 @@ fn main() {
             return;
         }
     };
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(windows)]
+    let builder = builder.setup(|app| {
+        if let Some(window) = app.get_webview_window("main") {
+            desktop_icon::set_taskbar_icon(&window);
+        }
+        Ok(())
+    });
+    builder
         .manage(Busy::default())
         .manage(session)
         .invoke_handler(tauri::generate_handler![

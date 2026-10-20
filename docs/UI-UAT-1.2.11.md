@@ -2,11 +2,20 @@
 
 ## Candidate status
 
-**Preparation only: publication and authentication are pending.** Install only
-when Codex confirms the exact source/run, signature and all five published asset
-hashes in the publication handoff. Expected
-[testing release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.11).
-Unsigned Actions artifacts are not that confirmation.
+**Published and authenticated:** [v1.2.11 testing release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.11),
+source `792f0dc6c4b39a856b23be5fc656e12ed06ae63f`,
+[successful candidate run](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/39336851263).
+All five downloaded assets were checked against the published digests; the
+repository-pinned verifier authenticated the manifest and both installers.
+
+**Owner follow-up:** Mint Cinnamon's rounded icon is accepted on v1.2.11.
+Its initial square-icon report came from an accidental v1.2.10 reinstall.
+Windows 11 remains unresolved: caption rounded, Start/taskbar square after
+unpin/relaunch and a fresh reinstall. Installed version 1.2.11 and executable
+SHA256 `703343e676f82878e2757b748f495e6d92005c84aa54c1d487e78f4a9bbf61d0`
+match the authenticated package. A disposable Windows probe reproduced stale
+Shell pixels after replacing the executable at its stable path. Continue with
+[the Windows-specific follow-up](UI-UAT-1.2.12.md); preserve Mint acceptance.
 
 The owner returned Pass for every v1.2.10 UAT row on **Windows 11 and Mint
 Cinnamon**, then explicitly rejected the square icon shape. Themes, zoom,
@@ -15,7 +24,7 @@ keyboard/accessibility and validation guidance remain accepted as reported in
 `skyview_logo_rounded_square.svg` for a white rounded tile with transparent
 corners. Only installation and the revised native icon need focused UAT.
 
-## Authenticate and install, once the handoff is confirmed
+## Published candidate installation reference
 
 Save work and close SDE normally. Wait for maintenance/install/package work to
 finish. Record the current app version, tool baseline, schedule and application-
@@ -90,12 +99,12 @@ On both Windows 11 and Mint Cinnamon:
 
 | Field | Windows 11 | Mint Cinnamon |
 | --- | --- | --- |
-| Candidate version / source / authentication | Pending handoff | Pending handoff |
-| Installation / displayed 1.2.11 / settings retained | Not run | Not run |
-| Rounded white icon / transparent corners on dark and light | Not run | Not run |
-| Start/menu icon / pinned-shortcut cache observations | Not run | Not run |
-| Findings or accepted limitations | Pending | Pending |
-| Owner acceptance of revised shape / date | Pending | Pending |
+| Candidate version / source / authentication | Confirmed 1.2.11; package match | Confirmed 1.2.11 after correcting accidental 1.2.10 reinstall |
+| Installation / displayed 1.2.11 / settings retained | Installation/version confirmed; prior UI acceptance retained | Installation/version confirmed; prior UI acceptance retained |
+| Rounded white icon / transparent corners on dark and light | Caption rounded; taskbar square | Owner reports icon correct; separate background cells not supplied |
+| Start/menu icon / pinned-shortcut cache observations | Start square despite unpin/relaunch and fresh reinstall | Revised icon accepted |
+| Findings or accepted limitations | Windows Shell cache finding remains open | Initial finding explained by installed 1.2.10 |
+| Owner acceptance of revised shape / date | Not accepted | Accepted in owner follow-up; separate local date not supplied |
 
 Keep #63 and the milestone open until the owner accepts the revised icon and
 any named limitations. Do not infer native desktop acceptance from asset previews

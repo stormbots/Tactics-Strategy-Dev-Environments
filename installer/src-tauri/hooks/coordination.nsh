@@ -1,3 +1,23 @@
+; Change only existing shortcuts targeting this installation. A versioned ICO
+; avoids reusing the Shell cache entry for the stable executable filename.
+!macro SDE_SET_SHORTCUT_ICON shortcut
+  !insertmacro IsShortcutTarget "${shortcut}" "$INSTDIR\${MAINBINARYNAME}.exe"
+  Pop $0
+  ${If} $0 = 1
+    !insertmacro ComHlpr_CreateInProcInstance ${CLSID_ShellLink} ${IID_IShellLink} r0 ""
+    ${If} $0 P<> 0
+      ${IUnknown::QueryInterface} $0 '("${IID_IPersistFile}",.r1)'
+      ${If} $1 P<> 0
+        ${IPersistFile::Load} $1 '("${shortcut}", ${STGM_READWRITE})'
+        ${IShellLink::SetIconLocation} $0 '(w "$INSTDIR\app-icons\skyview-dev-setup-${VERSION}.ico",i0)'
+        ${IPersistFile::Save} $1 '("${shortcut}",1)'
+        ${IUnknown::Release} $1 ""
+      ${EndIf}
+      ${IUnknown::Release} $0 ""
+    ${EndIf}
+  ${EndIf}
+!macroend
+
 !macro NSIS_HOOK_POSTINSTALL
   ; Record only numeric launch results, never keys or package output. ExecWait
   ; also supports GUI-subsystem executables without nsExec's console plumbing.
@@ -31,4 +51,9 @@
   ${If} $0 != 0
     Abort "SDE maintenance bootstrap failed; mentor review is required."
   ${EndIf}
+  !insertmacro SDE_SET_SHORTCUT_ICON "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk"
+  !insertmacro SDE_SET_SHORTCUT_ICON "$SMPROGRAMS\${PRODUCTNAME}.lnk"
+  !insertmacro SDE_SET_SHORTCUT_ICON "$DESKTOP\${PRODUCTNAME}.lnk"
+  ; Notify already-running Shell processes after updating shortcut metadata.
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0x1000, p 0, p 0)'
 !macroend

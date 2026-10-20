@@ -22,6 +22,15 @@ The remaining scope is #4 (themes), #5 (zoom), #6 (validation guidance) and #63
 Themes, zoom and guidance are already merged. PR #69's approved theme icon
 buttons and minus/percentage/plus zoom supersede the original radio/slider UI.
 
+Current follow-up: v1.2.11 is published and authenticated. The owner now accepts
+its Mint Cinnamon icon after correcting an accidental v1.2.10 reinstall.
+Windows 11's confirmed v1.2.11 installation retains square Start/taskbar pixels;
+a disposable Windows probe reproduced stale Shell caching at the stable EXE
+path. A Windows-only versioned shortcut icon and explicit large-window icon
+are being prepared in **v1.2.12**. Use the
+[focused Windows follow-up](UI-UAT-1.2.12.md). Keep Mint's acceptance and all
+previously accepted UI checks; #63 and the milestone await Windows acceptance.
+
 ## Execution sequence
 
 1. **Establish one source and acceptance record.** Work on a focused branch from
