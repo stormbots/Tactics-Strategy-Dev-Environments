@@ -97,7 +97,9 @@ function Measure-Shortcut([string]$Stage) {
     foreach ($size in @(16, 32)) {
         $image = Join-Path $output "$Stage-shell-$size.png"
         $corners = [SdeShellIconProbe]::Render($linkPath, $size, $true, $image)
-        $rounded = @($corners | Where-Object { $_ -ge 160 }).Count -eq 0
+        # The Shell adds the shortcut-arrow badge at bottom left. Check the
+        # three unbadged corners; retain all four measurements in the evidence.
+        $rounded = @($corners[0], $corners[1], $corners[3] | Where-Object { $_ -ge 160 }).Count -eq 0
         $rows.Add([pscustomobject]@{Stage=$Stage;Api='shell';Size=$size;CornerRed=$corners;Rounded=$rounded})
     }
 }
