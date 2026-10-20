@@ -216,3 +216,43 @@ it("unavailable preflight checks need explicit acknowledgement", async () => {
   fireEvent.click(button);
   expect(onContinue).toHaveBeenCalledOnce();
 });
+it("a failed request clears an old download offer without claiming current", async () => {
+  function Harness() {
+    const data = useUpdateDiscovery([], 0, false);
+    return <ApplicationUpdates data={data} about />;
+  }
+  render(<Harness />);
+  await screen.findByRole("button", { name: "Download SDE installer" });
+  vi.mocked(checkApplication).mockRejectedValueOnce(
+    new Error("raw server detail"),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Check for SDE updates" }),
+  );
+  await screen.findByText(/SDE discovery could not finish/);
+  expect(
+    screen.queryByRole("button", { name: "Download SDE installer" }),
+  ).toBeNull();
+  expect(screen.queryByText(/raw server detail/)).toBeNull();
+});
+it("honors a server supplied retry time", async () => {
+  vi.mocked(checkApplication).mockResolvedValueOnce({
+    ...available(),
+    candidate: null,
+    failure: "rateLimited",
+    retryAt: Date.now() / 1000 + 600,
+  });
+  function Harness() {
+    const data = useUpdateDiscovery([], 0, false);
+    return <ApplicationUpdates data={data} about />;
+  }
+  render(<Harness />);
+  await screen.findByText(/GitHub requested another check after/);
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Check for SDE updates",
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+});

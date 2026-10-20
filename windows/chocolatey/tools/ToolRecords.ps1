@@ -83,6 +83,7 @@ function Get-SkyviewToolRecords {
         $state = if (-not $packages.Contains($tool)) { 'native' } elseif (-not $CheckUpdates) { 'notChecked' } elseif ($checked) { 'current' } else { 'unavailable' }
         if ($CheckUpdates -and $packages.Contains($tool) -and -not $tracked.ContainsKey($packages[$tool])) { $state = 'unavailable' }
         if ($CheckUpdates -and $tool -eq 'Node.js') { $state = if ($nodeChecked) { 'current' } else { 'unavailable' } }
+        if ($CheckUpdates -and -not $current -and $state -ne 'native') { $state='unavailable' }
         if ($state -eq 'current' -and $current -and $packages.Contains($tool) -and $candidates.ContainsKey($packages[$tool])) { $candidate = $candidates[$packages[$tool]] }
         $reason = if ($state -eq 'unavailable') { if ($remote) { $remote.Reason } else { 'sourceUnavailable' } } else { $null }
         if ($tool -eq 'PowerShell 7' -and $state -eq 'current') {

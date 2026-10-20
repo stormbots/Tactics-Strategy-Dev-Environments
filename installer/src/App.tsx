@@ -181,7 +181,16 @@ export default function App() {
     generation,
     !busy && s.stage !== "checking",
   );
-  const displayTools = discovery.preview?.tools ?? s.tools;
+  const displayTools =
+    discovery.preview?.tools ??
+    (discovery.toolsError
+      ? s.tools.map((t) => ({
+          ...t,
+          updateAvailable: false,
+          availableVersion: null,
+          updateCheck: "unavailable" as const,
+        }))
+      : s.tools);
   const updateCount = displayTools.filter((t) => t.updateAvailable).length;
   const partialUpdateCheck = updateInspectionIncomplete(s.checks, displayTools);
   useEffect(() => {

@@ -157,6 +157,7 @@ pub(crate) trait Transport {
 pub struct GitHub {
     client: Client,
     deadline: Instant,
+    retry_at: std::cell::Cell<Option<u64>>,
 }
 impl GitHub {
     pub fn new() -> Result<Self> {
@@ -169,6 +170,7 @@ impl GitHub {
                 .build()
                 .map_err(|_| Failure::Offline)?,
             deadline: Instant::now() + DEADLINE,
+            retry_at: std::cell::Cell::new(None),
         })
     }
     fn remaining(&self) -> Result<Duration> {
@@ -219,7 +221,13 @@ impl GitHub {
             match response_action(response.status().as_u16(), response.headers(), now) {
                 Action::Ready => return Ok(response),
                 Action::Abort(failure) => return Err(RequestError::Abort(failure)),
-                Action::Retry(failure, delay) => return Err(RequestError::Retry(failure, delay)),
+                Action::Retry(failure, delay) => {
+                    if failure == Failure::RateLimited {
+                        self.retry_at
+                            .set(delay.map(|d| now.saturating_add(d.as_secs())));
+                    }
+                    return Err(RequestError::Retry(failure, delay));
+                }
                 Action::Redirect => {
                     if hop == MAX_REDIRECTS {
                         return Err(RequestError::Abort(Failure::Untrusted));
@@ -402,10 +410,19 @@ pub(crate) fn list_with(transport: &mut impl Transport) -> Result<Vec<Release>> 
 /// Notification-only callers provide their running application's real package version.
 /// This function fetches release listings, but never downloads or runs an installer.
 /// A short, independent budget for the interactive notification path.
-pub fn notify(installed: &str, platform: &str) -> Result<Option<Candidate>> {
-    let mut transport = GitHub::new()?;
+pub fn notify(installed: &str, platform: &str) -> (Result<Option<Candidate>>, Option<u64>) {
+    let mut transport = match GitHub::new() {
+        Ok(transport) => transport,
+        Err(failure) => return (Err(failure), None),
+    };
     transport.deadline = Instant::now() + Duration::from_secs(20);
-    discover_with(&mut transport, installed, platform)
+    let result = discover_with(&mut transport, installed, platform);
+    let retry_at = if result.is_ok() {
+        None
+    } else {
+        transport.retry_at.get()
+    };
+    (result, retry_at)
 }
 
 pub fn discover(installed: &str, platform: &str) -> Result<Option<Candidate>> {

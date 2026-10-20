@@ -4,7 +4,7 @@ use std::{
     io::{Read, Write},
     process::{Command, Stdio},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -15,6 +15,7 @@ pub struct Checks {
     pub app: Arc<AtomicBool>,
     pub tools: Arc<AtomicBool>,
     pub preflight: Arc<AtomicBool>,
+    pub app_retry: Arc<AtomicU64>,
 }
 pub(crate) struct Lease(Arc<AtomicBool>);
 pub(crate) fn enter(flag: &Arc<AtomicBool>) -> Result<Lease, String> {
@@ -38,6 +39,7 @@ pub fn now() -> u64 {
 pub struct Application {
     version: String,
     checked_at: u64,
+    retry_at: Option<u64>,
     candidate: Option<sde_update_trust::discovery::Candidate>,
     failure: Option<sde_update_trust::discovery::Failure>,
 }
@@ -48,6 +50,17 @@ pub async fn check_application(
 ) -> Result<Application, String> {
     let lease = enter(&state.app)?;
     let version = app.package_info().version.to_string();
+    let cooldown = state.app_retry.clone();
+    let until = cooldown.load(Ordering::SeqCst);
+    if until > now() {
+        return Ok(Application {
+            version,
+            checked_at: now(),
+            retry_at: Some(until),
+            candidate: None,
+            failure: Some(sde_update_trust::discovery::Failure::RateLimited),
+        });
+    }
     tauri::async_runtime::spawn_blocking(move || {
         let _lease = lease;
         let supported = crate::platform().supported;
@@ -55,14 +68,16 @@ pub async fn check_application(
         let platform = "windows-x86_64";
         #[cfg(not(windows))]
         let platform = "linux-amd64";
-        let result = if supported {
+        let (result, retry_at) = if supported {
             sde_update_trust::discovery::notify(&version, platform)
         } else {
-            Err(sde_update_trust::discovery::Failure::Unsupported)
+            (Err(sde_update_trust::discovery::Failure::Unsupported), None)
         };
+        cooldown.store(retry_at.unwrap_or(0), Ordering::SeqCst);
         Application {
             version,
             checked_at: now(),
+            retry_at,
             candidate: result.as_ref().ok().cloned().flatten(),
             failure: result.err(),
         }

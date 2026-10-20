@@ -28,6 +28,19 @@ for (const theme of ["Light", "Dark"]) {
       page.getByRole("button", { name: "Continue with Update" }),
     ).toBeEnabled();
     await expect(page.getByRole("progressbar")).toHaveCount(0);
+    for (const width of [640, 1040]) {
+      await page.setViewportSize({ width, height: 820 });
+      for (const zoom of [0, 1, 2, 3, 4]) {
+        await chooseZoom(page, zoom);
+        await closeAppearance(page);
+        await expect(preview).toBeVisible();
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth > window.innerWidth + 2,
+          ),
+        ).toBe(false);
+      }
+    }
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > window.innerWidth + 2,
     );

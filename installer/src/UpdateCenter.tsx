@@ -46,10 +46,12 @@ export function useUpdateDiscovery(
     };
   }, []);
   async function refreshApp() {
-    if (appPending.current) return;
+    if (appPending.current || (application?.retryAt ?? 0) > Date.now() / 1000)
+      return;
     appPending.current = true;
     setAppLoading(true);
     setAppError("");
+    setApplication(null);
     try {
       const data = await checkApplication();
       if (mounted.current) {
@@ -137,6 +139,16 @@ export function ApplicationUpdates({
 }) {
   const [error, setError] = useState("");
   const app = data.application;
+  const [clock, refreshClock] = useState(0);
+  const retryBlocked = (app?.retryAt ?? 0) > Date.now() / 1000;
+  useEffect(() => {
+    if (!retryBlocked || !app?.retryAt) return;
+    const timer = setTimeout(
+      () => refreshClock((n) => n + 1),
+      Math.min((app.retryAt - Date.now() / 1000) * 1000 + 100, 2147483647),
+    );
+    return () => clearTimeout(timer);
+  }, [app?.retryAt, retryBlocked, clock]);
   const candidate = app?.candidate;
   const visible = candidate && candidate.tag !== data.dismissed;
   if (!about && !visible && !data.appError && !app?.failure) return null;
@@ -203,11 +215,17 @@ export function ApplicationUpdates({
         <>
           <button
             className="secondary"
-            disabled={data.appLoading}
+            disabled={data.appLoading || retryBlocked}
             onClick={() => void data.refreshApp()}
           >
             Check for SDE updates
           </button>
+          {retryBlocked && (
+            <p role="status">
+              GitHub requested another check after{" "}
+              {localTime(new Date(app!.retryAt! * 1000).toISOString())}.
+            </p>
+          )}
           <p className="muted">
             Last successful SDE check:{" "}
             {data.lastSuccess
@@ -265,7 +283,16 @@ export function ToolUpdatePreview({
       live.current = false;
     };
   }, []);
-  const tools = data.preview?.tools ?? snapshot;
+  const tools =
+    data.preview?.tools ??
+    (data.toolsError
+      ? snapshot.map((t) => ({
+          ...t,
+          updateAvailable: false,
+          availableVersion: null,
+          updateCheck: "unavailable" as const,
+        }))
+      : snapshot);
   const caution = checks?.some(
     (c) => c.status === "warning" || c.status === "unavailable",
   );

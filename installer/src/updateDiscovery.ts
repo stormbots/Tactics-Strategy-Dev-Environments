@@ -11,6 +11,7 @@ export type AppDiscovery = {
     installer: string;
   };
   failure: string | null;
+  retryAt?: number | null;
 };
 export type ToolPreview = { tools: ToolRecord[]; checkedAt: number };
 export type PreflightCheck = {
