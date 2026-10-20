@@ -185,12 +185,8 @@ fn run(
         lines.push(line);
     };
     let result = (|| -> Result<i32, String> {
-        if matches!(op, Operation::Update) {
-            let result = preflight::inspect(&root)?;
-            if result.iter().any(|r| r.status == "blocking") {
-                emit("SKYVIEW_EVENT|error|preflight|Update preflight found a blocker. No changes were started. Check again in the update preview.".into());
-                return Ok(75);
-            }
+        if matches!(op, Operation::Update) && !preflight::before_update(&root, &mut emit) {
+            return Ok(75);
         }
         if !matches!(op, Operation::Validate) {
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());

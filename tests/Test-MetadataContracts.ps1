@@ -73,3 +73,13 @@ Assert (-not $record.updateAvailable) 'Older candidate advertised an update.'
 $record=Get-SkyviewToolRecords -Installed @{'PowerShell 7'='unknown'} -CheckUpdates $true | Where-Object tool -eq 'PowerShell 7'
 Assert ($record.updateCheck -eq 'unavailable' -and -not $record.updateAvailable) 'Unknown executable falsely classified.'
 Remove-Item Function:choco
+# Execute the actual read-only preflight on the disposable Windows runner.
+# Server observations validate JSON/native readers, not Windows 11 desktop UAT.
+$preflightPath=Join-Path $PSScriptRoot '../windows/chocolatey/tools/Test-SkyviewUpdatePreflight.ps1'
+$observations=@((& $preflightPath) | ConvertFrom-Json)
+Assert ($observations.Count -ge 6) 'Native preflight omitted required observations.'
+foreach ($name in @('System disk','User disk','Package manager','Restart')) {
+    $observation=$observations | Where-Object name -eq $name
+    Assert ($null -ne $observation -and $observation.status -in @('pass','blocking','warning','unavailable')) "Native preflight missing $name."
+}
+Assert (($observations | Where-Object name -eq 'System disk').status -ne 'unavailable') 'Native system disk observation failed.'

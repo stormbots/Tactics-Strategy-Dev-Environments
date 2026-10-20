@@ -69,3 +69,20 @@ pub async fn check_update_preflight(
     .await
     .map_err(|_| "Preflight stopped. Check again.".to_string())?
 }
+
+/// Called independently by the GUI runner and installed privileged helper.
+/// All results are logged before returning, including a stop before package launch.
+pub fn before_update(root: &std::path::Path, mut emit: impl FnMut(String)) -> bool {
+    emit("SKYVIEW_EVENT|phase|preflight|Rechecking update prerequisites".into());
+    match inspect(root) {
+        Ok(rows) if !rows.iter().any(|r| r.status == "blocking") => true,
+        Ok(_) => {
+            emit("SKYVIEW_EVENT|error|preflight|Update preflight found a blocker. No package changes were started. Check again in the preview.".into());
+            false
+        }
+        Err(_) => {
+            emit("SKYVIEW_EVENT|error|preflight|Update preflight could not be completed. No package changes were started. Check again in the preview.".into());
+            false
+        }
+    }
+}

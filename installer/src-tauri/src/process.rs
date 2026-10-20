@@ -370,12 +370,6 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
         trusted(&std::env::current_exe().map_err(|e| e.to_string())?)?;
         trusted(&backend)?;
     }
-    if operation == "update" {
-        let rows = crate::preflight::inspect(&backend)?;
-        if rows.iter().any(|r| r.status == "blocking") {
-            return Err("Update preflight found a blocker. No package changes were started. Check the update preview again.".into());
-        }
-    }
     let mut cmd = match operation {
         "install" | "repair" => {
             #[cfg(windows)]
@@ -432,6 +426,16 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
             .create_new(true)
             .open(log_dir.join(format!("{session}.log")))
             .map_err(|e| e.to_string())?;
+        if operation == "update"
+            && !crate::preflight::before_update(&backend, |line| {
+                let _ = writeln!(file, "{line}");
+                let _ = file.flush();
+            })
+        {
+            writeln!(file, "SKYVIEW_HELPER_EXIT|75").map_err(|e| e.to_string())?;
+            file.flush().map_err(|e| e.to_string())?;
+            return Ok(75);
+        }
         let code = stream(cmd, |line| {
             let _ = writeln!(file, "{line}");
             let _ = file.flush();
@@ -441,6 +445,11 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
     }
     #[cfg(not(windows))]
     {
+        if operation == "update"
+            && !crate::preflight::before_update(&backend, |line| println!("{line}"))
+        {
+            return Ok(75);
+        }
         stream(cmd, |line| println!("{line}"))
     }
 }
