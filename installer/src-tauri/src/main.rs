@@ -1,9 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#[cfg(windows)]
+mod desktop_icon;
+mod preflight;
 mod process;
 mod protocol;
 mod schedule;
-#[cfg(windows)]
-mod desktop_icon;
+mod updates;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -183,6 +185,9 @@ fn run(
         lines.push(line);
     };
     let result = (|| -> Result<i32, String> {
+        if matches!(op, Operation::Update) && !preflight::before_update(&root, &mut emit) {
+            return Ok(75);
+        }
         if !matches!(op, Operation::Validate) {
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());
             let code = process::elevated(op.name(), &run_id, &mut emit)?;
@@ -253,7 +258,7 @@ async fn inspect_system(
             app,
             Operation::Validate,
             uuid::Uuid::new_v4().to_string(),
-            true,
+            false,
         )
     })
     .await
@@ -402,13 +407,18 @@ fn main() {
     });
     builder
         .manage(Busy::default())
+        .manage(updates::Checks::default())
         .manage(session)
         .invoke_handler(tauri::generate_handler![
             inspect_system,
             inspect_schedule,
             inspect_self_update,
             run_operation,
-            open_destination
+            open_destination,
+            updates::check_application,
+            updates::check_tools,
+            updates::open_release,
+            preflight::check_update_preflight
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

@@ -53,3 +53,33 @@ function New-Object { throw [Runtime.InteropServices.COMException]::new('Missing
 Assert ((Get-SkyviewSchedule).status -eq 'missing') 'Missing task incorrectly reported as success.'
 Remove-Item Function:New-Object
 Write-Host 'SKYVIEW_METADATA_CONTRACTS_OK'
+# PowerShell executable/package drift must not advertise an equal/older version.
+function choco {
+    $global:LASTEXITCODE=0
+    switch ($args[0]) {
+        'list' { 'powershell-core|7.5.0' }
+        'outdated' { "powershell-core|7.5.0|$script:PowerShellCandidate|false" }
+    }
+}
+$script:PowerShellCandidate='7.5.3'
+$record=Get-SkyviewToolRecords -Installed @{'PowerShell 7'='7.5.3'} -CheckUpdates $true | Where-Object tool -eq 'PowerShell 7'
+Assert (-not $record.updateAvailable -and $record.updateCheck -eq 'inconsistent' -and $record.updateReason -eq 'metadataMismatch') 'Equal executable and available versions falsely advertised an update.'
+$script:PowerShellCandidate='7.5.4'
+$record=Get-SkyviewToolRecords -Installed @{'PowerShell 7'='7.5.3'} -CheckUpdates $true | Where-Object tool -eq 'PowerShell 7'
+Assert ($record.updateAvailable -and $record.availableVersion -eq '7.5.4') 'Genuinely newer executable version not advertised.'
+$script:PowerShellCandidate='7.5.2'
+$record=Get-SkyviewToolRecords -Installed @{'PowerShell 7'='7.5.3'} -CheckUpdates $true | Where-Object tool -eq 'PowerShell 7'
+Assert (-not $record.updateAvailable) 'Older candidate advertised an update.'
+$record=Get-SkyviewToolRecords -Installed @{'PowerShell 7'='unknown'} -CheckUpdates $true | Where-Object tool -eq 'PowerShell 7'
+Assert ($record.updateCheck -eq 'unavailable' -and -not $record.updateAvailable) 'Unknown executable falsely classified.'
+Remove-Item Function:choco
+# Execute the actual read-only preflight on the disposable Windows runner.
+# Server observations validate JSON/native readers, not Windows 11 desktop UAT.
+$preflightPath=Join-Path $PSScriptRoot '../windows/chocolatey/tools/Test-SkyviewUpdatePreflight.ps1'
+$observations=@((& $preflightPath) | ConvertFrom-Json)
+Assert ($observations.Count -ge 6) 'Native preflight omitted required observations.'
+foreach ($name in @('System disk','User disk','Package manager','Restart')) {
+    $observation=$observations | Where-Object name -eq $name
+    Assert ($null -ne $observation -and $observation.status -in @('pass','blocking','warning','unavailable')) "Native preflight missing $name."
+}
+Assert (($observations | Where-Object name -eq 'System disk').status -ne 'unavailable') 'Native system disk observation failed.'

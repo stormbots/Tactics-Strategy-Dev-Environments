@@ -45,6 +45,15 @@ class ToolMetadata(unittest.TestCase):
         network.assert_not_called()
         self.assertTrue(all(not r["updateAvailable"] for r in records))
 
+class ComparisonAvailability(unittest.TestCase):
+    def test_unknown_comparator_never_means_current(self):
+        def command(*args):
+            return "Candidate: 2.44.0" if args[0] == "apt-cache" else None
+        with patch.object(tools, "command", side_effect=command):
+            records = {r["tool"]: r for r in tools.records(True, {"Git": "2.43.0"})}
+        self.assertEqual(records["Git"]["updateCheck"], "unavailable")
+        self.assertFalse(records["Git"]["updateAvailable"])
+
 class ScheduleMetadata(unittest.TestCase):
     timer = dict(LoadState="loaded", UnitFileState="enabled", ActiveState="active", Persistent="yes",
                  TimersCalendar="{ OnCalendar=Sun *-*-* 03:00:00 ; next_elapse=ignored }",

@@ -1,13 +1,13 @@
 # Skyview Robotics Student Development Environment
 
 Graphical setup and workstation management for the **Bureau of Tactics & Strategy**.
-Stable release **1.2.6** targets Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.
+Use the [current stable release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest) for Windows 11 x64 and Linux Mint Cinnamon 22.x amd64. Its release notes describe the accepted changes and supported installers.
 
-Version **1.2.6** safely migrates the recognized legacy Windows Logs permissions without manual ACL repair. It retains the protected self-update engine and separate development-tool baseline **1.2.1**. The owner declared testing complete and authorized stable promotion only. See the [release notes](docs/RELEASE-NOTES-1.2.6.md) and [release/acceptance record](docs/ACCEPTANCE-SELF-UPDATE.md). Automatic-update pilots and fleet resume remain separate decisions; keep laptop application updates paused.
+The SDE application and the applied development-tool baseline have separate versions. Application upgrades preserve the existing baseline, student settings, maintenance schedule and application-update pause policy. Fleet rollout and policy resume remain separate mentor decisions.
 
 ## Install with the app
 
-[Download your installer from the 1.2.6 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.6).
+[Download your installer from the current stable release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest). Download **Skyview-Dev-Setup-Windows-x64.exe** for Windows or **Skyview-Dev-Setup-LinuxMint-amd64.deb** for Linux Mint; authenticate the complete five-file release folder using the mentor procedure before installation.
 
 **Windows:** open `Skyview-Dev-Setup-Windows-x64.exe`, approve installation, then launch **Skyview Dev Setup**.
 
@@ -28,7 +28,7 @@ The earlier **1.2.1** [both-platform acceptance](docs/ACCEPTANCE-1.2.1.md), incl
 | Validate | Checks tools, runtime versions, extensions, configuration, and weekly maintenance without installing packages. |
 | Update | Updates managed development tools within the Node 24.x and Python 3.14.x families, then validates. |
 
-The app checks your workstation and available managed updates when it opens. Validation uses explicit **PASS**, **WARNING**, **FAIL**, and **INFORMATION** labels. Git identity and GitHub authentication are optional information; neither is set automatically. A spinner indicates startup validation is working. Operations show **Live details** automatically below progress; **Show details** remains available for initial validation output. **Advanced** can include another update check during validation; Linux uses the latest available local APT metadata.
+The app checks local workstation readiness when it opens, then checks managed-tool updates separately. SDE application releases have their own launch/About check. Unavailable update checks do not invalidate successful local validation. Validation uses explicit **PASS**, **WARNING**, **FAIL**, and **INFORMATION** labels. Git identity and GitHub authentication are optional information; neither is set automatically. A spinner indicates startup validation is working. Operations show **Live details** automatically below progress; **Show details** remains available for initial validation output. **Advanced** can include another update check during validation; Linux uses the latest available local APT metadata.
 
 Tools include Git, GitHub CLI, Node/npm, Python, VSCodium and the repository's standard extension set, PyCharm, DBeaver, Chrome, Firefox, PowerShell 7, OpenSSH, and 7-Zip utilities. Linux's system Python remains untouched and Snap stays disabled. Student repositories and existing editor settings are preserved. Existing strict-JSON Linux settings receive missing defaults; user values win. Windows and JSONC settings remain intact with a warning where defaults cannot safely be merged.
 

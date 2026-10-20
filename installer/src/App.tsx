@@ -44,6 +44,11 @@ import {
 import { ValidationCheck } from "./ValidationCheck";
 import { operationScope } from "./validationGuidance";
 import { AppearanceControls } from "./AppearanceControls";
+import {
+  ApplicationUpdates,
+  ToolUpdatePreview,
+  useUpdateDiscovery,
+} from "./UpdateCenter";
 import { AboutPage, SchedulePage } from "./DetailsPages";
 const modes: Record<
   Mode,
@@ -97,9 +102,11 @@ function ToolItem({ check, record }: { check: Check; record?: ToolRecord }) {
       ? "Update check unavailable"
       : record.updateCheck === "notChecked"
         ? "Updates not checked"
-        : record.updateCheck === "native"
-          ? "Updates managed by the tool or its runtime"
-          : "";
+        : record.updateCheck === "inconsistent"
+          ? "Executable and package metadata disagree; review update details"
+          : record.updateCheck === "native"
+            ? "Updates managed by the tool or its runtime"
+            : "";
   return (
     <div className={`tool ${check.status.toLowerCase()}`}>
       <StatusIcon status={check.status} />
@@ -156,6 +163,8 @@ export default function App() {
     "overview" | "validation" | "schedule" | "about"
   >("overview");
   const [checkUpdates, setCheckUpdates] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [generation, setGeneration] = useState(0);
   const [notice, setNotice] = useState("");
   const runId = useRef("");
   const started = useRef(false);
@@ -164,11 +173,31 @@ export default function App() {
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const previousPage = useRef(page);
   const busy = s.stage === "running" || s.stage === "checking";
-  const status = environmentStatus(s.checks, s.updates);
+  const status =
+    !s.validationComplete &&
+    s.checks.length > 0 &&
+    !s.checks.some((c) => c.status === "FAIL")
+      ? "Validation incomplete"
+      : environmentStatus(s.checks, s.updates);
   const passes = s.checks.filter((c) => c.status === "PASS").length;
   const fails = s.checks.filter((c) => c.status === "FAIL").length;
-  const updateCount = s.tools.filter((t) => t.updateAvailable).length;
-  const partialUpdateCheck = updateInspectionIncomplete(s.checks, s.tools);
+  const discovery = useUpdateDiscovery(
+    s.tools,
+    generation,
+    !busy && s.stage !== "checking",
+  );
+  const displayTools =
+    discovery.preview?.tools ??
+    (discovery.toolsError
+      ? s.tools.map((t) => ({
+          ...t,
+          updateAvailable: false,
+          availableVersion: null,
+          updateCheck: "unavailable" as const,
+        }))
+      : s.tools);
+  const updateCount = displayTools.filter((t) => t.updateAvailable).length;
+  const partialUpdateCheck = updateInspectionIncomplete(s.checks, displayTools);
   useEffect(() => {
     if (previousPage.current !== page) pageHeading.current?.focus();
     previousPage.current = page;
@@ -204,8 +233,15 @@ export default function App() {
     if (s.stage === "success" || s.stage === "failure")
       resultHeading.current?.focus();
   }, [s.stage]);
-  async function start(selected: Mode) {
+  async function start(selected: Mode, confirmed = false) {
     if (busy) return;
+    if (selected === "update" && !confirmed) {
+      setPreviewOpen(true);
+      setPage("overview");
+      return;
+    }
+    setPreviewOpen(false);
+    setGeneration((g) => g + 1);
     setNotice("");
     setMode(selected);
     setPage("overview");
@@ -393,14 +429,16 @@ export default function App() {
                       <TriangleAlert size={17} />
                       <strong>{fails}</strong> need attention
                     </span>
-                    <span className="update-count">
+                    <span className="update-count" aria-live="polite">
                       <RefreshCw size={17} />
-                      {updateCount > 0 || !partialUpdateCheck ? (
+                      {discovery.toolsLoading ? (
+                        "Checking managed-tool updates…"
+                      ) : updateCount > 0 || !partialUpdateCheck ? (
                         <>
                           <strong>{updateCount}</strong>{" "}
                           {updateCount === 1
-                            ? "update available"
-                            : "updates available"}
+                            ? "managed-tool update available"
+                            : "managed-tool updates available"}
                         </>
                       ) : (
                         "Updates not fully checked"
@@ -410,8 +448,54 @@ export default function App() {
                       <span>Other updates not fully checked</span>
                     )}
                   </div>
+                  {s.stage === "idle" && !s.validationComplete && !fails && (
+                    <p role="status">
+                      Local validation did not complete successfully. Review
+                      details and run Validate again; passing individual checks
+                      does not establish full readiness.
+                    </p>
+                  )}
+                  {s.stage === "idle" && (
+                    <div className="result-actions">
+                      <button
+                        className="secondary"
+                        onClick={() => openTarget("editor")}
+                      >
+                        Open VSCodium
+                      </button>
+                      <button
+                        className="secondary"
+                        onClick={() => openTarget("workspace")}
+                      >
+                        Open Development
+                      </button>
+                    </div>
+                  )}
+                  {discovery.toolsError && (
+                    <p role="status">{discovery.toolsError}</p>
+                  )}
+                  <button
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() => {
+                      setMode("update");
+                      setPreviewOpen(true);
+                    }}
+                  >
+                    Review managed-tool updates
+                  </button>
                 </section>
               </>
+            )}
+            <ApplicationUpdates data={discovery} />
+            {previewOpen && (
+              <ToolUpdatePreview
+                data={discovery}
+                snapshot={s.tools}
+                platformSupported={s.platform.supported}
+                onContinue={() => void start("update", true)}
+                onCancel={() => setPreviewOpen(false)}
+              />
             )}
             {(s.stage === "success" || s.stage === "failure") && (
               <section
@@ -591,7 +675,9 @@ export default function App() {
                       <ToolItem
                         key={i}
                         check={c}
-                        record={s.tools.find((t) => t.tool === toolForCheck(c))}
+                        record={displayTools.find(
+                          (t) => t.tool === toolForCheck(c),
+                        )}
                       />
                     ))}
                   {!s.checks.length && (
@@ -642,7 +728,7 @@ export default function App() {
                       <td>
                         <ValidationCheck
                           check={c}
-                          record={s.tools.find(
+                          record={displayTools.find(
                             (r) => r.tool === toolForCheck(c),
                           )}
                           supported={s.platform.supported}
@@ -668,7 +754,10 @@ export default function App() {
         ) : page === "schedule" ? (
           <SchedulePage openTarget={openTarget} />
         ) : (
-          <AboutPage platform={s.platform.label} openTarget={openTarget} />
+          <>
+            <ApplicationUpdates data={discovery} about />
+            <AboutPage platform={s.platform.label} openTarget={openTarget} />
+          </>
         )}
         {(page === "validation" || (page === "overview" && !runId.current)) && (
           <details className="details">

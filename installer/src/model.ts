@@ -5,11 +5,14 @@ export type Check = {
 };
 export type Event = { kind: string; key: string; message: string };
 export type ToolRecord = {
+  updateReason?: string | null;
+  source?: string;
   tool: string;
   installedVersion: string | null;
   availableVersion: string | null;
   updateAvailable: boolean;
-  updateCheck: "current" | "notChecked" | "unavailable" | "native";
+  updateCheck:
+    "current" | "notChecked" | "unavailable" | "native" | "inconsistent";
 };
 export type Schedule = {
   status: "enabled" | "disabled" | "missing" | "unavailable";
@@ -58,9 +61,13 @@ export function toolRecord(e: Event | null): ToolRecord | null {
       !version(r.installedVersion) ||
       !version(r.availableVersion) ||
       typeof r.updateAvailable !== "boolean" ||
-      !["current", "notChecked", "unavailable", "native"].includes(
-        r.updateCheck,
-      ) ||
+      ![
+        "current",
+        "notChecked",
+        "unavailable",
+        "native",
+        "inconsistent",
+      ].includes(r.updateCheck) ||
       (r.updateAvailable &&
         (!r.installedVersion ||
           !r.availableVersion ||
@@ -116,7 +123,10 @@ export function updateInspectionIncomplete(
       if (c.status !== "PASS" || !name) return false;
       const record = tools.find((t) => t.tool === name);
       return (
-        !record || ["unavailable", "notChecked"].includes(record.updateCheck)
+        !record ||
+        ["unavailable", "notChecked", "inconsistent"].includes(
+          record.updateCheck,
+        )
       );
     })
   );
@@ -164,7 +174,7 @@ export function checksFrom(lines: string[]): Check[] {
       : [];
   });
 }
-export function environmentStatus(checks: Check[], updates = false) {
+export function environmentStatus(checks: Check[], _updates = false) {
   const managed = checks.filter((c) => toolForCheck(c));
   const installed = managed.filter((c) => c.status === "PASS").length;
   const missing = managed.filter((c) => {
@@ -182,9 +192,23 @@ export function environmentStatus(checks: Check[], updates = false) {
     return "Not installed";
   if (failed && installed > 0 && missing > 0) return "Partially installed";
   if (failed) return "Needs attention";
-  return updates ? "Updates available" : "Ready";
+  if (checks.some((c) => c.status === "WARNING")) return "Ready with warnings";
+  return "Ready";
+}
+export function reportPassed(report: Report): boolean {
+  return (
+    report.success &&
+    report.code === 0 &&
+    checksFrom(report.lines).length > 0 &&
+    !checksFrom(report.lines).some((c) => c.status === "FAIL") &&
+    report.lines.some((l) => {
+      const e = parseEvent(l);
+      return e?.kind === "summary" && e.key === "0";
+    })
+  );
 }
 export type State = {
+  validationComplete: boolean;
   stage: "checking" | "idle" | "running" | "success" | "failure";
   mode: Mode;
   progress: number;
@@ -199,6 +223,7 @@ export type State = {
   platform: Report["platform"];
 };
 export const initialState: State = {
+  validationComplete: false,
   stage: "checking",
   mode: "install",
   progress: 0,
@@ -222,6 +247,7 @@ export function reducer(s: State, a: Action): State {
   if (a.type === "initial")
     return {
       ...s,
+      validationComplete: reportPassed(a.report),
       stage: checksFrom(a.report.lines).length ? "idle" : "failure",
       error: checksFrom(a.report.lines).length
         ? ""
@@ -241,6 +267,7 @@ export function reducer(s: State, a: Action): State {
     return {
       ...s,
       stage: "running",
+      validationComplete: false,
       mode: a.mode,
       progress: 0,
       phase:
@@ -254,24 +281,23 @@ export function reducer(s: State, a: Action): State {
       updates: false,
       tools: [],
     };
-  if (a.type === "error") return { ...s, stage: "failure", error: a.message };
+  if (a.type === "error")
+    return {
+      ...s,
+      validationComplete: false,
+      stage: "failure",
+      error: a.message,
+    };
   if (a.type === "complete") {
     const checks = checksFrom(a.report.lines);
-    const valid =
-      a.report.success &&
-      a.report.code === 0 &&
-      checks.length > 0 &&
-      !checks.some((c) => c.status === "FAIL") &&
-      a.report.lines.some((l) => {
-        const e = parseEvent(l);
-        return e?.kind === "summary" && e.key === "0";
-      });
+    const valid = reportPassed(a.report);
     const errors = a.report.lines
       .map(parseEvent)
       .filter((e) => e?.kind === "error");
     return {
       ...s,
       stage: valid ? "success" : "failure",
+      validationComplete: valid,
       checks,
       logs: a.report.lines.slice(-2000),
       progress: valid ? 100 : s.progress,

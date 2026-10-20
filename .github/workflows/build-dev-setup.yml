@@ -56,6 +56,9 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_uat_version.py'
           python3 tests/backend_contracts.py
           python3 -m unittest discover -s tests -p 'test_metadata.py'
+          python3 -m unittest discover -s tests -p 'test_update_preflight.py'
+          python3 -m unittest discover -s tests -p 'test_stable_downloads.py'
+          python3 tests/stable_downloads.py
           python3 -m unittest discover -s tests -p 'test_linux_runtime.py'
           python3 -m unittest discover -s tests -p 'test_schedule.py'
           sudo env SDE_REQUIRE_SCHEDULE_SYSTEMD=1 python3 -m unittest discover -s tests -p 'test_schedule.py'

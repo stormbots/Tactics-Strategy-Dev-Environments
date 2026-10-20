@@ -66,7 +66,7 @@ $gitName = git config --global --get user.name 2>$null
 $gitEmail = git config --global --get user.email 2>$null
 if ($gitName -and $gitEmail) { Result INFO 'Git identity: configured locally' }
 else { Result INFO 'Git identity: not configured (optional)' }
-if (Get-Command gh -ErrorAction SilentlyContinue) {
+if ($CheckUpdates -and (Get-Command gh -ErrorAction SilentlyContinue)) {
     & gh auth status *> $null
     if ($LASTEXITCODE -eq 0) { Result INFO 'GitHub authentication: configured locally' }
     else { Result INFO 'GitHub authentication: not configured (optional)' }

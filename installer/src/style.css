@@ -1125,3 +1125,39 @@ progress::-moz-progress-bar {
   bottom: -3px;
   height: 3px;
 }
+
+.update-discovery,
+.update-preview {
+  margin-block: 1rem;
+}
+.update-discovery button,
+.update-preview button {
+  margin-block: 0.35rem;
+}
+.update-tool-list {
+  display: grid;
+  gap: 0.6rem;
+  margin-block: 1rem;
+}
+.update-tool-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 0.25rem 0.75rem;
+  padding-block: 0.6rem;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.update-tool-row > span:last-child {
+  grid-column: 1 / -1;
+}
+.preflight-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+@media (max-width: 700px) {
+  .update-tool-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

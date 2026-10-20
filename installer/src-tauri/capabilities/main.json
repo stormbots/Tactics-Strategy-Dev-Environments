@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
   "description": "Local main window: fixed workstation operations only",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:event:allow-listen",
     "core:event:allow-unlisten",
@@ -10,6 +12,10 @@
     "allow-inspect-schedule",
     "allow-inspect-self-update",
     "allow-run-operation",
-    "allow-open-destination"
+    "allow-open-destination",
+    "allow-check-application",
+    "allow-check-tools",
+    "allow-open-release",
+    "allow-check-update-preflight"
   ]
 }
