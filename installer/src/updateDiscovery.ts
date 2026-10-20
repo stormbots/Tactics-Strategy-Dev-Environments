@@ -105,3 +105,14 @@ export function toolExplanation(t: ToolRecord): string {
     ? "Confirmed newer version in the checked source."
     : "No newer version found in the checked source.";
 }
+
+export function usableRetryTime(
+  value: number | null | undefined,
+): number | null {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > Date.now() / 1000 &&
+    value <= 253402300799
+    ? value
+    : null;
+}

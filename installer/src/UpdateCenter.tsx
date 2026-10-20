@@ -7,6 +7,7 @@ import {
   failureText,
   openRelease,
   toolExplanation,
+  usableRetryTime,
   type AppDiscovery,
   type ToolPreview,
   type PreflightCheck,
@@ -46,7 +47,7 @@ export function useUpdateDiscovery(
     };
   }, []);
   async function refreshApp() {
-    if (appPending.current || (application?.retryAt ?? 0) > Date.now() / 1000)
+    if (appPending.current || usableRetryTime(application?.retryAt) !== null)
       return;
     appPending.current = true;
     setAppLoading(true);
@@ -140,7 +141,8 @@ export function ApplicationUpdates({
   const [error, setError] = useState("");
   const app = data.application;
   const [clock, refreshClock] = useState(0);
-  const retryBlocked = (app?.retryAt ?? 0) > Date.now() / 1000;
+  const retryAt = usableRetryTime(app?.retryAt);
+  const retryBlocked = retryAt !== null;
   useEffect(() => {
     if (!retryBlocked || !app?.retryAt) return;
     const timer = setTimeout(
@@ -223,7 +225,7 @@ export function ApplicationUpdates({
           {retryBlocked && (
             <p role="status">
               GitHub requested another check after{" "}
-              {localTime(new Date(app!.retryAt! * 1000).toISOString())}.
+              {localTime(new Date(retryAt! * 1000).toISOString())}.
             </p>
           )}
           <p className="muted">

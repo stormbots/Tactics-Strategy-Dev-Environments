@@ -224,7 +224,7 @@ impl GitHub {
                 Action::Retry(failure, delay) => {
                     if failure == Failure::RateLimited {
                         self.retry_at
-                            .set(delay.map(|d| now.saturating_add(d.as_secs())));
+                            .set(delay.and_then(|d| retry_timestamp(now, d)));
                     }
                     return Err(RequestError::Retry(failure, delay));
                 }
@@ -258,6 +258,12 @@ enum Action {
     Abort(Failure),
     Retry(Failure, Option<Duration>),
 }
+// Reject overflow and timestamps outside the shared calendar representation.
+fn retry_timestamp(now: u64, delay: Duration) -> Option<u64> {
+    now.checked_add(delay.as_secs())
+        .filter(|value| *value <= 253402300799)
+}
+
 fn response_action(status: u16, headers: &reqwest::header::HeaderMap, now: u64) -> Action {
     if (300..400).contains(&status) {
         return Action::Redirect;
@@ -432,6 +438,18 @@ pub fn discover(installed: &str, platform: &str) -> Result<Option<Candidate>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn retry_timestamps_reject_overflow_and_invalid_calendar_dates() {
+        assert_eq!(
+            retry_timestamp(1700000000, Duration::from_secs(600)),
+            Some(1700000600)
+        );
+        assert_eq!(
+            retry_timestamp(1700000000, Duration::from_secs(u64::MAX)),
+            None
+        );
+        assert_eq!(retry_timestamp(253402300799, Duration::from_secs(1)), None);
+    }
     fn release(tag: &str) -> Release {
         Release {
             tag_name: tag.into(),
