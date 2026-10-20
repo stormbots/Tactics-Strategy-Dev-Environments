@@ -28,6 +28,7 @@ try {
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.9/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.8', '1.2.9') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.10/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.9', '1.2.10') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.11/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.10', '1.2.11') }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.12/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.11', '1.2.12') }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
@@ -48,6 +49,19 @@ try {
         $actual = (Get-Item $app).VersionInfo.ProductVersion
         Write-Output "Executable: $app version=$actual"
         if ($actual -notmatch ('^' + [regex]::Escape($version) + '($|\.)')) { throw 'Installed version mismatch' }
+        if ($UatPair -and $version -eq '1.2.12') {
+            $icon = "C:\Program Files\Skyview Dev Setup\app-icons\skyview-dev-setup-$version.ico"
+            if (-not (Test-Path $icon)) { throw 'Versioned Windows icon absent' }
+            $programs = [Environment]::GetFolderPath('CommonPrograms')
+            $links = @(Get-ChildItem $programs -Filter 'Skyview Dev Setup.lnk' -Recurse)
+            if ($links.Count -ne 1) { throw 'Expected one installed Start shortcut' }
+            $shell = New-Object -ComObject WScript.Shell
+            $link = $shell.CreateShortcut($links[0].FullName)
+            Write-Output "Start shortcut target=$($link.TargetPath) icon=$($link.IconLocation)"
+            if ($link.TargetPath -ne $app -or $link.IconLocation -ne "$icon,0") {
+                throw 'Start shortcut does not use the versioned icon'
+            }
+        }
         $backend = 'C:\Program Files\Skyview Dev Setup\backend\windows\chocolatey\tools\AutoUpdate-SkyviewTools.ps1'
         if (-not (Test-Path $backend)) { throw 'Bundled maintenance resource absent' }
         if (Test-Path $maintenance) { throw 'App installation unexpectedly provisioned external maintenance' }

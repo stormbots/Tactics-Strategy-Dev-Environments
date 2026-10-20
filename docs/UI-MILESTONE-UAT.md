@@ -2,6 +2,15 @@
 
 ## Current handoff — October 19, 2026
 
+Current follow-up: v1.2.11 is published and authenticated. The owner now accepts
+its Mint Cinnamon icon after correcting an accidental v1.2.10 reinstall.
+Windows 11's confirmed v1.2.11 installation retains square Start/taskbar pixels;
+a disposable Windows probe reproduced stale Shell caching at the stable EXE
+path. A Windows-only versioned shortcut icon and explicit large-window icon
+are being prepared in **v1.2.12**. Use the
+[focused Windows follow-up](UI-UAT-1.2.12.md). Keep Mint's acceptance and all
+previously accepted UI checks; #63 and the milestone await Windows acceptance.
+
 Milestone 1 contains #4 (themes), #5 (zoom), #6 (validation guidance),
 #63 (white-background application icon), and #57 (banner removal).
 The owner returned v1.2.10 UAT on Windows 11 and Mint Cinnamon with Pass for
@@ -20,8 +29,8 @@ The published, authenticated [v1.2.10 record](UI-UAT-1.2.10.md) preserves that
 owner report. The owner explicitly rejected the square icon shape despite its
 white-background visibility passing. They supplied a rounded-square SVG, now
 used for packaged platform icons with a white tile and transparent outer corners.
-A new **v1.2.11 testing candidate** needs publication/authentication confirmation
-before installation. Use the [focused icon UAT/results sheet](UI-UAT-1.2.11.md) and
+The **v1.2.11 testing candidate** was published and authenticated; its Windows
+finding is carried into v1.2.12 as described above. Use the [focused icon UAT/results sheet](UI-UAT-1.2.11.md) and
 [completion plan](UI-MILESTONE-COMPLETION-PLAN.md) for delivery/closeout.
 
 Keep #63 and the milestone open until the owner accepts the revised icon

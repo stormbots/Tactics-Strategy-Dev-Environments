@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "gen/app-icons/": "app-icons/"
+    }
+  }
+}
