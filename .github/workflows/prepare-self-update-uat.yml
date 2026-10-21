@@ -12,44 +12,8 @@ on:
       - 'tests/test_schedule.py'
   workflow_dispatch:
     inputs:
-      update_discovery:
-        description: Publish only the new 1.2.14 Part 1 sidebar correction; 1.2.13 is an unpublished same-source upgrade fixture
-        type: boolean
-        default: false
-      icon_cache:
-        description: Publish only the new 1.2.12 Windows Shell icon candidate; 1.2.11 is an unpublished upgrade fixture
-        type: boolean
-        default: false
-      rounded_icon:
-        description: Publish only the new 1.2.11 rounded-square icon candidate; 1.2.10 is an unpublished upgrade fixture
-        type: boolean
-        default: false
-      ui_completion:
-        description: Publish only the new 1.2.10 white-background icon candidate; 1.2.9 is an unpublished upgrade fixture
-        type: boolean
-        default: false
-      compact_controls:
-        description: Publish only the new 1.2.9 compact appearance candidate; 1.2.8 is an unpublished upgrade fixture
-        type: boolean
-        default: false
-      ui_milestone:
-        description: Publish only the new 1.2.8 UI milestone candidate; 1.2.7 is an unpublished upgrade fixture
-        type: boolean
-        default: false
-      banner_removal:
-        description: Publish only the new 1.2.7 Overview banner removal candidate; earlier versions remain unpublished fixtures
-        type: boolean
-        default: false
-      logs_migration:
-        description: Publish only the new 1.2.6 inherited Logs migration candidate; earlier versions remain unpublished fixtures
-        type: boolean
-        default: false
-      migration:
-        description: Publish only the new 1.2.5 permission-migration candidate; earlier versions are unpublished upgrade fixtures
-        type: boolean
-        default: false
-      correction:
-        description: Build and publish only the new 1.2.4 correction; retain 1.2.2/1.2.3 as unpublished upgrade fixtures
+      deployment_readiness:
+        description: Publish fresh 1.2.15 deployment-readiness candidate; rebuilt 1.2.14 is an unpublished same-source upgrade fixture
         type: boolean
         default: false
 
@@ -62,38 +26,35 @@ concurrency:
 jobs:
   source:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Require reviewed main source for signing dispatch
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-          UPDATE_DISCOVERY: ${{ inputs.update_discovery }}
-          ICON_CACHE: ${{ inputs.icon_cache }}
-          ROUNDED_ICON: ${{ inputs.rounded_icon }}
-          UI_COMPLETION: ${{ inputs.ui_completion }}
-          COMPACT_CONTROLS: ${{ inputs.compact_controls }}
-          UI_MILESTONE: ${{ inputs.ui_milestone }}
-          BANNER_REMOVAL: ${{ inputs.banner_removal }}
-          LOGS_MIGRATION: ${{ inputs.logs_migration }}
-          MIGRATION: ${{ inputs.migration }}
-          CORRECTION: ${{ inputs.correction }}
+          DEPLOYMENT_READINESS: ${{ inputs.deployment_readiness }}
         run: |
           set -euo pipefail
-          selected=0
-          for option in "$UPDATE_DISCOVERY" "$ICON_CACHE" "$ROUNDED_ICON" "$UI_COMPLETION" "$COMPACT_CONTROLS" "$UI_MILESTONE" "$BANNER_REMOVAL" "$LOGS_MIGRATION" "$MIGRATION" "$CORRECTION"; do
-            if [[ "$option" = true ]]; then selected=$((selected + 1)); fi
-          done
-          test "$selected" -le 1
+          test "$DEPLOYMENT_READINESS" = true
           test "$GITHUB_REF" = refs/heads/release/v1.2.uat
           main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$main" = "$GITHUB_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v1.2.15" --jq length)" = 0
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-dev-setup.yml/runs?head_sha=$GITHUB_SHA&status=success&event=push" > "$RUNNER_TEMP/main-runs.json"
+          python3 - "$RUNNER_TEMP/main-runs.json" <<'PY'
+          import json, sys
+          runs = json.load(open(sys.argv[1]))['workflow_runs']
+          assert any(r['head_branch'] == 'main' for r in runs), 'Successful exact-main CI required before native builds and human signing review'
+          PY
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s tests -p 'test_uat_version.py'
 
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: ${{ (inputs.update_discovery || github.event_name == 'pull_request') && '1.2.13 1.2.14' || inputs.icon_cache && '1.2.11 1.2.12' || inputs.rounded_icon && '1.2.10 1.2.11' || inputs.ui_completion && '1.2.9 1.2.10' || inputs.compact_controls && '1.2.8 1.2.9' || inputs.ui_milestone && '1.2.7 1.2.8' || inputs.banner_removal && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6 1.2.7' || inputs.logs_migration && '1.2.2 1.2.3 1.2.4 1.2.5 1.2.6' || inputs.migration && '1.2.2 1.2.3 1.2.4 1.2.5' || inputs.correction && '1.2.2 1.2.3 1.2.4' || '1.2.2 1.2.3' }}
+      BUILD_VERSIONS: 1.2.14 1.2.15
     strategy:
       fail-fast: false
       matrix:
@@ -200,8 +161,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     env:
-      CANDIDATE_VERSIONS: ${{ inputs.update_discovery && '1.2.14' || inputs.icon_cache && '1.2.12' || inputs.rounded_icon && '1.2.11' || inputs.ui_completion && '1.2.10' || inputs.compact_controls && '1.2.9' || inputs.ui_milestone && '1.2.8' || inputs.banner_removal && '1.2.7' || inputs.logs_migration && '1.2.6' || inputs.migration && '1.2.5' || inputs.correction && '1.2.4' || '1.2.2 1.2.3' }}
-      CANDIDATE_NOTES: ${{ inputs.update_discovery && 'docs/RELEASE-NOTES-1.2.14.md' || inputs.icon_cache && 'docs/RELEASE-NOTES-1.2.12.md' || inputs.rounded_icon && 'docs/RELEASE-NOTES-1.2.11.md' || inputs.ui_completion && 'docs/RELEASE-NOTES-1.2.10.md' || inputs.compact_controls && 'docs/RELEASE-NOTES-1.2.9.md' || inputs.ui_milestone && 'docs/RELEASE-NOTES-1.2.8.md' || inputs.banner_removal && 'docs/RELEASE-NOTES-1.2.7.md' || inputs.logs_migration && 'docs/RELEASE-NOTES-1.2.6.md' || inputs.migration && 'docs/SELF-UPDATE-UAT-1.2.5.md' || inputs.correction && 'docs/SELF-UPDATE-UAT-1.2.4.md' || 'docs/SELF-UPDATE-UAT-CANDIDATES.md' }}
+      CANDIDATE_VERSIONS: 1.2.15
+      CANDIDATE_NOTES: docs/RELEASE-NOTES-1.2.15.md
     permissions:
       contents: write
       actions: read

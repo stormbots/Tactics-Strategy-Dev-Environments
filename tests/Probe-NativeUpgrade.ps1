@@ -31,6 +31,7 @@ try {
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.12/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.11', '1.2.12') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.13/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.12', '1.2.13') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.14/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.13', '1.2.14') }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.15/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.14', '1.2.15') }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
