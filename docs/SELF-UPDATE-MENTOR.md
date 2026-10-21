@@ -4,7 +4,10 @@ SDE application installation and development-tool maintenance are separate phase
 Every workstation starts with **SDE installation paused**. Pausing or resuming
 changes only this workstation's app-installation policy; it does not disable the
 weekly task/timer, change its schedule, provision tools or clear an interrupted
-transaction. Keep production paused through #42 integration and #43 owner UAT.
+transaction. Keep unapproved rollout devices paused through the remaining #43
+acceptance/pilot gates. Follow the [current release ledger](DEPLOYMENT-READINESS-EXECUTION.md)
+and [device-specific pilot packet](SELF-UPDATE-PILOT.md); an existing resumed
+policy must be inspected, not assumed paused.
 Candidate releases remain GitHub prereleases until the owner explicitly approves
 promotion. A valid signature by itself does not approve a candidate for rollout.
 
@@ -70,9 +73,10 @@ in the open window may differ from a newly installed version until reopened.
 It is not a tool baseline version or scheduler execution result. The recovery
 availability flag means a signed installer was retained at that attempt; when
 no upgrade occurred it can refer to the current version, not an older version.
-Use `verify-recovery` to establish the exact current/previous retained versions. No new release
-notifications are supplied here; #11 owns those. #10 owns broader Overview
-maintenance notices. A successful app update must never conceal failed tools.
+Use `verify-recovery` to establish the exact current/previous retained versions.
+The About/launch notification path accepted in v1.2.14 is separate from this
+maintenance history and never grants installation authority. Broader Overview
+maintenance notices have their own scope. A successful app update must never conceal failed tools.
 
 Current coordination is also shown. An open SDE window contributes to “SDE or
 maintenance is active”; that label does not claim a timer is running. Interrupted,
@@ -240,7 +244,7 @@ Student read access on the parent applies only to that folder, preserving
 private child permissions. The real signed SYSTEM upgrade CI exercises this
 case and preserves the disabled customized task.
 
-The #59 source change extends that contract narrowly to the fixed immediate
+The #59 migration shipped in v1.2.6 extends that contract narrowly to the fixed immediate
 `Logs` child with the inherited BUILTIN Users container-only Write grant. This
 extension is not present in the published v1.2.5 installer. The directory must
 have a trusted SYSTEM/Administrators owner and no broader or explicit untrusted
@@ -262,8 +266,11 @@ protection uses the existing protected-descendant migration path.
 Preserved legacy logs remain diagnostic evidence, not authenticated maintenance
 history. Schedule results come from Task Scheduler; self-update status comes
 from separate protected receipts. The installer does not read or execute these
-old log contents. Acceptance of a new candidate still requires native Windows
-verification and owner retest on affected Windows 11 PCs.
+old log contents. Historical affected Windows 11 v1.2.6 installation without manual ACL repair
+and separate GUI/controlled-maintenance passes are recorded in
+[the acceptance chronology](ACCEPTANCE-SELF-UPDATE.md). New candidate native
+checks and any unreported real-PC criteria require their own evidence or explicit
+owner disposition; do not repeat unsafe fixtures on those PCs.
 
 Broader grants, file-inherited student writes, unexpected owners, other writable children
 and reparse points require mentor review. Do not recursively remove writes and

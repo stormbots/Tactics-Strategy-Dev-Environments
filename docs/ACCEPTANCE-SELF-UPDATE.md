@@ -1,10 +1,25 @@
 # Self-update acceptance record (#43)
 
-**Current release: v1.2.6 stable/latest, verified October 14, 2026.** The owner
-declared testing complete and explicitly authorized stable promotion only. The
-exact source, unchanged asset hashes, reported Windows results and evidence
-limitations are recorded chronologically below. No automatic-update pilot,
-classroom resume or issue closure is authorized; laptop policies remain paused.
+**Current stable at October 21, 2026 reconciliation: v1.2.14**, release
+`418991149`, source `b0f6a43e85b8ae5bbf72b87b4ee5f2d92bfd40ba`.
+[Owner Windows/Linux acceptance](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/98#issuecomment-6316233401)
+and [promotion/public-link receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/98#issuecomment-6316392711)
+record accepted scope and limits. Current downloads: [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
+
+The next proposed deployment-readiness release is **v1.2.15**, not yet published
+or accepted. See the [criterion-by-criterion execution matrix](DEPLOYMENT-READINESS-EXECUTION.md),
+[current UAT](SELF-UPDATE-UAT.md) and [device-specific pilot packet](SELF-UPDATE-PILOT.md).
+#59 is implemented and has historical affected-PC/native passes; additional
+unreported preservation/representative scope needs owner disposition. #43's real
+automatic pilot, school-network/student-account and schedule/reboot evidence
+remain distinct from accepted app UI/manual installation. No new release or
+device approval is inferred from historical acceptance. Keep required issues and
+milestone open until evidence or explicit owner scope disposition supports closure.
+
+Everything below is **chronological historical evidence**. Pending statements
+in earlier entries describe that observation date; later results supersede them
+only for their stated scope. v1.2.5 after manual remediation is not rewritten as
+a clean migration pass; v1.2.6's no-manual-correction pass is preserved separately.
 
 ## Historical initial candidate checkpoint (October 12, 2026)
 
