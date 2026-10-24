@@ -1130,6 +1130,65 @@ progress::-moz-progress-bar {
 .update-preview {
   margin-block: 1rem;
 }
+.sde-update-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--subtle);
+}
+.sde-update-setting label {
+  font-weight: 650;
+}
+.sde-update-setting p {
+  margin: 0.25rem 0 0;
+}
+.sde-update-switch-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.sde-update-switch-group > span {
+  min-width: 4.5rem;
+  text-align: end;
+}
+.sde-update-switch {
+  flex-shrink: 0;
+  position: relative;
+  width: 44px;
+  min-height: 26px;
+  padding: 3px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--control-line);
+}
+.sde-update-switch::after {
+  content: "";
+  display: block;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.sde-update-switch[aria-checked="true"] {
+  background: var(--primary);
+}
+.sde-update-switch[aria-checked="true"]::after {
+  transform: translateX(18px);
+  background: var(--primary-text);
+}
+@media (max-width: 700px) {
+  .sde-update-setting {
+    flex-wrap: wrap;
+  }
+  .sde-update-switch-group {
+    margin-left: auto;
+  }
+}
 .update-discovery button,
 .update-preview button {
   margin-block: 0.35rem;

@@ -66,11 +66,13 @@ fn native_outcome(code: i32) -> NativeOutcome {
 #[cfg(windows)]
 mod native {
     use super::*;
+    #[cfg(test)]
+    use crate::observation::Policy;
     use crate::{
         discovery::{self, GitHub},
         host, staging,
     };
-    use serde::{Deserialize, Serialize};
+    use serde::Serialize;
     use std::{
         io::Write,
         process::Command,
@@ -78,12 +80,6 @@ mod native {
     };
     use windows_sys::Win32::{Foundation::*, Security::*, System::Threading::*};
     type Result<T> = crate::Result<T>;
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase", deny_unknown_fields)]
-    struct Policy {
-        schema_version: u32,
-        paused: bool,
-    }
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct Report {
@@ -147,33 +143,20 @@ mod native {
     pub(super) fn set_pause(paused: bool) -> Result<()> {
         host::windows::administrator()
             .map_err(|_| "Run pause/resume from an elevated administrator terminal")?;
-        let _ = policy()?;
-        let path = Path::new(ROOT).join("policy.json");
-        atomic_json(
-            &path,
-            &crate::observation::Policy {
-                schema_version: 1,
-                paused,
-            },
-        )
+        crate::policy::set_paused(paused)
     }
     fn policy() -> Result<bool> {
-        let root = Path::new(ROOT);
-        trusted(root)?;
-        let path = root.join("policy.json");
-        trusted(&path)?;
-        let p: Policy = serde_json::from_slice(&crate::read_bounded(&path, 4096)?)
-            .map_err(|_| "Invalid self-update policy; mentor review required")?;
-        if p.schema_version != 1 {
-            return Err("Unsupported self-update policy".into());
-        }
-        Ok(p.paused)
+        Ok(crate::policy::read()?.paused)
     }
     fn atomic_json(path: &Path, value: &impl Serialize) -> Result<()> {
         let parent = path.parent().ok_or("Invalid state path")?;
         trusted(parent)?;
         if path.exists() {
-            trusted(path)?;
+            if path == Path::new(ROOT).join("policy.json") {
+                host::windows::validate_policy(path).map_err(|_| "Untrusted pause setting")?;
+            } else {
+                trusted(path)?;
+            }
         }
         let temp = parent.join(format!("{}.tmp", uuid::Uuid::new_v4()));
         let mut file = host::exclusive(&temp).map_err(|_| "State creation failed")?;
@@ -184,7 +167,7 @@ mod native {
         // Publish read access before the atomic policy switch. A failed ACL
         // change must not leave a resumed policy after a failed command.
         if path == Path::new(ROOT).join("policy.json") {
-            host::windows::publish_readonly(&temp)
+            host::windows::publish_policy(&temp)
                 .map_err(|_| "Policy permissions could not be published".to_string())?;
         }
         use std::os::windows::ffi::OsStrExt;

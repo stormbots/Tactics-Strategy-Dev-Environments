@@ -3,7 +3,7 @@ use crate::{
     discovery::{self, Candidate, GitHub},
     host, staging, AuthenticatedManifest, Result,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     fs::File,
     io::Write,
@@ -48,35 +48,32 @@ fn command(program: &str) -> Command {
         .env("DEBIAN_FRONTEND", "noninteractive");
     command
 }
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Policy {
-    schema_version: u32,
-    paused: bool,
-}
 fn paused() -> Result<bool> {
-    let path = Path::new(ROOT).join("policy.json");
-    trusted(&path)?;
-    let p: Policy = serde_json::from_slice(&crate::read_bounded(&path, 4096)?)
-        .map_err(|_| "Invalid pause policy")?;
-    if p.schema_version != 1 {
-        return Err("Unsupported pause policy".into());
-    }
-    Ok(p.paused)
+    Ok(crate::policy::read()?.paused)
 }
 fn atomic(path: &Path, value: &impl Serialize, readable: bool) -> Result<()> {
     let parent = path.parent().ok_or("Invalid receipt path")?;
     trusted(parent)?;
     if path.exists() {
-        trusted(path)?;
+        if path == Path::new(ROOT).join("policy.json") {
+            let _ = crate::policy::read()?;
+        } else {
+            trusted(path)?;
+        }
     }
     let temporary = parent.join(format!("{}.tmp", uuid::Uuid::new_v4()));
     let mut file = host::exclusive(&temporary).map_err(|_| "Receipt creation failed")?;
     file.write_all(&serde_json::to_vec(value).map_err(|_| "Receipt encoding failed")?)
         .map_err(|_| "Receipt write failed")?;
-    if readable {
-        file.set_permissions(std::fs::Permissions::from_mode(0o644))
-            .map_err(|_| "Status permissions failed")?;
+    if readable || path == Path::new(ROOT).join("policy.json") {
+        file.set_permissions(std::fs::Permissions::from_mode(
+            if path == Path::new(ROOT).join("policy.json") {
+                0o666
+            } else {
+                0o644
+            },
+        ))
+        .map_err(|_| "Status permissions failed")?;
     }
     file.sync_all().map_err(|_| "Receipt flush failed")?;
     std::fs::rename(temporary, path).map_err(|_| "Receipt activation failed")?;
@@ -616,16 +613,7 @@ pub fn set_linux_pause(paused: bool) -> Result<()> {
     if unsafe { libc::geteuid() } != 0 {
         return Err("Run pause/resume as an administrator using sudo".into());
     }
-    // Require an installed, trusted policy rather than initialize arbitrary state.
-    let _ = self::paused()?;
-    atomic(
-        &Path::new(ROOT).join("policy.json"),
-        &crate::observation::Policy {
-            schema_version: 1,
-            paused,
-        },
-        true,
-    )
+    crate::policy::set_paused(paused)
 }
 
 #[cfg(test)]
@@ -854,7 +842,7 @@ mod tests {
         assert_eq!(visible.outcome, crate::observation::Outcome::Paused);
         assert_eq!(visible.tool_exit, Some(0));
         assert!(visible.completed_at.unwrap() >= visible.checked_at.unwrap());
-        // Real standard user can read public status/policy but cannot alter policy.
+        // Ordinary users can change only the pause preference, not protected history.
         let worker = "/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust";
         let read = command("/usr/sbin/runuser")
             .args(["-u", "nobody", "--", worker, "self-update-status"])
@@ -871,6 +859,30 @@ mod tests {
             .unwrap();
         assert!(!denied.success());
         assert!(paused().unwrap());
+        for (verb, expected) in [("set-enabled", false), ("set-paused", true)] {
+            assert!(command("/usr/sbin/runuser")
+                .args(["-u", "nobody", "--", worker, verb])
+                .status()
+                .unwrap()
+                .success());
+            assert_eq!(crate::observation::inspect().paused, Some(expected));
+            assert_eq!(
+                crate::observation::inspect().outcome,
+                crate::observation::Outcome::Paused
+            );
+        }
+        assert!(!command("/usr/sbin/runuser")
+            .args([
+                "-u",
+                "nobody",
+                "--",
+                "/usr/bin/test",
+                "-w",
+                "/var/lib/skyview-robotics/self-update/status.json"
+            ])
+            .status()
+            .unwrap()
+            .success());
         assert!(
             crate::observation::verify_recovery().is_err(),
             "Production must reject test-key recovery assets"

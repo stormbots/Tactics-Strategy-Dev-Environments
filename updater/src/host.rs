@@ -259,6 +259,15 @@ pub(crate) mod windows {
         validate_acl(path, false)
     }
     pub(crate) fn validate_acl(path: &Path, anchor: bool) -> Result<()> {
+        validate_acl_inner(path, anchor, false)
+    }
+    pub(crate) fn validate_policy(path: &Path) -> Result<()> {
+        if path != Path::new(crate::observation::ROOT).join("policy.json") {
+            return Err(Failure::Staging);
+        }
+        validate_acl_inner(path, false, true)
+    }
+    fn validate_acl_inner(path: &Path, anchor: bool, policy: bool) -> Result<()> {
         let info = std::fs::symlink_metadata(path).map_err(|_| Failure::Staging)?;
         if info.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
             || !(info.is_dir() || info.is_file())
@@ -292,13 +301,19 @@ pub(crate) mod windows {
             && !path
                 .components()
                 .any(|c| matches!(c, std::path::Component::ParentDir));
-        let result = check_acl(owner, acl, anchor, anchor || installed_directory);
+        let result = check_acl(owner, acl, anchor, anchor || installed_directory, policy);
         unsafe {
             LocalFree(descriptor);
         }
         result
     }
-    fn check_acl(owner: PSID, acl: *mut ACL, anchor: bool, allow_servicing: bool) -> Result<()> {
+    fn check_acl(
+        owner: PSID,
+        acl: *mut ACL,
+        anchor: bool,
+        allow_servicing: bool,
+        policy: bool,
+    ) -> Result<()> {
         let system = sid(WinLocalSystemSid)?;
         let admins = sid(WinBuiltinAdministratorsSid)?;
         // Servicing is limited to platform anchors and installed directories;
@@ -350,6 +365,14 @@ pub(crate) mod windows {
             }
             let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
             let trustee = ptr::addr_of!(allow.SidStart) as PSID;
+            // Only the fixed pause preference permits Builtin Users data write.
+            // Ownership, deletion, ACLs and all other privileged state stay protected.
+            if policy
+                && unsafe { IsWellKnownSid(trustee, WinBuiltinUsersSid) != 0 }
+                && allow.Mask & write == FILE_WRITE_DATA
+            {
+                continue;
+            }
             if allow.Mask & write != 0 && !trusted_here(trustee) {
                 #[cfg(test)]
                 eprintln!(
@@ -378,8 +401,18 @@ pub(crate) mod windows {
         Ok(())
     }
     pub(crate) fn publish_readonly(path: &Path) -> Result<()> {
+        publish_permissions(path, false)
+    }
+    pub(crate) fn publish_policy(path: &Path) -> Result<()> {
+        publish_permissions(path, true)
+    }
+    fn publish_permissions(path: &Path, policy: bool) -> Result<()> {
         validate(path)?;
-        let sddl = wide("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)");
+        let sddl = wide(if policy {
+            "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x12008b;;;BU)"
+        } else {
+            "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)"
+        });
         let mut descriptor = ptr::null_mut();
         if unsafe {
             ConvertStringSecurityDescriptorToSecurityDescriptorW(
@@ -408,7 +441,7 @@ pub(crate) mod windows {
         if ok == 0 {
             return Err(Failure::Staging);
         }
-        validate(path)
+        validate_acl_inner(path, false, policy)
     }
     pub(super) fn create_private(path: &Path) -> Result<()> {
         let sddl = wide("O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)");
@@ -516,7 +549,7 @@ pub(crate) mod windows {
             eprintln!("Exclusive GetSecurityInfo failed: {security_status}");
             return Err(Failure::Staging);
         }
-        let result = check_acl(owner, acl, false, false);
+        let result = check_acl(owner, acl, false, false, false);
         #[cfg(test)]
         if result.is_err() {
             eprintln!("Exclusive file ACL check failed");

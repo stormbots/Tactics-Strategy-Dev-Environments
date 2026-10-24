@@ -1,8 +1,22 @@
-import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { setSelfUpdatePaused } from "./bridge";
+vi.mock("./bridge", () => ({
+  appVersion: "1.2.16",
+  setSelfUpdatePaused: vi.fn(),
+}));
 import { SelfUpdatePanel } from "./DetailsPages";
 import type { SelfUpdate } from "./model";
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+});
 function fixture(outcome: SelfUpdate["outcome"]): SelfUpdate {
   return {
     paused: true,
@@ -38,13 +52,17 @@ it.each([
     render(<SelfUpdatePanel data={fixture(outcome)} error="" />);
     expect(screen.getByText(label)).toBeTruthy();
     expect(screen.getByText("Failed (exit 1)")).toBeTruthy();
-    expect(screen.getByText(/Paused by administrator/)).toBeTruthy();
+    expect(screen.getByText("Paused", { exact: true })).toBeTruthy();
     expect(screen.getByText(/Interrupted operation/)).toBeTruthy();
     expect(
       screen.getByText(/previous successful result does not resolve/),
     ).toBeTruthy();
     expect(screen.getByText("1.1.5")).toBeTruthy();
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(
+      screen
+        .getByRole("switch", { name: "Automatic SDE updates" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
   },
 );
 it("missing history and policy do not mean current or enabled", () => {
@@ -54,7 +72,50 @@ it("missing history and policy do not mean current or enabled", () => {
   data.completedAt = null;
   data.policyChangedAt = null;
   render(<SelfUpdatePanel data={data} error="" />);
-  expect(screen.getByText(/Unavailable — ask a mentor/)).toBeTruthy();
+  expect(screen.getByText(/Installation setting unavailable/)).toBeTruthy();
+  expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
   expect(screen.queryByText("Current at last check")).toBeNull();
-  expect(screen.queryByText(/Enabled by administrator/)).toBeNull();
+  expect(screen.queryByText("Enabled", { exact: true })).toBeNull();
+});
+it("saves only one boolean request while pending and keeps last-attempt history", async () => {
+  const previous = fixture("paused");
+  let finish!: (value: SelfUpdate) => void;
+  vi.mocked(setSelfUpdatePaused).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  render(<SelfUpdatePanel data={previous} error="" />);
+  const toggle = screen.getByRole("switch");
+  fireEvent.click(toggle);
+  fireEvent.click(toggle);
+  expect(vi.mocked(setSelfUpdatePaused).mock.calls).toEqual([[false]]);
+  expect((toggle as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText("Paused at last attempt")).toBeTruthy();
+  finish({ ...previous, paused: false, policyChangedAt: 102 });
+  await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+  expect(screen.getByText("Paused at last attempt")).toBeTruthy();
+  expect(screen.getByText("Failed (exit 1)")).toBeTruthy();
+  expect(
+    screen.getByText(/No maintenance or installation was started/),
+  ).toBeTruthy();
+});
+it("does not claim a confirmed policy after a failed save; refresh restores availability", async () => {
+  vi.mocked(setSelfUpdatePaused).mockRejectedValue(
+    new Error("write interrupted"),
+  );
+  const before = fixture("current");
+  const view = render(<SelfUpdatePanel data={before} error="" />);
+  fireEvent.click(screen.getByRole("switch"));
+  await waitFor(() =>
+    expect(screen.getByRole("alert").textContent).toMatch(/Couldn’t confirm/),
+  );
+  expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText("Current at last check")).toBeTruthy();
+  view.rerender(
+    <SelfUpdatePanel data={{ ...before, paused: false }} error="" />,
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("true");
 });

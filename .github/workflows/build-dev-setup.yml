@@ -2,7 +2,7 @@ name: Build Skyview Dev Setup
 on:
   push:
     branches: [main, 'release/v1.1.*', 'release/v1.2.*']
-    tags: ['v1.1.*', 'v1.2.*', '!v1.2.2', '!v1.2.3', '!v1.2.15']
+    tags: ['v1.1.*', 'v1.2.*', '!v1.2.2', '!v1.2.3', '!v1.2.15', '!v1.2.16']
   pull_request:
   workflow_dispatch:
 
@@ -269,7 +269,7 @@ jobs:
           $expected = (Get-Content installer/src-tauri/tauri.conf.json | ConvertFrom-Json).version
           if ((Get-ItemProperty $key).DisplayVersion -ne $expected) { throw 'Installed application version mismatch.' }
           $policy = Get-Content 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -Raw | ConvertFrom-Json
-          if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $true) { throw 'Production rollout must default to paused.' }
+          if ($policy.schemaVersion -ne 1 -or $policy.paused -ne $false) { throw 'Application installation must enable SDE updates.' }
           # Model a legacy readable selector. Repeated bootstrap must harden
           # existing destination ACLs as well as create new private receipts.
           $selector = 'C:\ProgramData\SkyviewRobotics\SelfUpdate\active.json'

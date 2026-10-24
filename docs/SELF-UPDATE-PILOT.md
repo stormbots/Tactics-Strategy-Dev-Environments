@@ -1,4 +1,4 @@
-# Controlled self-update pilot packet — proposed v1.2.14 → v1.2.15
+# Controlled self-update pilot packet — proposed v1.2.14 → v1.2.16
 
 **Not authorized and not run.** Stable promotion is a repository action; it does
 not authorize any device change. No fleet expansion is included. Complete the
@@ -8,12 +8,12 @@ roles, not personal hostnames. Inventory information alone is not authorization.
 
 | Approval field | Proposed scope / value to fill before request |
 | --- | --- |
-| Target | Exact accepted v1.2.15 stable release/source/ID/five authenticated assets; pending publication/UAT |
+| Target | Exact accepted v1.2.16 stable release/source/ID/five authenticated assets; pending publication/UAT |
 | Device allowlist | Existing retained Windows 11 v1.2.14 role and Mint Cinnamon 22.x v1.2.14 role proposed; owner names actual devices privately |
 | Evidence type | Physical or already approved desktop VM; booted OS/desktop/version to confirm |
 | Maintenance window | Owner-selected local start/end/timezone; allow all package work to finish even if over window |
 | Starting baseline/route | Compatible protected maintenance baseline, expected applied 1.2.1; trusted launcher/SYSTEM or root; actual enabled schedule/custom timing recorded |
-| Intended changes | App policy resume on each approved device; two invocations of its existing maintenance task/service; real tool maintenance each time; authenticated app 1.2.14 → 1.2.15 only on idle invocation |
+| Intended changes | Inspect actual policy and apply only the separately approved pause/resume change; two invocations of its existing maintenance task/service; real tool maintenance each time; authenticated app 1.2.14 → 1.2.16 only on idle invocation |
 | Final policy | Proposed paused after completion/finding; owner must approve desired final state and stop-response pause |
 | Other changes | No Repair, provisioning, schedule enablement/default reset, package fault injection, downgrade or new host/VM/media access; prepare a separate decision if prerequisite missing |
 | Owner wording/date | Pending exact allowlist, target, actions, window and final/stop policy authorization |
@@ -80,7 +80,7 @@ Close SDE normally. Confirm tool/native/package work from the previous invocatio
 has ended. Within the same authorization/window, run **only the existing trigger**
 above again; do not repeat `resume` or change schedule. Wait for completion.
 Expect a real silent pinned-authenticated app installation, native outcome and
-postchecks for app/engine 1.2.15, retained verification/recovery evidence, separate
+postchecks for app/engine 1.2.16, retained verification/recovery evidence, separate
 tool result and preserved applied baseline/files/preferences/log/private ACLs and
 schedule. Record exact new signed recovery versions with `verify-recovery`; a
 flag alone does not prove there is a previous signed installer.
@@ -135,3 +135,11 @@ ACL/schedule comparisons, recovery version proof, final policy and findings. Own
 reviews results before any expansion. #43 and milestone 2 remain open if required
 pilot work is unavailable, unless the owner explicitly revises that scope and
 tracks remaining work. Release success is preserved even if the pilot is blocked.
+
+## v1.2.16 policy change
+
+Installation/upgrade enables SDE updates even when the starting policy is paused.
+A final paused policy must be deliberately reapplied and verified after the idle
+upgrade; do not claim pause preservation. Students can also toggle this setting.
+This affects observation and stop-response planning, not release authentication
+or the need for exact-device/action/window pilot authorization.

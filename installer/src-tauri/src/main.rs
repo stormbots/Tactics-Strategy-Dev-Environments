@@ -297,6 +297,17 @@ async fn inspect_self_update() -> Result<sde_update_trust::observation::Status, 
         .map_err(|_| "SDE update status could not be read. Please refresh.".to_string())
 }
 #[tauri::command]
+async fn set_self_update_paused(
+    paused: bool,
+) -> Result<sde_update_trust::observation::Status, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        sde_update_trust::policy::set_paused(paused)?;
+        Ok(sde_update_trust::observation::inspect())
+    })
+    .await
+    .map_err(|_| "Could not save the SDE update setting. Refresh and try again.".to_string())?
+}
+#[tauri::command]
 async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, String> {
     let root = backend(&app)?;
     tauri::async_runtime::spawn_blocking(move || schedule::inspect(&root))
@@ -413,6 +424,7 @@ fn main() {
             inspect_system,
             inspect_schedule,
             inspect_self_update,
+            set_self_update_paused,
             run_operation,
             open_destination,
             updates::check_application,

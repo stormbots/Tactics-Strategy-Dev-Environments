@@ -6,7 +6,7 @@ export default defineConfig({
     { name: "chromium", use: { browserName: "chromium" } },
     {
       name: "webkit-sidebar",
-      testMatch: "sidebar.spec.ts",
+      testMatch: ["sidebar.spec.ts", "self-update-setting.spec.ts"],
       use: { browserName: "webkit" },
     },
   ],

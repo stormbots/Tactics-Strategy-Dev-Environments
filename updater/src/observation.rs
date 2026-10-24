@@ -161,9 +161,7 @@ fn action(outcome: Outcome, phase: Phase) -> &'static str {
 }
 /// Does not launch a process, perform a release check, download, elevate or write.
 pub fn inspect() -> Status {
-    let policy = receipt::<Policy>("policy.json")
-        .ok()
-        .filter(|p| p.schema_version == 1);
+    let policy = crate::policy::read().ok();
     let record = receipt::<Record>("status.json").ok().filter(valid);
     summarize(policy, record, sde_coordination::status())
 }

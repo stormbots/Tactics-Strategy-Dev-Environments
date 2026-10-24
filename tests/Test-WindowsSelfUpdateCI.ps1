@@ -48,7 +48,6 @@ try {
     $logBefore = [Convert]::ToBase64String([IO.File]::ReadAllBytes($legacyLog))
     $logAclBefore = (Get-Acl -LiteralPath $legacyLog).Sddl
     $policy = Join-Path $parent 'SelfUpdate\policy.json'
-    $policyBefore = [Convert]::ToBase64String([IO.File]::ReadAllBytes($policy))
     $writers = @((Get-Acl -LiteralPath $logs).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object {
         $_.IdentityReference.Value -eq 'S-1-5-32-545' -and $_.IsInherited -and ($_.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write)
     })
@@ -62,7 +61,7 @@ try {
         if ($rule.AccessControlType -eq 'Allow' -and $rule.IdentityReference.Value -eq 'S-1-5-32-545' -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write)) { throw 'Native installer left student write access on Logs.' }
     }
     if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($legacyLog)) -ne $logBefore -or (Get-Acl -LiteralPath $legacyLog).Sddl -ne $logAclBefore) { throw 'Native installer changed legacy log evidence/private permissions.' }
-    if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($policy)) -ne $policyBefore) { throw 'Native migration changed application-update policy.' }
+    if ((Get-Content -LiteralPath $policy -Raw | ConvertFrom-Json).paused -ne $false) { throw 'Application installation did not enable SDE updates.' }
     Write-Output 'SDE_NATIVE_LEGACY_LOGS_ACL_OK'
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture

@@ -10,6 +10,7 @@ import {
   appVersion,
   inspectSchedule,
   inspectSelfUpdate,
+  setSelfUpdatePaused,
   native,
   type Destination,
 } from "./bridge";
@@ -49,6 +50,7 @@ export function SchedulePage({
 }) {
   const [selfUpdate, setSelfUpdate] = useState<SelfUpdate | null>(null);
   const [selfUpdateError, setSelfUpdateError] = useState("");
+  const [savingPolicy, setSavingPolicy] = useState(false);
   const [data, setData] = useState<Schedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,7 +104,7 @@ export function SchedulePage({
         <h2 id="schedule-heading">Scheduled maintenance</h2>
         <button
           className="secondary"
-          disabled={loading}
+          disabled={loading || savingPolicy}
           onClick={() => void refresh()}
         >
           <RefreshCw size={16} aria-hidden="true" />
@@ -138,7 +140,11 @@ export function SchedulePage({
         )}
       </div>
       {!loading && (
-        <SelfUpdatePanel data={selfUpdate} error={selfUpdateError} />
+        <SelfUpdatePanel
+          data={selfUpdate}
+          error={selfUpdateError}
+          onBusyChange={setSavingPolicy}
+        />
       )}
       {!loading && data && (
         <>
@@ -204,10 +210,10 @@ export function SchedulePage({
               updates.
             </p>
             <p>
-              Scheduled maintenance can also update SDE when a mentor enables
-              SDE installation. It does not configure your Git identity. User
-              editor extensions are refreshed when you run Install, Repair, or
-              Update in this app.
+              Scheduled maintenance can also update SDE when Automatic SDE
+              updates is enabled above. It does not configure your Git identity.
+              User editor extensions are refreshed when you run Install, Repair,
+              or Update in this app.
             </p>
           </div>
           <div className="maintenance-logs">
@@ -257,12 +263,61 @@ function receiptTime(value: number | null): string {
     : localTime(date.toISOString());
 }
 export function SelfUpdatePanel({
-  data,
+  data: observed,
   error,
+  onBusyChange,
 }: {
   data: SelfUpdate | null;
   error: string;
+  onBusyChange?: (busy: boolean) => void;
 }) {
+  const [data, setData] = useState(observed);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const active = useRef(true);
+  const pending = useRef(false);
+  useEffect(() => {
+    setData(observed);
+    setSaved(false);
+    setSaveError("");
+  }, [observed]);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  async function toggle() {
+    if (!data || data.paused === null || pending.current) return;
+    pending.current = true;
+    setSaving(true);
+    setSaveError("");
+    setSaved(false);
+    onBusyChange?.(true);
+    try {
+      const result = await setSelfUpdatePaused(!data.paused);
+      if (active.current) {
+        setData(result);
+        setSaved(true);
+      }
+    } catch {
+      // A failed write may have been interrupted: do not claim the old setting
+      // is still current or manufacture a successful receipt. Refresh to reread.
+      if (active.current) {
+        setData({ ...data, paused: null });
+        setSaveError(
+          "Couldn’t confirm the saved setting. Refresh to read its current state, or ask a mentor if it remains unavailable.",
+        );
+      }
+    } finally {
+      pending.current = false;
+      if (active.current) {
+        setSaving(false);
+        onBusyChange?.(false);
+      }
+    }
+  }
   return (
     <div className="maintenance-scope" aria-labelledby="self-update-heading">
       <h2 id="self-update-heading">SDE application updates</h2>
@@ -273,16 +328,57 @@ export function SelfUpdatePanel({
       {error && <p role="status">{error}</p>}
       {data && (
         <>
+          <div className="sde-update-setting">
+            <div>
+              <label
+                id="automatic-sde-updates-label"
+                htmlFor="automatic-sde-updates"
+              >
+                Automatic SDE updates
+              </label>
+              <p className="muted">
+                Install verified stable releases during scheduled maintenance.
+              </p>
+            </div>
+            <div className="sde-update-switch-group">
+              <span>
+                {data.paused === null
+                  ? "Unavailable"
+                  : data.paused
+                    ? "Paused"
+                    : "Enabled"}
+              </span>
+              <button
+                id="automatic-sde-updates"
+                type="button"
+                role="switch"
+                aria-labelledby="automatic-sde-updates-label"
+                aria-checked={data.paused === false}
+                disabled={saving || data.paused === null}
+                className="sde-update-switch"
+                onClick={() => void toggle()}
+              />
+            </div>
+          </div>
           <p className="notice" role="status">
-            Installation setting:{" "}
             {data.paused === null
-              ? "Unavailable — ask a mentor"
+              ? "Installation setting unavailable — refresh or ask a mentor."
               : data.paused
-                ? "Paused by administrator"
-                : "Enabled by administrator"}
-            . Pausing SDE installation leaves development-tool maintenance
-            enabled. An installer already running is allowed to finish.
+                ? "SDE application installation is paused."
+                : "SDE can update during scheduled maintenance when this app is closed."}{" "}
+            Development-tool maintenance keeps its existing schedule and enabled
+            setting.
+            {data.paused &&
+              " An installer already running is allowed to finish."}
           </p>
+          <p className="muted" role="status" aria-live="polite">
+            {saving
+              ? "Saving setting…"
+              : saved
+                ? "Setting saved. No maintenance or installation was started."
+                : "Changes save automatically. Switching on does not start an update."}
+          </p>
+          {saveError && <p role="alert">{saveError}</p>}
           <dl className="information-grid">
             <div>
               <dt>App version in this window</dt>
@@ -368,10 +464,10 @@ export function SelfUpdatePanel({
             {data.logReference ? ` · ${data.logReference}` : ""}
           </p>
           <p className="muted">
-            Pause and resume require an administrator terminal. Follow the
-            project's mentor recovery guide; this page is read-only. Status
-            describes the last completed attempt and can be stale after an
-            interruption.
+            Every application installation or upgrade enables SDE updates again.
+            The results above describe the last completed attempt and can be
+            stale after an interruption. Status and recovery details do not
+            change when you toggle this setting.
           </p>
         </>
       )}

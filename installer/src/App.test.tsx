@@ -180,7 +180,7 @@ it("reads and refreshes Schedule, displays never-run history, and recovers from 
   await screen.findByRole("heading", { name: "Ready" });
   fireEvent.click(screen.getByRole("button", { name: "Schedule" }));
   await screen.findByText("Test timer");
-  await screen.findByText(/Paused by administrator/);
+  await screen.findByText("Paused", { exact: true });
   expect(screen.getByRole("heading", { name: "Maintenance schedule" })).toBe(
     document.activeElement,
   );

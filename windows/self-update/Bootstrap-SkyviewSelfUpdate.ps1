@@ -8,10 +8,24 @@ function Assert-TrustedItem([string]$Path) {
     $item = Get-Item -LiteralPath $Path -Force
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Untrusted maintenance link.' }
     $acl = Get-Acl -LiteralPath $Path
+    $pauseSetting = $Path -eq (Join-Path $root 'policy.json') -and -not $item.PSIsContainer
+    if ($pauseSetting) {
+        # A fresh installation may not have entered the legacy-parent scanner;
+        # initialize the native guard and pin the protected parent here too.
+        $policyParentGuard = Open-LegacyDirectoryGuard (Split-Path $Path -Parent)
+        try { $policyGuard = Open-LegacyLogGuard $Path; $policyGuard.Dispose() }
+        finally { $policyParentGuard.Dispose() }
+    }
     $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if ($pauseSetting -and $owner -notin @('S-1-5-18','S-1-5-32-544')) { throw 'Untrusted pause setting owner.' }
     if ($owner -notin @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')) { throw 'Untrusted maintenance owner.' }
     $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
     foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        # This fixed-schema boolean is intentionally student-editable. It does
+        # not authenticate code, policy paths, installer arguments or receipts.
+        if ($pauseSetting -and $rule.AccessControlType -eq 'Allow' -and
+            $rule.IdentityReference.Value -eq 'S-1-5-32-545' -and
+            ($rule.FileSystemRights -band $write) -eq [Security.AccessControl.FileSystemRights]::WriteData) { continue }
         if ($rule.AccessControlType -eq 'Allow' -and -not ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and ($rule.FileSystemRights -band $write) -and $rule.IdentityReference.Value -notin @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')) { throw 'Untrusted maintenance writers.' }
     }
 }
@@ -230,15 +244,13 @@ foreach ($name in @('Invoke-SkyviewMaintenance.ps1','Publish-SkyviewStatus.ps1')
     if (-not (Test-Path $target)) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $target }
     Assert-TrustedItem $target
 }
-if (-not (Test-Path (Join-Path $root 'policy.json'))) {
-    # Production rollout needs owner UAT and #41 pause/recovery controls first.
-    Write-AtomicReceipt (Join-Path $root 'policy.json') @{schemaVersion=1;paused=$true}
-}
-# Publish only the non-secret pause boolean with read-only student access.
+# Every application installation or upgrade enables updates, including old UAT pauses.
+Write-AtomicReceipt (Join-Path $root 'policy.json') @{schemaVersion=1;paused=$false}
+# Students may change only this file's data, never its ACL/owner or parent.
 $policyPath = Join-Path $root 'policy.json'
 Assert-TrustedItem $policyPath
 $policyAcl = New-Object Security.AccessControl.FileSecurity
-$policyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)')
+$policyAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x12008b;;;BU)')
 Set-Acl -LiteralPath $policyPath -AclObject $policyAcl
 $active = Join-Path $root 'active.json'
 if (Test-Path $active) {
