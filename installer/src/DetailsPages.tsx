@@ -354,7 +354,8 @@ export function SelfUpdatePanel({
                 role="switch"
                 aria-labelledby="automatic-sde-updates-label"
                 aria-checked={data.paused === false}
-                disabled={saving || data.paused === null}
+                aria-disabled={saving || data.paused === null}
+                disabled={data.paused === null}
                 className="sde-update-switch"
                 onClick={() => void toggle()}
               />

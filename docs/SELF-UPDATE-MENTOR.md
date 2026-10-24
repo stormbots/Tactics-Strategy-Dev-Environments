@@ -72,6 +72,14 @@ ordinary-user operation; legacy `pause`/`resume` remain administrator commands.
 
 ## Interpreting the maintenance page
 
+Older application installers do not implement v1.2.16's student-editable pause
+contract and may reject this file's write permission. Prefer an authenticated,
+accepted v1.2.16-or-newer installer for manual application repair. An older
+retained signed installer requires a separately reviewed compatibility procedure;
+signature retention does not promise a universal rollback. Do not reset the
+whole maintenance tree or change permissions on executable/receipt files to
+make an older installer accept it.
+
 The current installation setting is separate from the **last completed attempt**:
 resuming does not erase a previous paused result; pausing does not erase a failure.
 Missing/unreadable/invalid history is **Unavailable**, never “current” or success.

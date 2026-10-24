@@ -118,7 +118,12 @@ pub fn set_paused(paused: bool) -> Result<()> {
 
 #[cfg(test)]
 pub(crate) fn native_contracts() {
-    assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"));
+    // SYSTEM scheduled-task fixtures do not inherit the runner user's entire
+    // environment; their guarded harness supplies its explicit native marker.
+    assert!(
+        std::env::var("GITHUB_ACTIONS").as_deref() == Ok("true")
+            || cfg!(windows) && std::env::var_os("SDE_NATIVE_UPGRADE_FIXTURE").is_some()
+    );
     let path = Path::new(ROOT).join("policy.json");
     let original = std::fs::read(&path).unwrap();
     let history = std::fs::read(Path::new(ROOT).join("status.json")).ok();

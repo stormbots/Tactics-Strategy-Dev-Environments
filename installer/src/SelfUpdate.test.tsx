@@ -88,13 +88,16 @@ it("saves only one boolean request while pending and keeps last-attempt history"
   );
   render(<SelfUpdatePanel data={previous} error="" />);
   const toggle = screen.getByRole("switch");
+  toggle.focus();
   fireEvent.click(toggle);
   fireEvent.click(toggle);
   expect(vi.mocked(setSelfUpdatePaused).mock.calls).toEqual([[false]]);
-  expect((toggle as HTMLButtonElement).disabled).toBe(true);
+  expect(toggle.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(toggle);
   expect(screen.getByText("Paused at last attempt")).toBeTruthy();
   finish({ ...previous, paused: false, policyChangedAt: 102 });
   await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+  expect(document.activeElement).toBe(toggle);
   expect(screen.getByText("Paused at last attempt")).toBeTruthy();
   expect(screen.getByText("Failed (exit 1)")).toBeTruthy();
   expect(

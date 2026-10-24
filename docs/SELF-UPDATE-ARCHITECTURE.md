@@ -83,7 +83,8 @@ Use an administrator-owned external host with immutable, versioned engine
 directories and an atomically replaced active-generation receipt:
 
 - Windows: `C:\ProgramData\SkyviewRobotics\SelfUpdate` (SYSTEM/Administrators write;
-  Users read-only for status and coordination where needed).
+  Users read-only for status and coordination where needed; from v1.2.16 only
+  the fixed-schema pause preference permits student data writes).
 - Linux: `/var/lib/skyview-robotics/self-update` (root-owned; engine directories
   0755, staging/private transaction directories 0700). Configuration under
   `/etc/skyview-robotics/student-dev` remains root-controlled.

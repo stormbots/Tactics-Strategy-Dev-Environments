@@ -1177,6 +1177,9 @@ progress::-moz-progress-bar {
 .sde-update-switch[aria-checked="true"] {
   background: var(--primary);
 }
+.sde-update-switch[aria-disabled="true"] {
+  opacity: 0.6;
+}
 .sde-update-switch[aria-checked="true"]::after {
   transform: translateX(18px);
   background: var(--primary-text);

@@ -59,6 +59,11 @@ transaction record. Explicit Windows baseline Repair also protects deployed
 maintenance scripts and their policy directory with administrator ownership and
 read-only student access.
 
+From v1.2.16 the sole pause preference is intentionally student data-writable
+under its protected parent. It carries no path or execution authority. Gate
+files, transaction records, executable baseline policy and engine selectors
+retain the protections above; see [the preference contract](SELF-UPDATE-MENTOR.md).
+
 Application package post-install hooks run the narrow
 `skyview-dev-setup --coordination-init` entry point to create this storage. They do
 not provision tools, apply a new development baseline, schedule self-installation,
