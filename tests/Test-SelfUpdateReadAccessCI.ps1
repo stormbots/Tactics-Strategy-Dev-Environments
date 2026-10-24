@@ -1,4 +1,4 @@
-# Disposable standard-user probe: fixed read command, no maintenance launch.
+# Disposable standard-user probe: status and fixed pause toggle; no maintenance launch.
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Disposable GitHub runner required.' }
 $userName = 'SdeRead' + [guid]::NewGuid().ToString('N').Substring(0,8)
@@ -16,6 +16,16 @@ foreach ($verb in @('pause','resume')) {
     $deniedProcess = Start-Process -FilePath $worker -ArgumentList $verb -Wait -PassThru -WindowStyle Hidden
     if ($deniedProcess.ExitCode -eq 0) { throw 'Student changed pause policy.' }
 }
+$originalPaused = $result.paused
+foreach ($verb in @('set-paused','set-enabled')) {
+    & $worker $verb
+    if ($LASTEXITCODE -ne 0) { throw 'Student could not change the fixed pause preference.' }
+    $current = & $worker self-update-status | ConvertFrom-Json
+    if ($current.paused -ne ($verb -eq 'set-paused') -or $current.checkedAt -ne $result.checkedAt -or $current.toolExit -ne $result.toolExit) { throw 'Setting change altered history or was not observed.' }
+}
+$restore = if ($originalPaused) { 'set-paused' } else { 'set-enabled' }
+& $worker $restore
+if ($LASTEXITCODE -ne 0) { throw 'Student setting restore failed.' }
 $parent = 'C:\ProgramData\SkyviewRobotics'
 foreach ($directory in @($parent,(Join-Path $parent 'Logs'))) {
     $denied = $false
@@ -37,7 +47,7 @@ try {
     $handle.Dispose()
 } catch [UnauthorizedAccessException] { $denied = $true }
 if (-not $denied) { throw 'Student could open the applied baseline for writing.' }
-foreach ($name in @('policy.json','status.json')) {
+foreach ($name in @('status.json')) {
     $path = Join-Path 'C:\ProgramData\SkyviewRobotics\SelfUpdate' $name
     $denied = $false
     try { [IO.File]::WriteAllText($path,'unsafe') } catch [UnauthorizedAccessException] { $denied = $true }
@@ -63,7 +73,7 @@ exit 0
 $password = ConvertTo-SecureString ('Ci!' + [guid]::NewGuid().ToString('N') + 'aA7') -AsPlainText -Force
 $credential = New-Object Management.Automation.PSCredential("$env:COMPUTERNAME\$userName",$password)
 $root = 'C:\ProgramData\SkyviewRobotics\SelfUpdate'
-$before = [IO.File]::ReadAllBytes((Join-Path $root 'policy.json'))
+$before = (Get-Content (Join-Path $root 'policy.json') -Raw | ConvertFrom-Json).paused
 try {
     New-LocalUser -Name $userName -Password $password -AccountNeverExpires -PasswordNeverExpires | Out-Null
     Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName
@@ -77,6 +87,6 @@ try {
     if (($null -ne $process.ExitCode -and $process.ExitCode -ne 0) -or $output -notmatch '(?m)^SDE_STANDARD_USER_STATUS_OK\s*$') {
         throw "Standard-user probe failed: $output $(Get-Content -LiteralPath $stderr -Raw)"
     }
-    if ([Convert]::ToBase64String($before) -ne [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $root 'policy.json')))) { throw 'Student altered policy.' }
+    if ($before -ne (Get-Content (Join-Path $root 'policy.json') -Raw | ConvertFrom-Json).paused) { throw 'Student did not restore the pause preference.' }
     Write-Host $output
 } finally { Remove-LocalUser -Name $userName -ErrorAction SilentlyContinue }

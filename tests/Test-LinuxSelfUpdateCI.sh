@@ -21,7 +21,7 @@ apt-get -y --no-remove install "$root/old.deb"
 [[ ! -e /usr/local/sbin/skyview-student-dev-update ]]
 [[ ! -e /etc/systemd/system/skyview-student-dev-update.service ]]
 [[ ! -e /var/lib/skyview-robotics/student-dev/version ]]
-python3 -I -c "import json; assert json.load(open('/var/lib/skyview-robotics/self-update/policy.json')) == dict(schemaVersion=1,paused=True)"
+python3 -I -c "import json; assert json.load(open('/var/lib/skyview-robotics/self-update/policy.json')) == dict(schemaVersion=1,paused=False)"
 # Repeat packaging activation to exercise existing receipt replacement.
 python3 -I '/usr/lib/Skyview Dev Setup/backend/linux/self-update/bootstrap.py'
 install -d -m 0755 /usr/local/lib/skyview-student-dev /home/sde-student /var/lib/skyview-robotics/student-dev

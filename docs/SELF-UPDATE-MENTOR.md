@@ -1,10 +1,15 @@
 # Mentor controls and recovery (#41)
 
 SDE application installation and development-tool maintenance are separate phases.
-Every workstation starts with **SDE installation paused**. Pausing or resuming
+Starting with **v1.2.16**, every application installation or upgrade enables SDE
+updates, including previously paused installations. Students can pause/resume
+using **Schedule → SDE application updates → Automatic SDE updates**, without
+an administrator prompt. Pausing or resuming
 changes only this workstation's app-installation policy; it does not disable the
 weekly task/timer, change its schedule, provision tools or clear an interrupted
-transaction. Keep unapproved rollout devices paused through the remaining #43
+transaction. Installing/upgrading the application resets a pause to enabled;
+inspect and reapply an approved pause after installation when required by a
+controlled pilot or recovery procedure. Keep unapproved rollout devices paused through the remaining #43
 acceptance/pilot gates. Follow the [current release ledger](DEPLOYMENT-READINESS-EXECUTION.md)
 and [device-specific pilot packet](SELF-UPDATE-PILOT.md); an existing resumed
 policy must be inspected, not assumed paused.
@@ -13,10 +18,13 @@ promotion. A valid signature by itself does not approve a candidate for rollout.
 
 ## Pause and resume
 
-Use the installed worker from an **administrator terminal**, not a downloaded
-binary, an engine snapshot, or the GUI. Commands accept no paths or configuration
+The GUI toggle saves automatically. The following existing **administrator terminal**
+controls remain available for operations and recovery; use the installed worker,
+not a downloaded binary or an engine snapshot. Commands accept no paths or configuration
 arguments. They require an existing trusted installation/policy and fail closed
-on missing, linked, malformed, unknown-schema or student-writable policy state.
+on missing, linked, malformed or unknown-schema policy state. Student data-write
+permission is intentional only on the fixed pause preference, not any other
+maintenance state.
 Do not run a development build on a school workstation.
 
 Windows: open Windows PowerShell **as Administrator**, then run:
@@ -36,26 +44,41 @@ sudo '/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust' pau
 ```
 
 Refresh **Schedule → SDE application updates**. Confirm the installation setting
-says **Paused by administrator**. To resume after owner approval and successful
+says **Paused**. To resume after successful
 recovery/UAT, run the same administrator command with `resume` instead of `pause`,
 check its exit code, and refresh. Resume does not immediately start maintenance or
 install an app; the existing task/timer makes the next attempt. Repeat per laptop.
 Do not enable a disabled/missing schedule merely to resume app installation.
 
-Pause is atomic and is checked before discovery and again before native launch.
+Pause is checked before discovery and again before native launch.
 It does not cancel an installer that has already started, nor guarantee a pause
 will beat an installer crossing its last policy check. Wait for running work to
 finish. Do not kill APT, DPKG, NSIS, Chocolatey or their supervising worker.
-Concurrent administrator commands use the last successfully saved value.
+Concurrent setting changes can fail or supersede one another; refresh to read
+the actual value. An interrupted/invalid write fails closed and requires review.
 
-The boolean policy is administrator-writable and student-readable: Linux
-`policy.json` is root-owned `0644`; Windows gives Users only file read access.
+The fixed-schema boolean preference is root/administrator-owned and student-editable:
+Linux `policy.json` is root-owned `0666` under a protected parent; Windows grants
+Builtin Users file read plus **WriteData only**, without delete, ACL or ownership
+rights. The parser accepts only schema 1 and one boolean, rejects unknown or
+duplicate fields, bounds reads, and rejects links, unsafe owners and unsupported
+permissions. It is a preference, never authenticated execution authority.
 Engine selectors, installer staging, installation/recovery receipts, run snapshots
-and native logs remain protected. Upgrades preserve the pause value. The GUI has
-only a fixed, read-only status command; it cannot pause/resume, elevate, select a
-path, clear a journal, download or launch an installer through this view.
+and native logs remain protected. Every installation/upgrade enables updates.
+The GUI passes only a boolean to a fixed local operation; it cannot elevate,
+select a path, clear a journal, download or launch an installer through this view.
+The installed worker also exposes `set-paused` and `set-enabled` for the same
+ordinary-user operation; legacy `pause`/`resume` remain administrator commands.
 
 ## Interpreting the maintenance page
+
+Older application installers do not implement v1.2.16's student-editable pause
+contract and may reject this file's write permission. Prefer an authenticated,
+accepted v1.2.16-or-newer installer for manual application repair. An older
+retained signed installer requires a separately reviewed compatibility procedure;
+signature retention does not promise a universal rollback. Do not reset the
+whole maintenance tree or change permissions on executable/receipt files to
+make an older installer accept it.
 
 The current installation setting is separate from the **last completed attempt**:
 resuming does not erase a previous paused result; pausing does not erase a failure.
@@ -111,7 +134,7 @@ Locations (mentor/admin access required for private files):
 
 | Item | Windows | Linux Mint |
 | --- | --- | --- |
-| Read-only policy/status | `C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json` / `status.json` | `/var/lib/skyview-robotics/self-update/policy.json` / `status.json` |
+| Editable pause preference / protected status | `C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json` / `status.json` | `/var/lib/skyview-robotics/self-update/policy.json` / `status.json` |
 | Native logs (eight completed runs plus active/crashed logs) | `C:\ProgramData\SkyviewRobotics\SelfUpdate\logs` | `/var/lib/skyview-robotics/self-update/logs` |
 | Installation and recovery receipts | Same root: `installation.json`, `recovery.json`, `previous-recovery.json` | Same root, same names |
 | Retained installers and signed metadata | Same root: `staging\<transaction UUID>` | Same root: `staging/<transaction UUID>` |
@@ -217,14 +240,15 @@ receipts first. Follow the gate-held recovery requirements in
 GUI or blind CLI “clear journal” action. Ask Codex to prepare/review the specific
 repair and gate-held journal removal from that workstation's evidence. If
 completion cannot be established, leave intent intact and stop. Then reopen SDE,
-validate tools, check the schedule, confirm pause remained set, and perform owner
+validate tools, check the schedule, reapply and confirm the approved pause
+(installation enables updates again), and perform owner
 UAT before a mentor resumes installation.
 
 ## Verification responsibility
 
 Codex tests strict status interpretation/redaction and all six UI outcomes,
-separate tool failure, current pause versus old result, read-only capability,
-root/SYSTEM pause/resume, real standard-user read/denied writes, retained fixture
+separate tool failure, current pause versus old result, ordinary-user toggle,
+root/SYSTEM pause/resume, real standard-user setting access/protected-state denial, retained fixture
 key rejection, and pause isolation through the packaged maintenance launchers.
 Required CI retains real Windows NSIS and Mint APT/DPKG upgrade/failure tests.
 Mint ISO userland in a container proves package execution, not a booted desktop
@@ -239,7 +263,8 @@ parent when its sole untrusted write grant is BUILTIN Users' legacy Write
 permission (including the reported container-inherited grant). Existing file
 bytes must already pass protection checks before permissions change.
 It removes that grant without changing baseline bytes, creating a schedule,
-starting maintenance, changing pause policy or recursively trusting content.
+starting maintenance or recursively trusting content. The surrounding v1.2.16
+application installation separately enables updates under #102.
 Student read access on the parent applies only to that folder, preserving
 private child permissions. The real signed SYSTEM upgrade CI exercises this
 case and preserves the disabled customized task.
@@ -259,7 +284,8 @@ applies the provisioning ACL to Logs only, and checks for added entries before
 protecting the parent. It rechecks the tree before returning. A busy log or an
 unsafe/unexpected entry fails closed; retry only after the real writer completes
 or after mentor diagnosis. No files are deleted, no maintenance is launched and
-no baseline provisioning or policy resume is performed. Existing protected file
+no baseline provisioning is performed. The v1.2.16 application installation
+separately enables updates. Existing protected file
 ACLs and log bytes are preserved. A retry after Logs protection but before parent
 protection uses the existing protected-descendant migration path.
 

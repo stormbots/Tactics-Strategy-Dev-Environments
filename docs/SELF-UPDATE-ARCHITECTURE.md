@@ -83,7 +83,8 @@ Use an administrator-owned external host with immutable, versioned engine
 directories and an atomically replaced active-generation receipt:
 
 - Windows: `C:\ProgramData\SkyviewRobotics\SelfUpdate` (SYSTEM/Administrators write;
-  Users read-only for status and coordination where needed).
+  Users read-only for status and coordination where needed; from v1.2.16 only
+  the fixed-schema pause preference permits student data writes).
 - Linux: `/var/lib/skyview-robotics/self-update` (root-owned; engine directories
   0755, staging/private transaction directories 0700). Configuration under
   `/etc/skyview-robotics/student-dev` remains root-controlled.
@@ -251,8 +252,11 @@ version, stage, outcome, UTC timestamps, native exit, and log reference.
 
 Outcomes: `current`, `paused`, `deferred`, `unavailable`, `failed`, `updated`.
 Do not report current after a failed check or updated after only a download.
-Track tool-maintenance outcome independently. Keep administrator-controlled pause
-configuration separate from app package files; pause blocks self-installation,
+Track tool-maintenance outcome independently. Keep the fixed-schema pause preference separate from app package files. From
+v1.2.16 only its data bytes are student-editable under a protected parent; all
+other privileged state remains protected. Every app install/upgrade enables
+updates, while the GUI toggle and retained administrator commands can pause
+afterward. Keep this preference separate from authenticated execution authority; pause blocks self-installation,
 not development-tool maintenance. Recheck pause immediately before execution.
 
 Failures before execution leave the installed app intact. A crash after installer

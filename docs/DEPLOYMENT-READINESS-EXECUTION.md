@@ -1,5 +1,12 @@
 # Deployment readiness execution record
 
+**October 24 update:** v1.2.15 owner desktop UAT passed on both selected platforms.
+#59 is closed with explicit owner acceptance of the historical affected-PC pass
+plus native fixtures and the unreported additional-PC/private-ACL evidence limit.
+The owner selected v1.2.16 for #102 and the student-accessible Inline toggle.
+See the [current execution ledger](RELEASE-EXECUTION-1.2.16.md). Earlier dated
+checkpoints below remain historical; no stable promotion or pilot is inferred.
+
 Updated October 21, 2026. Scope: milestone 2, #59 and #43; cross-cutting live
 transition #99 stays in Part 2. This record distinguishes completed evidence,
 engineering work and pending owner decisions. The supplied release plan is a

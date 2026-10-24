@@ -19,7 +19,8 @@ DROPIN = Path('/etc/systemd/system/skyview-student-dev-update.service.d/sde-self
 def trusted(path):
     for item in (path, *path.parents):
         m = item.lstat()
-        if m.st_uid != 0 or m.st_mode & 0o022 or not (stat.S_ISDIR(m.st_mode) or stat.S_ISREG(m.st_mode)):
+        pause_setting = item == ROOT / 'policy.json' and stat.S_ISREG(m.st_mode) and stat.S_IMODE(m.st_mode) in (0o644, 0o666)
+        if m.st_uid != 0 or (m.st_mode & 0o022 and not pause_setting) or not (stat.S_ISDIR(m.st_mode) or stat.S_ISREG(m.st_mode)):
             raise RuntimeError('Untrusted maintenance path')
         if stat.S_ISREG(m.st_mode) and m.st_nlink != 1:
             raise RuntimeError('Linked maintenance file')
@@ -94,11 +95,12 @@ def main():
     trusted(BUNDLE / 'history.py')
     atomic(HISTORY_HOOK, (BUNDLE / 'history.py').read_bytes(), 0o700)
     policy = ROOT / 'policy.json'
-    if not policy.exists():
-        receipt(policy, dict(schemaVersion=1, paused=True))
+    # Every application install/upgrade enables updates, including an old UAT
+    # pause. This fixed-schema preference is the only student-writable file;
+    # its parent, engines and authenticated receipts remain root-controlled.
+    receipt(policy, dict(schemaVersion=1, paused=False))
     trusted(policy)
-    # Only the non-secret administrator pause boolean is student-readable.
-    policy.chmod(0o644)
+    policy.chmod(0o666)
     previous = None
     active = ROOT / 'active.json'
     if active.exists():
