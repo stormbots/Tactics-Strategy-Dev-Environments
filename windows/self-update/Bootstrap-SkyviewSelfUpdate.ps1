@@ -8,7 +8,7 @@ function Assert-TrustedItem([string]$Path) {
     $item = Get-Item -LiteralPath $Path -Force
     if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Untrusted maintenance link.' }
     $acl = Get-Acl -LiteralPath $Path
-    $pauseSetting = $Path -eq (Join-Path $root 'policy.json') -and -not $item.PSIsContainer
+    $pauseSetting = $Path -eq 'C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json' -and -not $item.PSIsContainer
     if ($pauseSetting) {
         # A fresh installation may not have entered the legacy-parent scanner;
         # initialize the native guard and pin the protected parent here too.

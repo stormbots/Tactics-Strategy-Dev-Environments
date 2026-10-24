@@ -117,6 +117,45 @@ pub fn set_paused(paused: bool) -> Result<()> {
 }
 
 #[cfg(test)]
+pub(crate) fn native_contracts() {
+    assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"));
+    let path = Path::new(ROOT).join("policy.json");
+    let original = std::fs::read(&path).unwrap();
+    let history = std::fs::read(Path::new(ROOT).join("status.json")).ok();
+    for invalid in [
+        b"{}".to_vec(),
+        br#"{"schemaVersion":1,"paused":false,"command":"ignored"}"#.to_vec(),
+        vec![b' '; 129],
+    ] {
+        std::fs::write(&path, &invalid).unwrap();
+        assert!(read().is_err());
+        assert!(set_paused(false).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), invalid);
+    }
+    std::fs::write(&path, &original).unwrap();
+    let link = Path::new(ROOT).join(format!("policy-link-{}", uuid::Uuid::new_v4()));
+    std::fs::hard_link(&path, &link).unwrap();
+    assert!(read().is_err());
+    assert!(set_paused(false).is_err());
+    std::fs::remove_file(link).unwrap();
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let permissions = std::fs::metadata(&path).unwrap().permissions();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(read().is_err());
+        std::fs::set_permissions(&path, permissions).unwrap();
+    }
+    assert_eq!(std::fs::read(&path).unwrap(), original);
+    assert_eq!(
+        std::fs::read(Path::new(ROOT).join("status.json")).ok(),
+        history
+    );
+    assert!(read().is_ok());
+    println!("SDE_NATIVE_POLICY_GUARDS_OK: invalid/oversized/linked preferences rejected; history untouched");
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

@@ -400,19 +400,9 @@ pub(crate) mod windows {
         }
         Ok(())
     }
-    pub(crate) fn publish_readonly(path: &Path) -> Result<()> {
-        publish_permissions(path, false)
-    }
     pub(crate) fn publish_policy(path: &Path) -> Result<()> {
-        publish_permissions(path, true)
-    }
-    fn publish_permissions(path: &Path, policy: bool) -> Result<()> {
         validate(path)?;
-        let sddl = wide(if policy {
-            "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x12008b;;;BU)"
-        } else {
-            "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)"
-        });
+        let sddl = wide("O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x12008b;;;BU)");
         let mut descriptor = ptr::null_mut();
         if unsafe {
             ConvertStringSecurityDescriptorToSecurityDescriptorW(
@@ -441,7 +431,7 @@ pub(crate) mod windows {
         if ok == 0 {
             return Err(Failure::Staging);
         }
-        validate_acl_inner(path, false, policy)
+        validate_acl_inner(path, false, true)
     }
     pub(super) fn create_private(path: &Path) -> Result<()> {
         let sddl = wide("O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)");

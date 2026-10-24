@@ -711,6 +711,7 @@ mod native {
             let baseline =
                 std::fs::read(r"C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1").unwrap();
             let policy_before = std::fs::read(Path::new(ROOT).join("policy.json")).unwrap();
+            crate::policy::native_contracts();
             set_pause(false).unwrap();
             assert_eq!(crate::observation::inspect().paused, Some(false));
             set_pause(true).unwrap();

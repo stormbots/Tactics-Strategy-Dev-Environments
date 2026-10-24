@@ -126,7 +126,7 @@ Locations (mentor/admin access required for private files):
 
 | Item | Windows | Linux Mint |
 | --- | --- | --- |
-| Read-only policy/status | `C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json` / `status.json` | `/var/lib/skyview-robotics/self-update/policy.json` / `status.json` |
+| Editable pause preference / protected status | `C:\ProgramData\SkyviewRobotics\SelfUpdate\policy.json` / `status.json` | `/var/lib/skyview-robotics/self-update/policy.json` / `status.json` |
 | Native logs (eight completed runs plus active/crashed logs) | `C:\ProgramData\SkyviewRobotics\SelfUpdate\logs` | `/var/lib/skyview-robotics/self-update/logs` |
 | Installation and recovery receipts | Same root: `installation.json`, `recovery.json`, `previous-recovery.json` | Same root, same names |
 | Retained installers and signed metadata | Same root: `staging\<transaction UUID>` | Same root: `staging/<transaction UUID>` |

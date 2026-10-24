@@ -692,6 +692,7 @@ mod tests {
         let settings_before = std::fs::read(settings).unwrap();
         let timer = std::fs::read("/etc/systemd/system/skyview-student-dev-update.timer").unwrap();
         let policy_before = std::fs::read(Path::new(ROOT).join("policy.json")).unwrap();
+        crate::policy::native_contracts();
         set_linux_pause(false).unwrap();
         assert_eq!(crate::observation::inspect().paused, Some(false));
         set_linux_pause(true).unwrap();
