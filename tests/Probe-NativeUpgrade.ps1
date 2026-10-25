@@ -32,6 +32,7 @@ try {
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.13/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.12', '1.2.13') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.14/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.13', '1.2.14') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.15/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.14', '1.2.15') }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.16/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.15', '1.2.16') }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
@@ -40,6 +41,10 @@ try {
     foreach ($version in $versions) {
         if ($UatPair -and $version -eq $versions[1]) {
             Set-Content $legacyBaseline '# legacy maintenance UAT sentinel'
+            if ($version -eq '1.2.16') {
+                & 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe' pause
+                if ($LASTEXITCODE -ne 0) { throw 'Could not prepare paused prior installation.' }
+            }
         }
         $exe = Join-Path $Root "$version\Skyview-Dev-Setup-Windows-x64.exe"
         $flags = if ($version -ne $versions[0]) { '/S /UPDATE' } else { '/S' }
@@ -75,7 +80,18 @@ try {
             $rootPolicy = 'C:\ProgramData\SkyviewRobotics\SelfUpdate'
             $policy = Get-Content (Join-Path $rootPolicy 'policy.json') -Raw | ConvertFrom-Json
             $active = Get-Content (Join-Path $rootPolicy 'active.json') -Raw | ConvertFrom-Json
-            if ($policy.paused -ne $true -or $active.version -ne $version) { throw 'Pause or active engine mismatch' }
+            if ($policy.paused -ne $false -or $active.version -ne $version) { throw 'Enabled policy or active engine mismatch' }
+            if ($version -eq '1.2.16') {
+                $policyWorker = 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe'
+                foreach ($verb in @('pause','resume')) {
+                    & $policyWorker $verb
+                    if ($LASTEXITCODE -ne 0) { throw 'Administrator pause/resume failed.' }
+                    $repeat = Start-Process -FilePath $exe -ArgumentList '/S /UPDATE' -Wait -PassThru -WindowStyle Hidden
+                    if ($repeat.ExitCode -ne 0 -or (Get-Content (Join-Path $rootPolicy 'policy.json') -Raw | ConvertFrom-Json).paused -ne $false) { throw 'Installer did not enable updates from prior policy state.' }
+                    if ((Get-Content $project -Raw).Trim() -ne 'student preservation sentinel' -or (Get-Content $settings -Raw) -ne $settingsBefore) { throw 'Repeated policy upgrade changed student state.' }
+                }
+                Write-Output 'SDE_UAT_ENABLED_DEFAULTS_WINDOWS_OK'
+            }
             if ($version -eq $versions[0]) {
                 if (Test-Path $legacyBaseline) { throw 'Unexpected applied baseline' }
             } else {

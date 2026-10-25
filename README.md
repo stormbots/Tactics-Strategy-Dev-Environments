@@ -3,7 +3,7 @@
 Graphical setup and workstation management for the **Bureau of Tactics & Strategy**.
 Use the [current stable release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest) for Windows 11 x64 and Linux Mint Cinnamon 22.x amd64. Its release notes describe the accepted changes and supported installers.
 
-The SDE application and the applied development-tool baseline have separate versions. Application upgrades preserve the existing baseline, student settings, maintenance schedule and application-update pause policy. Fleet rollout and policy resume remain separate mentor decisions.
+The SDE application and the applied development-tool baseline have separate versions. Application upgrades preserve the existing baseline, student settings and maintenance schedule. Starting with v1.2.16, every application installation or upgrade enables automatic SDE updates, including previously paused installations. Students can pause or resume them under **Schedule → SDE application updates → Automatic SDE updates**. Saving this setting does not start maintenance or an installer. Fleet rollout remains a separate owner decision.
 
 ## Install with the app
 
@@ -15,7 +15,7 @@ The SDE application and the applied development-tool baseline have separate vers
 
 In the app, click **Install Development Environment**, approve the system's administrator prompt, and keep the window open until validation finishes. No terminal commands, folder preparation, or manual validation are required.
 
-For an existing managed workstation, follow the [mentor migration and pinned-verification procedure](docs/SELF-UPDATE-ROLLOUT.md) before installing the new app; application installation preserves the applied tool baseline and does not authorize tool Repair or policy resume. Authenticate the complete release asset folder with the installed pinned verifier. Minisign release authentication is separate from Windows Authenticode; Windows installers remain unsigned by project decision. Keep operating-system protections enabled.
+For an existing managed workstation, follow the [mentor migration and pinned-verification procedure](docs/SELF-UPDATE-ROLLOUT.md) before installing the new app; application installation preserves the applied tool baseline and does not perform tool Repair. From v1.2.16 it intentionally enables app updates; it does not create or enable a tool schedule. Authenticate the complete release asset folder with the installed pinned verifier. Minisign release authentication is separate from Windows Authenticode; Windows installers remain unsigned by project decision. Keep operating-system protections enabled.
 
 The earlier **1.2.1** [both-platform acceptance](docs/ACCEPTANCE-1.2.1.md), including Mint 22.3 validation, remains historical evidence for that version. Published tags/assets are retained unchanged.
 
@@ -48,8 +48,9 @@ One Tauri 2 / React / Vite app orchestrates the existing PowerShell/Chocolatey a
 GitHub Actions tests the app and backends, builds native NSIS and DEB installers on their respective runners, verifies checksums, and initially publishes a prerelease only when both packages succeed. After manual acceptance and merge review, the tested release is promoted to stable without replacing its tag or assets. Existing platform tags and published fallback assets are preserved.
 
 For administrator pause/resume controls and recovery, see the
-[mentor self-update guide](docs/SELF-UPDATE-MENTOR.md). SDE installation starts paused;
-existing development-tool maintenance remains independent.
+[mentor self-update guide](docs/SELF-UPDATE-MENTOR.md). v1.2.16 enables app updates
+on installation/upgrade; earlier releases retain their historical pause defaults.
+Existing development-tool maintenance remains independent.
 
 Self-update verification evidence and remaining school-laptop UAT: [SELF-UPDATE-EVIDENCE.md](docs/SELF-UPDATE-EVIDENCE.md).
 

@@ -21,6 +21,11 @@ fn run() -> Result<(), String> {
         println!("SDE installation policy saved. Tool maintenance remains enabled. An installer already running is allowed to finish.");
         return Ok(());
     }
+    if args.len() == 1 && matches!(args[0].as_str(), "set-paused" | "set-enabled") {
+        sde_update_trust::policy::set_paused(args[0] == "set-paused")?;
+        println!("SDE setting saved. No maintenance or installation was started.");
+        return Ok(());
+    }
     if args.as_slice() == ["self-update-status"] {
         println!(
             "{}",
@@ -53,7 +58,7 @@ fn run() -> Result<(), String> {
     }
     if args.len() != 3 {
         return Err(
-            "Usage: sde-update-trust <pause|resume|self-update-status|verify-recovery|coordination-status|check|stage> OR <create|sign|verify> <release-directory> <vMAJOR.MINOR.PATCH>"
+            "Usage: sde-update-trust <pause|resume|set-paused|set-enabled|self-update-status|verify-recovery|coordination-status|check|stage> OR <create|sign|verify> <release-directory> <vMAJOR.MINOR.PATCH>"
                 .into(),
         );
     }

@@ -1,5 +1,12 @@
 # Self-update acceptance record (#43)
 
+**October 24 update:** v1.2.15 owner desktop UAT passed on both selected platforms.
+#59 is closed with explicit owner acceptance of the historical affected-PC pass
+plus native fixtures and the unreported additional-PC/private-ACL evidence limit.
+The owner selected v1.2.16 for #102 and the student-accessible Inline toggle.
+See the [current execution ledger](RELEASE-EXECUTION-1.2.16.md). Earlier dated
+checkpoints below remain historical; no stable promotion or pilot is inferred.
+
 **Current stable at October 21, 2026 reconciliation: v1.2.14**, release
 `418991149`, source `b0f6a43e85b8ae5bbf72b87b4ee5f2d92bfd40ba`.
 [Owner Windows/Linux acceptance](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/98#issuecomment-6316233401)

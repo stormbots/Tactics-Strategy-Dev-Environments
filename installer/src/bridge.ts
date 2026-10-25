@@ -148,12 +148,23 @@ export async function open(destination: Destination) {
   if (native) await invoke("open_destination", { destination });
 }
 
+let previewPaused = false;
+export async function setSelfUpdatePaused(
+  paused: boolean,
+): Promise<import("./model").SelfUpdate> {
+  if (native) return invoke("set_self_update_paused", { paused });
+  previewPaused = paused;
+  return {
+    ...(await inspectSelfUpdate()),
+    policyChangedAt: Math.floor(Date.now() / 1000),
+  };
+}
 export async function inspectSelfUpdate(): Promise<
   import("./model").SelfUpdate
 > {
   if (native) return invoke("inspect_self_update");
   return {
-    paused: true,
+    paused: previewPaused,
     policyChangedAt: null,
     outcome: "unavailable",
     phase: "unknown",

@@ -50,10 +50,16 @@ fi
 if [[ -f /work/uat/1.2.15/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
   versions=(1.2.14 1.2.15)
 fi
+if [[ -f /work/uat/1.2.16/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions=(1.2.15 1.2.16)
+fi
 for version in "${versions[@]}"; do
   if [[ "$version" = "${versions[1]}" ]]; then
     printf '# legacy maintenance UAT sentinel\n' > "$legacy"
     chmod 0755 "$legacy"
+    if [[ "$version" == 1.2.16 ]]; then
+      '/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust' pause
+    fi
   fi
   package="$root/installer.deb"
   cp "/work/uat/$version/Skyview-Dev-Setup-LinuxMint-amd64.deb" "$package"
@@ -76,11 +82,28 @@ for version in "${versions[@]}"; do
 import json, sys
 from pathlib import Path
 root = Path('/var/lib/skyview-robotics/self-update')
-assert json.loads((root / 'policy.json').read_text())['paused'] is True
+assert json.loads((root / 'policy.json').read_text())['paused'] is False
 assert json.loads((root / 'active.json').read_text())['version'] == sys.argv[1]
 PY
   [[ "$(cat "$student/project.txt")" == 'student project sentinel' ]]
   [[ "$(cat "$student/.config/Code/User/settings.json")" == '{"editor.fontSize":17}' ]]
-  echo "PASS $version: actual Mint package, paused engine, preserved files/baseline, no provisioning/schedule"
+  if [[ "$version" == 1.2.16 ]]; then
+    worker='/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust'
+    for verb in pause resume; do
+      "$worker" "$verb"
+      # Reinstall the real package through APT from both prior policy states.
+      apt-get -y --no-remove --reinstall -o DPkg::Lock::Timeout=60 install "$package"
+      python3 -I -c "import json; assert json.load(open('/var/lib/skyview-robotics/self-update/policy.json'))['paused'] is False"
+      [[ "$(cat "$legacy")" == '# legacy maintenance UAT sentinel' ]]
+      [[ "$(cat "$student/project.txt")" == 'student project sentinel' ]]
+      [[ "$(cat "$student/.config/Code/User/settings.json")" == '{"editor.fontSize":17}' ]]
+      [[ ! -e /etc/systemd/system/skyview-student-dev-update.service ]]
+    done
+    for verb in set-paused set-enabled; do
+      runuser -u nobody -- "$worker" "$verb"
+    done
+    echo SDE_UAT_ENABLED_DEFAULTS_MINT_OK
+  fi
+  echo "PASS $version: actual Mint package, enabled engine, preserved files/baseline, no provisioning/schedule"
 done
 echo SDE_UAT_PAIR_MINT_OK

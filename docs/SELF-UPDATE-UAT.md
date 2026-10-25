@@ -1,9 +1,9 @@
-# Deployment readiness owner UAT — v1.2.15
+# Deployment readiness owner UAT — v1.2.16
 
-**Preparation only: v1.2.15 is not yet published or authenticated.** Use this
+**Preparation only: v1.2.16 is not yet published or authenticated.** Use this
 sheet only after the PR supplies the exact source, successful full/native runs,
 five published asset identities/hashes and independent pinned verification.
-Expected candidate: [exact v1.2.15 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.15).
+Expected candidate: [exact v1.2.16 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.16).
 Current accepted downloads use [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
 Candidate publication keeps `prerelease=true`, `draft=false`, `latest=false`.
 
@@ -11,8 +11,10 @@ Owner performs desktop UAT on Windows 11 x64 and **booted Mint Cinnamon 22.x
 amd64**. Record physical hardware or approved desktop VM; Windows Server and Mint
 userland CI are separate evidence. Keep the existing Windows/Mint v1.2.14 daily
 installations unchanged for [#99](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99).
-Proposed separate candidate devices are a fresh Windows test PC and the existing
-v1.2.12 Mint test PC; selection and platform details remain owner-confirmed.
+The selected Windows test PC and replacement student-fleet MacBook Air both
+passed v1.2.15 UAT; reuse those results within their recorded scope. Focus
+v1.2.16 owner UAT on the changed defaults and student toggle. The MacBook Air
+reports Mint 22.3 x86_64. Keep private aliases out of public evidence.
 A fresh install does not prove upgrade preservation. Never downgrade or recreate
 unsafe ACLs to manufacture a starting state. No additional VM/media/host access
 is authorized by this checklist.
@@ -24,13 +26,19 @@ baseline separately**, sample project bytes/Git state, editor/appearance setting
 existing log hashes/private ACLs where relevant, schedule/enabled/custom timing,
 actual app-update policy and available recovery/status. Save work. Close SDE
 normally and let native/package/maintenance work finish before manual install.
-Keep the current policy and schedule. GUI Install/Repair/Update are separate
+Keep the existing schedule. Application installation now intentionally enables
+SDE updates, including prior pauses; record this expected change. A deliberate
+pause for an approved pilot/recovery procedure must be reapplied afterward. GUI Install/Repair/Update are separate
 baseline/tool operations and are not steps for installing this application.
 
 The historical v1.2.6 affected-PC first-attempt pass and controlled SYSTEM
 maintenance remain valid for their scope; see the [acceptance matrix](DEPLOYMENT-READINESS-EXECUTION.md).
-Do not rerun all accepted v1.2.14 interface UAT. No UI code change is proposed;
-check identity, preservation, Schedule/About/navigation and any new finding.
+Reuse accepted v1.2.14/v1.2.15 UAT within its actual scope. The new Inline toggle
+is changed UI: test its enabled/paused/saving/error states, keyboard use, refresh
+and restart persistence, appearance/compact layout and independent last-attempt
+history. No administrator prompt, release fetch, tool maintenance or immediate
+installer launch should result from switching it. On a failed save the current
+setting is unconfirmed until refreshed; do not infer that the old value remains.
 
 ## Download and authenticate
 
@@ -51,7 +59,7 @@ Windows PowerShell in the candidate folder, using the trusted installed path
 ```powershell
 $worker = 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe'
 if (-not (Test-Path -LiteralPath $worker -PathType Leaf)) { throw 'Obtain the reviewed verifier handoff before installation.' }
-& $worker verify (Get-Location).Path v1.2.15
+& $worker verify (Get-Location).Path v1.2.16
 if ($LASTEXITCODE -ne 0) { throw 'Stop: candidate authentication failed.' }
 ```
 
@@ -59,7 +67,7 @@ Mint, in the candidate folder:
 
 ```sh
 worker='/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust'
-"$worker" verify "$PWD" v1.2.15 && sha256sum --check SHA256SUMS.txt
+"$worker" verify "$PWD" v1.2.16 && sha256sum --check SHA256SUMS.txt
 ```
 
 Stop on any failure. Codex can prepare harmless metadata/installer tamper cases
@@ -91,7 +99,7 @@ sudo env DEBIAN_FRONTEND=noninteractive apt-get -y --no-remove --no-install-reco
 dpkg-query -W '-f=${Status}\n${Version}\n${Architecture}\n' skyview-dev-setup
 ```
 
-Expect `install ok installed`, `1.2.15`, `amd64`. Open from the ordinary Cinnamon
+Expect `install ok installed`, `1.2.16`, `amd64`. Open from the ordinary Cinnamon
 menu, never as root. Never delete locks, kill installers or force reboot.
 
 ## Legacy maintenance prerequisite
@@ -112,13 +120,13 @@ An old pass supports confidence, not a new-candidate desktop pass.
 
 | Area | Required observation / boundary |
 | --- | --- |
-| Distribution/identity | Complete authenticated candidate; app/active engine 1.2.15; baseline recorded separately, expected existing 1.2.1 if applied |
+| Distribution/identity | Complete authenticated candidate; app/active engine 1.2.16; baseline recorded separately, expected existing 1.2.1 if applied |
 | Recognized legacy migration | Reuse affected Windows 11 v1.2.6 no-manual-correction pass plus current native fixtures; dispose unreported representative/private-ACL criteria explicitly; no unsafe real-PC fixtures |
 | Unsupported layouts/failures | Current disposable native negative evidence only; no owner-PC package failure injection |
-| Preservation | Compare saved files/preferences, baseline bytes/version, relevant log bytes/private ACLs, existing schedule/enabled/custom timing and policy; distinguish fresh install from upgrade |
+| Preservation | Compare saved files/preferences, baseline bytes/version, relevant log bytes/private ACLs and existing schedule/enabled/custom timing; policy intentionally resets to enabled under #102; distinguish fresh install from upgrade |
 | Existing maintenance route | Read protected launcher/principal and independent tool/app outcomes; actual trigger only under separately selected device/action/window |
 | Active session/package activity | Safe deferral; SDE and existing work finish normally. Real automatic install/deferral belongs to the separately authorized stable pilot |
-| Student/school network | Ordinary-user read-only status and protected-write denial, actual required GitHub access/offline/retry; report unavailable network/account scope |
+| Student/school network | Ordinary-user status, pause toggle and protected-state write denial, actual required GitHub access/offline/retry; report unavailable network/account scope |
 | Reboot/scheduling | Capture actual observations or accepted limit; immediate trigger is not natural weekly firing |
 | Recovery | Understand protected receipts/logs and mentor procedure; missing automatic history/recovery after manual bootstrap is allowed; native failure tests stay separate |
 | Focused UI | About/Schedule identity, usable readiness/navigation and preserved appearance/sidebar behavior; retain prior accepted five-zoom evidence |
@@ -176,3 +184,14 @@ and candidate installation do not supply it. The automatic pilot has its own
 allowlist/action/window approval. #43/milestone 2 remain open until the required
 representative rollout completes or the owner explicitly revises its scope and
 tracks the remaining work.
+
+## Focused v1.2.16 policy acceptance
+
+Confirm enabled after installation/upgrade from a paused state; native fixtures
+also cover fresh creation and enabled upgrades. As an ordinary student, switch
+off and on without an administrator prompt, refresh/reopen and confirm the
+saved value. Last-attempt outcome/times, baseline/files/preferences and existing
+schedule/enabled/custom timing must remain independent. Administrator pause/resume
+commands remain available; a subsequent application installation enables updates
+again. No repeated natural-weekly, package-failure or unsafe ACL test is requested
+on a real workstation. A controlled automatic pilot remains separately authorized.

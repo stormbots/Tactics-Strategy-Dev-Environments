@@ -1,8 +1,9 @@
 # Candidate preparation, migration and rollout (#43)
 
 Current accepted downloads: [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
-Live reconciliation on October 21, 2026 found stable v1.2.14. The next proposed
-candidate is v1.2.15, subject to a fresh-unused check. Historical v1.2.2/v1.2.3
+October 24, 2026: stable is v1.2.14. v1.2.15 is an immutable authenticated
+prerelease with both desktop UAT passes recorded. The owner selected a fresh
+v1.2.16 candidate for #102 and the student-accessible Inline setting toggle. Historical v1.2.2/v1.2.3
 pair procedures are retained in [the original source](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/b0f6a43e85b8ae5bbf72b87b4ee5f2d92bfd40ba/docs/SELF-UPDATE-ROLLOUT.md);
 they are not current dispatch or laptop installation instructions.
 
@@ -18,7 +19,7 @@ device resume are separate scopes.
 
 ## Prepare the immutable candidate
 
-1. Recheck official main, unused tag/release v1.2.15, open PRs and live signing
+1. Recheck official main, unused tag/release v1.2.16, open PRs and live signing
    environment. Review/merge the next-version recipe; do not dispatch old main's
    `update_discovery` or default pair. Historical options have been removed from
    the current recipe to avoid selecting already published versions.
@@ -31,10 +32,10 @@ device resume are separate scopes.
    `deployment_readiness=true`. Its source guard requires exact main equality,
    successful exact-main push CI and an unused target before native builds and
    human signing review. A false/default input fails closed.
-4. Disposable application identities are **1.2.14 and 1.2.15**; source app identity
+4. Disposable application identities are **1.2.15 and 1.2.16**; source app identity
    and managed-tool baseline remain 1.2.1. Lock dependencies are unchanged. The
-   rebuilt 1.2.14 is an **unpublished same-source fixture**, not the exact published
-   v1.2.14 bytes. The pair tests real install/upgrade, paused engine, saved files,
+   rebuilt 1.2.15 is an **unpublished same-source fixture**, not the exact published
+   v1.2.15 bytes. The pair tests real install/upgrade, enabled defaults from paused/enabled policies, saved files,
    no app-only provisioning/schedule and preserved incompatible legacy sentinel
    with `needs_repair`. Full native CI separately covers the recognized Logs
    layout, custom disabled schedules, standard-user denial and failure/recovery.
@@ -45,7 +46,7 @@ device resume are separate scopes.
    approve on the owner's behalf. October 12 key-backup confirmation remains
    applicable unless a key/configuration change exposes a genuine recovery gap.
 6. After human signing approval the protected job rechecks exact main/CI, package
-   identities, creates/signs/verifies the manifest, and publishes **only v1.2.15**
+   identities, creates/signs/verifies the manifest, and publishes **only v1.2.16**
    as nondraft prerelease with `latest=false` and exactly five canonical assets.
    The ordinary release workflow excludes this candidate tag to avoid a duplicate
    publication from the unchanged source app identity. Never overwrite assets,
@@ -64,9 +65,12 @@ Existing pre-updater installations need one mentor-approved authenticated native
 app install before the new maintenance host is available. Follow current UAT
 commands: Windows per-machine `/S /UPDATE` for upgrades (`/S` for fresh install),
 Mint local-package APT. Packaging initializes protected coordination/policy and
-activates the engine without applying the bundled tool baseline. New policy is
-paused; upgrades preserve existing policy, so inspect the real value rather than
-assuming every existing machine is paused.
+activates the engine without applying the bundled tool baseline. Starting with
+v1.2.16 every application installation or upgrade intentionally sets the app
+update preference to enabled, including previously paused installations. This
+does not start maintenance or create/enable a task or timer. Students can pause
+or resume using the Schedule page; reapply an approved operational pause after
+installation if a pilot/recovery procedure requires it.
 
 The Windows installer supports the narrow parent-plus-Logs migration shipped in
 v1.2.6, under normal administrator installation. See [the safety contract](SELF-UPDATE-MENTOR.md#legacy-windows-parent-permissions).
@@ -76,7 +80,8 @@ files, links, owners, concurrent/busy writers or unexpected contents fail closed
 Do not broaden the migration, delete evidence or reset arbitrary descendants.
 
 Preserve student work/settings, baseline bytes/version, custom timing/enabled
-state and pause policy. An already coordinated provisioned schedule can move to
+state. The pause preference intentionally resets to enabled under #102; it is
+not a preservation failure. An already coordinated provisioned schedule can move to
 the protected launcher; an app-only install creates no tool schedule. An old
 uncoordinated baseline is preserved, reports `needs_repair`, and blocks automatic
 installation. It is not authenticated merely by hardening permissions.
@@ -95,7 +100,7 @@ After owner UAT/disposition names the exact authenticated target, obtain explici
 stable/latest authorization for that candidate. Recheck source, successful CI,
 release/tag and unchanged five-asset IDs/sizes/digests; promote the **same** existing
 prerelease by metadata/notes only. v1.2.14 acceptance and signing review do not
-authorize v1.2.15 promotion. Verify live `/releases/latest`, both evergreen public
+authorize v1.2.16 promotion. Verify live `/releases/latest`, both evergreen public
 installer links and `tests/stable_downloads.py` against README and live latest
 JSON. Preserve historical recovery links and append the immutable promotion
 receipt to PR/release/acceptance records.
@@ -123,7 +128,8 @@ no retained signed recovery receipt. Signing/key recovery follows
 [the signing guide](SELF-UPDATE-SIGNING.md).
 
 Release completion and milestone completion differ: close #59 only after its
-narrow evidence/owner disposition is satisfied; close #43 and milestone 2 only
+narrow evidence/owner disposition is satisfied (#59 closed October 24 with the
+explicit accepted additional-PC/private-ACL evidence limit); close #43 and milestone 2 only
 after required representative pilot work or an explicit owner-approved scope
 revision with remaining work tracked. #99 closes only on its own real transition
 evidence. Verify actual issue states rather than cached milestone counters.
