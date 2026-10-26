@@ -1,5 +1,17 @@
 # Self-update acceptance record (#43)
 
+**Current checkpoint — October 25, 2026:** owner-accepted **v1.2.17** is
+stable/latest, release423797225/source7de6d29. Full/native/exact-main/signing,
+independent authentication, both focused desktop passes, explicit stable approval,
+immutable metadata promotion and public downloads are complete.
+[Release/promotion receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155); [current evidence ledger](RELEASE-EXECUTION-1.2.17.md).
+#102 and #59 are closed. #99 awaits retained14 live discovery. #43/milestone2
+remain open for the separately scoped real automatic pilot or explicit owner
+scope disposition. No device/fleet change is authorized by release visibility.
+
+Earlier dated checkpoints below are chronological history; their pending states
+are superseded only within the actual scope recorded in the current ledger.
+
 **October 24 follow-up:** v1.2.16 Windows UAT failed pause persistence; other
 focused Windows rows passed. Mint v1.2.16 is unreported. v1.2.17 corrects the
 native command permission omission; new checks/signing/authentication/UAT remain.

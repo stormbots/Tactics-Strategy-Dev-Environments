@@ -8,7 +8,7 @@ roles, not personal hostnames. Inventory information alone is not authorization.
 
 | Approval field | Proposed scope / value to fill before request |
 | --- | --- |
-| Target | Exact accepted v1.2.17 stable release/source/ID/five authenticated assets; pending publication/UAT |
+| Target | Accepted stable v1.2.17, release423797225/source7de6d29cfb0b8ba1677a20bc94a746ecfa4e838d; five immutable assets in [promotion receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155) |
 | Device allowlist | Existing retained Windows 11 v1.2.14 role and Mint Cinnamon 22.x v1.2.14 role proposed; owner names actual devices privately |
 | Evidence type | Physical or already approved desktop VM; booted OS/desktop/version to confirm |
 | Maintenance window | Owner-selected local start/end/timezone; allow all package work to finish even if over window |

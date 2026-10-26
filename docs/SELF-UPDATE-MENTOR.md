@@ -2,9 +2,11 @@
 
 SDE application installation and development-tool maintenance are separate phases.
 Starting with **v1.2.16**, every application installation or upgrade enables SDE
-updates, including previously paused installations. Students can pause/resume
-using **Schedule → SDE application updates → Automatic SDE updates**, without
-an administrator prompt. Pausing or resuming
+updates, including previously paused installations. In accepted stable **v1.2.17**,
+students can pause/resume using **Schedule → SDE application updates → Automatic
+SDE updates**, without an administrator prompt. v1.2.16 omitted the native save
+permission and failed persistence UAT; use accepted v1.2.17 or newer for this UI flow.
+Pausing or resuming
 changes only this workstation's app-installation policy; it does not disable the
 weekly task/timer, change its schedule, provision tools or clear an interrupted
 transaction. Installing/upgrading the application resets a pause to enabled;

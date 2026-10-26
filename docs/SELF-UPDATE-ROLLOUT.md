@@ -1,11 +1,15 @@
 # Candidate preparation, migration and rollout (#43)
 
 Current accepted downloads: [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
-October 24, 2026: stable is v1.2.14. v1.2.15 is an immutable authenticated
-prerelease with both desktop UAT passes recorded. The fresh
-v1.2.17 candidate fixes the student-toggle native permission omission after
-v1.2.16 Windows UAT failed persistence. Published v1.2.16 remains an immutable
-prerelease; other Windows focused rows passed, Mint v1.2.16 is unreported. Historical v1.2.2/v1.2.3
+October 25, 2026: **v1.2.17 is accepted stable/latest**, release423797225,
+source7de6d29. [Both desktop focused passes](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407488626) and [explicit promotion,
+unchanged asset and public-link receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155) complete the release gates.
+v1.2.15 remains an immutable prerelease with both earlier desktop passes.
+v1.2.16 stays an immutable prerelease with its Windows persistence failure;
+other Windows rows passed and Mint16 was unreported. v1.2.17 fixes that failure.
+#102 is closed. #43/milestone2 still require the separately scoped automatic
+pilot or explicit owner disposition; #99 live retained14 discovery remains open.
+Historical v1.2.2/v1.2.3
 pair procedures are retained in [the original source](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/b0f6a43e85b8ae5bbf72b87b4ee5f2d92bfd40ba/docs/SELF-UPDATE-ROLLOUT.md);
 they are not current dispatch or laptop installation instructions.
 
@@ -19,7 +23,11 @@ PC or create insecure legacy ACLs for a test. Additional VMs/media/host access
 need their own authorization. App installation, signing, stable visibility and
 device resume are separate scopes.
 
-## Prepare the immutable candidate
+## Historical v1.2.17 preparation recipe
+
+This recipe produced the published17 release; **do not redispatch it for the
+already-used tag**. Any changed published bytes require a fresh unused version,
+coherently reviewed recipe, checks, human signing and independent acceptance.
 
 1. Recheck official main, unused tag/release v1.2.17, open PRs and live signing
    environment. Review/merge the next-version recipe; do not dispatch old main's

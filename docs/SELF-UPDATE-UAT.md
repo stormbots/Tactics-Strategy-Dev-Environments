@@ -1,11 +1,17 @@
 # Deployment readiness owner UAT — v1.2.17
 
-**Preparation only: v1.2.17 is not yet published or authenticated.** Use this
-sheet only after the PR supplies the exact source, successful full/native runs,
-five published asset identities/hashes and independent pinned verification.
-Expected candidate: [exact v1.2.17 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.17).
-Current accepted downloads use [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
-Candidate publication keeps `prerelease=true`, `draft=false`, `latest=false`.
+**Completed October 25, 2026:** exact v1.2.17 is independently authenticated,
+owner-accepted on both Windows11/Mint desktops and promoted stable/latest under
+separate explicit owner approval. [UAT acceptance](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407488626); [immutable promotion
+and public-download receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155). Release423797225 is source7de6d29.
+Accepted downloads: [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
+
+The procedure below records the completed candidate acceptance and remains a
+reference for authenticated installation. Do not repeat already accepted rows
+by default. Publication originally used `prerelease=true`, `latest=false`; promotion changed
+metadata only. No device pilot is authorized by this sheet. The next owner step
+is the retained14 [live discovery check](#after-independently-accepted-stable-promotion-99),
+then a separately authorized [pilot](SELF-UPDATE-PILOT.md).
 
 Owner performs desktop UAT on Windows 11 x64 and **booted Mint Cinnamon 22.x
 amd64**. Record physical hardware or approved desktop VM; Windows Server and Mint

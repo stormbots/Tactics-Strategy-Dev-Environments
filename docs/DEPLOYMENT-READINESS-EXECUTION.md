@@ -1,5 +1,17 @@
 # Deployment readiness execution record
 
+**Current checkpoint — October 25, 2026:** owner-accepted **v1.2.17** is
+stable/latest, release423797225/source7de6d29. Full/native/exact-main/signing,
+independent authentication, both focused desktop passes, explicit stable approval,
+immutable metadata promotion and public downloads are complete.
+[Release/promotion receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155); [current evidence ledger](RELEASE-EXECUTION-1.2.17.md).
+#102 and #59 are closed. #99 awaits retained14 live discovery. #43/milestone2
+remain open for the separately scoped real automatic pilot or explicit owner
+scope disposition. No device/fleet change is authorized by release visibility.
+
+Earlier dated checkpoints below are chronological history; their pending states
+are superseded only within the actual scope recorded in the current ledger.
+
 **October 24 update:** v1.2.15 owner desktop UAT passed on both selected platforms.
 #59 is closed with explicit owner acceptance of the historical affected-PC pass
 plus native fixtures and the unreported additional-PC/private-ACL evidence limit.
