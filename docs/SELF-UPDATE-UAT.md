@@ -1,11 +1,21 @@
 # Deployment readiness owner UAT — v1.2.17
 
-**Preparation only: v1.2.17 is not yet published or authenticated.** Use this
-sheet only after the PR supplies the exact source, successful full/native runs,
-five published asset identities/hashes and independent pinned verification.
-Expected candidate: [exact v1.2.17 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.17).
-Current accepted downloads use [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
-Candidate publication keeps `prerelease=true`, `draft=false`, `latest=false`.
+**Completed October 25, 2026:** exact v1.2.17 is independently authenticated,
+owner-accepted on both Windows11/Mint desktops and promoted stable/latest under
+separate explicit owner approval. [UAT acceptance](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407488626); [immutable promotion
+and public-download receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155). Release423797225 is source7de6d29.
+Accepted downloads: [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
+
+The procedure below records the completed candidate acceptance and remains a
+reference for authenticated installation. Do not repeat already accepted rows
+by default. Publication originally used `prerelease=true`, `latest=false`; promotion changed
+metadata only. [Both additional retained14 discovery walkthroughs passed](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158),
+followed by successful owner manual UI-offered upgrades17. All four tested
+desktops now run17. The earlier candidate UAT attribution is unchanged. A real
+automatic-install [pilot](SELF-UPDATE-PILOT.md) is deferred to [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106)
+on the next independently accepted stable transition under the owner's [explicit
+native/manual evidence closeout disposition](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390). No real automatic
+pilot pass or device-operation authorization is inferred.
 
 Owner performs desktop UAT on Windows 11 x64 and **booted Mint Cinnamon 22.x
 amd64**. Record physical hardware or approved desktop VM; Windows Server and Mint

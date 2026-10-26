@@ -2,17 +2,21 @@
 
 SDE application installation and development-tool maintenance are separate phases.
 Starting with **v1.2.16**, every application installation or upgrade enables SDE
-updates, including previously paused installations. Students can pause/resume
-using **Schedule → SDE application updates → Automatic SDE updates**, without
-an administrator prompt. Pausing or resuming
+updates, including previously paused installations. In accepted stable **v1.2.17**,
+students can pause/resume using **Schedule → SDE application updates → Automatic
+SDE updates**, without an administrator prompt. v1.2.16 omitted the native save
+permission and failed persistence UAT; use accepted v1.2.17 or newer for this UI flow.
+Pausing or resuming
 changes only this workstation's app-installation policy; it does not disable the
 weekly task/timer, change its schedule, provision tools or clear an interrupted
 transaction. Installing/upgrading the application resets a pause to enabled;
 inspect and reapply an approved pause after installation when required by a
-controlled pilot or recovery procedure. Keep unapproved rollout devices paused through the remaining #43
-acceptance/pilot gates. Follow the [current release ledger](DEPLOYMENT-READINESS-EXECUTION.md)
-and [device-specific pilot packet](SELF-UPDATE-PILOT.md); an existing resumed
-policy must be inspected, not assumed paused.
+controlled pilot or recovery procedure. The owner accepted native/manual evidence
+for #43/milestone2 closeout; #106 carries the deferred real automatic pilot.
+That future pilot requires its own exact device/action/policy/window decision;
+closeout grants no policy change or fleet authority. Follow the [current release
+ledger](DEPLOYMENT-READINESS-EXECUTION.md) and [pilot template](SELF-UPDATE-PILOT.md);
+an existing resumed policy must be inspected, not assumed paused.
 Candidate releases remain GitHub prereleases until the owner explicitly approves
 promotion. A valid signature by itself does not approve a candidate for rollout.
 

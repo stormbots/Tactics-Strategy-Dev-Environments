@@ -1,5 +1,22 @@
 # Deployment readiness execution record
 
+**Current checkpoint — October 25, 2026:** owner-accepted **v1.2.17** is
+stable/latest, release423797225/source7de6d29. Full/native/exact-main/signing,
+independent authentication, both focused desktop passes, explicit stable approval,
+immutable metadata promotion and public downloads are complete.
+[Release/promotion receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155); [current evidence ledger](RELEASE-EXECUTION-1.2.17.md).
+#102, #59 and #99 are closed. [Additional Windows/Mint live discovery](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158)
+passed on14, followed by successful manual UI-offered upgrades to17; the earlier
+two candidate UAT desktops are additional and their attribution is unchanged.
+All four now run17. The owner [explicitly accepted native/manual evidence for
+#43/milestone2 closeout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390), with the real automatic pilot carried
+forward in [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106) for the next independently accepted stable
+transition. This is an accepted evidence limit, not an automatic-install pass or
+device/fleet authorization.
+
+Earlier dated checkpoints below are chronological history; their pending states
+are superseded only within the actual scope recorded in the current ledger.
+
 **October 24 update:** v1.2.15 owner desktop UAT passed on both selected platforms.
 #59 is closed with explicit owner acceptance of the historical affected-PC pass
 plus native fixtures and the unreported additional-PC/private-ACL evidence limit.

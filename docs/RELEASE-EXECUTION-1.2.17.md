@@ -1,5 +1,45 @@
 # v1.2.17 execution ledger — October 25, 2026
 
+## Completed stable release — October 25, 2026
+
+**v1.2.17 is owner-accepted stable/latest**, release **423797225**, source
+`7de6d29cfb0b8ba1677a20bc94a746ecfa4e838d`.
+[Both-platform focused UAT](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407488626) and [promotion/public-link receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155)
+record the exact accepted release. The latter contains all five immutable asset
+IDs, lengths and SHA-256 values. This documentation follow-up does not change the
+released source, tag, signature or packages.
+
+| Gate | Completed evidence / remaining scope |
+| --- | --- |
+| Reviewed correction | PR104 final head e651899; merged source7de6d29; missing generated/main-window permission fixed without changing the policy writer |
+| Final PR verification | Full40252430909, pair40252430879 and native contract40252430883 all passed |
+| Exact-main verification | Full40254829440 passed on released7de6d29; actual Windows SYSTEM and Mint root fixtures, IPC grant/denial, trust, 114 frontend and84 browser checks audited |
+| Candidate / signing | Protected40256656651 passed; actual human reviewer rdpollard approved17 signing; Codex submitted no approval |
+| Independent authentication | Five published assets, pinned signature and both payloads, input match, PE/DEB17 identity, copied-file tamper/wrong-tag rejection all passed |
+| Owner desktop UAT | Windows11 and Mint22.3 x86_64: all focused17 rows Pass, including no-elevation off/on persistence across Refresh/reopening, identity, preservation, independent history and keyboard focus |
+| Stable authorization | Owner explicitly approved v1.2.17 stable/latest; only existing release prerelease/latest metadata changed |
+| Public verification | Exact17 latest API/page and both evergreen installer HTTP200 redirects; unchanged five assets/tag/source; stable_downloads.py passed |
+| #102 | Closed as delivered in stable17; every app install/upgrade enables updates, and the student Inline preference saves without triggering maintenance |
+| #59 | Closed under explicit historical affected-PC/native evidence limit; additional affected-PC/private-ACL inventories remain unreported and accepted |
+| #99 | Closed: [both retained14 Windows/Mint live walkthroughs passed](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158), followed by successful manual UI-offered upgrades17; subsequent-version dismissal remains fixture-only until a later stable exists |
+| #43 / milestone2 | [Owner explicitly accepts native/manual evidence for closeout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390); real automatic pilot deferred to [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106) on the next independently accepted stable transition; no real-pilot pass claimed |
+
+The formerly retained14 discovery roles are additional to the two accepted17
+UAT roles; all four now run17. The owner performed the two successful manual
+upgrades after live discovery. No automatic-pilot installation/recovery result is
+inferred. The owner explicitly chose native/manual evidence for this milestone's
+closeout and tracked the real pilot in #106 for the next independently accepted
+stable transition. Do not downgrade a current device or manufacture a release
+for the test. No policy resume, task/service trigger, device install or fleet
+action was performed by Codex. School-network/student-account and reboot/natural-weekly claims remain
+limited to the evidence actually reported; immediate triggers are not natural
+weekly firing. Earlier15 desktop and five-zoom evidence is reused within scope;
+the16 failure and unreported Mint16 result are not relabeled as passes. #101 beta
+behavior and #72/#73 remain outside scope. Windows10 support was not implemented.
+
+Everything below is the historical engineering checkpoint before publication;
+pending statements describe that checkpoint and are superseded only as above.
+
 The owner reported a genuine v1.2.16 Windows 11 UAT failure: switching Automatic
 SDE updates off reports an unavailable setting; Refresh/reopen shows Enabled.
 App and protected active engine are 1.2.16. Separate baseline/default identity,

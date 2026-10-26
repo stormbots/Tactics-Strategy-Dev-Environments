@@ -1,6 +1,21 @@
-# Controlled self-update pilot packet — proposed v1.2.14 → v1.2.17
+# Controlled self-update pilot template — historical v1.2.14 → v1.2.17 proposal
 
-**Not authorized and not run.** Stable promotion is a repository action; it does
+**Not authorized and not run.** The owner [accepted native/manual evidence for
+#43/milestone2 closeout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390) and deferred the real automatic pilot to
+[#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106) for the next independently accepted stable transition.
+The historical14→17 proposal below preserves the reviewed sequence; prepare a
+fresh exact target/source/assets/actual starting-version packet before requesting
+future device/action/policy/window approval. Do not reuse17 as a same-version
+installation test on current17 machines.
+
+The proposed retained14 starting roles both
+[passed live discovery and manually upgraded17](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158); all four known tested
+desktops now run17. No actual14 starting role remains in that inventory. The
+owner selected the next accepted stable transition for the real pilot in #106.
+Do not downgrade or create a release solely to manufacture evidence. A same-version
+check is not an install pass.
+
+Stable promotion is a repository action; it does
 not authorize any device change. No fleet expansion is included. Complete the
 private allowlist and obtain owner approval of the concrete packet below before
 any resume, schedule change or maintenance trigger. Public evidence uses device
@@ -8,8 +23,8 @@ roles, not personal hostnames. Inventory information alone is not authorization.
 
 | Approval field | Proposed scope / value to fill before request |
 | --- | --- |
-| Target | Exact accepted v1.2.17 stable release/source/ID/five authenticated assets; pending publication/UAT |
-| Device allowlist | Existing retained Windows 11 v1.2.14 role and Mint Cinnamon 22.x v1.2.14 role proposed; owner names actual devices privately |
+| Target | Accepted stable v1.2.17, release423797225/source7de6d29cfb0b8ba1677a20bc94a746ecfa4e838d; five immutable assets in [promotion receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155) |
+| Device allowlist | Historical proposal only: former14 Windows/Mint roles now17 after manual upgrades. For #106, select representative roles with actual older versions relative to the next accepted stable target; private aliases remain local |
 | Evidence type | Physical or already approved desktop VM; booted OS/desktop/version to confirm |
 | Maintenance window | Owner-selected local start/end/timezone; allow all package work to finish even if over window |
 | Starting baseline/route | Compatible protected maintenance baseline, expected applied 1.2.1; trusted launcher/SYSTEM or root; actual enabled schedule/custom timing recorded |
