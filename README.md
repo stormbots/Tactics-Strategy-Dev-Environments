@@ -3,7 +3,7 @@
 Graphical setup and workstation management for the **Bureau of Tactics & Strategy**.
 Use the [current stable release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest) for Windows 11 x64 and Linux Mint Cinnamon 22.x amd64. Its release notes describe the accepted changes and supported installers.
 
-The SDE application and the applied development-tool baseline have separate versions. Application upgrades preserve the existing baseline, student settings and maintenance schedule. Starting with v1.2.16, every application installation or upgrade enables automatic SDE updates, including previously paused installations. Students can pause or resume them under **Schedule → SDE application updates → Automatic SDE updates**. Saving this setting does not start maintenance or an installer. Fleet rollout remains a separate owner decision.
+The SDE application and the applied development-tool baseline have separate versions. Application upgrades preserve the existing baseline, student settings and maintenance schedule. Starting with v1.2.16, every application installation or upgrade enables automatic SDE updates, including previously paused installations. The v1.2.17 candidate corrects a v1.2.16 native permission omission affecting the student toggle. Students can pause or resume them under **Schedule → SDE application updates → Automatic SDE updates**. Saving this setting does not start maintenance or an installer. Fleet rollout remains a separate owner decision.
 
 ## Install with the app
 

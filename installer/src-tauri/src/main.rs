@@ -447,6 +447,45 @@ fn main() {
 mod tests {
     use super::*;
     #[test]
+    fn pause_toggle_ipc_is_granted_only_to_the_main_window() {
+        // Exercise Tauri's actual generated permissions and production handler.
+        // Missing/invalid boolean arguments stop before the fixed policy writer;
+        // this test never reads or changes the workstation's pause preference.
+        let app = tauri::test::mock_builder()
+            .invoke_handler(tauri::generate_handler![set_self_update_paused])
+            .build(tauri::generate_context!())
+            .expect("Build the application with its real capability context");
+        for label in ["main", "untrusted-test-window"] {
+            let webview = tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+                .build()
+                .unwrap();
+            for body in [serde_json::json!({}), serde_json::json!({"paused": "true"})] {
+                let response = tauri::test::get_ipc_response(
+                    &webview,
+                    tauri::webview::InvokeRequest {
+                        cmd: "set_self_update_paused".into(),
+                        callback: tauri::ipc::CallbackFn(0),
+                        error: tauri::ipc::CallbackFn(1),
+                        url: "http://tauri.localhost".parse().unwrap(),
+                        body: tauri::ipc::InvokeBody::Json(body),
+                        headers: Default::default(),
+                        invoke_key: tauri::test::INVOKE_KEY.into(),
+                    },
+                )
+                .expect_err("Invalid arguments or an untrusted window must be rejected");
+                let message = response.to_string();
+                if label == "main" {
+                    assert!(message.contains("paused"), "{message}");
+                    assert!(!message.contains("not allowed"), "{message}");
+                    assert!(message.contains("invalid args"), "{message}");
+                } else {
+                    assert!(message.contains("not allowed"), "{message}");
+                }
+            }
+        }
+        println!("SDE_PAUSE_TOGGLE_IPC_PERMISSIONS_OK: main reaches strict argument decoding; other window denied; no policy writes");
+    }
+    #[test]
     fn platform_detection() {
         let mint="ID=linuxmint\nVERSION_ID=\"22.2\"\nPRETTY_NAME=\"Linux Mint 22.2\"\nUBUNTU_CODENAME=noble\n";
         assert!(linux_platform(mint, "x86_64").supported);

@@ -1,9 +1,9 @@
-# Deployment readiness owner UAT — v1.2.16
+# Deployment readiness owner UAT — v1.2.17
 
-**Preparation only: v1.2.16 is not yet published or authenticated.** Use this
+**Preparation only: v1.2.17 is not yet published or authenticated.** Use this
 sheet only after the PR supplies the exact source, successful full/native runs,
 five published asset identities/hashes and independent pinned verification.
-Expected candidate: [exact v1.2.16 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.16).
+Expected candidate: [exact v1.2.17 release](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/tag/v1.2.17).
 Current accepted downloads use [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
 Candidate publication keeps `prerelease=true`, `draft=false`, `latest=false`.
 
@@ -11,10 +11,12 @@ Owner performs desktop UAT on Windows 11 x64 and **booted Mint Cinnamon 22.x
 amd64**. Record physical hardware or approved desktop VM; Windows Server and Mint
 userland CI are separate evidence. Keep the existing Windows/Mint v1.2.14 daily
 installations unchanged for [#99](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99).
-The selected Windows test PC and replacement student-fleet MacBook Air both
+The actual Windows 11 UAT laptop and replacement Mint laptop both
 passed v1.2.15 UAT; reuse those results within their recorded scope. Focus
-v1.2.16 owner UAT on the changed defaults and student toggle. The MacBook Air
-reports Mint 22.3 x86_64. Keep private aliases out of public evidence.
+v1.2.17 owner UAT on the changed defaults and student toggle. The MacBook Air
+reports Mint 22.3 x86_64. v1.2.16 failed Windows toggle persistence; its other
+focused rows passed. Repeat the fixed toggle/refresh/restart path on v1.2.17;
+Mint v1.2.16 acceptance was not reported. Keep private aliases out of public evidence.
 A fresh install does not prove upgrade preservation. Never downgrade or recreate
 unsafe ACLs to manufacture a starting state. No additional VM/media/host access
 is authorized by this checklist.
@@ -59,7 +61,7 @@ Windows PowerShell in the candidate folder, using the trusted installed path
 ```powershell
 $worker = 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe'
 if (-not (Test-Path -LiteralPath $worker -PathType Leaf)) { throw 'Obtain the reviewed verifier handoff before installation.' }
-& $worker verify (Get-Location).Path v1.2.16
+& $worker verify (Get-Location).Path v1.2.17
 if ($LASTEXITCODE -ne 0) { throw 'Stop: candidate authentication failed.' }
 ```
 
@@ -67,7 +69,7 @@ Mint, in the candidate folder:
 
 ```sh
 worker='/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust'
-"$worker" verify "$PWD" v1.2.16 && sha256sum --check SHA256SUMS.txt
+"$worker" verify "$PWD" v1.2.17 && sha256sum --check SHA256SUMS.txt
 ```
 
 Stop on any failure. Codex can prepare harmless metadata/installer tamper cases
@@ -99,7 +101,7 @@ sudo env DEBIAN_FRONTEND=noninteractive apt-get -y --no-remove --no-install-reco
 dpkg-query -W '-f=${Status}\n${Version}\n${Architecture}\n' skyview-dev-setup
 ```
 
-Expect `install ok installed`, `1.2.16`, `amd64`. Open from the ordinary Cinnamon
+Expect `install ok installed`, `1.2.17`, `amd64`. Open from the ordinary Cinnamon
 menu, never as root. Never delete locks, kill installers or force reboot.
 
 ## Legacy maintenance prerequisite
@@ -120,7 +122,7 @@ An old pass supports confidence, not a new-candidate desktop pass.
 
 | Area | Required observation / boundary |
 | --- | --- |
-| Distribution/identity | Complete authenticated candidate; app/active engine 1.2.16; baseline recorded separately, expected existing 1.2.1 if applied |
+| Distribution/identity | Complete authenticated candidate; app/active engine 1.2.17; baseline recorded separately, expected existing 1.2.1 if applied |
 | Recognized legacy migration | Reuse affected Windows 11 v1.2.6 no-manual-correction pass plus current native fixtures; dispose unreported representative/private-ACL criteria explicitly; no unsafe real-PC fixtures |
 | Unsupported layouts/failures | Current disposable native negative evidence only; no owner-PC package failure injection |
 | Preservation | Compare saved files/preferences, baseline bytes/version, relevant log bytes/private ACLs and existing schedule/enabled/custom timing; policy intentionally resets to enabled under #102; distinguish fresh install from upgrade |
@@ -185,7 +187,7 @@ allowlist/action/window approval. #43/milestone 2 remain open until the required
 representative rollout completes or the owner explicitly revises its scope and
 tracks the remaining work.
 
-## Focused v1.2.16 policy acceptance
+## Focused v1.2.17 policy acceptance
 
 Confirm enabled after installation/upgrade from a paused state; native fixtures
 also cover fresh creation and enabled upgrades. As an ordinary student, switch

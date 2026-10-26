@@ -2,8 +2,10 @@
 
 Current accepted downloads: [official stable/latest](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/releases/latest).
 October 24, 2026: stable is v1.2.14. v1.2.15 is an immutable authenticated
-prerelease with both desktop UAT passes recorded. The owner selected a fresh
-v1.2.16 candidate for #102 and the student-accessible Inline setting toggle. Historical v1.2.2/v1.2.3
+prerelease with both desktop UAT passes recorded. The fresh
+v1.2.17 candidate fixes the student-toggle native permission omission after
+v1.2.16 Windows UAT failed persistence. Published v1.2.16 remains an immutable
+prerelease; other Windows focused rows passed, Mint v1.2.16 is unreported. Historical v1.2.2/v1.2.3
 pair procedures are retained in [the original source](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/b0f6a43e85b8ae5bbf72b87b4ee5f2d92bfd40ba/docs/SELF-UPDATE-ROLLOUT.md);
 they are not current dispatch or laptop installation instructions.
 
@@ -19,7 +21,7 @@ device resume are separate scopes.
 
 ## Prepare the immutable candidate
 
-1. Recheck official main, unused tag/release v1.2.16, open PRs and live signing
+1. Recheck official main, unused tag/release v1.2.17, open PRs and live signing
    environment. Review/merge the next-version recipe; do not dispatch old main's
    `update_discovery` or default pair. Historical options have been removed from
    the current recipe to avoid selecting already published versions.
@@ -32,10 +34,10 @@ device resume are separate scopes.
    `deployment_readiness=true`. Its source guard requires exact main equality,
    successful exact-main push CI and an unused target before native builds and
    human signing review. A false/default input fails closed.
-4. Disposable application identities are **1.2.15 and 1.2.16**; source app identity
+4. Disposable application identities are **1.2.16 and 1.2.17**; source app identity
    and managed-tool baseline remain 1.2.1. Lock dependencies are unchanged. The
-   rebuilt 1.2.15 is an **unpublished same-source fixture**, not the exact published
-   v1.2.15 bytes. The pair tests real install/upgrade, enabled defaults from paused/enabled policies, saved files,
+   rebuilt 1.2.16 is an **unpublished same-source fixture**, not the exact published
+   v1.2.16 bytes. The pair tests real install/upgrade, enabled defaults from paused/enabled policies, saved files,
    no app-only provisioning/schedule and preserved incompatible legacy sentinel
    with `needs_repair`. Full native CI separately covers the recognized Logs
    layout, custom disabled schedules, standard-user denial and failure/recovery.
@@ -46,7 +48,7 @@ device resume are separate scopes.
    approve on the owner's behalf. October 12 key-backup confirmation remains
    applicable unless a key/configuration change exposes a genuine recovery gap.
 6. After human signing approval the protected job rechecks exact main/CI, package
-   identities, creates/signs/verifies the manifest, and publishes **only v1.2.16**
+   identities, creates/signs/verifies the manifest, and publishes **only v1.2.17**
    as nondraft prerelease with `latest=false` and exactly five canonical assets.
    The ordinary release workflow excludes this candidate tag to avoid a duplicate
    publication from the unchanged source app identity. Never overwrite assets,
@@ -100,7 +102,7 @@ After owner UAT/disposition names the exact authenticated target, obtain explici
 stable/latest authorization for that candidate. Recheck source, successful CI,
 release/tag and unchanged five-asset IDs/sizes/digests; promote the **same** existing
 prerelease by metadata/notes only. v1.2.14 acceptance and signing review do not
-authorize v1.2.16 promotion. Verify live `/releases/latest`, both evergreen public
+authorize v1.2.17 promotion. Verify live `/releases/latest`, both evergreen public
 installer links and `tests/stable_downloads.py` against README and live latest
 JSON. Preserve historical recovery links and append the immutable promotion
 receipt to PR/release/acceptance records.

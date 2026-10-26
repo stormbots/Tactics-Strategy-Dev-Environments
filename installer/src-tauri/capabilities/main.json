@@ -11,6 +11,7 @@
     "allow-inspect-system",
     "allow-inspect-schedule",
     "allow-inspect-self-update",
+    "allow-set-self-update-paused",
     "allow-run-operation",
     "allow-open-destination",
     "allow-check-application",

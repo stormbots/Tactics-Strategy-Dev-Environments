@@ -1,6 +1,11 @@
 # Self-update acceptance record (#43)
 
-**October 24 update:** v1.2.15 owner desktop UAT passed on both selected platforms.
+**October 24 follow-up:** v1.2.16 Windows UAT failed pause persistence; other
+focused Windows rows passed. Mint v1.2.16 is unreported. v1.2.17 corrects the
+native command permission omission; new checks/signing/authentication/UAT remain.
+See [the current execution ledger](RELEASE-EXECUTION-1.2.17.md).
+
+**Earlier October 24 update:** v1.2.15 owner desktop UAT passed on both selected platforms.
 #59 is closed with explicit owner acceptance of the historical affected-PC pass
 plus native fixtures and the unreported additional-PC/private-ACL evidence limit.
 The owner selected v1.2.16 for #102 and the student-accessible Inline toggle.

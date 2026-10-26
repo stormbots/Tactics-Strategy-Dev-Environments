@@ -39,6 +39,7 @@ fn main() {
             "inspect_system",
             "inspect_schedule",
             "inspect_self_update",
+            "set_self_update_paused",
             "run_operation",
             "open_destination",
             "check_application",
