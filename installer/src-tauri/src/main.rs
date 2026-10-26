@@ -1,10 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #[cfg(windows)]
 mod desktop_icon;
+mod journal;
 mod preflight;
 mod process;
 mod protocol;
 mod schedule;
+mod support;
 mod updates;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -34,16 +36,16 @@ impl Drop for Guard {
         self.0 .0.store(false, Ordering::SeqCst);
     }
 }
-#[derive(Clone, Copy, Deserialize, Debug)]
+#[derive(Clone, Copy, Deserialize, Serialize, Debug)]
 #[serde(rename_all = "lowercase")]
-enum Operation {
+pub(crate) enum Operation {
     Install,
     Repair,
     Validate,
     Update,
 }
 impl Operation {
-    fn name(self) -> &'static str {
+    pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Install => "install",
             Self::Repair => "repair",
@@ -146,6 +148,7 @@ fn run(
     op: Operation,
     run_id: String,
     check_updates: bool,
+    acknowledged_uncertainty: bool,
 ) -> Result<Report, String> {
     if uuid::Uuid::parse_str(&run_id).is_err() {
         return Err("Invalid operation identifier.".into());
@@ -163,6 +166,11 @@ fn run(
         .write(true)
         .open(&log)
         .map_err(|e| e.to_string())?;
+    let mut journal = if matches!(op, Operation::Validate) {
+        None
+    } else {
+        Some(journal::Active::begin(&app, &run_id, op, &log)?)
+    };
     let mut lines: Vec<String> = Vec::new();
     let mut emit = |line: String| {
         let line = protocol::redact(&line);
@@ -185,12 +193,27 @@ fn run(
         lines.push(line);
     };
     let result = (|| -> Result<i32, String> {
-        if matches!(op, Operation::Update) && !preflight::before_update(&root, &mut emit) {
+        if matches!(op, Operation::Install | Operation::Update)
+            && !preflight::before_operation(
+                &root,
+                op,
+                acknowledged_uncertainty,
+                &mut emit,
+            )
+        {
             return Ok(75);
         }
         if !matches!(op, Operation::Validate) {
+            if let Some(record) = journal.as_mut() {
+                record.stage(journal::Stage::System)?;
+            }
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());
-            let code = process::elevated(op.name(), &run_id, &mut emit)?;
+            let code = process::elevated(
+                op.name(),
+                &run_id,
+                acknowledged_uncertainty,
+                &mut emit,
+            )?;
             if code != 0 {
                 if code == 75 {
                     emit("SKYVIEW_EVENT|warning|deferred|Another SDE operation is running. Please retry when it finishes.".into());
@@ -208,11 +231,17 @@ fn run(
             let user = process::script(&root, "chocolatey/tools/Configure-SkyviewUser.ps1");
             #[cfg(not(windows))]
             let user = process::script(&root, "Configure-SkyviewUser.sh");
+            if let Some(record) = journal.as_mut() {
+                record.stage(journal::Stage::Profile)?;
+            }
             let code = process::stream(user, &mut emit)?;
             if code != 0 {
                 emit(format!("SKYVIEW_EVENT|error|profile|Your editor or workspace could not be configured (exit {code}). Review details and retry."));
                 return Ok(code);
             }
+        }
+        if let Some(record) = journal.as_mut() {
+            record.stage(journal::Stage::Validation)?;
         }
         emit("SKYVIEW_EVENT|progress|95|Validating your development environment".into());
         process::stream(validation(&root, check_updates), &mut emit)
@@ -238,6 +267,14 @@ fn run(
         );
         lines.push(line);
     }
+    if let Some(record) = journal {
+        if !matches!(
+            sde_coordination::status(),
+            sde_coordination::Status::Interrupted
+        ) {
+            record.complete()?;
+        }
+    }
     Ok(Report {
         code,
         success,
@@ -245,6 +282,28 @@ fn run(
         log_path: log.display().to_string(),
         platform,
     })
+}
+#[tauri::command]
+fn inspect_operation_incident(app: tauri::AppHandle) -> Result<journal::Observation, String> {
+    journal::inspect(&app)
+}
+
+#[tauri::command]
+fn acknowledge_operation_incident(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    if uuid::Uuid::parse_str(&id).is_err() {
+        return Err("Invalid operation identifier.".into());
+    }
+    journal::acknowledge(&app, &id)
+}
+
+#[tauri::command]
+fn support_context(app: tauri::AppHandle, include_logs: bool) -> Result<support::Context, String> {
+    support::context(&app, include_logs)
+}
+
+#[tauri::command]
+fn save_support_report(app: tauri::AppHandle, html: String) -> Result<Option<String>, String> {
+    support::save(&app, &html)
 }
 #[tauri::command]
 async fn inspect_system(
@@ -259,6 +318,7 @@ async fn inspect_system(
             Operation::Validate,
             uuid::Uuid::new_v4().to_string(),
             false,
+            false,
         )
     })
     .await
@@ -271,11 +331,18 @@ async fn run_operation(
     operation: Operation,
     run_id: String,
     check_updates: bool,
+    acknowledged_uncertainty: bool,
 ) -> Result<Report, String> {
     let guard = state.enter()?;
     tauri::async_runtime::spawn_blocking(move || {
         let _guard = guard;
-        run(app, operation, run_id, check_updates)
+        run(
+            app,
+            operation,
+            run_id,
+            check_updates,
+            acknowledged_uncertainty,
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -377,8 +444,16 @@ fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("--privileged") {
-        let code = if args.len() == 4 {
-            process::helper(&args[2], &args[3]).unwrap_or_else(|e| {
+        let acknowledgement = args.get(4).map(String::as_str);
+        let code = if args.len() == 5
+            && matches!(acknowledgement, Some("clean" | "acknowledged"))
+        {
+            process::helper(
+                &args[2],
+                &args[3],
+                acknowledgement == Some("acknowledged"),
+            )
+            .unwrap_or_else(|e| {
                 eprintln!("{e}");
                 1
             })
@@ -423,6 +498,10 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             inspect_system,
             inspect_schedule,
+            inspect_operation_incident,
+            acknowledge_operation_incident,
+            support_context,
+            save_support_report,
             inspect_self_update,
             set_self_update_paused,
             run_operation,
@@ -430,7 +509,7 @@ fn main() {
             updates::check_application,
             updates::check_tools,
             updates::open_release,
-            preflight::check_update_preflight
+            preflight::check_operation_preflight
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -501,7 +580,7 @@ mod tests {
     #[test]
     fn rejects_unapproved_operations() {
         assert!(serde_json::from_str::<Operation>("\"shell\"").is_err());
-        assert!(process::helper("bash", "invalid").is_err());
+        assert!(process::helper("bash", "invalid", false).is_err());
         assert!(serde_json::from_str::<Destination>("\"https://example.com\"").is_err());
         assert!(serde_json::from_str::<Destination>("\"C:\\\\Windows\"").is_err());
     }

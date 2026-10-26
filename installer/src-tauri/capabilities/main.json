@@ -10,6 +10,10 @@
     "core:event:allow-unlisten",
     "allow-inspect-system",
     "allow-inspect-schedule",
+    "allow-inspect-operation-incident",
+    "allow-acknowledge-operation-incident",
+    "allow-support-context",
+    "allow-save-support-report",
     "allow-inspect-self-update",
     "allow-set-self-update-paused",
     "allow-run-operation",
@@ -17,6 +21,6 @@
     "allow-check-application",
     "allow-check-tools",
     "allow-open-release",
-    "allow-check-update-preflight"
+    "allow-check-operation-preflight"
   ]
 }

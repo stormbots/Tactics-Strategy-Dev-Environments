@@ -8,7 +8,14 @@ import {
 } from "@testing-library/react";
 import axe from "axe-core";
 import App from "./App";
-import { inspect, operate, inspectSchedule, open } from "./bridge";
+import {
+  acknowledgeOperationIncident,
+  inspect,
+  inspectOperationIncident,
+  operate,
+  inspectSchedule,
+  open,
+} from "./bridge";
 vi.mock("./bridge", () => ({
   native: false,
   appVersion: "1.2.0",
@@ -45,7 +52,20 @@ vi.mock("./bridge", () => ({
     logFolder: "/logs",
     logsAvailable: false,
     note: "",
+    observedAt: "2026-10-26T12:00:00Z",
+    createdAt: null,
+    lastSuccess: null,
   })),
+  inspectOperationIncident: vi.fn(async () => ({
+    incident: null,
+    backendActive: false,
+  })),
+  acknowledgeOperationIncident: vi.fn(async () => {}),
+  supportContext: vi.fn(async (includeLogs: boolean) => ({
+    deviceName: "TEST-LAPTOP",
+    logs: includeLogs ? "test log" : null,
+  })),
+  saveSupportReport: vi.fn(async () => "/downloads/support.html"),
   inspect: vi.fn(async () => ({
     code: 0,
     success: true,
@@ -81,6 +101,93 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+
+it("directs an interrupted operation through fresh validation", async () => {
+  const id = "256f7aea-bf4d-4d0f-a73a-68c2b74e258b";
+  vi.mocked(inspectOperationIncident).mockResolvedValueOnce({
+    backendActive: false,
+    incident: {
+      schema: 1,
+      id,
+      operation: "update",
+      stage: "system",
+      startedAt: 1,
+      observedAt: 2,
+      logPath: "/logs/update.log",
+      acknowledged: false,
+    },
+  });
+  vi.mocked(operate).mockResolvedValueOnce({
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "validate.log",
+    platform: { label: "Windows 11 x64", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "A previous operation was interrupted",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
+  await screen.findByRole("heading", { name: "Ready!" });
+  expect(acknowledgeOperationIncident).toHaveBeenCalledWith(id);
+  expect(
+    screen.getByText(/does not mean that operation completed/),
+  ).toBeTruthy();
+});
+
+it("keeps readiness green/yellow when only maintenance needs attention", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 1,
+    success: false,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      "SKYVIEW_EVENT|validation|FAIL|Weekly maintenance timer is not enabled",
+      "SKYVIEW_EVENT|summary|1|Maintenance needs attention",
+    ],
+    log_path: "validation.log",
+    platform: { label: "Linux Mint 22.3", supported: true },
+  });
+  vi.mocked(inspectSchedule).mockResolvedValueOnce({
+    status: "missing",
+    active: false,
+    identifier: "test timer",
+    frequency: "Unavailable",
+    nextRun: null,
+    lastRun: null,
+    lastResult: "unavailable",
+    resultDetail: "Unavailable",
+    catchUp: null,
+    logFolder: "/logs",
+    logsAvailable: false,
+    note: "Missing",
+    observedAt: "2026-10-26T12:00:00Z",
+    createdAt: null,
+    lastSuccess: null,
+  });
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  const card = container.querySelector(".status-card");
+  expect(card?.classList.contains("tone-yellow")).toBe(true);
+  expect(card?.classList.contains("tone-red")).toBe(false);
+  expect(screen.getByText("Maintenance is not installed")).toBeTruthy();
+});
+async function startInstall() {
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  await screen.findByRole("heading", { name: "Before Install begins" });
+  const continueButton = await screen.findByRole("button", {
+    name: "Continue with Install",
+  });
+  await waitFor(() =>
+    expect((continueButton as HTMLButtonElement).disabled).toBe(false),
+  );
+  fireEvent.click(continueButton);
+}
 it("shows a prominent busy indicator while startup validation is pending", async () => {
   vi.mocked(inspect).mockReturnValueOnce(new Promise(() => {}));
   const { container } = render(<App />);
@@ -103,16 +210,14 @@ it("shows a prominent busy indicator while startup validation is pending", async
 });
 it("puts streaming installation output beside progress without expanding details", async () => {
   vi.mocked(operate).mockImplementationOnce(
-    async (_mode, _id, _updates, emit) => {
+    async (_mode, _id, _updates, _acknowledged, emit) => {
       emit("Installing Git…");
       return new Promise(() => {});
     },
   );
   render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
-  fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
-  );
+  await screen.findByRole("heading", { name: "Ready!" });
+  await startInstall();
   expect(
     screen.getByRole("region", { name: "Provisioning log" }).textContent,
   ).toBe("Installing Git…");
@@ -122,7 +227,7 @@ it("puts streaming installation output beside progress without expanding details
 });
 it("shows a keyboard-accessible UI with no detected axe violations", async () => {
   const { container } = render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
+  await screen.findByRole("heading", { name: "Ready!" });
   const results = await axe.run(container, {
     rules: { "color-contrast": { enabled: false } },
   });
@@ -133,17 +238,15 @@ it("shows a keyboard-accessible UI with no detected axe violations", async () =>
 });
 it("shows graphical validation and labels optional statuses", async () => {
   render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
+  await screen.findByRole("heading", { name: "Ready!" });
   fireEvent.click(screen.getByRole("button", { name: "Validation" }));
   expect(screen.getByRole("table")).toBeTruthy();
   expect(screen.getByText("PASS")).toBeTruthy();
 });
 it("offers a retry and focuses the result after a child failure", async () => {
   render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
-  fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
-  );
+  await screen.findByRole("heading", { name: "Ready!" });
+  await startInstall();
   await screen.findByText("A test package failed");
   expect(screen.getByRole("button", { name: "Retry install" })).toBeTruthy();
   await waitFor(() =>
@@ -166,7 +269,7 @@ it("shows updates separately from successful validation, including both versions
   });
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Ready",
+    name: "Ready!",
   });
   expect(screen.getByText("Update available · 2.43.0 → 2.44.0")).toBeTruthy();
   expect(screen.getByText(/need attention/).textContent).toContain("0");
@@ -177,7 +280,7 @@ it("shows updates separately from successful validation, including both versions
 });
 it("reads and refreshes Schedule, displays never-run history, and recovers from errors", async () => {
   render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
+  await screen.findByRole("heading", { name: "Ready!" });
   fireEvent.click(screen.getByRole("button", { name: "Schedule" }));
   await screen.findByText("Test timer");
   await screen.findByText("Paused", { exact: true });
@@ -198,7 +301,7 @@ it("reads and refreshes Schedule, displays never-run history, and recovers from 
 });
 it("shows the version and approved external links on About", async () => {
   const { container } = render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
+  await screen.findByRole("heading", { name: "Ready!" });
   fireEvent.click(screen.getByRole("button", { name: "About" }));
   expect(screen.getByText("1.2.0", { selector: "dd" })).toBeTruthy();
   expect(
@@ -256,6 +359,7 @@ it("reviews Repair without starting it and retains the explicit start action", a
       "repair",
       expect.any(String),
       false,
+      false,
       expect.any(Function),
     ),
   );
@@ -275,7 +379,7 @@ it("reviews Update for an available managed update without starting it", async (
   });
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Ready",
+    name: "Ready!",
   });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
   expect(screen.getByText("PASS")).toBeTruthy();
@@ -296,6 +400,7 @@ it("reviews Update for an available managed update without starting it", async (
     expect(vi.mocked(operate)).toHaveBeenCalledWith(
       "update",
       expect.any(String),
+      false,
       false,
       expect.any(Function),
     ),
@@ -332,16 +437,14 @@ it("retains unknown diagnostics as plain text and offers mentor guidance", async
 it("blocks guidance actions while an operation is streaming checks", async () => {
   vi.mocked(operate).mockClear();
   vi.mocked(operate).mockImplementationOnce(
-    async (_mode, _id, _updates, emit) => {
+    async (_mode, _id, _updates, _acknowledged, emit) => {
       emit("SKYVIEW_EVENT|validation|FAIL|Git: not installed");
       return new Promise(() => {});
     },
   );
   render(<App />);
-  await screen.findByRole("heading", { name: "Ready" });
-  fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
-  );
+  await screen.findByRole("heading", { name: "Ready!" });
+  await startInstall();
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
   const review = screen.getByRole("button", {
     name: /Review Repair for Git/,
@@ -383,7 +486,7 @@ it("never reports ready from partial validation without a successful summary", a
   });
   render(<App />);
   await screen.findByRole("heading", { name: "Validation incomplete" });
-  expect(screen.queryByRole("heading", { name: "Ready" })).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Ready!" })).toBeNull();
   expect(
     screen.getByText(
       /passing individual checks does not establish full readiness/,

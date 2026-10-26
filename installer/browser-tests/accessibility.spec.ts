@@ -20,6 +20,16 @@ async function audit(page: import("@playwright/test").Page) {
   });
   expect(violations).toEqual([]);
 }
+async function beginInstall(page: import("@playwright/test").Page) {
+  await page
+    .getByRole("button", { name: "Install Development Environment" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Before Install begins" }),
+  ).toBeVisible();
+  await audit(page);
+  await page.getByRole("button", { name: "Continue with Install" }).click();
+}
 test("desktop contrast, keyboard access, progress and completion", async ({
   page,
 }) => {
@@ -35,9 +45,7 @@ test("desktop contrast, keyboard access, progress and completion", async ({
   });
   await page.keyboard.press("Tab");
   await expect(page.getByText("Skip to main content")).toBeFocused();
-  await page
-    .getByRole("button", { name: "Install Development Environment" })
-    .click();
+  await beginInstall(page);
   await expect(page.getByRole("progressbar")).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Provisioning log" }),
@@ -82,9 +90,7 @@ test("mobile layout and labels", async ({ page }) => {
     path: "test-results/overview-mobile.png",
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "Install Development Environment" })
-    .click();
+  await beginInstall(page);
   await expect(
     page.getByRole("region", { name: "Provisioning log" }),
   ).toBeInViewport();
@@ -164,3 +170,38 @@ for (const width of [1140, 520]) {
     });
   });
 }
+test("support report shows exact content and keeps logs off by default", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1140, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Validation/ }).click();
+  await page.getByRole("button", { name: "Create support report" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Preview exactly what will be shared",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: /Include recent application logs/ }),
+  ).not.toBeChecked();
+  const preview = page.frameLocator(
+    'iframe[title="Exact support report preview"]',
+  );
+  await expect(
+    preview.getByRole("heading", { name: "Skyview SDE Support Report" }),
+  ).toBeVisible();
+  await expect(
+    preview.getByText("STUDENT-LAPTOP", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    preview.getByText("Logs were not included by the student."),
+  ).toBeVisible();
+  await audit(page);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});

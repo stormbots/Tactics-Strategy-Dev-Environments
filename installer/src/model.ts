@@ -28,6 +28,9 @@ export type Schedule = {
   logFolder: string;
   logsAvailable: boolean;
   note: string;
+  observedAt: string;
+  createdAt: string | null;
+  lastSuccess: string | null;
 };
 export const toolNames = [
   "Git",

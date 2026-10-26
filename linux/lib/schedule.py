@@ -91,9 +91,11 @@ def durable_result(record, service, timer):
     return record
 
 def inspect():
+    observed = datetime.datetime.now(datetime.timezone.utc).isoformat()
     r = dict(status="unavailable", active=False, identifier=TIMER, frequency="Unavailable",
              nextRun=None, lastRun=None, lastResult="unavailable", resultDetail="Unavailable",
-             catchUp=None, logFolder=LOG_FOLDER, logsAvailable=Path(LOG_FOLDER).is_dir(), note="")
+             catchUp=None, logFolder=LOG_FOLDER, logsAvailable=Path(LOG_FOLDER).is_dir(), note="",
+             observedAt=observed, createdAt=None, lastSuccess=None)
     try:
         timer = show(TIMER)
         if timer.get("LoadState") == "not-found":
@@ -140,6 +142,8 @@ def inspect():
             if result and exit_code is not None:
                 r.update(lastResult="deferred" if exit_code == "75" else "success" if result == "success" and exit_code == "0" else "failure",
                          resultDetail=f"Service result: {result}; exit status: {exit_code}")
+        if r["lastResult"] == "success":
+            r["lastSuccess"] = r["lastRun"]
     except (OSError, subprocess.TimeoutExpired) as error:
         r["note"] = str(error)
     return r

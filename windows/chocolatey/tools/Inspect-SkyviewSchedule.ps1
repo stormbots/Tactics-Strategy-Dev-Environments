@@ -26,6 +26,7 @@ function ConvertTo-SkyviewSchedule {
     if ($Task.Enabled -and $hasEnabledTrigger -and [datetime]$Task.NextRunTime -gt [datetime]'2000-01-01') { $next = ([datetimeoffset]([datetime]$Task.NextRunTime)).ToString('o') }
     $result = if ($Task.State -in @(2,4)) { 'running' } elseif (-not $last) { 'never' } elseif ($Task.LastTaskResult -eq 75) { 'deferred' } elseif ($Task.LastTaskResult -eq 0) { 'success' } else { 'failure' }
     $code = [int64]$Task.LastTaskResult -band 0xffffffffL
+    $observed = [datetimeoffset]::UtcNow.ToString('o')
     [pscustomobject]@{
         status = $(if ($Task.Enabled) { 'enabled' } else { 'disabled' })
         active = [bool]($Task.State -in @(2,3,4))
@@ -37,6 +38,9 @@ function ConvertTo-SkyviewSchedule {
         logFolder = 'C:\ProgramData\SkyviewRobotics\Logs'
         logsAvailable = [bool](Test-Path -LiteralPath 'C:\ProgramData\SkyviewRobotics\Logs' -PathType Container)
         note = ''
+        observedAt = $observed
+        createdAt = $null
+        lastSuccess = $(if ($result -eq 'success') { $last } else { $null })
     }
 }
 function Get-SkyviewSchedule {
@@ -57,6 +61,7 @@ function Get-SkyviewSchedule {
             catchUp=$null; logFolder='C:\ProgramData\SkyviewRobotics\Logs'
             logsAvailable=[bool](Test-Path -LiteralPath 'C:\ProgramData\SkyviewRobotics\Logs' -PathType Container)
             note=$(if ($missing) { 'Weekly maintenance is not installed. Use Install or Repair on Overview.' } elseif ($code -eq '80070005') { 'This account cannot read the task. Use Repair on Overview to restore read access.' } else { "Task Scheduler information could not be read (0x$code)." })
+            observedAt=[datetimeoffset]::UtcNow.ToString('o'); createdAt=$null; lastSuccess=$null
         }
     }
 }

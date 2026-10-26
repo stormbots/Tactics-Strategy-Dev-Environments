@@ -34,6 +34,9 @@ pub struct Schedule {
     pub log_folder: String,
     pub logs_available: bool,
     pub note: String,
+    pub observed_at: String,
+    pub created_at: Option<String>,
+    pub last_success: Option<String>,
 }
 
 pub fn inspect(root: &std::path::Path) -> Result<Schedule, String> {

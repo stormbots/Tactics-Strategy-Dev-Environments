@@ -81,6 +81,16 @@ pub fn operation() -> Result<Lease> {
     no_interruption(&dir)?;
     Ok(lease)
 }
+
+/// Reports whether another process currently owns the privileged operation
+/// gate. Unlike `status`, this intentionally ignores GUI session leases.
+pub fn operation_active() -> Result<bool> {
+    match acquire_at(&root(), "operations.gate", false) {
+        Ok(_) => Ok(false),
+        Err(Error::Busy) => Ok(true),
+        Err(error) => Err(error),
+    }
+}
 pub fn installation() -> Result<Installation> {
     let lease = installation_at(&root())?;
     compatible_maintenance()?;

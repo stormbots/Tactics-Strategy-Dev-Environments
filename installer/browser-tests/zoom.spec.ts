@@ -145,6 +145,7 @@ test("zoom and theme changes preserve an active operation and log", async ({
   await page
     .getByRole("button", { name: "Install Development Environment" })
     .click();
+  await page.getByRole("button", { name: "Continue with Install" }).click();
   const log = page.getByRole("region", { name: "Provisioning log" });
   await expect(log).toContainText("Checking system");
   await chooseZoom(page, 4);

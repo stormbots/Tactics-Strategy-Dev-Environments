@@ -337,7 +337,11 @@ pub fn resource_backend() -> Result<PathBuf, String> {
     }
 }
 
-pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
+pub fn helper(
+    operation: &str,
+    session: &str,
+    acknowledged_uncertainty: bool,
+) -> Result<i32, String> {
     if !["install", "repair", "update"].contains(&operation)
         || uuid::Uuid::parse_str(session).is_err()
     {
@@ -426,11 +430,20 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
             .create_new(true)
             .open(log_dir.join(format!("{session}.log")))
             .map_err(|e| e.to_string())?;
-        if operation == "update"
-            && !crate::preflight::before_update(&backend, |line| {
-                let _ = writeln!(file, "{line}");
-                let _ = file.flush();
-            })
+        if ["install", "update"].contains(&operation)
+            && !crate::preflight::before_operation(
+                &backend,
+                if operation == "install" {
+                    crate::Operation::Install
+                } else {
+                    crate::Operation::Update
+                },
+                acknowledged_uncertainty,
+                |line| {
+                    let _ = writeln!(file, "{line}");
+                    let _ = file.flush();
+                },
+            )
         {
             writeln!(file, "SKYVIEW_HELPER_EXIT|75").map_err(|e| e.to_string())?;
             file.flush().map_err(|e| e.to_string())?;
@@ -445,8 +458,17 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
     }
     #[cfg(not(windows))]
     {
-        if operation == "update"
-            && !crate::preflight::before_update(&backend, |line| println!("{line}"))
+        if ["install", "update"].contains(&operation)
+            && !crate::preflight::before_operation(
+                &backend,
+                if operation == "install" {
+                    crate::Operation::Install
+                } else {
+                    crate::Operation::Update
+                },
+                acknowledged_uncertainty,
+                |line| println!("{line}"),
+            )
         {
             return Ok(75);
         }
@@ -457,13 +479,23 @@ pub fn helper(operation: &str, session: &str) -> Result<i32, String> {
 pub fn elevated(
     operation: &str,
     session: &str,
+    acknowledged_uncertainty: bool,
     on_line: impl FnMut(String),
 ) -> Result<i32, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     #[cfg(not(windows))]
     {
         let mut cmd = Command::new("/usr/bin/pkexec");
-        cmd.arg(exe).args(["--privileged", operation, session]);
+        cmd.arg(exe).args([
+            "--privileged",
+            operation,
+            session,
+            if acknowledged_uncertainty {
+                "acknowledged"
+            } else {
+                "clean"
+            },
+        ]);
         let code = stream(cmd, on_line)?;
         if [126, 127].contains(&code) {
             return Err("Administrator authentication was cancelled or denied. Click Retry when you are ready.".into());
@@ -476,7 +508,12 @@ pub fn elevated(
         use std::io::{Read, Seek, SeekFrom};
         let mut on_line = on_line;
         let literal = exe.to_string_lossy().replace('\'', "''");
-        let command=format!("$ErrorActionPreference='Stop'; try {{ $p=Start-Process -FilePath '{literal}' -ArgumentList '--privileged {operation} {session}' -Verb RunAs -WindowStyle Hidden -PassThru; $h=$p.Handle; $p.WaitForExit(); exit $p.ExitCode }} catch {{ exit 1223 }}");
+        let acknowledgement = if acknowledged_uncertainty {
+            "acknowledged"
+        } else {
+            "clean"
+        };
+        let command=format!("$ErrorActionPreference='Stop'; try {{ $p=Start-Process -FilePath '{literal}' -ArgumentList '--privileged {operation} {session} {acknowledgement}' -Verb RunAs -WindowStyle Hidden -PassThru; $h=$p.Handle; $p.WaitForExit(); exit $p.ExitCode }} catch {{ exit 1223 }}");
         let bytes: Vec<u8> = command.encode_utf16().flat_map(u16::to_le_bytes).collect();
         let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
         let mut cmd = Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
