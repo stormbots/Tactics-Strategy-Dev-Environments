@@ -53,11 +53,14 @@ fi
 if [[ -f /work/uat/1.2.16/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
   versions=(1.2.15 1.2.16)
 fi
+if [[ -f /work/uat/1.2.17/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions=(1.2.16 1.2.17)
+fi
 for version in "${versions[@]}"; do
   if [[ "$version" = "${versions[1]}" ]]; then
     printf '# legacy maintenance UAT sentinel\n' > "$legacy"
     chmod 0755 "$legacy"
-    if [[ "$version" == 1.2.16 ]]; then
+    if [[ "$version" == 1.2.16 || "$version" == 1.2.17 ]]; then
       '/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust' pause
     fi
   fi
@@ -87,14 +90,18 @@ assert json.loads((root / 'active.json').read_text())['version'] == sys.argv[1]
 PY
   [[ "$(cat "$student/project.txt")" == 'student project sentinel' ]]
   [[ "$(cat "$student/.config/Code/User/settings.json")" == '{"editor.fontSize":17}' ]]
-  if [[ "$version" == 1.2.16 ]]; then
+  if [[ "$version" == 1.2.16 || "$version" == 1.2.17 ]]; then
     worker='/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust'
     for verb in pause resume; do
       "$worker" "$verb"
       # Reinstall the real package through APT from both prior policy states.
       apt-get -y --no-remove --reinstall -o DPkg::Lock::Timeout=60 install "$package"
       python3 -I -c "import json; assert json.load(open('/var/lib/skyview-robotics/self-update/policy.json'))['paused'] is False"
-      [[ "$(cat "$legacy")" == '# legacy maintenance UAT sentinel' ]]
+      if [[ "$version" = "${versions[1]}" ]]; then
+        [[ "$(cat "$legacy")" == '# legacy maintenance UAT sentinel' ]]
+      else
+        [[ ! -e "$legacy" ]]
+      fi
       [[ "$(cat "$student/project.txt")" == 'student project sentinel' ]]
       [[ "$(cat "$student/.config/Code/User/settings.json")" == '{"editor.fontSize":17}' ]]
       [[ ! -e /etc/systemd/system/skyview-student-dev-update.service ]]
