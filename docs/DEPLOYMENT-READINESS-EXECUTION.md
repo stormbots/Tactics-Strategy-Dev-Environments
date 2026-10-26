@@ -5,9 +5,14 @@ stable/latest, release423797225/source7de6d29. Full/native/exact-main/signing,
 independent authentication, both focused desktop passes, explicit stable approval,
 immutable metadata promotion and public downloads are complete.
 [Release/promotion receipt](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/pull/104#issuecomment-6407525155); [current evidence ledger](RELEASE-EXECUTION-1.2.17.md).
-#102 and #59 are closed. #99 awaits retained14 live discovery. #43/milestone2
-remain open for the separately scoped real automatic pilot or explicit owner
-scope disposition. No device/fleet change is authorized by release visibility.
+#102, #59 and #99 are closed. [Additional Windows/Mint live discovery](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158)
+passed on14, followed by successful manual UI-offered upgrades to17; the earlier
+two candidate UAT desktops are additional and their attribution is unchanged.
+All four now run17. The owner [explicitly accepted native/manual evidence for
+#43/milestone2 closeout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390), with the real automatic pilot carried
+forward in [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106) for the next independently accepted stable
+transition. This is an accepted evidence limit, not an automatic-install pass or
+device/fleet authorization.
 
 Earlier dated checkpoints below are chronological history; their pending states
 are superseded only within the actual scope recorded in the current ledger.

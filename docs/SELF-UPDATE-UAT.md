@@ -9,9 +9,13 @@ Accepted downloads: [official stable/latest](https://github.com/stormbots/Tactic
 The procedure below records the completed candidate acceptance and remains a
 reference for authenticated installation. Do not repeat already accepted rows
 by default. Publication originally used `prerelease=true`, `latest=false`; promotion changed
-metadata only. No device pilot is authorized by this sheet. The next owner step
-is the retained14 [live discovery check](#after-independently-accepted-stable-promotion-99),
-then a separately authorized [pilot](SELF-UPDATE-PILOT.md).
+metadata only. [Both additional retained14 discovery walkthroughs passed](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158),
+followed by successful owner manual UI-offered upgrades17. All four tested
+desktops now run17. The earlier candidate UAT attribution is unchanged. A real
+automatic-install [pilot](SELF-UPDATE-PILOT.md) is deferred to [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106)
+on the next independently accepted stable transition under the owner's [explicit
+native/manual evidence closeout disposition](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390). No real automatic
+pilot pass or device-operation authorization is inferred.
 
 Owner performs desktop UAT on Windows 11 x64 and **booted Mint Cinnamon 22.x
 amd64**. Record physical hardware or approved desktop VM; Windows Server and Mint

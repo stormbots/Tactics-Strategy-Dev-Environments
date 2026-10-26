@@ -21,12 +21,17 @@ released source, tag, signature or packages.
 | Public verification | Exact17 latest API/page and both evergreen installer HTTP200 redirects; unchanged five assets/tag/source; stable_downloads.py passed |
 | #102 | Closed as delivered in stable17; every app install/upgrade enables updates, and the student Inline preference saves without triggering maintenance |
 | #59 | Closed under explicit historical affected-PC/native evidence limit; additional affected-PC/private-ACL inventories remain unreported and accepted |
-| #99 | Open: actual retained14 Windows/Mint live discovery now possible; owner observations pending; no downgrade or installation implied |
-| #43 / milestone2 | Open: exact-device/action/policy/window pilot authorization and real automatic-install/tool/preservation/recovery results, or explicit owner scope disposition, still required |
+| #99 | Closed: [both retained14 Windows/Mint live walkthroughs passed](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158), followed by successful manual UI-offered upgrades17; subsequent-version dismissal remains fixture-only until a later stable exists |
+| #43 / milestone2 | [Owner explicitly accepts native/manual evidence for closeout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390); real automatic pilot deferred to [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106) on the next independently accepted stable transition; no real-pilot pass claimed |
 
-Retained actual14 device roles are distinct from the two accepted17 UAT roles.
-No policy resume, task/service trigger, device install or fleet action was performed
-by Codex. School-network/student-account and reboot/natural-weekly claims remain
+The formerly retained14 discovery roles are additional to the two accepted17
+UAT roles; all four now run17. The owner performed the two successful manual
+upgrades after live discovery. No automatic-pilot installation/recovery result is
+inferred. The owner explicitly chose native/manual evidence for this milestone's
+closeout and tracked the real pilot in #106 for the next independently accepted
+stable transition. Do not downgrade a current device or manufacture a release
+for the test. No policy resume, task/service trigger, device install or fleet
+action was performed by Codex. School-network/student-account and reboot/natural-weekly claims remain
 limited to the evidence actually reported; immediate triggers are not natural
 weekly firing. Earlier15 desktop and five-zoom evidence is reused within scope;
 the16 failure and unreported Mint16 result are not relabeled as passes. #101 beta

@@ -7,8 +7,12 @@ unchanged asset and public-link receipt](https://github.com/stormbots/Tactics-St
 v1.2.15 remains an immutable prerelease with both earlier desktop passes.
 v1.2.16 stays an immutable prerelease with its Windows persistence failure;
 other Windows rows passed and Mint16 was unreported. v1.2.17 fixes that failure.
-#102 is closed. #43/milestone2 still require the separately scoped automatic
-pilot or explicit owner disposition; #99 live retained14 discovery remains open.
+#102 is closed. The owner [explicitly accepted native/manual evidence for
+#43/milestone2 closeout](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/43#issuecomment-6409138390) and carried the real automatic pilot
+forward to [#106](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/106) for the next accepted stable transition. [#99 live discovery passed](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/99#issuecomment-6407709158) on
+both additional retained14 desktops, then they manually upgraded successfully to17
+through the offered UI path. All four known tested desktops now run17; no real
+automatic-install pilot is inferred.
 Historical v1.2.2/v1.2.3
 pair procedures are retained in [the original source](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/blob/b0f6a43e85b8ae5bbf72b87b4ee5f2d92bfd40ba/docs/SELF-UPDATE-ROLLOUT.md);
 they are not current dispatch or laptop installation instructions.
