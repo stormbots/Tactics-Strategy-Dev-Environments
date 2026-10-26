@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn rejects_impossible_or_non_mutating_incidents() {
-        let valid = Incident {
+        let candidate = Incident {
             schema: 1,
             id: uuid::Uuid::new_v4().to_string(),
             operation: crate::Operation::Install,
@@ -235,7 +235,7 @@ mod tests {
             log_path: None,
             acknowledged: false,
         };
-        let mut value = serde_json::to_value(valid).unwrap();
+        let mut value = serde_json::to_value(candidate).unwrap();
         value["operation"] = serde_json::json!("validate");
         let parsed: Incident = serde_json::from_value(value).unwrap();
         assert!(!valid(&parsed));
