@@ -57,15 +57,18 @@ fn redact_home(app: &tauri::AppHandle, value: &str) -> String {
     let Ok(home) = app.path().home_dir() else {
         return redacted;
     };
-    let home = home.to_string_lossy();
+    redact_personal_path(&redacted, &home.to_string_lossy(), cfg!(windows))
+}
+
+fn redact_personal_path(value: &str, home: &str, case_insensitive: bool) -> String {
     if home.is_empty() {
-        return redacted;
+        return value.to_string();
     }
-    regex::RegexBuilder::new(&regex::escape(&home))
-        .case_insensitive(cfg!(windows))
+    regex::RegexBuilder::new(&regex::escape(home))
+        .case_insensitive(case_insensitive)
         .build()
-        .map(|pattern| pattern.replace_all(&redacted, "[HOME]").into_owned())
-        .unwrap_or(redacted)
+        .map(|pattern| pattern.replace_all(value, "[HOME]").into_owned())
+        .unwrap_or_else(|_| value.to_string())
 }
 
 pub fn context(app: &tauri::AppHandle, include_logs: bool) -> Result<Context, String> {
@@ -216,5 +219,15 @@ mod tests {
         }
         let oversized = format!("<!doctype html>{}", "x".repeat(MAX_REPORT_BYTES));
         assert!(!valid_html(&oversized, &oversized.to_ascii_lowercase()));
+    }
+
+    #[test]
+    fn removes_personal_home_paths_from_report_logs() {
+        let value = redact_personal_path(
+            "Failure under C:\\Users\\Student Name\\Development",
+            "c:\\users\\student name",
+            true,
+        );
+        assert_eq!(value, "Failure under [HOME]\\Development");
     }
 }

@@ -159,10 +159,25 @@ fn read(path: &Path) -> Result<Option<Incident>, String> {
     let bytes = fs::read(path).map_err(|_| "Recovery information could not be read.")?;
     let incident: Incident =
         serde_json::from_slice(&bytes).map_err(|_| "Recovery information is invalid.")?;
-    if incident.schema != 1 || uuid::Uuid::parse_str(&incident.id).is_err() {
+    if !valid(&incident) {
         return Err("Recovery information is invalid.".into());
     }
     Ok(Some(incident))
+}
+
+fn valid(incident: &Incident) -> bool {
+    let future_limit = now().saturating_add(24 * 60 * 60);
+    let invalid_log_path = incident.log_path.as_ref().is_some_and(|value| {
+        value.len() > 4096 || value.contains('\r') || value.contains('\n')
+    });
+    !(incident.schema != 1
+        || uuid::Uuid::parse_str(&incident.id).is_err()
+        || matches!(incident.operation, crate::Operation::Validate)
+        || incident.started_at == 0
+        || incident.started_at > future_limit
+        || incident.observed_at < incident.started_at
+        || incident.observed_at > future_limit
+        || invalid_log_path)
 }
 
 pub fn inspect(app: &tauri::AppHandle) -> Result<Observation, String> {
@@ -196,8 +211,8 @@ mod tests {
             id: uuid::Uuid::new_v4().to_string(),
             operation: crate::Operation::Update,
             stage: Stage::System,
-            started_at: 1,
-            observed_at: 2,
+            started_at: now().saturating_sub(2),
+            observed_at: now().saturating_sub(1),
             log_path: None,
             acknowledged: false,
         };
@@ -206,5 +221,28 @@ mod tests {
         fs::write(&file, vec![b'x'; MAX_JOURNAL_BYTES as usize + 1]).unwrap();
         assert!(read(&file).is_err());
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rejects_impossible_or_non_mutating_incidents() {
+        let valid = Incident {
+            schema: 1,
+            id: uuid::Uuid::new_v4().to_string(),
+            operation: crate::Operation::Install,
+            stage: Stage::Unknown,
+            started_at: now(),
+            observed_at: now(),
+            log_path: None,
+            acknowledged: false,
+        };
+        let mut value = serde_json::to_value(valid).unwrap();
+        value["operation"] = serde_json::json!("validate");
+        let parsed: Incident = serde_json::from_value(value).unwrap();
+        assert!(!valid(&parsed));
+        value = serde_json::to_value(parsed).unwrap();
+        value["operation"] = serde_json::json!("install");
+        value["observedAt"] = serde_json::json!(0);
+        let impossible: Incident = serde_json::from_value(value).unwrap();
+        assert!(!valid(&impossible));
     }
 }
