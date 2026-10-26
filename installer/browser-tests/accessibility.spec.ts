@@ -182,6 +182,17 @@ test("support report shows exact content and keeps logs off by default", async (
   });
   await expect(dialog).toBeVisible();
   await expect(
+    page.getByRole("button", { name: "Close support report" }),
+  ).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    page.getByRole("button", { name: "Save support report" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Close support report" }),
+  ).toBeFocused();
+  await expect(
     page.getByRole("checkbox", { name: /Include recent application logs/ }),
   ).not.toBeChecked();
   const preview = page.frameLocator(

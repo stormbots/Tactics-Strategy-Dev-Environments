@@ -32,11 +32,28 @@ export function SupportReportDialog({
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const closeButton = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     closeButton.current?.focus();
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        dialog.current?.querySelectorAll<HTMLElement>(
+          "button:not(:disabled), input:not(:disabled), iframe[title]",
+        ) ?? [],
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", escape);
     return () => {
@@ -78,6 +95,7 @@ export function SupportReportDialog({
   ]);
   return (
     <section
+      ref={dialog}
       className="report-dialog"
       role="dialog"
       aria-modal="true"
