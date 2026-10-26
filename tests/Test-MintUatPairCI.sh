@@ -97,7 +97,11 @@ PY
       # Reinstall the real package through APT from both prior policy states.
       apt-get -y --no-remove --reinstall -o DPkg::Lock::Timeout=60 install "$package"
       python3 -I -c "import json; assert json.load(open('/var/lib/skyview-robotics/self-update/policy.json'))['paused'] is False"
-      [[ "$(cat "$legacy")" == '# legacy maintenance UAT sentinel' ]]
+      if [[ "$version" = "${versions[1]}" ]]; then
+        [[ "$(cat "$legacy")" == '# legacy maintenance UAT sentinel' ]]
+      else
+        [[ ! -e "$legacy" ]]
+      fi
       [[ "$(cat "$student/project.txt")" == 'student project sentinel' ]]
       [[ "$(cat "$student/.config/Code/User/settings.json")" == '{"editor.fontSize":17}' ]]
       [[ ! -e /etc/systemd/system/skyview-student-dev-update.service ]]
