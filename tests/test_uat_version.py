@@ -21,7 +21,7 @@ class CandidateIdentity(unittest.TestCase):
             baseline.write_text('export SKYVIEW_VERSION="1.2.1"\n')
             before = tomllib.loads((root / "installer/src-tauri/Cargo.lock").read_text())["package"]
             npm_before = json.loads((root / "installer/package-lock.json").read_text())
-            self.assertIn("1.2.18", VERSIONS)
+            self.assertIn("1.2.19", VERSIONS)
             for version in VERSIONS:
                 prepare(root, version)
                 for name in ("package.json", "src-tauri/tauri.conf.json"):
@@ -37,4 +37,4 @@ class CandidateIdentity(unittest.TestCase):
                 self.assertEqual({k: v for k, v in npm["packages"].items() if k},
                                  {k: v for k, v in npm_before["packages"].items() if k})
             with self.assertRaises(ValueError):
-                prepare(root, "1.2.19")
+                prepare(root, "1.2.20")

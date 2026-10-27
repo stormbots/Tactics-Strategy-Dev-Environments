@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       deployment_readiness:
-        description: Publish 1.2.18 safe operations candidate; rebuilt 1.2.17 is an unpublished upgrade fixture
+        description: Publish 1.2.19 safe operations candidate; rebuilt 1.2.18 is an unpublished upgrade fixture
         type: boolean
         default: false
 
@@ -41,7 +41,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/release/v1.2.uat
           main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           test "$main" = "$GITHUB_SHA"
-          test "$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v1.2.18" --jq length)" = 0
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v1.2.19" --jq length)" = 0
           gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-dev-setup.yml/runs?head_sha=$GITHUB_SHA&status=success&event=push" > "$RUNNER_TEMP/main-runs.json"
           python3 - "$RUNNER_TEMP/main-runs.json" <<'PY'
           import json, sys
@@ -54,7 +54,7 @@ jobs:
   build-pair:
     needs: source
     env:
-      BUILD_VERSIONS: 1.2.17 1.2.18
+      BUILD_VERSIONS: 1.2.18 1.2.19
     strategy:
       fail-fast: false
       matrix:
@@ -161,8 +161,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: sde-release-signing
     env:
-      CANDIDATE_VERSIONS: 1.2.18
-      CANDIDATE_NOTES: docs/RELEASE-NOTES-1.2.18.md
+      CANDIDATE_VERSIONS: 1.2.19
+      CANDIDATE_NOTES: docs/RELEASE-NOTES-1.2.19.md
     permissions:
       contents: write
       actions: read
