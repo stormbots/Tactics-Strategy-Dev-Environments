@@ -250,6 +250,7 @@ export function reducer(s: State, a: Action): State {
   if (a.type === "initial")
     return {
       ...s,
+      mode: "validate",
       validationComplete: reportPassed(a.report),
       stage: checksFrom(a.report.lines).length ? "idle" : "failure",
       error: checksFrom(a.report.lines).length
@@ -287,6 +288,7 @@ export function reducer(s: State, a: Action): State {
   if (a.type === "error")
     return {
       ...s,
+      mode: s.stage === "checking" ? "validate" : s.mode,
       validationComplete: false,
       stage: "failure",
       error: a.message,

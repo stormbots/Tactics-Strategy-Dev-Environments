@@ -190,6 +190,7 @@ export default function App() {
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [incident, setIncident] = useState<OperationIncident | null>(null);
   const [backendActive, setBackendActive] = useState(false);
+  const [backendInterrupted, setBackendInterrupted] = useState(false);
   const [recoveryDisposition, setRecoveryDisposition] =
     useState<ValidationDisposition>("notRun");
   const [reportOpen, setReportOpen] = useState(false);
@@ -273,7 +274,11 @@ export default function App() {
       .then((observation) => {
         setIncident(observation.incident);
         setBackendActive(observation.backendActive);
-        if (observation.incident && !observation.incident.acknowledged)
+        setBackendInterrupted(!!observation.backendInterrupted);
+        if (
+          observation.backendInterrupted ||
+          (observation.incident && !observation.incident.acknowledged)
+        )
           setPage("recovery");
       })
       .catch(() => setNotice("Recovery information could not be read."));
@@ -310,6 +315,7 @@ export default function App() {
     if (busy) return;
     if (
       backendActive ||
+      (backendInterrupted && selected !== "validate") ||
       (incident &&
         !incident.acknowledged &&
         selected !== "validate" &&
@@ -351,7 +357,7 @@ export default function App() {
       );
       dispatch({ type: "complete", report });
       if ((selected === "validate" || selected === "repair") && incident) {
-        if (report.success) {
+        if (report.success && !backendInterrupted) {
           await acknowledgeOperationIncident(incident.id);
           setIncident(null);
           setPage("overview");
@@ -360,7 +366,7 @@ export default function App() {
               ? "Validation passed. The interrupted operation is resolved; validation does not mean that operation completed."
               : "Repair and its final validation passed. The interrupted operation is resolved.",
           );
-        } else if (selected === "validate") {
+        } else if (selected === "validate" && !report.success) {
           const records = toolsFrom(report.lines);
           const failures = checksFrom(report.lines).filter(
             (check) => check.status === "FAIL",
@@ -386,8 +392,12 @@ export default function App() {
       if (selected !== "validate") {
         const observation = await inspectOperationIncident();
         setBackendActive(observation.backendActive);
+        setBackendInterrupted(!!observation.backendInterrupted);
         setIncident(observation.incident);
-        if (observation.incident && !observation.incident.acknowledged)
+        if (
+          observation.backendInterrupted ||
+          (observation.incident && !observation.incident.acknowledged)
+        )
           setPage("recovery");
       }
       void refreshMaintenance();
@@ -440,7 +450,7 @@ export default function App() {
             <LayoutDashboard size={18} />
             Overview
           </button>
-          {incident && !incident.acknowledged && (
+          {(backendInterrupted || (incident && !incident.acknowledged)) && (
             <button
               aria-current={page === "recovery" ? "page" : undefined}
               onClick={() => setPage("recovery")}
@@ -748,7 +758,9 @@ export default function App() {
                     {s.stage === "failure" && (
                       <>
                         <button onClick={() => start(s.mode)}>
-                          Retry {modes[s.mode].name.toLowerCase()}{" "}
+                          {s.mode === "validate"
+                            ? "Retry validation"
+                            : `Retry ${modes[s.mode].name.toLowerCase()}`}{" "}
                           <RefreshCw size={14} />
                         </button>
                         <button onClick={() => setReportOpen(true)}>
@@ -920,7 +932,9 @@ export default function App() {
               <p>
                 {backendActive
                   ? "Keep this app open and wait for the current system operation to finish. Do not start another change."
-                  : `The ${incident?.operation ?? "setup"} operation stopped during the ${incident?.stage ?? "unknown"} stage. Run validation before making another change.`}
+                  : backendInterrupted
+                    ? "A previous system operation needs mentor review before Install, Update or Repair can run. You can run validation and save a support report. Passing validation does not clear this system interruption."
+                    : `The ${incident?.operation ?? "setup"} operation stopped during the ${incident?.stage ?? "unknown"} stage. Run validation before making another change.`}
               </p>
               {incident?.logPath && (
                 <p className="muted">
@@ -934,19 +948,20 @@ export default function App() {
                     onClick={async () => {
                       const observation = await inspectOperationIncident();
                       setBackendActive(observation.backendActive);
+                      setBackendInterrupted(!!observation.backendInterrupted);
                       setIncident(observation.incident);
                     }}
                   >
                     <RefreshCw size={16} /> Refresh recovery status
                   </button>
-                ) : recoveryDisposition === "repair" ? (
+                ) : !backendInterrupted && recoveryDisposition === "repair" ? (
                   <button
                     className="primary"
                     onClick={() => void start("repair", true)}
                   >
                     <Wrench size={16} /> Repair environment
                   </button>
-                ) : recoveryDisposition === "notRun" ? (
+                ) : backendInterrupted || recoveryDisposition === "notRun" ? (
                   <button
                     className="primary"
                     onClick={() => void start("validate", true)}
@@ -954,6 +969,29 @@ export default function App() {
                     <ClipboardCheck size={16} /> Run validation
                   </button>
                 ) : null}
+                {backendInterrupted && !backendActive && (
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={async () => {
+                      try {
+                        const observation = await inspectOperationIncident();
+                        setBackendActive(observation.backendActive);
+                        setBackendInterrupted(!!observation.backendInterrupted);
+                        setIncident(observation.incident);
+                        if (
+                          !observation.backendInterrupted &&
+                          !observation.incident
+                        )
+                          setPage("overview");
+                      } catch {
+                        setNotice("Recovery information could not be read.");
+                      }
+                    }}
+                  >
+                    <RefreshCw size={16} /> Refresh recovery status
+                  </button>
+                )}
                 <button
                   className="secondary"
                   onClick={() => openTarget("logs")}
@@ -973,7 +1011,7 @@ export default function App() {
                     to review it.
                   </p>
                 )}
-                {incident && !backendActive && (
+                {incident && !backendActive && !backendInterrupted && (
                   <button
                     className="secondary"
                     onClick={async () => {

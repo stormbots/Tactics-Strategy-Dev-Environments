@@ -37,6 +37,7 @@ pub struct Incident {
 pub struct Observation {
     pub incident: Option<Incident>,
     pub backend_active: bool,
+    pub backend_interrupted: bool,
 }
 
 pub struct Active {
@@ -184,6 +185,10 @@ pub fn inspect(app: &tauri::AppHandle) -> Result<Observation, String> {
     Ok(Observation {
         incident: read(&path(app)?)?,
         backend_active: sde_coordination::operation_active().unwrap_or(false),
+        backend_interrupted: matches!(
+            sde_coordination::status(),
+            sde_coordination::Status::Interrupted
+        ),
     })
 }
 
