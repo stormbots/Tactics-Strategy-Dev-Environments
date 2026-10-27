@@ -113,14 +113,6 @@ export function PreflightReview({
       ) : (
         checks?.map((check) => <PreflightRow key={check.name} check={check} />)
       )}
-      <button
-        className="secondary"
-        disabled={loading}
-        onClick={() => void refresh()}
-      >
-        <RefreshCw size={16} aria-hidden="true" />
-        Check again
-      </button>
       {needsAcknowledgement && !blocked && (
         <label className="preflight-ack">
           <input
@@ -134,10 +126,19 @@ export function PreflightReview({
       )}
       <div className="result-actions">
         <button
+          className="primary"
           disabled={!canContinue}
           onClick={() => onContinue(acknowledged)}
         >
           Continue with {label}
+        </button>
+        <button
+          className="secondary"
+          disabled={loading}
+          onClick={() => void refresh()}
+        >
+          <RefreshCw size={16} aria-hidden="true" />
+          Check Again
         </button>
         <button className="secondary" onClick={onCancel}>
           Cancel

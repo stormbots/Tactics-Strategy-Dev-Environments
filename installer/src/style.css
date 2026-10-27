@@ -1276,6 +1276,17 @@ progress::-moz-progress-bar {
 .preflight-review {
   margin-top: 18px;
 }
+.preflight-review .result-actions .primary {
+  width: auto;
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+  font-size: 13px;
+  padding: 10px 16px;
+}
+.preflight-review .result-actions .primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
 .recovery-page {
   display: grid;
   grid-template-columns: auto 1fr;
