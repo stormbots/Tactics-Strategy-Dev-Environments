@@ -154,6 +154,7 @@ export async function inspectSchedule(): Promise<Schedule> {
 export type IncidentObservation = {
   incident: OperationIncident | null;
   backendActive: boolean;
+  backendInterrupted?: boolean;
 };
 export async function inspectOperationIncident(): Promise<IncidentObservation> {
   if (native) return invoke("inspect_operation_incident");

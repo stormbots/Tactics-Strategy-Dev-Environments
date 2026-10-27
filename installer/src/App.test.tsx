@@ -139,6 +139,75 @@ it("directs an interrupted operation through fresh validation", async () => {
   ).toBeTruthy();
 });
 
+it("shows machine-only interruptions and keeps changes blocked after passing validation", async () => {
+  vi.mocked(inspectOperationIncident).mockResolvedValueOnce({
+    incident: null,
+    backendActive: false,
+    backendInterrupted: true,
+  });
+  vi.mocked(operate).mockResolvedValueOnce({
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "validate.log",
+    platform: { label: "Windows 11 x64", supported: true },
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "A previous operation was interrupted",
+  });
+  expect(
+    screen.queryByRole("button", { name: "Dismiss recovery notice" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
+  await screen.findByRole("heading", { name: "Validation passed." });
+  fireEvent.click(screen.getByRole("button", { name: "Install" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  await screen.findByRole("heading", {
+    name: "A previous operation was interrupted",
+  });
+  expect(
+    vi
+      .mocked(operate)
+      .mock.calls.slice(before)
+      .map((call) => call[0]),
+  ).toEqual(["validate"]);
+  expect(
+    screen.queryByRole("button", { name: "Repair environment" }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Recovery" }),
+  ).toBeTruthy();
+});
+
+it("retries startup validation without starting Install", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    code: 1,
+    success: false,
+    lines: [
+      "An interrupted system operation needs mentor review before another change.",
+    ],
+    log_path: "validate.log",
+    platform: { label: "Windows 11 x64", supported: true },
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Retry validation" }),
+  );
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBeGreaterThan(before),
+  );
+  expect(vi.mocked(operate).mock.calls[before][0]).toBe("validate");
+  expect(screen.queryByRole("button", { name: "Retry install" })).toBeNull();
+});
+
 it("keeps readiness green/yellow when only maintenance needs attention", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
     code: 1,
