@@ -2,7 +2,7 @@ param([switch]$CheckUpdates)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Coordination.ps1')
 try {
-Invoke-SkyviewCoordinated -Action {
+Invoke-SkyviewCoordinated -ReadOnly -Action {
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 $ErrorActionPreference = 'Continue'
