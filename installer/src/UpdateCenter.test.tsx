@@ -216,6 +216,33 @@ it("unavailable preflight checks need explicit acknowledgement", async () => {
   fireEvent.click(button);
   expect(onContinue).toHaveBeenCalledOnce();
 });
+it("treats a failed preflight request as acknowledged uncertainty, not a pass", async () => {
+  vi.mocked(checkPreflight).mockRejectedValueOnce(new Error("private detail"));
+  const onContinue = vi.fn();
+  function Harness() {
+    const data = useUpdateDiscovery([tool], 0, true);
+    return (
+      <ToolUpdatePreview
+        data={data}
+        snapshot={[tool]}
+        platformSupported
+        onContinue={onContinue}
+        onCancel={() => {}}
+      />
+    );
+  }
+  render(<Harness />);
+  await screen.findByText("Preflight result — Unavailable");
+  expect(screen.queryByText("private detail")).toBeNull();
+  const button = screen.getByRole("button", {
+    name: "Continue with Update",
+  }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(button.disabled).toBe(false);
+  fireEvent.click(button);
+  expect(onContinue).toHaveBeenCalledWith(true);
+});
 it("a failed request clears an old download offer without claiming current", async () => {
   function Harness() {
     const data = useUpdateDiscovery([], 0, false);

@@ -1,8 +1,12 @@
-# Read-only preflight for the GUI Update operation. No package or policy changes.
+# Read-only preflight for GUI Install and Update. No package or policy changes.
+[CmdletBinding()]
+param([ValidateSet('install','update')][string]$Operation='update')
 $ErrorActionPreference = 'Stop'
 $rows = New-Object 'System.Collections.Generic.List[object]'
 function Add-Check($Name,$Status,$Detail) { $rows.Add([pscustomobject]@{name=$Name;status=$Status;detail=$Detail}) }
-foreach ($volume in @(@{Path='C:\';Required=3GB;Name='System disk'},@{Path=$env:USERPROFILE;Required=512MB;Name='User disk'})) {
+$systemRequired=if ($Operation -eq 'install') { 8GB } else { 3GB }
+$userRequired=if ($Operation -eq 'install') { 1GB } else { 512MB }
+foreach ($volume in @(@{Path='C:\';Required=$systemRequired;Name='System disk'},@{Path=$env:USERPROFILE;Required=$userRequired;Name='User disk'})) {
     try {
         $drive=New-Object -TypeName IO.DriveInfo -ArgumentList ([IO.Path]::GetPathRoot($volume.Path))
         $free=$drive.AvailableFreeSpace

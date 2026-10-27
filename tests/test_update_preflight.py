@@ -12,6 +12,13 @@ class Preflight(unittest.TestCase):
             self.assertEqual(m.disk('/',200,'System')['status'],'blocking')
         with patch.object(m.shutil,'disk_usage',side_effect=OSError):
             self.assertEqual(m.disk('/',200,'System')['status'],'unavailable')
+    def test_install_uses_larger_documented_disk_budgets(self):
+        seen=[]
+        with patch.object(m,'disk',side_effect=lambda path,required,label: seen.append((label,required)) or m.row(label,'pass','ok')),patch.object(m,'package_state',return_value=m.row('Package manager','pass','ok')),patch.object(m.concurrent.futures.ThreadPoolExecutor,'map',return_value=[]):
+            m.inspect('install')
+        self.assertEqual(dict(seen)['System disk'],8*1024**3)
+        self.assertEqual(dict(seen)['User disk'],1024**3)
+        with self.assertRaises(ValueError): m.inspect('repair')
     def test_held_lock_blocks_and_is_not_deleted(self):
         stat=Mock(st_dev=0x801,st_ino=123)
         with patch.object(m.os,'stat',return_value=stat),patch.object(Path,'read_text',return_value='1: POSIX ADVISORY WRITE 1234 08:01:123 0 EOF'):

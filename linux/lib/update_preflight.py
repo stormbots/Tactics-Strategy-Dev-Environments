@@ -1,5 +1,6 @@
 """Read-only Update checks. No index refresh, package changes or lock removal."""
 import concurrent.futures
+import argparse
 import json
 import os
 import shutil
@@ -55,10 +56,17 @@ def connectivity(item):
             return row(name,"pass" if response.status<400 else "unavailable","Source responded. This does not guarantee later installer/CDN availability.")
     except (OSError,ValueError):
         return row(name,"unavailable","Source availability could not be confirmed. Check the connection and retry; continuing may fail during downloads.")
-def inspect():
-    rows=[disk('/',3*1024**3,"System disk"),disk(Path.home(),512*1024**2,"User disk"),package_state()]
+def inspect(operation="update"):
+    if operation not in ("install", "update"):
+        raise ValueError("Unsupported preflight operation")
+    system_required=(8 if operation == "install" else 3)*1024**3
+    user_required=(1*1024**3 if operation == "install" else 512*1024**2)
+    rows=[disk('/',system_required,"System disk"),disk(Path.home(),user_required,"User disk"),package_state()]
     rows.append(row("Restart","warning" if Path('/var/run/reboot-required').exists() else "pass","Restart is pending; save work and arrange a restart before updating." if Path('/var/run/reboot-required').exists() else "No standard pending-restart marker was found; detection is not exhaustive."))
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
         rows.extend(pool.map(connectivity,SOURCES.items()))
     return rows
-if __name__=='__main__': print(json.dumps(inspect()))
+if __name__=='__main__':
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--operation',choices=('install','update'),default='update')
+    print(json.dumps(inspect(parser.parse_args().operation)))

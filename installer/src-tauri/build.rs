@@ -38,6 +38,10 @@ fn main() {
         tauri_build::AppManifest::new().commands(&[
             "inspect_system",
             "inspect_schedule",
+            "inspect_operation_incident",
+            "acknowledge_operation_incident",
+            "support_context",
+            "save_support_report",
             "inspect_self_update",
             "set_self_update_paused",
             "run_operation",
@@ -45,7 +49,7 @@ fn main() {
             "check_application",
             "check_tools",
             "open_release",
-            "check_update_preflight",
+            "check_operation_preflight",
         ]),
     ))
     .expect("Tauri build configuration must be valid");

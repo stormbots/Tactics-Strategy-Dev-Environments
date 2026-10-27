@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { native, appVersion } from "./bridge";
 import { toolRecord, type ToolRecord } from "./model";
+import type { PreflightCheck } from "./safeOperations";
 export type AppDiscovery = {
   version: string;
   checkedAt: number;
@@ -14,11 +15,7 @@ export type AppDiscovery = {
   retryAt?: number | null;
 };
 export type ToolPreview = { tools: ToolRecord[]; checkedAt: number };
-export type PreflightCheck = {
-  name: string;
-  status: "pass" | "blocking" | "warning" | "unavailable";
-  detail: string;
-};
+export type { PreflightCheck } from "./safeOperations";
 export async function checkApplication(): Promise<AppDiscovery> {
   if (native) return invoke("check_application");
   return {
@@ -60,12 +57,14 @@ export async function checkTools(snapshot: ToolRecord[]): Promise<ToolPreview> {
     throw new Error("Incomplete tool metadata. Refresh preview.");
   return { tools: tools as ToolRecord[], checkedAt: result.checkedAt };
 }
-export async function checkPreflight(): Promise<PreflightCheck[]> {
+export async function checkPreflight(
+  operation: "install" | "update" = "update",
+): Promise<PreflightCheck[]> {
   return native
-    ? invoke("check_update_preflight")
+    ? invoke("check_operation_preflight", { operation })
     : [
         {
-          name: "Simulated preflight",
+          name: `Simulated ${operation} preflight`,
           status: "pass",
           detail:
             "Browser preview only. Native preflight runs on the installed workstation.",

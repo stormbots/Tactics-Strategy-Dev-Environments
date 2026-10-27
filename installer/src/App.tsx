@@ -12,6 +12,7 @@ import {
   Info,
   Laptop,
   LayoutDashboard,
+  LifeBuoy,
   LoaderCircle,
   RefreshCw,
   ShieldCheck,
@@ -27,6 +28,9 @@ import {
   toolForCheck,
   toolStatus,
   toolNames,
+  parseEvent,
+  checksFrom,
+  toolsFrom,
   updateInspectionIncomplete,
   type Check,
   type Mode,
@@ -36,20 +40,33 @@ import {
 import {
   appVersion,
   inspect,
+  inspectOperationIncident,
+  inspectSchedule,
+  acknowledgeOperationIncident,
   native,
   open,
   operate,
   type Destination,
 } from "./bridge";
 import { ValidationCheck } from "./ValidationCheck";
-import { operationScope } from "./validationGuidance";
+import { operationScope, validationGuidance } from "./validationGuidance";
 import { AppearanceControls } from "./AppearanceControls";
 import {
   ApplicationUpdates,
   ToolUpdatePreview,
   useUpdateDiscovery,
 } from "./UpdateCenter";
-import { AboutPage, SchedulePage } from "./DetailsPages";
+import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
+import { PreflightReview } from "./PreflightReview";
+import { SupportReportDialog } from "./SupportReportDialog";
+import {
+  maintenanceHealth,
+  overviewTone,
+  type MaintenanceHealth,
+  type MaintenanceObservation,
+  type OperationIncident,
+  type ValidationDisposition,
+} from "./safeOperations";
 const modes: Record<
   Mode,
   { name: string; button: string; description: string; icon: typeof Download }
@@ -160,12 +177,22 @@ export default function App() {
   const [s, dispatch] = useReducer(reducer, initialState);
   const [mode, setMode] = useState<Mode>("install");
   const [page, setPage] = useState<
-    "overview" | "validation" | "schedule" | "about"
+    "overview" | "validation" | "recovery" | "schedule" | "about"
   >("overview");
   const [checkUpdates, setCheckUpdates] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [installPreflightOpen, setInstallPreflightOpen] = useState(false);
   const [generation, setGeneration] = useState(0);
   const [notice, setNotice] = useState("");
+  const [maintenance, setMaintenance] = useState<MaintenanceObservation | null>(
+    null,
+  );
+  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+  const [incident, setIncident] = useState<OperationIncident | null>(null);
+  const [backendActive, setBackendActive] = useState(false);
+  const [recoveryDisposition, setRecoveryDisposition] =
+    useState<ValidationDisposition>("notRun");
+  const [reportOpen, setReportOpen] = useState(false);
   const runId = useRef("");
   const started = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
@@ -198,6 +225,35 @@ export default function App() {
       : s.tools);
   const updateCount = displayTools.filter((t) => t.updateAvailable).length;
   const partialUpdateCheck = updateInspectionIncomplete(s.checks, displayTools);
+  const maintenanceState: MaintenanceHealth = maintenance
+    ? maintenanceHealth(maintenance)
+    : "unavailable";
+  const validationObserved =
+    s.checks.length > 0 &&
+    s.logs.some((line) => parseEvent(line)?.kind === "summary");
+  const readinessFailures = s.checks.filter(
+    (check) =>
+      check.status === "FAIL" && !/^Weekly maintenance/.test(check.message),
+  );
+  const validationReady = validationObserved && readinessFailures.length === 0;
+  const validationWarning = s.checks.some(
+    (check) => check.status === "WARNING",
+  );
+  const tone = overviewTone(
+    readinessFailures.length > 0,
+    validationWarning || (!validationObserved && s.stage !== "checking"),
+    maintenanceState,
+  );
+  async function refreshMaintenance() {
+    setMaintenanceLoading(true);
+    try {
+      setMaintenance((await inspectSchedule()) as MaintenanceObservation);
+    } catch {
+      setMaintenance(null);
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  }
   useEffect(() => {
     if (previousPage.current !== page) pageHeading.current?.focus();
     previousPage.current = page;
@@ -208,6 +264,19 @@ export default function App() {
     inspect()
       .then((report) => dispatch({ type: "initial", report }))
       .catch((e) => dispatch({ type: "error", message: String(e) }));
+  }, []);
+  useEffect(() => {
+    void refreshMaintenance();
+  }, []);
+  useEffect(() => {
+    inspectOperationIncident()
+      .then((observation) => {
+        setIncident(observation.incident);
+        setBackendActive(observation.backendActive);
+        if (observation.incident && !observation.incident.acknowledged)
+          setPage("recovery");
+      })
+      .catch(() => setNotice("Recovery information could not be read."));
   }, []);
   useEffect(() => {
     if (!native) return;
@@ -233,14 +302,39 @@ export default function App() {
     if (s.stage === "success" || s.stage === "failure")
       resultHeading.current?.focus();
   }, [s.stage]);
-  async function start(selected: Mode, confirmed = false) {
+  async function start(
+    selected: Mode,
+    confirmed = false,
+    acknowledgedUncertainty = false,
+  ) {
     if (busy) return;
+    if (
+      backendActive ||
+      (incident &&
+        !incident.acknowledged &&
+        selected !== "validate" &&
+        !(selected === "repair" && recoveryDisposition === "repair"))
+    ) {
+      setPage("recovery");
+      setNotice(
+        backendActive
+          ? "Wait for the active system operation before starting another change."
+          : "Complete the Recovery steps before starting another change.",
+      );
+      return;
+    }
+    if (selected === "install" && !confirmed) {
+      setInstallPreflightOpen(true);
+      setPage("overview");
+      return;
+    }
     if (selected === "update" && !confirmed) {
       setPreviewOpen(true);
       setPage("overview");
       return;
     }
     setPreviewOpen(false);
+    setInstallPreflightOpen(false);
     setGeneration((g) => g + 1);
     setNotice("");
     setMode(selected);
@@ -252,9 +346,51 @@ export default function App() {
         selected,
         runId.current,
         checkUpdates,
+        acknowledgedUncertainty,
         (line) => dispatch({ type: "line", line }),
       );
       dispatch({ type: "complete", report });
+      if ((selected === "validate" || selected === "repair") && incident) {
+        if (report.success) {
+          await acknowledgeOperationIncident(incident.id);
+          setIncident(null);
+          setPage("overview");
+          setNotice(
+            selected === "validate"
+              ? "Validation passed. The interrupted operation is resolved; validation does not mean that operation completed."
+              : "Repair and its final validation passed. The interrupted operation is resolved.",
+          );
+        } else if (selected === "validate") {
+          const records = toolsFrom(report.lines);
+          const failures = checksFrom(report.lines).filter(
+            (check) => check.status === "FAIL",
+          );
+          setRecoveryDisposition(
+            failures.length > 0 &&
+              failures.every(
+                (check) =>
+                  validationGuidance(
+                    check,
+                    records.find(
+                      (record) => record.tool === toolForCheck(check),
+                    ),
+                    report.platform.supported,
+                  )?.operation === "repair",
+              )
+              ? "repair"
+              : "mentor",
+          );
+          setPage("recovery");
+        }
+      }
+      if (selected !== "validate") {
+        const observation = await inspectOperationIncident();
+        setBackendActive(observation.backendActive);
+        setIncident(observation.incident);
+        if (observation.incident && !observation.incident.acknowledged)
+          setPage("recovery");
+      }
+      void refreshMaintenance();
     } catch (e) {
       dispatch({ type: "error", message: String(e) });
     }
@@ -304,6 +440,15 @@ export default function App() {
             <LayoutDashboard size={18} />
             Overview
           </button>
+          {incident && !incident.acknowledged && (
+            <button
+              aria-current={page === "recovery" ? "page" : undefined}
+              onClick={() => setPage("recovery")}
+            >
+              <TriangleAlert size={18} />
+              Recovery
+            </button>
+          )}
           <button
             aria-current={page === "validation" ? "page" : undefined}
             onClick={() => setPage("validation")}
@@ -358,9 +503,11 @@ export default function App() {
                 ? "Are you ready to build?"
                 : page === "validation"
                   ? "Environment validation"
-                  : page === "schedule"
-                    ? "Maintenance schedule"
-                    : "About Skyview Dev Setup"}
+                  : page === "recovery"
+                    ? "Recover your environment"
+                    : page === "schedule"
+                      ? "Maintenance schedule"
+                      : "About Skyview Dev Setup"}
             </h1>
           </div>
           <div id="wide-appearance-slot" />
@@ -402,7 +549,7 @@ export default function App() {
             {s.stage !== "running" && (
               <>
                 <section
-                  className="status-card"
+                  className={`status-card tone-${tone}`}
                   aria-label="Workstation status"
                 >
                   <div className="status-title">
@@ -416,7 +563,9 @@ export default function App() {
                           ? "Checking this workstation…"
                           : busy
                             ? "Setup in progress"
-                            : status}
+                            : validationReady
+                              ? "Ready!"
+                              : status}
                       </h2>
                     </div>
                   </div>
@@ -448,6 +597,56 @@ export default function App() {
                       <span>Other updates not fully checked</span>
                     )}
                   </div>
+                  <div className="status-maintenance">
+                    <span>
+                      {maintenanceLoading
+                        ? "Reading maintenance status…"
+                        : maintenanceState === "healthy"
+                          ? "Maintenance is current"
+                          : maintenanceState === "grace"
+                            ? "Maintenance is in its new-schedule grace period"
+                            : maintenanceState === "failed"
+                              ? "Maintenance failed"
+                              : maintenanceState === "missing"
+                                ? "Maintenance is not installed"
+                                : maintenanceState === "disabled"
+                                  ? "Maintenance is disabled"
+                                  : maintenanceState === "overdue"
+                                    ? "Maintenance is overdue"
+                                    : maintenanceState === "running"
+                                      ? "Maintenance is running"
+                                      : "Maintenance history unavailable"}
+                      {!maintenanceLoading && maintenance && (
+                        <small>
+                          Observed {localTime(maintenance.observedAt)}
+                        </small>
+                      )}
+                    </span>
+                    {!maintenanceLoading &&
+                      !["healthy", "grace"].includes(maintenanceState) && (
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            if (maintenanceState === "failed")
+                              void openTarget("maintenance");
+                            else if (maintenanceState === "overdue") {
+                              setMode("update");
+                              setPreviewOpen(true);
+                            } else if (maintenanceState === "unavailable")
+                              void refreshMaintenance();
+                            else setPage("schedule");
+                          }}
+                        >
+                          {maintenanceState === "failed"
+                            ? "Open maintenance logs"
+                            : maintenanceState === "overdue"
+                              ? "Review managed-tool updates"
+                              : maintenanceState === "unavailable"
+                                ? "Refresh maintenance status"
+                                : "View schedule"}
+                        </button>
+                      )}
+                  </div>
                   {s.stage === "idle" && !s.validationComplete && !fails && (
                     <p role="status">
                       Local validation did not complete successfully. Review
@@ -474,26 +673,40 @@ export default function App() {
                   {discovery.toolsError && (
                     <p role="status">{discovery.toolsError}</p>
                   )}
-                  <button
-                    className="text-button"
-                    disabled={busy}
-                    onClick={() => {
-                      setMode("update");
-                      setPreviewOpen(true);
-                    }}
-                  >
-                    Review managed-tool updates
-                  </button>
+                  {maintenanceState !== "overdue" && (
+                    <button
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => {
+                        setMode("update");
+                        setPreviewOpen(true);
+                      }}
+                    >
+                      Review managed-tool updates
+                    </button>
+                  )}
                 </section>
               </>
             )}
             <ApplicationUpdates data={discovery} />
+            {installPreflightOpen && (
+              <PreflightReview
+                operation="install"
+                platformSupported={s.platform.supported}
+                onContinue={(acknowledged) =>
+                  void start("install", true, acknowledged)
+                }
+                onCancel={() => setInstallPreflightOpen(false)}
+              />
+            )}
             {previewOpen && (
               <ToolUpdatePreview
                 data={discovery}
                 snapshot={s.tools}
                 platformSupported={s.platform.supported}
-                onContinue={() => void start("update", true)}
+                onContinue={(acknowledged) =>
+                  void start("update", true, acknowledged)
+                }
                 onCancel={() => setPreviewOpen(false)}
               />
             )}
@@ -533,10 +746,15 @@ export default function App() {
                       View validation results <ArrowRight size={14} />
                     </button>
                     {s.stage === "failure" && (
-                      <button onClick={() => start(s.mode)}>
-                        Retry {modes[s.mode].name.toLowerCase()}{" "}
-                        <RefreshCw size={14} />
-                      </button>
+                      <>
+                        <button onClick={() => start(s.mode)}>
+                          Retry {modes[s.mode].name.toLowerCase()}{" "}
+                          <RefreshCw size={14} />
+                        </button>
+                        <button onClick={() => setReportOpen(true)}>
+                          Create support report <LifeBuoy size={14} />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -687,18 +905,112 @@ export default function App() {
               </section>
             )}
           </>
+        ) : page === "recovery" ? (
+          <section className="recovery-page" aria-labelledby="recovery-heading">
+            <div className="result-icon">
+              <TriangleAlert aria-hidden="true" />
+            </div>
+            <div>
+              <p className="eyebrow">SAFE RECOVERY</p>
+              <h2 id="recovery-heading">
+                {backendActive
+                  ? "Setup is still running"
+                  : "A previous operation was interrupted"}
+              </h2>
+              <p>
+                {backendActive
+                  ? "Keep this app open and wait for the current system operation to finish. Do not start another change."
+                  : `The ${incident?.operation ?? "setup"} operation stopped during the ${incident?.stage ?? "unknown"} stage. Run validation before making another change.`}
+              </p>
+              {incident?.logPath && (
+                <p className="muted">
+                  The detailed operation log is still available.
+                </p>
+              )}
+              <div className="result-actions">
+                {backendActive ? (
+                  <button
+                    className="primary"
+                    onClick={async () => {
+                      const observation = await inspectOperationIncident();
+                      setBackendActive(observation.backendActive);
+                      setIncident(observation.incident);
+                    }}
+                  >
+                    <RefreshCw size={16} /> Refresh recovery status
+                  </button>
+                ) : recoveryDisposition === "repair" ? (
+                  <button
+                    className="primary"
+                    onClick={() => void start("repair", true)}
+                  >
+                    <Wrench size={16} /> Repair environment
+                  </button>
+                ) : recoveryDisposition === "notRun" ? (
+                  <button
+                    className="primary"
+                    onClick={() => void start("validate", true)}
+                  >
+                    <ClipboardCheck size={16} /> Run validation
+                  </button>
+                ) : null}
+                <button
+                  className="secondary"
+                  onClick={() => openTarget("logs")}
+                >
+                  <FolderOpen size={16} /> Open logs
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => setReportOpen(true)}
+                >
+                  <LifeBuoy size={16} /> Create support report
+                </button>
+                {recoveryDisposition === "mentor" && (
+                  <p role="status">
+                    Validation found a condition that does not have a safe
+                    automatic repair. Save the support report and ask a mentor
+                    to review it.
+                  </p>
+                )}
+                {incident && !backendActive && (
+                  <button
+                    className="secondary"
+                    onClick={async () => {
+                      await acknowledgeOperationIncident(incident.id);
+                      setIncident(null);
+                      setPage("overview");
+                      setNotice(
+                        "Recovery notice dismissed. Detailed logs were preserved.",
+                      );
+                    }}
+                  >
+                    Dismiss recovery notice
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
         ) : page === "validation" ? (
           <section className="validation-card">
             <div className="section-header">
               <h2>Validation results</h2>
-              <button
-                className="secondary"
-                disabled={busy}
-                onClick={() => start("validate")}
-              >
-                <RefreshCw size={16} />
-                Check again
-              </button>
+              <div className="result-actions">
+                <button
+                  className="secondary"
+                  onClick={() => setReportOpen(true)}
+                >
+                  <LifeBuoy size={16} /> Create support report
+                </button>
+                <button
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => start("validate")}
+                >
+                  <RefreshCw size={16} />
+                  Check again
+                </button>
+              </div>
             </div>
             <p className="muted">
               Git identity and GitHub sign-in are optional. They do not cause
@@ -799,6 +1111,16 @@ export default function App() {
               </p>
             </div>
           </details>
+        )}
+        {reportOpen && (
+          <SupportReportDialog
+            checks={s.checks}
+            validationComplete={s.validationComplete}
+            platform={s.platform.label}
+            incident={incident}
+            maintenance={maintenance}
+            onClose={() => setReportOpen(false)}
+          />
         )}
         <footer>
           Skyview Robotics{" "}

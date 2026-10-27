@@ -1,5 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { Mode, Report, Schedule } from "./model";
+import type { OperationIncident } from "./safeOperations";
+import type { SupportContext } from "./supportReport";
 import { version } from "../package.json";
 export const appVersion = version;
 export type Destination =
@@ -68,6 +70,7 @@ export async function operate(
   mode: Mode,
   id: string,
   checkUpdates: boolean,
+  acknowledgedUncertainty: boolean,
   emit: (line: string) => void,
 ): Promise<Report> {
   if (native)
@@ -75,6 +78,7 @@ export async function operate(
       operation: mode,
       runId: id,
       checkUpdates,
+      acknowledgedUncertainty,
     });
   const lines: string[] = [];
   for (const [percent, message] of [
@@ -142,7 +146,34 @@ export async function inspectSchedule(): Promise<Schedule> {
     logFolder: "/var/log/skyview-robotics/student-dev",
     logsAvailable: true,
     note: "",
+    observedAt: new Date().toISOString(),
+    createdAt: null,
+    lastSuccess: "2026-10-04T10:20:00Z",
   };
+}
+export type IncidentObservation = {
+  incident: OperationIncident | null;
+  backendActive: boolean;
+};
+export async function inspectOperationIncident(): Promise<IncidentObservation> {
+  if (native) return invoke("inspect_operation_incident");
+  return { incident: null, backendActive: false };
+}
+export async function acknowledgeOperationIncident(id: string): Promise<void> {
+  if (native) await invoke("acknowledge_operation_incident", { id });
+}
+export async function supportContext(
+  includeLogs: boolean,
+): Promise<SupportContext> {
+  if (native) return invoke("support_context", { includeLogs });
+  return {
+    deviceName: "STUDENT-LAPTOP",
+    logs: includeLogs ? "Preview log: no workstation data was read." : null,
+  };
+}
+export async function saveSupportReport(html: string): Promise<string | null> {
+  if (native) return invoke("save_support_report", { html });
+  return "Preview — no file was written";
 }
 export async function open(destination: Destination) {
   if (native) await invoke("open_destination", { destination });

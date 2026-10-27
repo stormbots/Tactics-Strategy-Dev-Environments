@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Safe Operations, Recovery and Support — annotated wireframes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #12284b;
+      --muted: #536985;
+      --navy: #10243f;
+      --navy-2: #1a324f;
+      --blue: #35577d;
+      --line: #c8d4e2;
+      --paper: #f4f7fa;
+      --card: #ffffff;
+      --green: #147a55;
+      --green-bg: #edf8f3;
+      --yellow: #9b5a00;
+      --yellow-bg: #fff6dc;
+      --red: #ae2b35;
+      --red-bg: #fff0f1;
+      --focus: #0b67c2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #dfe6ee;
+      color: var(--ink);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    button { font: inherit; color: inherit; }
+    .package-title {
+      width: 1560px;
+      margin: 26px auto 10px;
+      padding: 22px 28px;
+      background: #fff;
+      border: 1px solid #c0cad6;
+      border-radius: 10px;
+    }
+    .package-title h1 { margin-bottom: 6px; font-size: 25px; }
+    .package-title p { margin: 0; color: var(--muted); }
+    .board {
+      width: 1560px;
+      min-height: 940px;
+      margin: 22px auto;
+      padding: 24px;
+      background: #eef2f6;
+      border: 1px solid #b7c3d0;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px #18314f1a;
+    }
+    .board-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .board-head h2 { margin-bottom: 4px; font-size: 22px; }
+    .board-head p { color: var(--muted); margin: 0; }
+    .badge {
+      border: 1px solid #aab8c7;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #fff;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .board-grid { display: grid; grid-template-columns: 1160px 1fr; gap: 20px; }
+    .app {
+      min-height: 800px;
+      display: grid;
+      grid-template-columns: 205px 1fr;
+      overflow: hidden;
+      border: 1px solid #9baabd;
+      border-radius: 9px;
+      background: var(--paper);
+    }
+    .sidebar {
+      background: var(--navy);
+      color: #d9e5f2;
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; color: #fff; font-weight: 800; letter-spacing: 2px; }
+    .brand-mark { width: 43px; height: 43px; display: grid; place-items: center; background: #e7edf4; color: var(--navy); border-radius: 6px; font-size: 20px; }
+    .product { margin: 28px 5px 34px; color: #b9c8d9; }
+    .nav { display: grid; gap: 8px; }
+    .nav div { padding: 12px 13px; border-radius: 7px; font-weight: 650; display: flex; gap: 10px; align-items: center; }
+    .nav .active { background: #385575; color: #fff; }
+    .nav .recovery { background: #674b17; color: #fff4cc; outline: 1px solid #a27828; }
+    .sidebar small { margin-top: auto; color: #9cafc2; }
+    .screen { padding: 26px 34px 38px; }
+    .eyebrow { font-size: 10px; letter-spacing: 2px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
+    .screen h1 { font-size: 31px; margin-bottom: 5px; }
+    .system { color: var(--muted); font-size: 12px; margin-bottom: 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    .status-card { display: grid; grid-template-columns: 1.2fr 1fr auto; align-items: center; gap: 22px; border-left-width: 7px; }
+    .status-card.yellow { border-left-color: #e3a526; background: linear-gradient(90deg, var(--yellow-bg), #fff 27%); }
+    .status-card.green { border-left-color: var(--green); }
+    .status-card.red { border-left-color: var(--red); background: linear-gradient(90deg, var(--red-bg), #fff 27%); }
+    .status-title { display: flex; gap: 12px; align-items: center; }
+    .status-icon { width: 44px; height: 44px; border-radius: 8px; background: #eaf0f6; display: grid; place-items: center; font-size: 21px; }
+    .status-title small { display: block; font-size: 9px; letter-spacing: 1.2px; font-weight: 800; color: var(--muted); }
+    .status-title h2 { margin: 2px 0 0; font-size: 28px; line-height: 1.05; letter-spacing: -.4px; }
+    .status-detail { color: var(--yellow); font-weight: 700; }
+    .status-detail span { display: block; color: var(--muted); font-weight: 500; font-size: 12px; margin-top: 3px; }
+    .counts { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .button, .button-secondary, .button-danger, .link-button {
+      min-height: 40px;
+      border-radius: 6px;
+      padding: 9px 14px;
+      font-weight: 700;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+    .button-secondary { background: #fff; color: var(--ink); border-color: #8aa0b9; }
+    .button-danger { background: var(--red); border-color: var(--red); }
+    .button[disabled], .button-secondary[disabled] { opacity: .46; }
+    .link-button { background: none; color: #174f89; border: 0; padding: 8px 0; }
+    .manage h2, .panel h2 { font-size: 16px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 7px; background: #eef3f8; padding: 4px; margin: 16px 0; }
+    .tabs span { padding: 10px; text-align: center; color: var(--muted); font-weight: 700; }
+    .tabs .selected { background: #fff; border: 1px solid #7389a2; border-radius: 5px; color: var(--ink); }
+    .wide-button { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .annotations { display: grid; align-content: start; gap: 10px; }
+    .note { background: #fff; border: 1px solid #b4c1cf; border-radius: 8px; padding: 12px; font-size: 12px; }
+    .note strong { display: inline-grid; place-items: center; width: 23px; height: 23px; background: var(--ink); color: #fff; border-radius: 50%; margin-right: 6px; }
+    .note p { margin: 7px 0 0; color: var(--muted); }
+    .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+    .legend div { background: #fff; border: 1px solid var(--line); border-left-width: 6px; border-radius: 7px; padding: 12px; }
+    .legend .g { border-left-color: var(--green); }
+    .legend .y { border-left-color: #e3a526; }
+    .legend .r { border-left-color: var(--red); }
+    .legend small { display: block; color: var(--muted); margin-top: 4px; }
+    .three-up { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .flow-panel { background: #fff; border: 1px solid #b9c6d3; border-radius: 9px; padding: 18px; min-height: 620px; }
+    .flow-panel h3 { font-size: 17px; }
+    .flow-panel > small { color: var(--muted); font-weight: 700; }
+    .flow-panel .summary { display: flex; gap: 10px; align-items: center; padding: 13px; border-radius: 7px; margin: 16px 0; font-weight: 700; }
+    .summary.pass { background: var(--green-bg); color: var(--green); }
+    .summary.warn { background: var(--yellow-bg); color: var(--yellow); }
+    .summary.block { background: var(--red-bg); color: var(--red); }
+    .check-list { display: grid; gap: 8px; margin: 15px 0 20px; }
+    .check { border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+    .check b { display: block; }
+    .check small { color: var(--muted); }
+    .check.ok { border-left: 5px solid var(--green); }
+    .check.unknown { border-left: 5px solid #e3a526; }
+    .check.stop { border-left: 5px solid var(--red); }
+    .ack { display: block; background: #f7f9fb; border: 1px solid var(--line); border-radius: 6px; padding: 11px; margin-bottom: 14px; font-size: 12px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; align-items: center; }
+    .micro { color: var(--muted); font-size: 11px; margin-top: 12px; }
+    .top-rule { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 16px; }
+    .incident { border-left: 6px solid #e3a526; background: var(--yellow-bg); }
+    .incident-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; margin: 15px 0; }
+    .fact { background: #fff; border: 1px solid #e2ce9a; border-radius: 6px; padding: 10px; }
+    .fact small { display: block; color: var(--muted); }
+    .step-list { display: grid; gap: 12px; counter-reset: steps; }
+    .step { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--line); padding: 13px; border-radius: 7px; background: #fff; }
+    .step::before { counter-increment: steps; content: counter(steps); width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 800; }
+    .step p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .step.disabled { opacity: .6; }
+    .resolution { background: var(--green-bg); border: 1px solid #9ccdbb; border-radius: 7px; padding: 12px; margin-top: 14px; color: #116346; }
+    .report-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+    .report-options h3, .preview h3 { font-size: 15px; }
+    .report-options label { display: block; margin: 12px 0; }
+    .preview { background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .preview-head { background: var(--navy); color: #fff; padding: 18px; }
+    .preview-body { padding: 18px; }
+    .preview-section { border-top: 1px solid var(--line); padding: 14px 0; }
+    .preview-section:first-child { border-top: 0; padding-top: 0; }
+    .kv { display: grid; grid-template-columns: 175px 1fr; gap: 6px 12px; font-size: 12px; }
+    .kv b { color: var(--muted); }
+    .redacted { color: #7b3f73; font-family: ui-monospace, monospace; }
+    .omitted { background: #f2f5f8; color: var(--muted); padding: 9px; border-radius: 5px; font-size: 12px; }
+    .compact-frame { width: 520px; margin: 0 auto; border: 1px solid #9baabd; border-radius: 9px; overflow: hidden; background: var(--paper); }
+    .compact-nav { background: var(--navy); color: #fff; padding: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .compact-nav span { padding: 9px; text-align: center; border-radius: 5px; }
+    .compact-nav .active { background: var(--blue); }
+    .compact-screen { padding: 20px; }
+    .compact-screen .status-card { grid-template-columns: 1fr; }
+    .compact-screen .status-title h2 { font-size: 26px; }
+    .compact-screen .status-detail { margin-left: 56px; }
+    .a11y-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin-top: 15px; }
+    .a11y-list div { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 11px; font-size: 12px; }
+    .flow-map { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+    .flow-map span { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; font-weight: 700; }
+    .flow-map i { font-style: normal; color: var(--muted); }
+    .callout-dot { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 800; font-size: 11px; margin-left: 5px; }
+    @media print {
+      body { background: #fff; }
+      .package-title, .board { width: 100%; box-shadow: none; break-after: page; margin: 0; border: 0; border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="package-title">
+    <h1>Safe Operations, Recovery and Support</h1>
+    <p>Annotated wireframe package · Phase 1 approval artifact · No production behavior is implemented here.</p>
+  </header>
+
+  <section class="board" id="overview-board">
+    <div class="board-head">
+      <div><h2>1. Overview status and maintenance guidance</h2><p>Reuse the first Development Environment card; retain “Ready!” when validation passes.</p></div>
+      <span class="badge">Issues #10 + #8 entry point</span>
+    </div>
+    <div class="board-grid">
+      <div class="app">
+        <aside class="sidebar">
+          <div class="brand"><span class="brand-mark">S</span><span>SKYVIEW</span></div>
+          <div class="product">Student Development<br />Environment</div>
+          <div class="nav"><div class="active">▦ Overview</div><div>☑ Validation</div><div>◷ Schedule</div><div>ⓘ About</div></div>
+          <small>Bureau of Tactics &amp; Strategy<br /><br />Skyview Dev Setup · candidate</small>
+        </aside>
+        <main class="screen">
+          <p class="eyebrow">YOUR DEVELOPMENT WORKSTATION</p><h1>Are you ready to build?</h1><p class="system">▱ Linux Mint 22.3 · x86_64</p>
+          <section class="card status-card yellow">
+            <div class="status-title"><div class="status-icon">▱</div><div><small>DEVELOPMENT ENVIRONMENT</small><h2>Ready!</h2></div></div>
+            <div class="status-detail">△ Maintenance failed <span>Latest attempt: Oct 25, 3:07 AM · Tools may be out of date.</span></div>
+            <button class="button-secondary">Open maintenance logs</button>
+            <div class="counts"><span>✓ <b>35</b> passed</span><span>△ <b>Maintenance needs attention</b></span><span>↻ 0 managed-tool updates available</span></div>
+          </section>
+          <section class="card manage"><h2>Manage your environment</h2><div class="tabs"><span class="selected">⇩ Install</span><span>⌕ Repair</span><span>☑ Validate</span><span>↻ Update</span></div><p>Set up your development tools, editor, workspace, and weekly maintenance.</p><button class="button wide-button"><span>⇩ Install Development Environment</span><span>→</span></button></section>
+          <section class="card"><h2>Development tools</h2><div class="counts"><span>✓ Git ready</span><span>✓ Node.js ready</span><span>✓ Python ready</span><span>✓ VSCodium ready</span></div></section>
+        </main>
+      </div>
+      <aside class="annotations">
+        <div class="note"><strong>1</strong><b>No new status card</b><p>The existing first card owns readiness and maintenance health.</p></div>
+        <div class="note"><strong>2</strong><b>“Ready!” remains truthful</b><p>Maintenance is a secondary, explicit line. Yellow does not mean validation failed.</p></div>
+        <div class="note"><strong>3</strong><b>One action only</b><p>Failure opens logs; missing/disabled opens Schedule; overdue enters Update preview; running opens status; unavailable offers refresh.</p></div>
+        <div class="note"><strong>4</strong><b>Color is supplemental</b><p>Text, icon, reason, observed time, and action carry the meaning.</p></div>
+        <div class="note"><strong>5</strong><b>Freshness is visible</b><p>Status refreshes on launch, after relevant operations, and on request—not by background polling.</p></div>
+      </aside>
+    </div>
+    <div class="legend"><div class="g"><b>Green</b><small>Validation passed; maintenance enabled and healthy.</small></div><div class="y"><b>Yellow</b><small>Validation passed with warning, or maintenance failed, missing, disabled, overdue, running, or unavailable.</small></div><div class="r"><b>Red</b><small>Development readiness failed. Red is never caused by maintenance alone.</small></div></div>
+  </section>
+
+  <section class="board" id="preflight-board">
+    <div class="board-head"><div><h2>2. Progressive Install and Update preflight</h2><p>Clean checks stay compact; warnings and unavailable results expand; known blockers never permit continuation.</p></div><span class="badge">Issue #7</span></div>
+    <div class="three-up">
+      <article class="flow-panel"><small>CLEAN RESULT</small><h3>Before Install begins</h3><p>Check this laptop before requesting administrator approval.</p><div class="summary pass">✓ 6 prerequisite checks passed</div><div class="check-list"><div class="check ok"><b>Supported system, storage, connectivity, software manager, restart and operation status</b><small>All required conditions were observed.</small></div></div><button class="link-button">Show check details</button><div class="actions"><button class="button">Continue with Install</button><button class="button-secondary">Cancel</button></div><p class="micro">SDE checks race-sensitive conditions again immediately before changes.</p></article>
+      <article class="flow-panel"><small>UNAVAILABLE RESULT</small><h3>Review before Update</h3><p>Some checks could not produce a result. No known blocker was found.</p><div class="summary warn">△ 2 checks unavailable · confirmation required</div><div class="check-list"><div class="check ok"><b>Disk space — Passed</b><small>18.6 GB available; 4 GB required.</small></div><div class="check unknown"><b>Package source connectivity — Unavailable</b><small>The network check timed out. Downloads may fail. Details were saved to the operation log.</small></div><div class="check unknown"><b>Restart check — Unavailable</b><small>SDE could not read restart status. This is uncertainty, not a pass.</small></div></div><button class="button-secondary">Check again</button><label class="ack"><input type="checkbox" /> I reviewed the unavailable checks and understand that Update may fail.</label><div class="actions"><button class="button">Continue with Update</button><button class="button-secondary">Cancel</button></div><p class="micro">The confirmation expires if results refresh, the flow closes, SDE restarts, or the operation attempt changes.</p></article>
+      <article class="flow-panel"><small>KNOWN BLOCKER</small><h3>Install cannot begin</h3><p>SDE found a condition that makes changes unsafe or impossible.</p><div class="summary block">✕ Software manager is busy</div><div class="check-list"><div class="check stop"><b>Another installation is running</b><small>Wait for it to finish. SDE will not stop it or remove its lock.</small></div><div class="check ok"><b>Student files — Unchanged</b><small>No provisioning or package changes have started.</small></div></div><div class="actions"><button class="button-secondary">Check again</button><button class="button-secondary">Return to Overview</button></div><p class="micro">There is no bypass for a positively detected blocker.</p></article>
+    </div>
+    <div class="flow-map"><span>Select Install or Update</span><i>→</i><span>Run preflight</span><i>→</i><span>Compact clean result or expanded attention state</span><i>→</i><span>Confirmation</span><i>→</i><span>Native recheck</span><i>→</i><span>Administrator approval</span></div>
+  </section>
+
+  <section class="board" id="recovery-board">
+    <div class="board-head"><div><h2>3. Interrupted-operation Recovery</h2><p>A temporary destination that guides read-only verification before any Repair recommendation.</p></div><span class="badge">Issue #8</span></div>
+    <div class="board-grid">
+      <div class="app">
+        <aside class="sidebar"><div class="brand"><span class="brand-mark">S</span><span>SKYVIEW</span></div><div class="product">Student Development<br />Environment</div><div class="nav"><div>▦ Overview</div><div>☑ Validation</div><div>◷ Schedule</div><div class="recovery">△ Recovery</div><div>ⓘ About</div></div><small>Recovery disappears after resolution or explicit acknowledgment.</small></aside>
+        <main class="screen"><p class="eyebrow">RECOVERY</p><h1>Check your workstation after an interruption</h1><p class="system">SDE will not automatically resume, repeat, or terminate package work.</p>
+          <section class="card incident"><h2>Update did not record a completed result</h2><p>The last recorded stage was <b>Installing system packages</b>. SDE did not find the original backend still running.</p><div class="incident-grid"><div class="fact"><small>Observed</small><b>Oct 25, 4:18 PM</b></div><div class="fact"><small>Current operation state</small><b>Interrupted</b></div><div class="fact"><small>Last known stage</small><b>System provisioning</b></div><div class="fact"><small>Changes since then</small><b>Not established</b></div></div></section>
+          <section class="step-list"><div class="step"><div><b>Validate the current environment</b><p>Read-only validation determines whether required tools and configuration are ready.</p></div><button class="button">Run validation</button></div><div class="step disabled"><div><b>Repair, if validation recommends it</b><p>Repair stays unavailable until fresh evidence identifies it as an appropriate action.</p></div><button class="button-secondary" disabled>Repair unavailable</button></div><div class="step"><div><b>Ask a mentor when state is unsafe or uncertain</b><p>Open logs or export a support report. SDE never deletes locks or forces package-database repair.</p></div><button class="button-secondary">Export support report</button></div></section>
+          <div class="actions top-rule"><button class="button-secondary">Open operation logs</button><button class="link-button">Acknowledge and dismiss this incident</button></div>
+          <div class="resolution"><b>After a passing fresh validation:</b> remove Recovery automatically and report that current readiness passed. Do not claim the interrupted Update completed.</div>
+        </main>
+      </div>
+      <aside class="annotations"><div class="note"><strong>1</strong><b>Temporary navigation</b><p>Recovery is present only while the incident is unacknowledged.</p></div><div class="note"><strong>2</strong><b>Running is not interrupted</b><p>A live backend receives a wait/status experience and conflicting work remains blocked.</p></div><div class="note"><strong>3</strong><b>Evidence before Repair</b><p>Fresh read-only validation is required. Repair is never the default first action.</p></div><div class="note"><strong>4</strong><b>Two exits</b><p>Passing validation resolves automatically. Explicit acknowledgment fully dismisses the incident without asserting success.</p></div><div class="note"><strong>5</strong><b>Logs remain</b><p>Dismissal removes incident UI, not ordinary retained diagnostic logs.</p></div></aside>
+    </div>
+  </section>
+
+  <section class="board" id="report-board">
+    <div class="board-head"><div><h2>4. Mentor support report</h2><p>Exact redacted-content preview in the app; one self-contained HTML file; diagnostic logs excluded by default.</p></div><span class="badge">Issue #9</span></div>
+    <div class="board-grid">
+      <div class="app">
+        <aside class="sidebar"><div class="brand"><span class="brand-mark">S</span><span>SKYVIEW</span></div><div class="product">Student Development<br />Environment</div><div class="nav"><div>▦ Overview</div><div class="active">☑ Validation</div><div>◷ Schedule</div><div>ⓘ About</div></div><small>Report export appears only in Validation, operation failure, and Recovery contexts.</small></aside>
+        <main class="screen"><p class="eyebrow">SUPPORT</p><h1>Prepare a mentor support report</h1><p class="system">Review the exact redacted content before choosing where to save it.</p>
+          <div class="report-layout"><section class="card report-options"><h3>Included in this report</h3><p>✓ Workstation and SDE information</p><p>✓ Latest validation results</p><p>✓ Relevant operation outcome</p><p>✓ Maintenance status and history</p><div class="top-rule"><h3>Optional details</h3><label><input type="checkbox" /> Sanitized diagnostic logs</label><p class="micro">Logs are excluded by default and remain available separately.</p></div><div class="top-rule"><b>Estimated report size</b><p>84 KB without logs</p></div><button class="button wide-button"><span>Save HTML report</span><span>→</span></button><button class="button-secondary wide-button" style="margin-top:9px"><span>Cancel</span></button></section>
+            <section class="preview"><div class="preview-head"><small>EXACT CONTENT PREVIEW</small><h2>Skyview SDE support report</h2><p style="margin:0">Created Oct 26, 2026 at 10:42 AM</p></div><div class="preview-body"><div class="preview-section"><h3>Workstation</h3><div class="kv"><b>Device name</b><span>SKYVIEW-LT-014</span><b>Operating system</b><span>Linux Mint 22.3 · x86_64</span><b>SDE version</b><span>Candidate</span><b>User identity</b><span class="redacted">[REDACTED USER]</span></div></div><div class="preview-section"><h3>Latest validation</h3><div class="kv"><b>Collected</b><span>Oct 26, 2026 at 10:38 AM</span><b>Outcome</b><span>Ready! · 35 passed · 0 failed</span><b>Unavailable</b><span>Restart detection</span></div></div><div class="preview-section"><h3>Maintenance</h3><div class="kv"><b>Schedule</b><span>Enabled · weekly</span><b>Last result</b><span>Failed · Oct 25, 2026 at 3:07 AM</span><b>Log path</b><span>/var/log/skyview-robotics/student-dev</span></div></div><div class="preview-section"><h3>Diagnostic logs</h3><p class="omitted">Not included by user choice. Logs remain on this workstation and can be shared separately if a mentor requests them.</p></div></div></section>
+          </div>
+        </main>
+      </div>
+      <aside class="annotations"><div class="note"><strong>1</strong><b>Contextual entry only</b><p>No permanent navigation item. Start from Validation, operation failure, or Recovery.</p></div><div class="note"><strong>2</strong><b>Exact preview</b><p>Every final section and redacted value is visible before saving.</p></div><div class="note"><strong>3</strong><b>Device name retained</b><p>The exact workstation name is intentionally included for mentor correlation.</p></div><div class="note"><strong>4</strong><b>Privacy defaults</b><p>Usernames, home paths, credentials, tokens, and credential-bearing URLs are redacted. Logs begin off.</p></div><div class="note"><strong>5</strong><b>Safe artifact</b><p>One bounded, escaped, script-free HTML file. No upload, email, or automatic transmission.</p></div></aside>
+    </div>
+  </section>
+
+  <section class="board" id="responsive-board">
+    <div class="board-head"><div><h2>5. Compact layout, accessibility, and state transitions</h2><p>The same hierarchy survives compact widths, supported zoom, themes, keyboard use, and assistive technology.</p></div><span class="badge">Shared acceptance</span></div>
+    <div class="board-grid" style="grid-template-columns:620px 1fr">
+      <div class="compact-frame"><div class="compact-nav"><span class="active">Overview</span><span>Validation</span><span>Schedule</span></div><div class="compact-screen"><p class="eyebrow">YOUR DEVELOPMENT WORKSTATION</p><h1 style="font-size:28px">Are you ready to build?</h1><p class="system">▱ Windows 11 · x64</p><section class="card status-card yellow"><div class="status-title"><div class="status-icon">▱</div><div><small>DEVELOPMENT ENVIRONMENT</small><h2>Ready!</h2></div></div><div class="status-detail">△ Maintenance overdue<span>No successful run in the previous 14 days.</span></div><button class="button-secondary">Review managed-tool updates</button><div class="counts"><span>✓ 35 passed</span><span>△ Maintenance needs attention</span></div></section><section class="card"><h2>Manage your environment</h2><div class="tabs" style="grid-template-columns:repeat(2,1fr)"><span class="selected">Install</span><span>Repair</span><span>Validate</span><span>Update</span></div><button class="button wide-button"><span>Install Development Environment</span><span>→</span></button></section></div></div>
+      <div><h3>Responsive rules</h3><div class="a11y-list"><div><b>Reading order</b><br />Status → reason → observation time → single action → supporting counts.</div><div><b>Keyboard</b><br />Page headings receive focus after navigation; focus never moves merely because status refreshes.</div><div><b>Announcements</b><br />Preflight completion, blockers, recovery results, and report-save outcome use bounded live-region messages.</div><div><b>Not color alone</b><br />Every green/yellow/red state includes a status word, icon, reason, and action.</div><div><b>Zoom and reflow</b><br />No horizontal page scrolling at supported zoom; action buttons remain at least 44 px high.</div><div><b>Reduced motion</b><br />No essential meaning depends on animation; loading text remains visible.</div><div><b>Technical detail</b><br />Student guidance uses common language. Exact platform subsystem evidence stays in details and reports.</div><div><b>Stale observations</b><br />Displayed timestamps and Refresh prevent old evidence from appearing current.</div></div>
+        <h3 style="margin-top:22px">Recovery lifecycle</h3><div class="flow-map" style="justify-content:flex-start"><span>Operation starts</span><i>→ crash/restart →</i><span>Running?</span><i>no →</i><span>Interrupted</span><i>→</i><span>Validate</span><i>→</i><span>Resolve, recommend Repair, or mentor guidance</span></div>
+        <h3>Preflight lifecycle</h3><div class="flow-map" style="justify-content:flex-start"><span>Fresh results</span><i>→</i><span>Known blocker?</span><i>yes → stop · no →</i><span>Unavailable?</span><i>yes → one-attempt acknowledgment · no →</i><span>Confirm operation</span></div>
+        <h3>Prototype approval boundary</h3><p class="note">Approval fixes the screen hierarchy, primary wording, state taxonomy, and transitions shown here. Production implementation may refine spacing and platform-native file-picker details without changing the approved behavior.</p>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

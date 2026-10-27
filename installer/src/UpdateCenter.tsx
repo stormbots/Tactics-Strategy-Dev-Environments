@@ -3,16 +3,15 @@ import type { ToolRecord } from "./model";
 import {
   checkApplication,
   checkTools,
-  checkPreflight,
   failureText,
   openRelease,
   toolExplanation,
   usableRetryTime,
   type AppDiscovery,
   type ToolPreview,
-  type PreflightCheck,
 } from "./updateDiscovery";
 import { localTime } from "./DetailsPages";
+import { PreflightReview } from "./PreflightReview";
 
 export function useUpdateDiscovery(
   snapshot: ToolRecord[],
@@ -249,41 +248,13 @@ export function ToolUpdatePreview({
 }: {
   data: Discovery;
   snapshot: ToolRecord[];
-  onContinue: () => void;
+  onContinue: (acknowledgedUncertainty: boolean) => void;
   onCancel: () => void;
   platformSupported: boolean;
 }) {
-  const [checks, setChecks] = useState<PreflightCheck[] | null>(null);
-  const [preflightLoading, setPreflightLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [ack, setAck] = useState(false);
-  const live = useRef(true);
   const heading = useRef<HTMLHeadingElement>(null);
-  async function preflight() {
-    if (preflightLoading) return;
-    setPreflightLoading(true);
-    setChecks(null);
-    setAck(false);
-    setError("");
-    try {
-      const rows = await checkPreflight();
-      if (live.current) setChecks(rows);
-    } catch {
-      if (live.current)
-        setError(
-          "Preflight could not be completed. Check again before continuing.",
-        );
-    } finally {
-      if (live.current) setPreflightLoading(false);
-    }
-  }
   useEffect(() => {
-    live.current = true;
     heading.current?.focus();
-    void preflight();
-    return () => {
-      live.current = false;
-    };
   }, []);
   const tools =
     data.preview?.tools ??
@@ -295,11 +266,6 @@ export function ToolUpdatePreview({
           updateCheck: "unavailable" as const,
         }))
       : snapshot);
-  const caution = checks?.some(
-    (c) => c.status === "warning" || c.status === "unavailable",
-  );
-  const blocked =
-    !platformSupported || checks?.some((c) => c.status === "blocking");
   return (
     <section
       className="information-card update-preview"
@@ -358,65 +324,12 @@ export function ToolUpdatePreview({
       >
         Refresh preview
       </button>
-      <h3>Before changes begin</h3>
-      <p role="status">
-        {preflightLoading
-          ? "Checking update prerequisites…"
-          : error ||
-            (!checks
-              ? "Preflight not completed."
-              : blocked
-                ? "Action needed. No changes have been started."
-                : "Preflight complete. Review warnings and unavailable checks before continuing.")}
-      </p>
-      {checks?.map((c) => (
-        <p key={c.name}>
-          <strong>
-            {c.name} — {c.status === "blocking" ? "Action needed" : c.status}
-          </strong>
-          : {c.detail}
-        </p>
-      ))}
-      <button
-        className="secondary"
-        disabled={preflightLoading}
-        onClick={() => void preflight()}
-      >
-        Check again
-      </button>
-      {caution && (
-        <label className="preflight-ack">
-          <input
-            type="checkbox"
-            checked={ack}
-            onChange={(e) => setAck(e.target.checked)}
-          />{" "}
-          I have reviewed the warnings and unavailable checks. Downloads or
-          installation may still fail.
-        </label>
-      )}
-      <div className="result-actions">
-        <button
-          disabled={
-            preflightLoading ||
-            !checks ||
-            !!blocked ||
-            !!error ||
-            (!!caution && !ack)
-          }
-          onClick={onContinue}
-        >
-          Continue with Update
-        </button>
-        <button className="secondary" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-      <p className="muted">
-        Continuing requests administrator approval. Preconditions are checked
-        again before package changes; a successful preflight cannot guarantee
-        success.
-      </p>
+      <PreflightReview
+        operation="update"
+        platformSupported={platformSupported}
+        onContinue={onContinue}
+        onCancel={onCancel}
+      />
     </section>
   );
 }
