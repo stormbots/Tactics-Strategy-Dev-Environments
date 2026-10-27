@@ -2,7 +2,7 @@ param([switch]$CheckUpdates)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Coordination.ps1')
 try {
-Invoke-SkyviewCoordinated -Action {
+Invoke-SkyviewCoordinated -ReadOnly -Action {
 & (Join-Path $PSScriptRoot 'Validate-SkyviewEnvironment.ps1') -CheckUpdates:$CheckUpdates
 exit $LASTEXITCODE
 

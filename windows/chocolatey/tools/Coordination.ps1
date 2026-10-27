@@ -19,7 +19,8 @@ function Assert-SkyviewProtectedPath([string]$Path, [switch]$Gate, [switch]$Anch
     if (-not $Gate -and -not $item.PSIsContainer) { throw 'Invalid SDE coordination directory.' }
 }
 function Invoke-SkyviewCoordinated {
-    param([scriptblock]$Action, [switch]$Mutation)
+    param([scriptblock]$Action, [switch]$Mutation, [switch]$ReadOnly)
+    if ($Mutation -and $ReadOnly) { throw 'A changing operation cannot use read-only coordination.' }
     $root = $script:SkyviewCoordinationRoot
     Assert-SkyviewProtectedPath 'C:\' -Anchor
     Assert-SkyviewProtectedPath 'C:\ProgramData' -Anchor
@@ -59,7 +60,13 @@ function Invoke-SkyviewCoordinated {
         $session = [IO.File]::Open((Join-Path $root 'sessions.gate'), 'Open', 'Read', 'Read')
         Assert-SkyviewProtectedPath (Join-Path $root 'operations.gate') -Gate
         $operation = [IO.File]::Open((Join-Path $root 'operations.gate'), 'Open', 'Read', 'None')
-        if (Test-Path -LiteralPath $journal) { throw 'An interrupted system operation needs mentor review before another change.' }
+        if (Test-Path -LiteralPath $journal) {
+            if (-not $ReadOnly) { throw 'An interrupted system operation needs mentor review before another change.' }
+            # Validation must remain available for diagnosis. Keep the exclusive
+            # operation gate, never read/clear the private journal, and retain the
+            # interruption as a warning rather than treating validation as recovery.
+            Write-Host 'SKYVIEW_EVENT|validation|WARNING|An interrupted system operation still needs mentor review before another change.'
+        }
         if ($Mutation) {
             if (-not $administrator) { throw 'System operations require administrator authentication.' }
             $env:SKYVIEW_TRANSACTION_TOKEN = [guid]::NewGuid().ToString()
