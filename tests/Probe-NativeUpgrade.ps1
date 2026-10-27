@@ -35,6 +35,7 @@ try {
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.16/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.15', '1.2.16') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.17/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.16', '1.2.17') }
     if ($UatPair -and (Test-Path (Join-Path $Root '1.2.18/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.17', '1.2.18') }
+    if ($UatPair -and (Test-Path (Join-Path $Root '1.2.19/Skyview-Dev-Setup-Windows-x64.exe'))) { $versions = @('1.2.18', '1.2.19') }
     $settings = 'C:\Development\.vscode\settings.json'
     New-Item -ItemType Directory -Force (Split-Path $settings) | Out-Null
     Set-Content $settings '{"editor.fontSize":17}'
@@ -43,7 +44,7 @@ try {
     foreach ($version in $versions) {
         if ($UatPair -and $version -eq $versions[1]) {
             Set-Content $legacyBaseline '# legacy maintenance UAT sentinel'
-            if ($version -in @('1.2.16','1.2.17','1.2.18')) {
+            if ($version -in @('1.2.16','1.2.17','1.2.18','1.2.19')) {
                 & 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe' pause
                 if ($LASTEXITCODE -ne 0) { throw 'Could not prepare paused prior installation.' }
             }
@@ -83,7 +84,7 @@ try {
             $policy = Get-Content (Join-Path $rootPolicy 'policy.json') -Raw | ConvertFrom-Json
             $active = Get-Content (Join-Path $rootPolicy 'active.json') -Raw | ConvertFrom-Json
             if ($policy.paused -ne $false -or $active.version -ne $version) { throw 'Enabled policy or active engine mismatch' }
-            if ($version -in @('1.2.16','1.2.17','1.2.18')) {
+            if ($version -in @('1.2.16','1.2.17','1.2.18','1.2.19')) {
                 $policyWorker = 'C:\Program Files\Skyview Dev Setup\backend\windows\self-update\sde-update-trust.exe'
                 foreach ($verb in @('pause','resume')) {
                     & $policyWorker $verb
