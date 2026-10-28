@@ -30,13 +30,21 @@ Local verification completed:
 
 - 9 payload/binding tests passed. The additional Linux root/CI permission fixture
   was explicitly skipped, not reported as a native pass.
-- 9 existing CI-scope tests passed.
+- 12 CI-scope/workflow tests passed, including three regressions requiring the
+  dedicated Windows NSIS step, nonzero-exit/missing-marker failures, and separation
+  from Chocolatey packaging while retaining coordination checks.
 - Python compilation and whitespace/diff checks passed.
 
 Rust and PowerShell are not installed in this execution environment. Native
 Windows, privileged Linux, PowerShell parsing/analysis, workflow lint, and full
 existing application validation are pending CI. No tests were run against owner
 workstations; Windows evidence and Mint's v1.2.18 35/0/0 pass remain intact.
+
+DevOps reported the Linux root fixture passed at `8a88b27`, but requested an
+explicit Windows evidence gate. The old Windows NSIS native job's Chocolatey
+step succeeded in Build run `40775671361`; bundle selection did not exclude that
+step. The revised workflow makes the probe separately visible and requires both
+exact markers. Old-head success is not substituted for revised-head CI evidence.
 
 ## Required DevOps validation
 
@@ -47,8 +55,10 @@ waive jobs. Relevant new assertions:
 - `update-trust`: Recovery acknowledgment contract, plus Root-owned recovery
   acknowledgment feasibility on Linux. The required root invocation must fail
   if its privileged fixture cannot run; do not accept its local skip as evidence.
-- Windows native job: `Test-RecoveryAcknowledgmentFeasibilityCI.ps1` is called
-  from the existing backend packaging/test step and must complete successfully.
+- Windows NSIS native job: the dedicated **Required Windows acknowledgment
+  feasibility** step calls `Test-RecoveryAcknowledgmentFeasibilityCI.ps1` outside
+  Chocolatey packaging. It requires exit code zero and both exact success markers;
+  a missing marker fails even if the script exits successfully.
 - Expected markers include `SDE_RECOVERY_WINDOWS_STANDARD_USER_INTENT_OK` and
   `SDE_RECOVERY_WINDOWS_PRIVILEGED_CONSUMER_OK`. Linux unittest must execute
   `test_student_submits_intent_without_access_to_private_evidence` without a skip.

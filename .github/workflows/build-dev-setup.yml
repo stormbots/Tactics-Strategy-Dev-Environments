@@ -183,6 +183,17 @@ jobs:
       - name: Prepare Linux coordination fixtures
         if: runner.os == 'Linux'
         run: sudo coordination/target/release/sde-coordination init
+      - name: Required Windows acknowledgment feasibility
+        if: runner.os == 'Windows' && matrix.bundle == 'nsis'
+        shell: pwsh
+        run: |
+          $output = @(& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-RecoveryAcknowledgmentFeasibilityCI.ps1)
+          $probeExit = $LASTEXITCODE
+          $output | Write-Output
+          if ($probeExit -ne 0) { throw "Recovery acknowledgment feasibility failed (exit $probeExit)." }
+          foreach ($marker in @('SDE_RECOVERY_WINDOWS_STANDARD_USER_INTENT_OK','SDE_RECOVERY_WINDOWS_PRIVILEGED_CONSUMER_OK')) {
+            if ($output -cnotcontains $marker) { throw "Required recovery acknowledgment evidence missing: $marker" }
+          }
       - name: Package the existing Chocolatey backend
         if: runner.os == 'Windows'
         shell: pwsh
@@ -194,8 +205,6 @@ jobs:
           if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
           & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-CoordinationCI.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Coordination supervision failed.' }
-          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-RecoveryAcknowledgmentFeasibilityCI.ps1
-          if ($LASTEXITCODE -ne 0) { throw 'Recovery acknowledgment feasibility failed.' }
           ./tests/Test-BackendContracts.ps1
           ./tests/Test-MetadataContracts.ps1
           ./tests/Test-MaintenanceCI.ps1
