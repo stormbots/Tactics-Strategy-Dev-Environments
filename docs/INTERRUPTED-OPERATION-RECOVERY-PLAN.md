@@ -1,12 +1,12 @@
 # Interrupted-operation recovery: self-service implementation plan
 
-Status: ready for owner review; not authorization to implement.
+Status: owner approved engineering; T1 native feasibility validation pending.
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.
 
 This plan records the 15-question design interview. The owner subsequently waived
 the prototype: there is no wireframe, mockup, or prototype approval phase.
-Plan review is the next owner checkpoint. Codex owns application engineering and
+The owner authorized engineering after plan review. Codex owns application engineering and
 targeted tests; the CI workflow chat owns full native verification and packaging.
 The owner performs focused UAT after the consolidated candidate is ready.
 
@@ -372,9 +372,10 @@ CI handoff template (replace placeholders with actual values):
 > action; if CI is pending, end instead of polling. Do not promote stable, roll out
 > to the fleet, close the milestone, or resume paused automation.
 
-The next required owner action for this document is plan review. Implementation,
-tracker publication, PR creation, candidate versioning, CI dispatch, and release
-actions have not been performed by writing this plan.
+Engineering is authorized. T1's initial contract, isolated permission probes, and
+native-validation handoff are recorded in
+[the engineering status](RECOVERY-ENGINEERING-STATUS.md). This is not a completed
+feature or UAT candidate. No release action is authorized by this document alone.
 
 ## 12. Risks, compatibility, and fallback
 
