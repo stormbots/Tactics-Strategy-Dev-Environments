@@ -1,6 +1,7 @@
 # ADR 0001: Prompt-free interruption acknowledgment boundary
 
-Status: proposed; native feasibility verification pending. Production behavior
+Status: permission-layout feasibility accepted at `1f1e449`; production storage
+foundation implemented, native production validation pending. Execution behavior
 is unchanged. Implements the T1 checkpoint in
 [the recovery plan](../INTERRUPTED-OPERATION-RECOVERY-PLAN.md).
 
@@ -32,7 +33,11 @@ operation gate prepares three separate records under the fixed coordination root
   but may not replace/delete it, change its ACL/owner, or create sibling files.
 
 The private binding pairs the public UUID with a SHA-256 of the original journal
-bytes. It is not readable by students. A privileged consumer must compare the
+bytes and its native file-generation identity. A hash alone cannot distinguish
+identical legacy bytes in two different transaction objects. On Unix the identity
+includes device, inode, ctime/mtime with nanoseconds, and length; on Windows it
+includes volume/file index, creation/write time, and length. It is not readable
+by students. A privileged consumer must compare the
 binding with the currently opened journal under its gate before recognizing the
 intent. Matching a UUID alone is not sufficient. Never derive a public incident
 ID from the Windows nesting token. A changed journal requires a new generation.
@@ -57,8 +62,11 @@ activity, package-state, candidate/signature, or native package-manager checks.
 
 ## Required implementation before production use
 
-The current fixtures demonstrate a proposed layout, not production functions.
-No consumer or installer provisions/reads these files yet. Before enabling it:
+The initial permission fixtures demonstrated a proposed layout, not production
+functions. The production `sde_coordination::recovery` API now implements bounded
+storage, incident binding, sanitized inspection, and intent submission; native
+tests exercise these actual functions. No GUI, installer/bootstrap, scheduler, or
+execution consumer calls the API yet. Before enabling it:
 
 1. Validate ownership, ACLs, regular-file type, link count, no-follow/reparse
    semantics, fixed path, size, and handle identity in shared production code.
@@ -92,6 +100,11 @@ standard Windows account and an isolated ProgramData fixture. Neither accesses
 the real coordination root, changes production behavior, or launches packages.
 
 Existing Build Skyview Dev Setup jobs run the probes; the CI workflow chat owns
-their authoritative native results. T2–T8 implementation remains dependent on
-passing T1 evidence. Existing Windows interruption evidence and Mint v1.2.18 UAT
-acceptance are unchanged.
+their authoritative native results. Build run
+[40779104989](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40779104989)
+passed at `1f1e44918be9645069312a388601fdc7e1c2bc13`. DevOps confirmed both Windows
+permission markers (native job `123136019245`) and the Linux root fixture, with
+all other applicable checks passing. This accepts the permission-layout gate,
+not production lifecycle or UAT completion. See the
+[backend foundation handoff](../RECOVERY-BACKEND-FOUNDATION.md) for subsequent work.
+Existing Windows interruption evidence and Mint v1.2.18 UAT acceptance are unchanged.

@@ -1,6 +1,11 @@
 # Interrupted-operation recovery: engineering status
 
-Scope: first bounded task, T1 contract and native feasibility gate.
+Current increment: [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md),
+branch `codex/recovery-backend-foundation`. The record below is the historical
+permission-feasibility increment, now accepted on exact-head native CI; it is not
+the status of the full redesign.
+
+Historical scope: first bounded task, T1 contract and native feasibility gate.
 Branch: `codex/recovery-acknowledgment-contract`.
 Base application source: `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`.
 
@@ -35,7 +40,7 @@ Local verification completed:
   from Chocolatey packaging while retaining coordination checks.
 - Python compilation and whitespace/diff checks passed.
 
-Rust and PowerShell are not installed in this execution environment. Native
+At that increment Rust and PowerShell were not installed locally. Native
 Windows, privileged Linux, PowerShell parsing/analysis, workflow lint, and full
 existing application validation are pending CI. No tests were run against owner
 workstations; Windows evidence and Mint's v1.2.18 35/0/0 pass remain intact.
@@ -45,6 +50,13 @@ explicit Windows evidence gate. The old Windows NSIS native job's Chocolatey
 step succeeded in Build run `40775671361`; bundle selection did not exclude that
 step. The revised workflow makes the probe separately visible and requires both
 exact markers. Old-head success is not substituted for revised-head CI evidence.
+
+DevOps subsequently accepted exact head `1f1e44918be9645069312a388601fdc7e1c2bc13`
+in successful Build run
+[40779104989](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40779104989).
+Windows NSIS job `123136019245` passed the dedicated step with both markers;
+Linux root feasibility and all other applicable checks passed. No merge, release,
+or owner UAT occurred. This historical native gate is complete.
 
 ## Required DevOps validation
 

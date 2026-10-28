@@ -4,6 +4,8 @@ use std::{
     fs::File,
     path::{Path, PathBuf},
 };
+pub mod recovery;
+pub mod safety;
 #[cfg(windows)]
 mod windows;
 
@@ -559,5 +561,279 @@ mod tests {
             assert!(!error.to_string().is_empty());
             assert!(serde_json::to_string(&error).is_ok());
         }
+    }
+
+    fn interrupted_fixture(f: &Fixture) -> Vec<u8> {
+        let install = installation_at(&f.path).unwrap();
+        // Synthetic installation record without a public incident ID, matching
+        // the legacy shape. No installer/package child is ever started.
+        drop(install.begin_transaction().unwrap());
+        drop(install);
+        std::fs::read(f.path.join("transaction.json")).unwrap()
+    }
+
+    #[test]
+    fn recovery_legacy_binding_survives_restart_without_clearing_or_authorizing() {
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let first = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_eq!(recovery::inspect_at(&f.path).unwrap(), Some(first.clone()));
+        recovery::submit_at(&f.path, &first.incident_id).unwrap();
+        {
+            let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+            assert!(recovery::pending_at(&f.path).unwrap());
+        }
+        initialize_at(&f.path).unwrap();
+        assert_eq!(recovery::prepare_at(&f.path).unwrap(), Some(first));
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        // An intent is not a disposition or a permission to execute. Until the
+        // lifecycle/safety consumers are integrated, both old guards still hold.
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+        assert_eq!(no_interruption(&f.path).unwrap_err(), Error::Interrupted);
+    }
+
+    #[test]
+    fn recovery_changed_evidence_rotates_identity_and_rejects_stale_intent() {
+        let Some(f) = Fixture::new() else { return };
+        interrupted_fixture(&f);
+        let first = recovery::prepare_at(&f.path).unwrap().unwrap();
+        recovery::submit_at(&f.path, &first.incident_id).unwrap();
+        std::fs::write(
+            f.path.join("transaction.json"),
+            b"different synthetic journal",
+        )
+        .unwrap();
+        {
+            let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+            assert!(!recovery::pending_at(&f.path).unwrap());
+        }
+        let second = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_ne!(first.incident_id, second.incident_id);
+        assert_eq!(
+            recovery::submit_at(&f.path, &first.incident_id).unwrap_err(),
+            Error::Interrupted
+        );
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert!(!recovery::pending_at(&f.path).unwrap());
+    }
+
+    #[test]
+    fn recovery_no_record_and_busy_gate_never_provision_a_fake_incident() {
+        let Some(f) = Fixture::new() else { return };
+        assert_eq!(recovery::prepare_at(&f.path).unwrap(), None);
+        assert!(!f.path.join("recovery-incident.json").exists());
+        interrupted_fixture(&f);
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert_eq!(recovery::prepare_at(&f.path).unwrap_err(), Error::Busy);
+        assert_eq!(recovery::inspect_at(&f.path).unwrap_err(), Error::Busy);
+        assert!(recovery::submit_at(&f.path, "not-an-id").is_err());
+        assert!(!f.path.join("recovery-incident.json").exists());
+    }
+
+    #[test]
+    fn recovery_partial_intent_is_not_approval_and_public_marker_has_no_private_data() {
+        let Some(f) = Fixture::new() else { return };
+        interrupted_fixture(&f);
+        recovery::prepare_at(&f.path).unwrap();
+        let public: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(f.path.join("recovery-incident.json")).unwrap())
+                .unwrap();
+        assert_eq!(public.as_object().unwrap().len(), 2);
+        assert!(public.get("schema").is_some());
+        assert!(public.get("incidentId").is_some());
+        for data in [b"{".as_slice(), b"{}".as_slice(), b"\xff".as_slice()] {
+            std::fs::write(f.path.join("recovery-acknowledgment.json"), data).unwrap();
+            let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+            assert!(!recovery::pending_at(&f.path).unwrap());
+        }
+    }
+
+    #[test]
+    fn recovery_student_probe() {
+        let Some(dir) = std::env::var_os("SDE_TEST_RECOVERY_DIR") else {
+            return;
+        };
+        let dir = PathBuf::from(dir);
+        #[cfg(unix)]
+        assert_eq!(unsafe { libc::geteuid() }, 65534);
+        let incident = recovery::inspect_at(&dir).unwrap().unwrap();
+        assert!(std::fs::read(dir.join("transaction.json")).is_err());
+        assert!(std::fs::read(dir.join("recovery-binding.json")).is_err());
+        assert!(std::fs::OpenOptions::new()
+            .write(true)
+            .open(dir.join("transaction.json"))
+            .is_err());
+        assert!(std::fs::OpenOptions::new()
+            .write(true)
+            .open(dir.join("recovery-incident.json"))
+            .is_err());
+        recovery::submit_at(&dir, &incident.incident_id).unwrap();
+        println!("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK");
+    }
+
+    #[test]
+    fn recovery_real_standard_user_can_submit_through_production_storage() {
+        #[cfg(windows)]
+        if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
+            assert!(
+                std::env::var("SDE_REQUIRE_COORDINATION").as_deref() != Ok("1"),
+                "Required Windows account probe needs a disposable CI runner"
+            );
+            return;
+        }
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        recovery::prepare_at(&f.path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            use std::os::unix::process::CommandExt;
+            // The runner checkout's ancestors may be private. Test storage
+            // permissions, not incidental access to /home/runner or its cache.
+            let binary = f.path.join("student-probe");
+            std::fs::copy(std::env::current_exe().unwrap(), &binary).unwrap();
+            std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+            let mut command = Command::new(binary);
+            command
+                .args(["--exact", "tests::recovery_student_probe", "--nocapture"])
+                .env("SDE_TEST_RECOVERY_DIR", &f.path);
+            // Only async-signal-safe syscalls in the forked child. No global
+            // process privilege change, account change, or package invocation.
+            unsafe {
+                command.pre_exec(|| {
+                    if libc::setgroups(0, std::ptr::null()) != 0
+                        || libc::setgid(65534) != 0
+                        || libc::setuid(65534) != 0
+                    {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                    Ok(())
+                });
+            }
+            let result = command.output().unwrap();
+            assert!(
+                result.status.success(),
+                "Student storage probe failed: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert!(String::from_utf8_lossy(&result.stdout)
+                .contains("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK"));
+        }
+        #[cfg(windows)]
+        {
+            let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../tests/Invoke-RecoveryStorageStudentCI.ps1");
+            let result = Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                ])
+                .arg(script)
+                .arg("-FixtureRoot")
+                .arg(&f.path)
+                .arg("-TestBinary")
+                .arg(std::env::current_exe().unwrap())
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "Windows student storage fixture failed: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert!(String::from_utf8_lossy(&result.stdout)
+                .contains("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK"));
+        }
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert!(recovery::pending_at(&f.path).unwrap());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+    }
+
+    #[test]
+    fn recovery_recreated_identical_legacy_bytes_are_a_new_generation() {
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let first = recovery::prepare_at(&f.path).unwrap().unwrap();
+        recovery::submit_at(&f.path, &first.incident_id).unwrap();
+        // Fixture-only replacement: model a new old-format record whose PID and
+        // bytes are identical. Retain the old object to prevent inode reuse.
+        std::fs::rename(
+            f.path.join("transaction.json"),
+            f.path.join("old-fixture.json"),
+        )
+        .unwrap();
+        assert_eq!(interrupted_fixture(&f), original);
+        let second = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_ne!(first.incident_id, second.incident_id);
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert!(!recovery::pending_at(&f.path).unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn recovery_native_storage_rejects_link_and_permission_changes() {
+        use std::os::unix::ffi::OsStrExt;
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+        let slot = f.path.join("recovery-acknowledgment.json");
+        std::fs::set_permissions(&slot, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert_eq!(
+            recovery::submit_at(&f.path, &incident.incident_id).unwrap_err(),
+            Error::Untrusted
+        );
+        std::fs::remove_file(&slot).unwrap();
+        symlink("transaction.json", &slot).unwrap();
+        assert!(recovery::submit_at(&f.path, &incident.incident_id).is_err());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        std::fs::remove_file(&slot).unwrap();
+        let fifo = std::ffi::CString::new(slot.as_os_str().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o666) }, 0);
+        assert_eq!(
+            recovery::submit_at(&f.path, &incident.incident_id).unwrap_err(),
+            Error::Untrusted
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn recovery_rejects_overbroad_intent_rights_and_exposed_private_binding() {
+        let Some(f) = Fixture::new() else { return };
+        interrupted_fixture(&f);
+        let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+        let slot = f.path.join("recovery-acknowledgment.json");
+        assert!(Command::new("icacls.exe")
+            .arg(&slot)
+            .args(["/grant", "*S-1-5-32-545:M"])
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert_eq!(
+            recovery::submit_at(&f.path, &incident.incident_id).unwrap_err(),
+            Error::Untrusted
+        );
+        let binding = f.path.join("recovery-binding.json");
+        assert!(Command::new("icacls.exe")
+            .arg(binding)
+            .args(["/grant", "*S-1-5-32-545:R"])
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert_eq!(recovery::prepare_at(&f.path).unwrap_err(), Error::Untrusted);
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
     }
 }
