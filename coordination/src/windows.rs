@@ -130,8 +130,35 @@ fn check_acl(owner: PSID, acl: *mut ACL, anchor: bool) -> Result<()> {
 
 fn validate_parents(dir: &Path) -> Result<()> {
     validate_acl(Path::new(r"C:\"), true)?;
-    validate_acl(Path::new(r"C:\ProgramData"), true)?;
-    validate(dir)
+    let base = Path::new(r"C:\ProgramData");
+    validate_acl(base, true)?;
+    let relative = dir.strip_prefix(base).map_err(|_| Error::Untrusted)?;
+    let mut parent = base.to_path_buf();
+    for component in relative.components() {
+        let std::path::Component::Normal(name) = component else {
+            return Err(Error::Untrusted);
+        };
+        parent.push(name);
+        validate(&parent)?;
+    }
+    Ok(())
+}
+
+pub(super) fn recovery_archive(dir: &Path) -> Result<()> {
+    validate_parents(dir)?;
+    let archive = dir.join("recovery-archive");
+    create(&archive, true)?;
+    validate_parents(&archive)
+}
+
+pub(super) fn validate_recovery_archive(dir: &Path) -> Result<()> {
+    let archive = dir.join("recovery-archive");
+    validate_parents(&archive)?;
+    let metadata = std::fs::symlink_metadata(archive).map_err(|_| Error::Untrusted)?;
+    if !metadata.is_dir() {
+        return Err(Error::Untrusted);
+    }
+    Ok(())
 }
 fn create(path: &Path, directory: bool) -> Result<()> {
     // Existing gates may be held exclusively during a package post-install hook.
@@ -311,4 +338,187 @@ pub(super) fn journal(path: &Path) -> Result<File> {
         return Err(Error::Interrupted);
     }
     Ok(unsafe { File::from_raw_handle(handle) })
+}
+
+/// Pinned regular-file access for the recovery foundation. The intent slot has
+/// one explicit Users data-write exception; the root/gates/journal do not.
+pub(super) fn open_recovery(
+    dir: &Path,
+    name: &str,
+    kind: crate::recovery::Kind,
+    create: bool,
+    write: bool,
+) -> Result<File> {
+    use crate::recovery::Kind;
+    validate_parents(dir)?;
+    let sddl = match kind {
+        Kind::Private => "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)",
+        Kind::Public => "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;BU)",
+        Kind::Intent => "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x12019f;;;BU)",
+    };
+    let mut descriptor = ptr::null_mut();
+    if create
+        && unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                wide(sddl).as_ptr(),
+                1,
+                &mut descriptor,
+                ptr::null_mut(),
+            )
+        } == 0
+    {
+        return Err(Error::Untrusted);
+    }
+    let security = SECURITY_ATTRIBUTES {
+        nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+        lpSecurityDescriptor: descriptor,
+        bInheritHandle: 0,
+    };
+    let handle = unsafe {
+        CreateFileW(
+            wide(dir.join(name)).as_ptr(),
+            GENERIC_READ | READ_CONTROL | if write { GENERIC_WRITE } else { 0 },
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            if create { &security } else { ptr::null() },
+            if create { CREATE_NEW } else { OPEN_EXISTING },
+            FILE_FLAG_OPEN_REPARSE_POINT | FILE_ATTRIBUTE_NORMAL,
+            ptr::null_mut(),
+        )
+    };
+    let open_error = unsafe { GetLastError() };
+    if !descriptor.is_null() {
+        unsafe {
+            LocalFree(descriptor);
+        }
+    }
+    if handle == INVALID_HANDLE_VALUE {
+        return Err(if open_error == ERROR_SHARING_VIOLATION {
+            Error::Busy
+        } else {
+            Error::Unavailable
+        });
+    }
+    let file = unsafe { File::from_raw_handle(handle) };
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0
+        || info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT) != 0
+        || info.nNumberOfLinks != 1
+    {
+        return Err(Error::Untrusted);
+    }
+    let mut owner = ptr::null_mut();
+    let mut acl: *mut ACL = ptr::null_mut();
+    let mut security_info = ptr::null_mut();
+    if unsafe {
+        GetSecurityInfo(
+            handle,
+            SE_FILE_OBJECT,
+            OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+            &mut owner,
+            ptr::null_mut(),
+            &mut acl,
+            ptr::null_mut(),
+            &mut security_info,
+        )
+    } != ERROR_SUCCESS
+    {
+        return Err(Error::Untrusted);
+    }
+    let result = check_recovery_acl(owner, acl, kind);
+    unsafe {
+        LocalFree(security_info);
+    }
+    result?;
+    Ok(file)
+}
+
+fn check_recovery_acl(owner: PSID, acl: *mut ACL, kind: crate::recovery::Kind) -> Result<()> {
+    use crate::recovery::Kind;
+    let system = sid(WinLocalSystemSid)?;
+    let admins = sid(WinBuiltinAdministratorsSid)?;
+    let users = sid(WinBuiltinUsersSid)?;
+    if !trusted(owner, &system, &admins) || acl.is_null() {
+        return Err(Error::Untrusted);
+    }
+    let permitted = match kind {
+        Kind::Private => 0,
+        Kind::Public => FILE_GENERIC_READ,
+        Kind::Intent => 0x12019f,
+    };
+    let mut user_grant = 0;
+    for index in 0..unsafe { (*acl).AceCount } as u32 {
+        let mut ace: *mut c_void = ptr::null_mut();
+        if unsafe { GetAce(acl, index, &mut ace) } == 0 || ace.is_null() {
+            return Err(Error::Untrusted);
+        }
+        let header = unsafe { &*ace.cast::<ACE_HEADER>() };
+        if header.AceType == 1 {
+            continue;
+        }
+        if header.AceType != 0 || header.AceFlags != 0 {
+            return Err(Error::Untrusted);
+        }
+        let allow = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
+        let trustee = ptr::addr_of!(allow.SidStart) as PSID;
+        if trusted(trustee, &system, &admins) {
+            continue;
+        }
+        if unsafe { EqualSid(trustee, users.as_ptr() as PSID) } == 0 || allow.Mask & !permitted != 0
+        {
+            return Err(Error::Untrusted);
+        }
+        user_grant |= allow.Mask;
+    }
+    if user_grant != permitted {
+        return Err(Error::Untrusted);
+    }
+    Ok(())
+}
+
+pub(super) fn replace_recovery(dir: &Path, source: &str, destination: &str) -> Result<()> {
+    publish_recovery(dir, source, destination, true)
+}
+
+pub(super) fn publish_recovery(
+    dir: &Path,
+    source: &str,
+    destination: &str,
+    replace: bool,
+) -> Result<()> {
+    if unsafe {
+        MoveFileExW(
+            wide(dir.join(source)).as_ptr(),
+            wide(dir.join(destination)).as_ptr(),
+            MOVEFILE_WRITE_THROUGH
+                | if replace {
+                    MOVEFILE_REPLACE_EXISTING
+                } else {
+                    0
+                },
+        )
+    } == 0
+    {
+        Err(Error::Unavailable)
+    } else {
+        Ok(())
+    }
+}
+
+pub(super) fn recovery_file_identity(file: &File) -> Result<String> {
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
+        return Err(Error::Unavailable);
+    }
+    Ok(format!(
+        "{}:{}:{}:{}:{}:{}:{}:{}:{}",
+        info.dwVolumeSerialNumber,
+        info.nFileIndexHigh,
+        info.nFileIndexLow,
+        info.ftCreationTime.dwHighDateTime,
+        info.ftCreationTime.dwLowDateTime,
+        info.ftLastWriteTime.dwHighDateTime,
+        info.ftLastWriteTime.dwLowDateTime,
+        info.nFileSizeHigh,
+        info.nFileSizeLow
+    ))
 }
