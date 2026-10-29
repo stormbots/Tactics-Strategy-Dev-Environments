@@ -72,6 +72,36 @@ retaining both guards. Nine backend contracts and diff checks pass locally;
 PowerShell/SYSTEM execution and revised-head Mint/inherited validation remain CI
 responsibility. No failed assertion was waived or replaced by old-head evidence.
 
+Build `40894284658` at `fa1ed25` then reached the Windows contract but correctly
+deferred with `activity: active`, `activityReason: package_active` and
+`decision: block_active`, including after simulated restart provenance and intent.
+The failure at the final exit-0 assertion was not evidence of missing consent or
+coordination state. The fixture ran after real package provisioning without first
+establishing native inactivity. Existing logs do not identify the matching process;
+an idle MSI service or a still-finishing installer must not be assumed safe or
+excluded from production inspection on this evidence. The later PowerShell packaged
+NEXT invocation is after the failed native executable and was not reached in this
+run; its assertions remain required, not independently proven failed or passed.
+
+The focused fixture correction uses the same read-only native collector before
+creating its synthetic journal. It waits at most 15 minutes for observed inactivity,
+fails immediately for unknown activity or known incomplete package health, and
+fails closed at its deadline. It never retries a mutation, kills a package process,
+clears a journal, or changes production process classification. Production mutation
+begin/run still independently recheck; unexpected later activity still fails the
+unchanged exit-0 assertion. The outer SYSTEM observation deadline is 30 minutes to
+allow this setup budget plus the actual upgrades; expiration never kills packages.
+Fixture-only diagnostics log package process names/PIDs/parent PIDs before native
+execution, not command lines or private journal contents. If activity never becomes
+inactive, return this evidence for diagnosis rather than weakening the gate.
+
+Targeted local validation of this correction: ten backend contracts; two updater
+tool-coordination tests, including active-to-inactive, active timeout, unknown and
+incomplete fixture outcomes; updater Linux all-target Clippy with warnings denied;
+Rust formatting and diff checks. Native SYSTEM/Mint proof remains pending on the
+new exact head. Owner Windows interruption evidence and Mint v1.2.18 35/0/0 remain
+untouched; no release or UAT action is authorized by these fixture results.
+
 The existing signed SYSTEM/Mint native fixture functions now call a test-only
 contract using a private synthetic legacy journal on the disposable runner. It
 verifies deferral with current-session uncertainty, still defers after intent

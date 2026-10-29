@@ -68,6 +68,10 @@ try {
     if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($legacyLog)) -ne $logBefore -or (Get-Acl -LiteralPath $legacyLog).Sddl -ne $logAclBefore) { throw 'Native installer changed legacy log evidence/private permissions.' }
     if ((Get-Content -LiteralPath $policy -Raw | ConvertFrom-Json).paused -ne $false) { throw 'Application installation did not enable SDE updates.' }
     Write-Output 'SDE_NATIVE_LEGACY_LOGS_ACL_OK'
+    # Read-only fixture diagnostics: identify package processes without exposing
+    # command lines, arguments, credentials or private coordination contents.
+    Get-CimInstance -ClassName Win32_Process -OperationTimeoutSec 3 -Filter "Name = 'choco.exe' OR Name = 'msiexec.exe' OR Name = 'winget.exe' OR Name = 'dism.exe'" -ErrorAction Stop |
+        Select-Object Name,ProcessId,ParentProcessId | ConvertTo-Json -Compress
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Native signed upgrade test failed.' }
@@ -129,7 +133,9 @@ $action = New-ScheduledTaskAction -Execute 'C:\Windows\System32\WindowsPowerShel
 Register-ScheduledTask -TaskName $taskName -Action $action -User SYSTEM -RunLevel Highest -Force | Out-Null
 try {
     Start-ScheduledTask -TaskName $taskName
-    $deadline = [DateTime]::UtcNow.AddMinutes(10)
+    # Allow the native fixture's bounded 15-minute read-only inactivity wait in
+    # addition to actual upgrades. A deadline never terminates package work.
+    $deadline = [DateTime]::UtcNow.AddMinutes(30)
     while (-not (Test-Path (Join-Path $root 'done')) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Seconds 2 }
     if (Test-Path (Join-Path $root 'native-upgrade.txt')) { Get-Content (Join-Path $root 'native-upgrade.txt') }
     if (-not (Test-Path (Join-Path $root 'done'))) { throw 'Native test exceeded runner deadline; do not terminate package transactions.' }

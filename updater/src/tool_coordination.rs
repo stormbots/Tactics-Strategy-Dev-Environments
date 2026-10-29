@@ -50,9 +50,56 @@ pub(crate) fn run(command: Command) -> crate::Result<i32> {
 }
 
 #[cfg(all(test, any(target_os = "linux", windows)))]
+fn await_native_fixture_inactivity(
+    budget: std::time::Duration,
+    interval: std::time::Duration,
+    mut observe: impl FnMut() -> (
+        sde_coordination::safety::Activity,
+        sde_coordination::safety::PackageHealth,
+    ),
+) -> Result<(), &'static str> {
+    use sde_coordination::safety::{Activity, PackageHealth};
+    let started = std::time::Instant::now();
+    loop {
+        let (activity, health) = observe();
+        if health == PackageHealth::Incomplete {
+            return Err("Native fixture package state is incomplete");
+        }
+        match activity {
+            Activity::Inactive => return Ok(()),
+            Activity::Unknown => return Err("Native fixture package activity is unknown"),
+            Activity::Active => {}
+        }
+        let Some(remaining) = budget.checked_sub(started.elapsed()) else {
+            return Err("Native fixture package activity did not become inactive before deadline");
+        };
+        // Test setup only: never retry a mutation, stop a package process, or
+        // turn a timeout into inactivity. Production begin/run still recheck.
+        std::thread::sleep(interval.min(remaining));
+    }
+}
+
+#[cfg(all(test, any(target_os = "linux", windows)))]
 pub(crate) fn native_contracts() {
     use sde_coordination as coordination;
     assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"));
+    // The Windows job has just provisioned real packages. Installer/service
+    // processes may still be present after the provisioning wrapper exits.
+    // Establish the harmless child's success precondition BEFORE creating any
+    // synthetic interruption; consent must never override current activity.
+    await_native_fixture_inactivity(
+        std::time::Duration::from_secs(15 * 60),
+        std::time::Duration::from_secs(10),
+        || {
+            let facts = inspection::collect();
+            eprintln!(
+                "Native scheduled-tool fixture setup: {}",
+                serde_json::to_string(&facts).unwrap()
+            );
+            (facts.activity, facts.health)
+        },
+    )
+    .expect("Native scheduled-tool fixture requires independently observed inactivity");
     // Called only by existing native package fixtures after their explicit
     // native-fixture guard. No real package or student data is touched here.
     let root = coordination::root();
@@ -154,6 +201,32 @@ pub(crate) fn native_contracts() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fixture_wait_requires_inactivity_and_never_waives_unknown_or_timeout() {
+        use sde_coordination::safety::{Activity, PackageHealth};
+        use std::time::Duration;
+        let mut observations = [Activity::Active, Activity::Inactive].into_iter();
+        assert!(
+            await_native_fixture_inactivity(Duration::from_secs(1), Duration::ZERO, || {
+                (observations.next().unwrap(), PackageHealth::Unknown)
+            })
+            .is_ok()
+        );
+        for (activity, health, expected) in [
+            (Activity::Active, PackageHealth::Unknown, "deadline"),
+            (Activity::Unknown, PackageHealth::Unknown, "unknown"),
+            (Activity::Inactive, PackageHealth::Incomplete, "incomplete"),
+        ] {
+            assert!(
+                await_native_fixture_inactivity(Duration::ZERO, Duration::ZERO, || {
+                    (activity, health)
+                })
+                .unwrap_err()
+                .contains(expected)
+            );
+        }
+    }
     #[test]
     fn failed_or_deferred_tools_never_authorize_application_work() {
         assert_eq!(incomplete_outcome(None), None);

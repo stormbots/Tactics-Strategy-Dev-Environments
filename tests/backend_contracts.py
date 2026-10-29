@@ -83,4 +83,14 @@ class Backends(unittest.TestCase):
         self.assertLess(worker.index(indicator), worker.index("--exact windows_install::native::tests::signed_upgrade_under_system"))
         guard = self.text('updater/src/tool_coordination.rs')
         self.assertIn('assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"))', guard)
+    def test_native_fixture_establishes_inactivity_before_synthetic_journal(self):
+        source = self.text('updater/src/tool_coordination.rs')
+        fixture = source.split('pub(crate) fn native_contracts()', 1)[1]
+        self.assertLess(fixture.index('await_native_fixture_inactivity('),
+                        fixture.index('lease.begin_transaction()'))
+        self.assertIn('let facts = inspection::collect();', fixture)
+        self.assertIn('assert_eq!(run(command()).unwrap(), 0);', fixture)
+        production = source.split('#[cfg(all(test,', 1)[0]
+        self.assertNotIn('await_native_fixture_inactivity', production)
+        self.assertNotIn('thread::sleep', production)
 if __name__=='__main__': unittest.main()
