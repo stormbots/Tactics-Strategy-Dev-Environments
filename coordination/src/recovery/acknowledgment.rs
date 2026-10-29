@@ -58,7 +58,11 @@ pub fn inspect_acknowledgment() -> Result<Option<Acknowledgment>> {
 
 pub(crate) fn inspect_at(dir: &Path) -> Result<Option<Acknowledgment>> {
     let _lease = acquire_at(dir, "operations.gate", false)?;
-    let Some(incident) = inspect_locked(dir)? else {
+    public_locked(dir)
+}
+
+pub(crate) fn public_locked(dir: &Path) -> Result<Option<Acknowledgment>> {
+    let Some(incident) = super::inspect_locked(dir)? else {
         return Ok(None);
     };
     let Some(bytes) = read_optional(dir, DISPOSITION, Kind::Public, MAX_RECORD)? else {
@@ -76,9 +80,16 @@ pub(crate) fn inspect_at(dir: &Path) -> Result<Option<Acknowledgment>> {
 /// or a public API argument. All reads/publications stay under one operation lease.
 pub(crate) fn record_at(
     dir: &Path,
-    mut after: impl FnMut(Phase) -> Result<()>,
+    after: impl FnMut(Phase) -> Result<()>,
 ) -> Result<Option<Acknowledgment>> {
     let _lease = acquire_at(dir, "operations.gate", false)?;
+    record_locked(dir, after)
+}
+
+pub(crate) fn record_locked(
+    dir: &Path,
+    mut after: impl FnMut(Phase) -> Result<()>,
+) -> Result<Option<Acknowledgment>> {
     let Some((journal, identity)) = read_journal(dir)? else {
         return Ok(None);
     };
@@ -275,6 +286,26 @@ fn publish_no_replace(dir: &Path, source: &str, destination: &str) -> Result<()>
 fn publish_no_replace(_dir: &Path, _source: &str, _destination: &str) -> Result<()> {
     // This operation is supported only on the approved Windows/Mint platforms.
     Err(Error::Unavailable)
+}
+
+/// Only the mutation module can mint this non-serializable, lease-borrowing
+/// permit after fresh native safety checks. Original bytes are moved, not lost.
+pub(crate) fn retire_locked(
+    dir: &Path,
+    permit: &crate::mutation::RetirementPermit<'_>,
+) -> Result<()> {
+    let acknowledgment = record_locked(dir, |_| Ok(()))?.ok_or(Error::Interrupted)?;
+    if &acknowledgment != permit.acknowledgment() {
+        return Err(Error::Interrupted);
+    }
+    validate_archive(dir)?;
+    let destination = format!(
+        "recovery-archive/{}.retired-journal",
+        acknowledgment.incident_id
+    );
+    publish_no_replace(dir, "transaction.json", &destination)?;
+    crate::sync_directory(&dir.join(ARCHIVE))?;
+    crate::sync_directory(dir)
 }
 
 #[cfg(test)]

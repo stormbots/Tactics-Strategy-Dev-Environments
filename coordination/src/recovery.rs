@@ -1,7 +1,9 @@
 //! Production storage foundation. Intent is NOT an execution capability.
-//! No function here removes/replaces transaction.json or bypasses operation().
+//! Ordinary storage APIs never remove/replace transaction.json. Retirement is
+//! crate-private and requires a lease-borrowed permit from the mutation module.
 //! Bootstrap/GUI/execution consumers will be integrated only after native review.
 pub(crate) mod acknowledgment;
+pub(crate) mod restart;
 use crate::{acquire_at, Error, Result};
 pub use acknowledgment::{inspect_acknowledgment, record_acknowledgment, Acknowledgment};
 use serde::{Deserialize, Serialize};
@@ -87,6 +89,10 @@ pub fn verify_submission() -> Result<bool> {
 
 pub(crate) fn prepare_at(dir: &Path) -> Result<Option<Incident>> {
     let _lease = acquire_at(dir, "operations.gate", false)?;
+    prepare_locked(dir)
+}
+
+pub(crate) fn prepare_locked(dir: &Path) -> Result<Option<Incident>> {
     let (journal, journal_identity) = match read_journal(dir)? {
         Some(record) => record,
         None => return Ok(None),
@@ -157,6 +163,7 @@ pub(crate) fn prepare_at(dir: &Path) -> Result<Option<Incident>> {
         }
         Err(error) => return Err(error),
     }
+    restart::prepare_context(dir, &incident)?;
     Ok(Some(incident))
 }
 
@@ -230,7 +237,7 @@ pub(crate) fn pending_at(dir: &Path) -> Result<bool> {
         && binding.journal_sha256 == format!("{:x}", Sha256::digest(&current)))
 }
 
-fn read_journal(dir: &Path) -> Result<Option<(Vec<u8>, String)>> {
+pub(crate) fn read_journal(dir: &Path) -> Result<Option<(Vec<u8>, String)>> {
     match fs::symlink_metadata(dir.join("transaction.json")) {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(_) => return Err(Error::Unavailable),
@@ -316,7 +323,7 @@ fn persist(dir: &Path, name: &str, kind: Kind, bytes: &[u8]) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn open(dir: &Path, name: &str, kind: Kind, create: bool, write: bool) -> Result<File> {
+pub(crate) fn open(dir: &Path, name: &str, kind: Kind, create: bool, write: bool) -> Result<File> {
     use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
     crate::validate_dir(dir)?;
     let mode = match kind {
@@ -346,7 +353,7 @@ fn open(dir: &Path, name: &str, kind: Kind, create: bool, write: bool) -> Result
 }
 
 #[cfg(windows)]
-fn open(dir: &Path, name: &str, kind: Kind, create: bool, write: bool) -> Result<File> {
+pub(crate) fn open(dir: &Path, name: &str, kind: Kind, create: bool, write: bool) -> Result<File> {
     crate::windows::open_recovery(dir, name, kind, create, write)
 }
 

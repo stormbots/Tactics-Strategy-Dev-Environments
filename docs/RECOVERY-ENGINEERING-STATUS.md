@@ -1,7 +1,12 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [durable acknowledgment](RECOVERY-DURABLE-ACKNOWLEDGMENT.md),
-branch `codex/recovery-durable-acknowledgment`, pending native validation.
+Current increment: [safe transition](RECOVERY-SAFE-TRANSITION.md),
+branch `codex/recovery-safe-transition`, pending native validation.
+Durable acknowledgment passed at `046d56bd4f5f723e1d21eadbbc95674c558016ac`
+in [Build 40800652705](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40800652705).
+Windows trust reported 30/30; required Linux root tests, both native builds,
+feasibility markers and signed-upgrade checks passed. This accepts that increment,
+not the full recovery redesign. Existing application consumers remain unwired.
 The [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md) passed at
 `59884166cd336153160238f7367dcec0b136744a` in Build run `40792896158`, attempt 2.
 The record below is the historical

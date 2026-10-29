@@ -1,8 +1,10 @@
 # ADR 0001: Prompt-free interruption acknowledgment boundary
 
 Status: permission layout and production storage accepted at `5988416`;
-durable acknowledgment implemented, native crash/replay validation pending.
-Execution behavior is unchanged. Implements the T1 checkpoint in
+durable acknowledgment accepted at `046d56b` in Build `40800652705`.
+Existing application execution behavior is unchanged. The opt-in transition
+foundation is described separately in [ADR 0002](0002-lease-bound-recovery-transition.md).
+Implements the T1 checkpoint in
 [the recovery plan](../INTERRUPTED-OPERATION-RECOVERY-PLAN.md).
 
 ## Context

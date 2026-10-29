@@ -1,5 +1,13 @@
 # Durable acknowledgment: engineering and native validation handoff
 
+Accepted exact head `046d56bd4f5f723e1d21eadbbc95674c558016ac` in
+[Build 40800652705](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40800652705).
+DevOps confirmed Windows trust 30/30, required Linux root storage/crash-replay
+tests, permission checks, Windows feasibility markers, both native builds and
+signed-upgrade checks. No merge, release, owner UAT, or evidence change occurred.
+The scope below is historical; the next increment is
+[safe transition](RECOVERY-SAFE-TRANSITION.md).
+
 Branch: `codex/recovery-durable-acknowledgment`.
 Base: verified PR #114 head `59884166cd336153160238f7367dcec0b136744a`.
 Build `40792896158`, attempt 2, passed the production-storage native gate on that

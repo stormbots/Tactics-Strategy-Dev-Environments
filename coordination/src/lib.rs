@@ -6,6 +6,11 @@ use std::{
 };
 #[cfg(test)]
 mod acknowledgment_tests;
+pub mod inspection;
+pub mod mutation;
+#[cfg(test)]
+mod mutation_tests;
+pub mod observations;
 pub mod recovery;
 pub mod safety;
 #[cfg(windows)]
@@ -732,6 +737,12 @@ mod tests {
             .write(true)
             .open(dir.join("recovery-incident.json"))
             .is_err());
+        assert!(
+            crate::mutation::begin_at(&dir, crate::mutation::Scope::System, || panic!(
+                "A standard account must not reach mutation after private evidence access"
+            ))
+            .is_err()
+        );
         recovery::submit_at(&dir, &incident.incident_id).unwrap();
         println!("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK");
     }
