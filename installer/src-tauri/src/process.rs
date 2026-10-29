@@ -79,13 +79,22 @@ pub fn script(root: &Path, name: &str) -> Command {
     }
 }
 
-pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, String> {
+pub fn stream(cmd: Command, on_line: impl FnMut(String)) -> Result<i32, String> {
+    stream_status(cmd, on_line)
+        .map(|status| status.code().unwrap_or(1))
+        .map_err(|error| {
+            format!("Provisioning process completion could not be established: {error}")
+        })
+}
+
+fn stream_status(
+    mut cmd: Command,
+    mut on_line: impl FnMut(String),
+) -> std::io::Result<std::process::ExitStatus> {
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = hidden(&mut cmd)
-        .spawn()
-        .map_err(|e| format!("Could not start the provisioning process: {e}"))?;
+    let mut child = hidden(&mut cmd).spawn()?;
     let (tx, rx) = mpsc::channel();
     let out = child.stdout.take().unwrap();
     let err = child.stderr.take().unwrap();
@@ -119,15 +128,104 @@ pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, 
     }
     let _ = first.join();
     let _ = second.join();
-    child
-        .wait()
-        .map(|s| s.code().unwrap_or(1))
-        .map_err(|e| e.to_string())
+    child.wait()
+}
+
+/// Completion of these fixed synchronous installed backends is NOT Validation.
+/// Nonzero/signal/spawn errors and any still-active/unknown native work retain
+/// intent. Unknown package health alone must not become a permanent gate.
+fn backend_finished(
+    success: bool,
+    activity: sde_coordination::safety::Activity,
+    health: sde_coordination::safety::PackageHealth,
+) -> bool {
+    success
+        && activity == sde_coordination::safety::Activity::Inactive
+        && health != sde_coordination::safety::PackageHealth::Incomplete
+}
+
+fn coordinated_stream(cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, String> {
+    let describe = |error: sde_coordination::mutation::BeginError| {
+        serde_json::to_string(&error).unwrap_or_else(|_| "Coordination unavailable".into())
+    };
+    let mut guard = sde_coordination::mutation::begin(sde_coordination::mutation::Scope::System)
+        .map_err(|error| {
+            let detail = describe(error);
+            on_line(format!("SKYVIEW_EVENT|error|coordination|{detail}"));
+            detail
+        })?;
+    let status = guard
+        .run_supervised(cmd, |command| stream_status(command, &mut on_line))
+        .map_err(|error| {
+            let detail = describe(error);
+            on_line(format!("SKYVIEW_EVENT|error|coordination|{detail}"));
+            detail
+        })?;
+    let facts = sde_coordination::inspection::collect();
+    if backend_finished(status.success(), facts.activity, facts.health) {
+        guard.finish_known().map_err(|error| error.to_string())?;
+    } else {
+        on_line("SKYVIEW_EVENT|warning|coordination|The system transaction was retained because completion or native inactivity could not be confirmed. No package process was terminated. Review Recovery and Check Again.".into());
+        if status.success() {
+            return Err("Native completion requires a fresh recovery check; original evidence was retained.".into());
+        }
+    }
+    Ok(status.code().unwrap_or(1))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn helper_completion_requires_controlled_success_and_fresh_native_inactivity() {
+        use sde_coordination::safety::{Activity, PackageHealth};
+        for success in [true, false] {
+            for activity in [Activity::Active, Activity::Inactive, Activity::Unknown] {
+                for health in [
+                    PackageHealth::Healthy,
+                    PackageHealth::Incomplete,
+                    PackageHealth::Unknown,
+                ] {
+                    assert_eq!(
+                        backend_finished(success, activity, health),
+                        success
+                            && activity == Activity::Inactive
+                            && health != PackageHealth::Incomplete
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn stream_child_probe() {
+        if std::env::var("SDE_TEST_STREAM_PROBE").as_deref() != Ok("1") {
+            return;
+        }
+        println!("token=synthetic-stream-secret");
+        eprintln!("SDE_STREAM_STDERR_OK");
+        std::process::exit(7);
+    }
+
+    #[test]
+    fn streamed_runner_preserves_exit_status_and_existing_redaction() {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "process::tests::stream_child_probe",
+                "--nocapture",
+            ])
+            .env("SDE_TEST_STREAM_PROBE", "1");
+        let mut lines = Vec::new();
+        let status = stream_status(command, |line| lines.push(line)).unwrap();
+        assert_eq!(status.code(), Some(7));
+        assert!(lines.iter().any(|line| line == "SDE_STREAM_STDERR_OK"));
+        assert!(lines.iter().any(|line| line.contains("[REDACTED]")));
+        assert!(!lines
+            .iter()
+            .any(|line| line.contains("synthetic-stream-secret")));
+    }
     #[cfg(windows)]
     static CHOCOLATEY_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
     #[cfg(windows)]
@@ -431,7 +529,7 @@ pub fn helper(
             .open(log_dir.join(format!("{session}.log")))
             .map_err(|e| e.to_string())?;
         if ["install", "update"].contains(&operation)
-            && !crate::preflight::before_operation(
+            && !crate::preflight::before_privileged_operation(
                 &backend,
                 if operation == "install" {
                     crate::Operation::Install
@@ -449,7 +547,7 @@ pub fn helper(
             file.flush().map_err(|e| e.to_string())?;
             return Ok(75);
         }
-        let code = stream(cmd, |line| {
+        let code = coordinated_stream(cmd, |line| {
             let _ = writeln!(file, "{line}");
             let _ = file.flush();
         })?;
@@ -459,7 +557,7 @@ pub fn helper(
     #[cfg(not(windows))]
     {
         if ["install", "update"].contains(&operation)
-            && !crate::preflight::before_operation(
+            && !crate::preflight::before_privileged_operation(
                 &backend,
                 if operation == "install" {
                     crate::Operation::Install
@@ -472,7 +570,7 @@ pub fn helper(
         {
             return Ok(75);
         }
-        stream(cmd, |line| println!("{line}"))
+        coordinated_stream(cmd, |line| println!("{line}"))
     }
 }
 

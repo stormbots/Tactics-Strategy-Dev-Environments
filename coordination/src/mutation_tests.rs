@@ -11,6 +11,122 @@ const OLD: &str = "linux:9fe3858b-58da-4b96-b47d-ec2f1b867353";
 const NEW: &str = "linux:52c95da7-e764-405c-84de-a1b435042916";
 
 #[test]
+fn mutation_runner_preserves_existing_platform_nesting_and_does_not_clear_on_exit() {
+    let Some(f) = Fixture::new() else { return };
+    let mut guard = mutation::begin_at(&f.path, Scope::System, || {
+        facts(Activity::Inactive, PackageHealth::Healthy, None)
+    })
+    .unwrap();
+    let original = std::fs::read(f.path.join("transaction.json")).unwrap();
+    #[cfg(unix)]
+    let command = {
+        let mut command = std::process::Command::new("/usr/bin/python3");
+        command.args(["-I", "-c", "import importlib.util,sys;from pathlib import Path;s=importlib.util.spec_from_file_location('coord',sys.argv[1]);c=importlib.util.module_from_spec(s);s.loader.exec_module(c);c.ROOT=Path(sys.argv[2]);c.JOURNAL=c.ROOT/'transaction.json';c.check();print('SDE_RECOVERY_EXISTING_LINUX_NESTING_OK')"])
+            .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../linux/lib/coordination.py"))
+            .arg(&f.path);
+        command
+    };
+    #[cfg(windows)]
+    let command = {
+        let mut command = std::process::Command::new(
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+        );
+        command
+            .env_remove("PSModulePath")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+            ])
+            .arg(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../tests/Invoke-RecoveryNestingCI.ps1"),
+            )
+            .arg("-FixtureRoot")
+            .arg(&f.path);
+        command
+    };
+    let mut output = Vec::new();
+    let status = guard
+        .run_using(
+            command,
+            || facts(Activity::Inactive, PackageHealth::Unknown, None),
+            |mut command| {
+                command
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped());
+                let result = command.output()?;
+                output = result.stdout;
+                assert!(
+                    result.status.success(),
+                    "Native nesting failed: {}",
+                    String::from_utf8_lossy(&result.stderr)
+                );
+                Ok(result.status)
+            },
+        )
+        .unwrap();
+    assert!(status.success());
+    #[cfg(unix)]
+    let marker = "SDE_RECOVERY_EXISTING_LINUX_NESTING_OK";
+    #[cfg(windows)]
+    let marker = "SDE_RECOVERY_EXISTING_WINDOWS_NESTING_OK";
+    assert!(String::from_utf8_lossy(&output)
+        .lines()
+        .any(|line| line.trim() == marker));
+    assert_eq!(
+        std::fs::read(f.path.join("transaction.json")).unwrap(),
+        original
+    );
+    assert_eq!(
+        acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+        Error::Busy
+    );
+    assert!(guard
+        .run_using(
+            std::process::Command::new("must-not-replay"),
+            || panic!("A second launch must not reach inspection"),
+            |_| panic!("A second launch must not reach the runner")
+        )
+        .is_err());
+    guard.finish_known().unwrap();
+}
+
+#[test]
+fn mutation_runner_failure_keeps_unknown_intent_and_active_check_precedes_callback() {
+    for active in [false, true] {
+        let Some(f) = Fixture::new() else { return };
+        let mut guard = mutation::begin_at(&f.path, Scope::System, || {
+            facts(Activity::Inactive, PackageHealth::Healthy, None)
+        })
+        .unwrap();
+        let mut called = false;
+        assert!(guard
+            .run_using(
+                std::process::Command::new("never-spawned"),
+                || facts(
+                    if active {
+                        Activity::Active
+                    } else {
+                        Activity::Inactive
+                    },
+                    PackageHealth::Unknown,
+                    None
+                ),
+                |_| {
+                    called = true;
+                    Err(std::io::Error::other("synthetic runner failure"))
+                }
+            )
+            .is_err());
+        assert_eq!(called, !active);
+        assert_eq!(f.path.join("transaction.json").exists(), !active);
+    }
+}
+
+#[test]
 fn mutation_supervised_child_probe() {
     let Some(path) = std::env::var_os("SDE_TEST_MUTATION_CHILD_DIR") else {
         return;

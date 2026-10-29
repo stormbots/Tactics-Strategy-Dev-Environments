@@ -1,5 +1,15 @@
 # Recovery bootstrap integration: engineering handoff
 
+Accepted at exact head `46667078290536380583d6e6f0671f7c07845742` in
+[Build 40831671161](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40831671161).
+DevOps confirmed root Linux 52/52 and Windows native coordinator 49/49, including
+the live-package-hook case. Both Windows feasibility markers and installed
+bootstrap markers passed; Linux bootstrap also ran inside actual Mint 22.3.
+Native builds, signed SYSTEM/Mint upgrades and general/trust checks passed.
+No merge, signing, publication, automation resumption, owner UAT or evidence change
+occurred. The pending-validation statements below are historical; next is
+[privileged helper supervision](RECOVERY-HELPER-SUPERVISION.md).
+
 Branch: `codex/recovery-bootstrap-integration`, stacked on accepted #116 head
 `c0a3ecd282409af436cac12a32ed8a771707ff06` (Build `40821734101`). Includes
 still-unmerged #113–#116. This is one bounded T1 deployment task, not completion

@@ -1,4 +1,5 @@
-//! Opt-in privileged execution primitive, not wired to the GUI/backends yet.
+//! Privileged execution primitive; the installed GUI helper uses this guard.
+//! Direct script, scheduled and application-updater integration is separate.
 //! Fresh observations and retirement stay under the same handle-owned leases.
 use crate::{
     inspection,
@@ -175,10 +176,31 @@ impl Mutation {
         self.run_with_probe(command, inspection::collect)
     }
 
+    /// Trusted synchronous runner adapter, e.g. the installed helper's existing
+    /// redacted streaming logger. It must spawn/wait this command, preserve its
+    /// real exit status, and never detach/kill package work. This callback is
+    /// Rust-only, not an IPC command/path/permit. Completion remains explicit.
+    pub fn run_supervised(
+        &mut self,
+        command: Command,
+        runner: impl FnOnce(Command) -> std::io::Result<ExitStatus>,
+    ) -> std::result::Result<ExitStatus, BeginError> {
+        self.run_using(command, inspection::collect, runner)
+    }
+
     pub(crate) fn run_with_probe(
+        &mut self,
+        command: Command,
+        probe: impl FnOnce() -> inspection::NativeFacts,
+    ) -> std::result::Result<ExitStatus, BeginError> {
+        self.run_using(command, probe, |mut command| command.status())
+    }
+
+    pub(crate) fn run_using(
         &mut self,
         mut command: Command,
         probe: impl FnOnce() -> inspection::NativeFacts,
+        runner: impl FnOnce(Command) -> std::io::Result<ExitStatus>,
     ) -> std::result::Result<ExitStatus, BeginError> {
         if !self.active || self.started {
             return Err(Error::Interrupted.into());
@@ -239,7 +261,7 @@ impl Mutation {
         self.started = true;
         // Neither a spawn/wait error nor a nonzero/zero exit automatically means
         // native completion. Keep the record until the trusted caller certifies it.
-        command.status().map_err(|_| Error::Unavailable.into())
+        runner(command).map_err(|_| Error::Unavailable.into())
     }
 
     fn clear_own(&mut self) -> crate::Result<()> {

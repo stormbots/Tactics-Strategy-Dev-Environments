@@ -1,7 +1,13 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [bootstrap integration](RECOVERY-BOOTSTRAP-INTEGRATION.md),
-branch `codex/recovery-bootstrap-integration`, pending native validation.
+Current increment: [privileged helper supervision](RECOVERY-HELPER-SUPERVISION.md),
+branch `codex/recovery-helper-supervision`, pending native validation.
+Bootstrap integration passed at `46667078290536380583d6e6f0671f7c07845742` in
+[Build 40831671161](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40831671161).
+Required root Linux coordinator passed 52/52; Windows native coordinator passed
+49/49. Both installed bootstrap markers (including actual Mint), feasibility,
+native builds, signed upgrades and general/trust checks passed. No merge or owner
+UAT occurred. The current helper task is only part of T4, not execution parity.
 Safe transition passed at `c0a3ecd282409af436cac12a32ed8a771707ff06` in
 [Build 40821734101](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40821734101).
 Windows trust passed 44/44; required Linux root coordinator passed 47/47.
@@ -13,8 +19,9 @@ Durable acknowledgment passed at `046d56bd4f5f723e1d21eadbbc95674c558016ac`
 in [Build 40800652705](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40800652705).
 Windows trust reported 30/30; required Linux root tests, both native builds,
 feasibility markers and signed-upgrade checks passed. This accepts that increment,
-not the full recovery redesign. The current increment connects only the normally
-privileged installation hook; execution, GUI and scheduling consumers remain unwired.
+not the full recovery redesign. Normal installation preparation is connected;
+the current task connects the existing privileged GUI helper's supervision.
+Direct script, scheduled, application-updater and final Recovery UI work remains.
 The [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md) passed at
 `59884166cd336153160238f7367dcec0b136744a` in Build run `40792896158`, attempt 2.
 The record below is the historical
