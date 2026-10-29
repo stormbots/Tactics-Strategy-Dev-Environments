@@ -43,7 +43,13 @@ fn bootstrap_live_package_hook_defers_preparation_without_replacing_gates() {
     let Some(f) = Fixture::new() else { return };
     let install = installation_at(&f.path).unwrap();
     let transaction = install.begin_transaction().unwrap();
-    let original = std::fs::read(f.path.join("transaction.json")).unwrap();
+    // Match the exact synthetic record written by begin_transaction. Windows
+    // deliberately denies all sharing on its live writer; do not reopen that
+    // path for a snapshot or weaken the production sharing mode for the test.
+    let original = serde_json::to_vec(&serde_json::json!({
+        "schema": 1, "pid": std::process::id(), "kind": "installation"
+    }))
+    .unwrap();
     bootstrap_at(&f.path).unwrap();
     // Inspection acquires its own exclusive operation lease. While the live
     // installation owns that lease, Busy is required, not an empty snapshot.
@@ -61,9 +67,13 @@ fn bootstrap_live_package_hook_defers_preparation_without_replacing_gates() {
             "Live work must not be published as an interruption: {name}"
         );
     }
+    #[cfg(windows)]
     assert_eq!(
-        std::fs::read(f.path.join("transaction.json")).unwrap(),
-        original
+        std::fs::read(f.path.join("transaction.json"))
+            .unwrap_err()
+            .raw_os_error(),
+        Some(32),
+        "Bootstrap must preserve the live writer's exclusive sharing protection"
     );
     assert_eq!(
         acquire_at(&f.path, "operations.gate", false).unwrap_err(),
@@ -73,10 +83,27 @@ fn bootstrap_live_package_hook_defers_preparation_without_replacing_gates() {
         acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
         Error::Busy
     );
-    transaction.complete().unwrap();
+    // Drop closes the journal handle without declaring completion or removing
+    // evidence. Keep BOTH installation leases while checking the exact bytes.
+    drop(transaction);
+    assert_eq!(
+        std::fs::read(f.path.join("transaction.json")).unwrap(),
+        original
+    );
+    assert_eq!(
+        acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+        Error::Busy
+    );
     drop(install);
     bootstrap_at(&f.path).unwrap();
-    assert!(recovery::inspect_at(&f.path).unwrap().is_none());
+    assert!(recovery::inspect_at(&f.path).unwrap().is_some());
+    assert_eq!(
+        std::fs::read(f.path.join("transaction.json")).unwrap(),
+        original
+    );
+    assert_eq!(no_interruption(&f.path).unwrap_err(), Error::Interrupted);
+    assert!(!f.path.join("recovery-archive").exists());
+    assert!(!f.path.join("recovery-disposition.json").exists());
 }
 
 #[test]

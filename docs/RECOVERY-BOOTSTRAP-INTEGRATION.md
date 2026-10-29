@@ -55,6 +55,19 @@ empty inspection remain. No production behavior or CI requirement was relaxed.
 Revised-head native validation remains required; the non-root local harness
 cannot establish that privileged assertion.
 
+Revised head `0d1e796` passed root Linux 52/52 and both installed-package probes
+(including actual Mint), native builds and signed upgrades in Build `40828261051`.
+Windows trust still failed 48/49: the same test tried to snapshot the live journal
+before bootstrap. The production Windows writer uses `CreateFileW` with sharing
+disabled, so reopening it correctly failed with OS error 32. The further test-only
+correction derives the expected synthetic record bytes from the documented writer
+shape, runs bootstrap while that exclusive handle remains open, requires Windows
+read sharing to remain denied, and checks both leases and absent metadata. It then
+drops the writer without completion, compares exact bytes with the gates still
+held, and verifies preparation after releasing the leases preserves the journal
+and execution block. No production sharing mode, completion behavior, gate or
+required workflow check changed. Exact revised-head native acceptance is pending.
+
 New `bootstrap_*` native coordinator tests cover clean/idempotent initialization,
 legacy evidence identity, submitted-intent retention, changed generations, corrupt
 metadata, and live installation leases. The existing real standard-user storage
