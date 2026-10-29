@@ -119,5 +119,74 @@ class CiScope(unittest.TestCase):
                 self.assertTrue(application_required([WORKFLOW], before, after))
 
 
+class RecoveryFeasibilityWorkflow(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        path = Path(__file__).resolve().parents[1] / WORKFLOW
+        self.native = yaml.safe_load(path.read_text())["jobs"]["native"]
+        self.steps = self.native["steps"]
+        self.probes = [step for step in self.steps
+                       if step.get("name") == "Required Windows acknowledgment feasibility"]
+
+    def test_required_probe_is_on_windows_nsis_matrix(self):
+        self.assertIn({"os": "windows-2022", "bundle": "nsis",
+                       "asset": "Skyview-Dev-Setup-Windows-x64.exe"},
+                      self.native["strategy"]["matrix"]["include"])
+        self.assertEqual(len(self.probes), 1)
+        self.assertEqual(self.probes[0]["if"],
+                         "runner.os == 'Windows' && matrix.bundle == 'nsis'")
+        self.assertEqual(self.probes[0]["shell"], "pwsh")
+        self.assertNotIn("continue-on-error", self.probes[0])
+
+    def test_probe_requires_exit_zero_and_both_exact_markers(self):
+        self.assertEqual(len(self.probes), 1)
+        script = self.probes[0]["run"]
+        self.assertIn("-File ./tests/Test-RecoveryAcknowledgmentFeasibilityCI.ps1", script)
+        self.assertIn("$probeExit = $LASTEXITCODE", script)
+        self.assertIn('if ($probeExit -ne 0) { throw', script)
+        self.assertIn("SDE_RECOVERY_WINDOWS_STANDARD_USER_INTENT_OK", script)
+        self.assertIn("SDE_RECOVERY_WINDOWS_PRIVILEGED_CONSUMER_OK", script)
+        self.assertIn('if ($output -cnotcontains $marker) { throw', script)
+        self.assertIn("$output | Write-Output", script)
+
+    def test_probe_is_separate_from_and_before_chocolatey_packaging(self):
+        package = next(step for step in self.steps
+                       if step.get("name") == "Package the existing Chocolatey backend")
+        self.assertNotIn("Test-RecoveryAcknowledgmentFeasibilityCI.ps1", package["run"])
+        self.assertLess(self.steps.index(self.probes[0]), self.steps.index(package))
+        self.assertIn("Test-CoordinationCI.ps1", package["run"])
+
+
+class CoordinationWorkflowExitContract(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        path = Path(__file__).resolve().parents[1] / WORKFLOW
+        steps = yaml.safe_load(path.read_text())["jobs"]["update-trust"]["steps"]
+        self.step = next(step for step in steps
+                         if step.get("name") == "Native cross-process coordination contracts")
+
+    def run_with_cargo_failure(self, failed_command, code):
+        import subprocess
+        # No real cargo/test/build invocation. Match Actions' explicit bash
+        # fail-fast shell and simulate a failed native process in this step.
+        stub = ('cargo() { printf "%s\\n" "$1"; '
+                f'if [ "$1" = "{failed_command}" ]; then return {code}; fi; '
+                'return 0; }\n')
+        self.assertEqual(self.step["shell"], "bash")
+        return subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o",
+                               "pipefail", "-c", stub + self.step["run"]],
+                              capture_output=True, text=True, check=False, timeout=10)
+
+    def test_failed_tests_cannot_be_hidden_by_successful_formatting_or_clippy(self):
+        result = self.run_with_cargo_failure("test", 23)
+        self.assertEqual(result.returncode, 23, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["test"])
+
+    def test_failed_formatting_stops_before_clippy(self):
+        result = self.run_with_cargo_failure("fmt", 24)
+        self.assertEqual(result.returncode, 24, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["test", "fmt"])
+
+
 if __name__ == "__main__":
     unittest.main()
