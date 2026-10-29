@@ -369,6 +369,13 @@ jobs:
           set -euo pipefail
           sudo env GITHUB_ACTIONS=true python3 tests/verify_recovery_bootstrap_native.py dist/Skyview-Dev-Setup-LinuxMint-amd64.deb | tee "$RUNNER_TEMP/sde-recovery-bootstrap.txt"
           grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK "$RUNNER_TEMP/sde-recovery-bootstrap.txt"
+      - name: Required Linux installed manual recovery supervisor
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo env GITHUB_ACTIONS=true python3 tests/verify_manual_recovery_native.py | tee "$RUNNER_TEMP/sde-manual-recovery.txt"
+          grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK "$RUNNER_TEMP/sde-manual-recovery.txt"
       - name: Required signed upgrade on Linux Mint 22.3
         if: runner.os == 'Linux'
         shell: bash

@@ -5,6 +5,15 @@ Branch: `codex/recovery-scheduled-tools`, based on accepted #118 head
 still-unmerged #113–#118. A bounded part of T4, not full execution parity,
 end-to-end Recovery UI, or a UAT/release candidate.
 
+Accepted at `c3328f2c79d3093e92e1c8c8fbf3b56e77f093f1` in
+[Build 40925960095](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40925960095).
+DevOps confirmed Windows signed SYSTEM upgrade and scheduled-tool contract,
+with native activity becoming inactive before the synthetic journal was created.
+Both native paths emitted the required scheduled-tool marker. Actual Mint 22.3,
+installed bootstrap, next-engine, general and both trust jobs passed. No merge,
+release or owner UAT occurred. The following implementation/failure notes are the
+checkpoint's history; this acceptance supersedes their pending status.
+
 ## Acceptance criteria and implementation
 
 The existing authenticated maintenance worker's tool phase now uses the shared

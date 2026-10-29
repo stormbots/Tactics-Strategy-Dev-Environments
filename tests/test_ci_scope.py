@@ -201,6 +201,24 @@ class RecoveryBootstrapWorkflow(unittest.TestCase):
         self.assertLess(script.index(invocation), script.index("# Deterministic applied tool policy"))
         self.assertIn("set -Eeuo pipefail", script)
 
+    def test_linux_manual_supervisor_is_required_on_host_and_actual_mint(self):
+        step = self.step("Required Linux installed manual recovery supervisor")
+        self.assertEqual(step["if"], "runner.os == 'Linux'")
+        self.assertEqual(step["shell"], "bash")
+        self.assertIn("set -euo pipefail", step["run"])
+        self.assertIn("sudo env GITHUB_ACTIONS=true python3 tests/verify_manual_recovery_native.py", step["run"])
+        marker = "grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK"
+        self.assertIn(marker, step["run"])
+        bootstrap = self.step("Required Linux installed recovery bootstrap")
+        upgrade = self.step("Required signed upgrade on Linux Mint 22.3")
+        self.assertLess(self.steps.index(bootstrap), self.steps.index(step))
+        self.assertLess(self.steps.index(step), self.steps.index(upgrade))
+        script = (self.root / "tests/Test-LinuxSelfUpdateCI.sh").read_text()
+        invocation = "python3 /work/tests/verify_manual_recovery_native.py"
+        self.assertIn(invocation, script)
+        self.assertIn(marker, script)
+        self.assertLess(script.index(invocation), script.index("# Deterministic applied tool policy"))
+
 
 class CoordinationWorkflowExitContract(unittest.TestCase):
     def setUp(self):

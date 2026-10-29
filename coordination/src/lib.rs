@@ -9,6 +9,8 @@ mod acknowledgment_tests;
 #[cfg(test)]
 mod bootstrap_tests;
 pub mod inspection;
+#[cfg(target_os = "linux")]
+pub mod manual;
 pub mod mutation;
 #[cfg(test)]
 mod mutation_tests;

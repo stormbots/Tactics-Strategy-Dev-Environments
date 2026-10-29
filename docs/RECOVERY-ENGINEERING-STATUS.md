@@ -1,7 +1,14 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [scheduled tool supervision](RECOVERY-SCHEDULED-TOOLS.md),
-branch `codex/recovery-scheduled-tools`, pending native validation.
+Current increment: [Linux manual system supervision](RECOVERY-LINUX-MANUAL-SUPERVISION.md),
+branch `codex/recovery-linux-manual-supervision`, pending native validation.
+Scheduled tool supervision passed at `c3328f2c79d3093e92e1c8c8fbf3b56e77f093f1`
+in [Build 40925960095](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40925960095).
+Windows signed SYSTEM upgrade and both scheduled-tool contract markers passed;
+Windows observed activity then confirmed inactivity before its synthetic journal.
+Actual Mint 22.3 installed bootstrap, signed upgrade and next-engine checks passed,
+as did general checks and both trust jobs. This accepts #119's bounded checkpoint,
+not the final Recovery UI or execution parity. No merge/release/UAT occurred.
 Privileged GUI helper supervision passed at `fe0bee97a6d288e084feb7961ca95f04ea8da548`
 in [Build 40881178483](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40881178483).
 Root Linux coordinator passed 54/54; Windows passed 51/51. Native Tauri spawn,
@@ -25,8 +32,9 @@ in [Build 40800652705](https://github.com/stormbots/Tactics-Strategy-Dev-Environ
 Windows trust reported 30/30; required Linux root tests, both native builds,
 feasibility markers and signed-upgrade checks passed. This accepts that increment,
 not the full recovery redesign. Normal installation preparation is connected;
-the privileged GUI helper is supervised. The current task connects scheduled
-tool work, not SDE installation. Direct script, application-updater and final
+the privileged GUI helper and scheduled tool work are supervised. The current
+task connects Linux manual system scripts, not SDE installation. Windows outer
+script, application-updater and final
 report/history/Recovery UI work remains. T4 execution parity is still incomplete.
 The [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md) passed at
 `59884166cd336153160238f7367dcec0b136744a` in Build run `40792896158`, attempt 2.

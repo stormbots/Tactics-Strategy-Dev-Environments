@@ -3,7 +3,8 @@
 Status: engineering approved; native permission feasibility and production
 storage foundation, durable acknowledgment and lease-bound safe transition passed;
 normally privileged bootstrap and privileged GUI helper supervision passed;
-T4 scheduled-tool supervision is pending native validation. T4 parity is incomplete.
+T4 scheduled-tool supervision passed; Linux manual system supervision is pending
+native validation. Windows outer-script integration and T4 parity remain incomplete.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.

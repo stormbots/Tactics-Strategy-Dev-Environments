@@ -20,6 +20,8 @@ chmod 0700 "$root/native-tests"
 apt-get -y --no-remove install "$root/old.deb"
 python3 /work/tests/verify_recovery_bootstrap_native.py "$root/old.deb" | tee "$root/recovery-bootstrap.txt"
 grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK "$root/recovery-bootstrap.txt"
+python3 /work/tests/verify_manual_recovery_native.py | tee "$root/manual-recovery.txt"
+grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK "$root/manual-recovery.txt"
 [[ ! -e /usr/local/sbin/skyview-student-dev-update ]]
 [[ ! -e /etc/systemd/system/skyview-student-dev-update.service ]]
 [[ ! -e /var/lib/skyview-robotics/student-dev/version ]]

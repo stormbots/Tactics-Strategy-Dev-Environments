@@ -93,4 +93,25 @@ class Backends(unittest.TestCase):
         production = source.split('#[cfg(all(test,', 1)[0]
         self.assertNotIn('await_native_fixture_inactivity', production)
         self.assertNotIn('thread::sleep', production)
+    def test_linux_outer_system_scripts_use_native_supervision_without_fallback(self):
+        source = self.text('linux/lib/coordination.sh')
+        self.assertLess(source.index('"$engine" check'), source.index('--supervise-linux-system'))
+        native = source.split('elif [[ "$mode" == system ]]', 1)[1].split('\n  else', 1)[0]
+        self.assertIn('/usr/bin/skyview-dev-setup --supervise-linux-system', native)
+        self.assertNotIn('run "$mode"', native)
+        self.assertIn('exit 76', native)
+        self.assertIn('/usr/bin/skyview-dev-setup --coordination-init', native)
+        self.assertIn('"$capability" != SDE_LINUX_SYSTEM_SUPERVISOR_V1', native)
+        self.assertLess(native.index('--coordination-init'), native.index('--supervise-linux-system'))
+        main = self.text('installer/src-tauri/src/main.rs')
+        self.assertLess(main.index('--supervise-linux-system'), main.index('sde_coordination::session()'))
+        self.assertIn('sde_coordination::manual::run(', main)
+        native = self.text('coordination/src/manual.rs')
+        self.assertIn('libc::geteuid()', native)
+        self.assertIn('crate::validate_dir(', native)
+        self.assertIn('known_backend_completion(status.success()', native)
+        self.assertNotIn('recovery::submit(', native)
+        marker = 'SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK'
+        self.assertIn('grep -Fxq ' + marker, self.text('tests/Test-LinuxSelfUpdateCI.sh'))
+        self.assertIn('grep -Fxq ' + marker, self.text('.github/workflows/build-dev-setup.yml'))
 if __name__=='__main__': unittest.main()
