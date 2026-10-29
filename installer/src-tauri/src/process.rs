@@ -82,9 +82,7 @@ pub fn script(root: &Path, name: &str) -> Command {
 pub fn stream(cmd: Command, on_line: impl FnMut(String)) -> Result<i32, String> {
     stream_status(cmd, on_line)
         .map(|status| status.code().unwrap_or(1))
-        .map_err(|error| {
-            format!("Provisioning process completion could not be established: {error}")
-        })
+        .map_err(|error| error.to_string())
 }
 
 fn stream_status(
@@ -94,7 +92,12 @@ fn stream_status(
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = hidden(&mut cmd).spawn()?;
+    let mut child = hidden(&mut cmd).spawn().map_err(|error| {
+        std::io::Error::new(
+            error.kind(),
+            format!("Could not start the provisioning process: {error}"),
+        )
+    })?;
     let (tx, rx) = mpsc::channel();
     let out = child.stdout.take().unwrap();
     let err = child.stderr.take().unwrap();
@@ -128,7 +131,12 @@ fn stream_status(
     }
     let _ = first.join();
     let _ = second.join();
-    child.wait()
+    child.wait().map_err(|error| {
+        std::io::Error::new(
+            error.kind(),
+            format!("Could not confirm provisioning process completion: {error}"),
+        )
+    })
 }
 
 /// Completion of these fixed synchronous installed backends is NOT Validation.
@@ -406,9 +414,17 @@ mod tests {
     }
     #[test]
     fn child_start_errors_are_actionable() {
-        let error =
-            stream(Command::new("skyview-missing-executable-for-test"), |_| {}).unwrap_err();
-        assert!(error.contains("Could not start"));
+        let mut emitted = false;
+        let error = stream(Command::new("skyview-missing-executable-for-test"), |_| {
+            emitted = true;
+        })
+        .unwrap_err();
+        assert!(error.contains("Could not start the provisioning process"));
+        assert!(!error.contains("Could not confirm"));
+        assert!(!emitted, "A failed spawn must not emit child output");
+        let typed =
+            stream_status(Command::new("skyview-missing-executable-for-test"), |_| {}).unwrap_err();
+        assert_eq!(typed.kind(), std::io::ErrorKind::NotFound);
     }
 }
 

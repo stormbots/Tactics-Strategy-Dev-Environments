@@ -70,6 +70,18 @@ later consolidation acceptance, not inferred from isolated nesting fixtures.
   streaming/completion tests must compile/run in existing native CI. No claim of
   application test success is made from coordinator-only results.
 
+Initial head `1446f6e` failed the existing actionable-spawn-error assertion on
+both native targets in Build `40838067271`. The supervision refactor had replaced
+the specific startup error with a generic completion message. The focused fix
+adds phase-specific context at the actual spawn/wait boundary, retains the I/O
+error kind and underlying OS text, and lets the string wrapper preserve that
+message. The regression now also checks no output on failed spawn and typed
+`NotFound`. No native exit status, guard, completion policy or CI gate changed.
+The new completion-policy and streaming/redaction tests, coordinator and trust
+checks passed on the old head; they are historical evidence only. Revised-head
+native application tests, Linux installed-bootstrap/actual Mint marker and all
+signed-upgrade checks must complete before acceptance.
+
 ## Required DevOps evidence
 
 Validate the exact pushed head in the existing Build workflow; no duplicate
