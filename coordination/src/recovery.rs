@@ -1,7 +1,9 @@
 //! Production storage foundation. Intent is NOT an execution capability.
-//! No function here clears/archives transaction.json or bypasses operation().
+//! No function here removes/replaces transaction.json or bypasses operation().
 //! Bootstrap/GUI/execution consumers will be integrated only after native review.
+pub(crate) mod acknowledgment;
 use crate::{acquire_at, Error, Result};
+pub use acknowledgment::{inspect_acknowledgment, record_acknowledgment, Acknowledgment};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -48,7 +50,7 @@ impl Incident {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Binding {
     schema: u8,
@@ -160,6 +162,10 @@ pub(crate) fn prepare_at(dir: &Path) -> Result<Option<Incident>> {
 
 pub(crate) fn inspect_at(dir: &Path) -> Result<Option<Incident>> {
     let _lease = acquire_at(dir, "operations.gate", false)?;
+    inspect_locked(dir)
+}
+
+fn inspect_locked(dir: &Path) -> Result<Option<Incident>> {
     // Directory enumeration avoids opening or exposing a private transaction.
     let exists = fs::read_dir(dir)
         .map_err(|_| Error::Unavailable)?

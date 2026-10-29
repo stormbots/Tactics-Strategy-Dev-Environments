@@ -130,8 +130,35 @@ fn check_acl(owner: PSID, acl: *mut ACL, anchor: bool) -> Result<()> {
 
 fn validate_parents(dir: &Path) -> Result<()> {
     validate_acl(Path::new(r"C:\"), true)?;
-    validate_acl(Path::new(r"C:\ProgramData"), true)?;
-    validate(dir)
+    let base = Path::new(r"C:\ProgramData");
+    validate_acl(base, true)?;
+    let relative = dir.strip_prefix(base).map_err(|_| Error::Untrusted)?;
+    let mut parent = base.to_path_buf();
+    for component in relative.components() {
+        let std::path::Component::Normal(name) = component else {
+            return Err(Error::Untrusted);
+        };
+        parent.push(name);
+        validate(&parent)?;
+    }
+    Ok(())
+}
+
+pub(super) fn recovery_archive(dir: &Path) -> Result<()> {
+    validate_parents(dir)?;
+    let archive = dir.join("recovery-archive");
+    create(&archive, true)?;
+    validate_parents(&archive)
+}
+
+pub(super) fn validate_recovery_archive(dir: &Path) -> Result<()> {
+    let archive = dir.join("recovery-archive");
+    validate_parents(&archive)?;
+    let metadata = std::fs::symlink_metadata(archive).map_err(|_| Error::Untrusted)?;
+    if !metadata.is_dir() {
+        return Err(Error::Untrusted);
+    }
+    Ok(())
 }
 fn create(path: &Path, directory: bool) -> Result<()> {
     // Existing gates may be held exclusively during a package post-install hook.
@@ -449,11 +476,25 @@ fn check_recovery_acl(owner: PSID, acl: *mut ACL, kind: crate::recovery::Kind) -
 }
 
 pub(super) fn replace_recovery(dir: &Path, source: &str, destination: &str) -> Result<()> {
+    publish_recovery(dir, source, destination, true)
+}
+
+pub(super) fn publish_recovery(
+    dir: &Path,
+    source: &str,
+    destination: &str,
+    replace: bool,
+) -> Result<()> {
     if unsafe {
         MoveFileExW(
             wide(dir.join(source)).as_ptr(),
             wide(dir.join(destination)).as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+            MOVEFILE_WRITE_THROUGH
+                | if replace {
+                    MOVEFILE_REPLACE_EXISTING
+                } else {
+                    0
+                },
         )
     } == 0
     {

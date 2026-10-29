@@ -4,6 +4,8 @@ use std::{
     fs::File,
     path::{Path, PathBuf},
 };
+#[cfg(test)]
+mod acknowledgment_tests;
 pub mod recovery;
 pub mod safety;
 #[cfg(windows)]
@@ -419,12 +421,12 @@ mod tests {
         drop(lock_fixtures(&lock));
         drop(lock_fixtures(&lock));
     }
-    struct Fixture {
-        path: PathBuf,
+    pub(super) struct Fixture {
+        pub(super) path: PathBuf,
         _guard: std::sync::MutexGuard<'static, ()>,
     }
     impl Fixture {
-        fn new() -> Option<Self> {
+        pub(super) fn new() -> Option<Self> {
             #[cfg(unix)]
             if unsafe { libc::geteuid() } != 0 {
                 assert!(
@@ -623,7 +625,7 @@ mod tests {
         }
     }
 
-    fn interrupted_fixture(f: &Fixture) -> Vec<u8> {
+    pub(super) fn interrupted_fixture(f: &Fixture) -> Vec<u8> {
         let install = installation_at(&f.path).unwrap();
         // Synthetic installation record without a public incident ID, matching
         // the legacy shape. No installer/package child is ever started.

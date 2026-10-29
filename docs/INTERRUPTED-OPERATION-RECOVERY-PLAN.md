@@ -1,7 +1,7 @@
 # Interrupted-operation recovery: self-service implementation plan
 
-Status: engineering approved; initial native permission feasibility passed;
-production backend foundation pending native validation.
+Status: engineering approved; native permission feasibility and production
+storage foundation passed; durable acknowledgment pending native validation.
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.
 

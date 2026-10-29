@@ -1,7 +1,10 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md),
-branch `codex/recovery-backend-foundation`. The record below is the historical
+Current increment: [durable acknowledgment](RECOVERY-DURABLE-ACKNOWLEDGMENT.md),
+branch `codex/recovery-durable-acknowledgment`, pending native validation.
+The [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md) passed at
+`59884166cd336153160238f7367dcec0b136744a` in Build run `40792896158`, attempt 2.
+The record below is the historical
 permission-feasibility increment, now accepted on exact-head native CI; it is not
 the status of the full redesign.
 

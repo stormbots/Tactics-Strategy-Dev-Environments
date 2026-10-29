@@ -1,8 +1,8 @@
 # ADR 0001: Prompt-free interruption acknowledgment boundary
 
-Status: permission-layout feasibility accepted at `1f1e449`; production storage
-foundation implemented, native production validation pending. Execution behavior
-is unchanged. Implements the T1 checkpoint in
+Status: permission layout and production storage accepted at `5988416`;
+durable acknowledgment implemented, native crash/replay validation pending.
+Execution behavior is unchanged. Implements the T1 checkpoint in
 [the recovery plan](../INTERRUPTED-OPERATION-RECOVERY-PLAN.md).
 
 ## Context
@@ -108,3 +108,32 @@ all other applicable checks passing. This accepts the permission-layout gate,
 not production lifecycle or UAT completion. See the
 [backend foundation handoff](../RECOVERY-BACKEND-FOUNDATION.md) for subsequent work.
 Existing Windows interruption evidence and Mint v1.2.18 UAT acceptance are unchanged.
+
+## Durable acknowledgment increment
+
+Production storage passed at `59884166cd336153160238f7367dcec0b136744a` in
+[Build 40792896158](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40792896158),
+attempt 2. The next increment adds `record_acknowledgment()` and
+`inspect_acknowledgment()`: private immutable byte copies and receipts under
+`recovery-archive`, followed by a sanitized `recovery-disposition.json` view.
+
+Commit order is evidence copy, private receipt, then public disposition. Existing
+evidence/receipt names are published without replacement; partial writes remain
+private staging files, not committed evidence. Receipts are tied to the original
+binding and native generation. Replay can reconstruct a missing public view from
+a committed private receipt without trusting the writable intent again. Corrupt
+or missing committed evidence fails closed. Explicit history deletion and its
+minimum operational-state semantics remain a later, separate feature.
+
+The archive directory may expose opaque incident filenames, but its journal and
+receipt contents remain private. Parent-directory trust is validated at every
+level on Windows, not just at the root or leaf. No code here deletes, renames,
+replaces, or releases the active `transaction.json`, and no execution consumer
+uses a recorded receipt yet. New-transaction transition, independent native
+activity/health checks, UI/report integration, and production bootstrap deployment
+remain required before replacing the existing execution guard.
+
+Native tests must demonstrate process termination/replay at all three commit
+boundaries, stale-generation rejection, immutable archive collision handling, and
+continued execution blocking. See the
+[durable acknowledgment handoff](../RECOVERY-DURABLE-ACKNOWLEDGMENT.md).

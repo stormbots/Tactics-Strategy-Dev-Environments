@@ -4,6 +4,15 @@ Branch: `codex/recovery-backend-foundation`, based on verified PR #113 head
 `1f1e44918be9645069312a388601fdc7e1c2bc13`. The branch includes that unmerged
 feasibility work and the approved plan; do not assume it is already on main.
 
+Historical increment accepted: DevOps validated exact head
+`59884166cd336153160238f7367dcec0b136744a` in successful Build run
+[40792896158](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40792896158),
+attempt 2. Windows trust production-storage tests passed 19/19, including actual
+standard-user submission, changed/replaced generations, and permission rejection.
+Root-required Linux tests and all other applicable checks passed. No merge or
+release action occurred. Next increment:
+[durable acknowledgment](RECOVERY-DURABLE-ACKNOWLEDGMENT.md).
+
 ## Completed in this bounded increment
 
 - Production `coordination/src/recovery.rs`: fixed-root sanitized incident
