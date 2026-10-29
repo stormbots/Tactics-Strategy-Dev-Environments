@@ -470,13 +470,14 @@ fn tool_maintenance() -> Result<Option<i32>> {
             .and_then(|_| file.sync_all())
             .map_err(|_| "Supervisor write failed")?;
     }
-    command("/usr/bin/python3")
-        .arg("-I")
-        .arg("-B")
+    let mut supervisor = command("/usr/bin/python3");
+    supervisor
+        .args(["-I", "-B"])
         .arg(run.join("applied.py"))
-        .status()
-        .map(|s| Some(s.code().unwrap_or(1)))
-        .map_err(|_| "Tool maintenance could not start".into())
+        .arg("--leased");
+    // Rust now owns the transaction; --leased still requires the existing real
+    // descriptor checks before the child reads any deployed baseline content.
+    crate::tool_coordination::run(supervisor).map(Some)
 }
 pub fn maintain_linux() -> Result<i32> {
     if unsafe { libc::geteuid() } != 0 {
@@ -536,13 +537,8 @@ pub fn maintain_linux() -> Result<i32> {
     };
     let result = (|| {
         report.tool_exit = tool_maintenance()?;
-        if report.tool_exit.is_some_and(|c| c != 0) {
-            report.outcome = if report.tool_exit == Some(75) {
-                "deferred"
-            } else {
-                "failed"
-            }
-            .into();
+        if let Some(outcome) = crate::tool_coordination::incomplete_outcome(report.tool_exit) {
+            report.outcome = outcome.into();
             return Err(
                 "Tool maintenance did not complete successfully; application installation deferred"
                     .into(),
@@ -828,6 +824,7 @@ mod tests {
         let old_engine = read_receipt("previous-engine.json").unwrap();
         assert_eq!(old_engine["version"], "1.2.1");
         set_linux_pause(true).unwrap();
+        crate::tool_coordination::native_contracts();
         let next = command("/usr/bin/python3")
             .args(["-I", "/usr/local/libexec/skyview-self-update.py"])
             .status()

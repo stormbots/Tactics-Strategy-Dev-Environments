@@ -62,9 +62,40 @@ pub fn decide(
     }
 }
 
+/// A successful controlled synchronous backend is distinct from Validation.
+/// Call only while owning its mutation guard and after fresh native inspection.
+/// An exit alone is not enough; unknown package health alone is not a veto.
+pub fn known_backend_completion(success: bool, activity: Activity, health: PackageHealth) -> bool {
+    success
+        && matches!(
+            decide(Trust::Trusted, activity, health, false, false),
+            Decision::Allow | Decision::AllowWithHealthWarning
+        )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn known_backend_completion_requires_success_inactivity_and_no_known_damage() {
+        for success in [true, false] {
+            for activity in [Activity::Active, Activity::Inactive, Activity::Unknown] {
+                for health in [
+                    PackageHealth::Healthy,
+                    PackageHealth::Incomplete,
+                    PackageHealth::Unknown,
+                ] {
+                    assert_eq!(
+                        known_backend_completion(success, activity, health),
+                        success
+                            && activity == Activity::Inactive
+                            && health != PackageHealth::Incomplete
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn all_policy_combinations_keep_safety_independent_of_acknowledgment() {

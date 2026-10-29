@@ -1,5 +1,14 @@
 # Privileged GUI helper supervision: engineering handoff
 
+Accepted at exact head `fe0bee97a6d288e084feb7961ca95f04ea8da548` in
+[Build 40881178483](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40881178483).
+Root Linux coordinator passed 54/54; Windows coordinator passed 51/51. Both native
+Tauri targets passed actionable spawn errors, completion policy and streamed
+exit-status/redaction tests. Feasibility, installed bootstrap (including actual
+Mint), trust, native builds and both signed upgrades passed. No release, owner
+UAT or evidence change occurred. Pending statements below are historical;
+next is [scheduled tool supervision](RECOVERY-SCHEDULED-TOOLS.md).
+
 Branch: `codex/recovery-helper-supervision`, based on accepted #117 head
 `46667078290536380583d6e6f0671f7c07845742` (Build `40831671161`). This draft
 stacks still-unmerged #113–#117. It is a bounded part of T4, not full platform

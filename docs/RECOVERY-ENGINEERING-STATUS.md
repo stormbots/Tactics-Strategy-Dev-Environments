@@ -1,7 +1,12 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [privileged helper supervision](RECOVERY-HELPER-SUPERVISION.md),
-branch `codex/recovery-helper-supervision`, pending native validation.
+Current increment: [scheduled tool supervision](RECOVERY-SCHEDULED-TOOLS.md),
+branch `codex/recovery-scheduled-tools`, pending native validation.
+Privileged GUI helper supervision passed at `fe0bee97a6d288e084feb7961ca95f04ea8da548`
+in [Build 40881178483](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40881178483).
+Root Linux coordinator passed 54/54; Windows passed 51/51. Native Tauri spawn,
+completion and streaming/redaction tests passed on both platforms, along with
+all inherited installed bootstrap, native, trust and signed-upgrade checks.
 Bootstrap integration passed at `46667078290536380583d6e6f0671f7c07845742` in
 [Build 40831671161](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40831671161).
 Required root Linux coordinator passed 52/52; Windows native coordinator passed
@@ -20,8 +25,9 @@ in [Build 40800652705](https://github.com/stormbots/Tactics-Strategy-Dev-Environ
 Windows trust reported 30/30; required Linux root tests, both native builds,
 feasibility markers and signed-upgrade checks passed. This accepts that increment,
 not the full recovery redesign. Normal installation preparation is connected;
-the current task connects the existing privileged GUI helper's supervision.
-Direct script, scheduled, application-updater and final Recovery UI work remains.
+the privileged GUI helper is supervised. The current task connects scheduled
+tool work, not SDE installation. Direct script, application-updater and final
+report/history/Recovery UI work remains. T4 execution parity is still incomplete.
 The [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md) passed at
 `59884166cd336153160238f7367dcec0b136744a` in Build run `40792896158`, attempt 2.
 The record below is the historical

@@ -1,4 +1,5 @@
 use crate::protocol::redact;
+use sde_coordination::safety::known_backend_completion as backend_finished;
 #[cfg(windows)]
 use std::io::Write;
 use std::{
@@ -137,19 +138,6 @@ fn stream_status(
             format!("Could not confirm provisioning process completion: {error}"),
         )
     })
-}
-
-/// Completion of these fixed synchronous installed backends is NOT Validation.
-/// Nonzero/signal/spawn errors and any still-active/unknown native work retain
-/// intent. Unknown package health alone must not become a permanent gate.
-fn backend_finished(
-    success: bool,
-    activity: sde_coordination::safety::Activity,
-    health: sde_coordination::safety::PackageHealth,
-) -> bool {
-    success
-        && activity == sde_coordination::safety::Activity::Inactive
-        && health != sde_coordination::safety::PackageHealth::Incomplete
 }
 
 fn coordinated_stream(cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, String> {
