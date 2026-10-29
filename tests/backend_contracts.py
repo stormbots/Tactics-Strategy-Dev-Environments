@@ -72,4 +72,15 @@ class Backends(unittest.TestCase):
         self.assertIn("-Pattern '^" + marker + r'\s*$', windows)
         for name in ('linux_install.rs', 'windows_install.rs'):
             self.assertIn('crate::tool_coordination::native_contracts();', self.text('updater/src/' + name))
+    def test_system_fixture_explicitly_receives_ci_context_before_native_execution(self):
+        source = self.text('tests/Test-WindowsSelfUpdateCI.ps1')
+        self.assertIn("if ($env:GITHUB_ACTIONS -ne 'true') { throw", source)
+        worker = source.split("@'", 1)[1].split("'@ | Set-Content", 1)[0]
+        indicator = "$env:GITHUB_ACTIONS = 'true'"
+        self.assertEqual(worker.count(indicator), 1)
+        self.assertLess(worker.index("throw 'Expected SYSTEM.'"), worker.index(indicator))
+        self.assertLess(worker.index(indicator), worker.index("$env:SDE_NATIVE_UPGRADE_FIXTURE = $root"))
+        self.assertLess(worker.index(indicator), worker.index("--exact windows_install::native::tests::signed_upgrade_under_system"))
+        guard = self.text('updater/src/tool_coordination.rs')
+        self.assertIn('assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"))', guard)
 if __name__=='__main__': unittest.main()

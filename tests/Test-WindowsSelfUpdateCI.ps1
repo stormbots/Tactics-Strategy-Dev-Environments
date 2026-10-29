@@ -28,6 +28,11 @@ $root = 'C:\ProgramData\SdeNativeSelfUpdateTest'
 Start-Transcript -Path (Join-Path $root 'native-upgrade.txt') -Force
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'Expected SYSTEM.' }
+    # Task Scheduler creates a separate SYSTEM environment; it does not inherit
+    # the runner's CI indicator. The outer harness already required disposable
+    # CI before creating this private worker. Pass only this non-secret test
+    # context, never the runner environment/credentials or a production override.
+    $env:GITHUB_ACTIONS = 'true'
     # Model the observed legacy parent ACL before the real signed installer.
     # Existing file bytes remain protected. Reproduce the October 14 inherited
     # CI Write on Logs as well as the parent; no manual ACL repair is performed.

@@ -57,6 +57,21 @@ eight backend/three permission contracts, Bash syntax and diff checks. Windows n
 updater and Tauri execution remain CI responsibility; cross-compilation is not
 native proof. No owner machine or actual package transaction was exercised locally.
 
+Initial head `0f399e8` passed both trust jobs, general checks and the Linux native
+Mint path in Build `40889137194`. Windows passed packaging/installed bootstrap
+but failed at the first test-only fixture guard, before coordination-state access:
+`GITHUB_ACTIONS` was absent in Task Scheduler's separate SYSTEM environment.
+The harness had already set `SDE_NATIVE_UPGRADE_FIXTURE` explicitly there, but
+omitted the non-secret CI indicator. The focused correction sets that one flag
+inside the private SYSTEM worker, after its SID assertion and after the outer
+disposable-CI guard has authorized creation. It does not copy runner credentials
+or broadly inherit an environment. The Rust assertion, required test/markers,
+production journals, nesting and gate behavior are unchanged. A source regression
+requires the CI flag inside the child worker before native test execution while
+retaining both guards. Nine backend contracts and diff checks pass locally;
+PowerShell/SYSTEM execution and revised-head Mint/inherited validation remain CI
+responsibility. No failed assertion was waived or replaced by old-head evidence.
+
 The existing signed SYSTEM/Mint native fixture functions now call a test-only
 contract using a private synthetic legacy journal on the disposable runner. It
 verifies deferral with current-session uncertainty, still defers after intent
