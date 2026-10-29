@@ -47,4 +47,50 @@ class Backends(unittest.TestCase):
         self.assertIn("'ToolRecords.ps1'",windows)
         self.assertIn("'Inspect-SkyviewSchedule.ps1'",windows)
         self.assertIn('"$SKYVIEW_LIB/tool_records.py"',self.text('linux/Install-SkyviewStudentDev.sh'))
+    def test_scheduled_tools_use_one_shared_guard_before_application_work(self):
+        for name in ('linux_install.rs', 'windows_install.rs'):
+            source = self.text('updater/src/' + name)
+            tools = source.split('fn tool_maintenance()', 1)[1].split('pub fn maintain_', 1)[0]
+            self.assertIn('crate::tool_coordination::run(supervisor).map(Some)', tools)
+            after = source.split('report.tool_exit = tool_maintenance()?;', 1)[1]
+            self.assertLess(after.index('tool_coordination::incomplete_outcome(report.tool_exit)'),
+                            after.index('report.phase = crate::observation::Phase::Identity'))
+        linux = self.text('updater/src/linux_install.rs')
+        self.assertIn('.arg("--leased")', linux)
+        # The leased child still requires real inherited descriptors, never the
+        # flag alone, before copying any applied baseline file.
+        child = self.text('linux/self-update/applied.py')
+        self.assertLess(child.index('coord.check()'), child.index("snapshot = HERE / 'applied-baseline'"))
+        guard = self.text('updater/src/tool_coordination.rs')
+        self.assertIn('mutation::begin(mutation::Scope::System)', guard)
+        self.assertLess(guard.index('inspection::collect()'), guard.index('guard.finish_known()'))
+        self.assertNotIn('recovery::submit(', guard.split('#[cfg(all(test,', 1)[0])
+    def test_scheduled_tool_native_proof_cannot_be_silently_skipped(self):
+        marker = 'SDE_RECOVERY_SCHEDULED_TOOL_CONTRACT_OK'
+        self.assertIn('grep -Fxq ' + marker, self.text('tests/Test-LinuxSelfUpdateCI.sh'))
+        windows = self.text('tests/Test-WindowsSelfUpdateCI.ps1')
+        self.assertIn("-Pattern '^" + marker + r'\s*$', windows)
+        for name in ('linux_install.rs', 'windows_install.rs'):
+            self.assertIn('crate::tool_coordination::native_contracts();', self.text('updater/src/' + name))
+    def test_system_fixture_explicitly_receives_ci_context_before_native_execution(self):
+        source = self.text('tests/Test-WindowsSelfUpdateCI.ps1')
+        self.assertIn("if ($env:GITHUB_ACTIONS -ne 'true') { throw", source)
+        worker = source.split("@'", 1)[1].split("'@ | Set-Content", 1)[0]
+        indicator = "$env:GITHUB_ACTIONS = 'true'"
+        self.assertEqual(worker.count(indicator), 1)
+        self.assertLess(worker.index("throw 'Expected SYSTEM.'"), worker.index(indicator))
+        self.assertLess(worker.index(indicator), worker.index("$env:SDE_NATIVE_UPGRADE_FIXTURE = $root"))
+        self.assertLess(worker.index(indicator), worker.index("--exact windows_install::native::tests::signed_upgrade_under_system"))
+        guard = self.text('updater/src/tool_coordination.rs')
+        self.assertIn('assert_eq!(std::env::var("GITHUB_ACTIONS").as_deref(), Ok("true"))', guard)
+    def test_native_fixture_establishes_inactivity_before_synthetic_journal(self):
+        source = self.text('updater/src/tool_coordination.rs')
+        fixture = source.split('pub(crate) fn native_contracts()', 1)[1]
+        self.assertLess(fixture.index('await_native_fixture_inactivity('),
+                        fixture.index('lease.begin_transaction()'))
+        self.assertIn('let facts = inspection::collect();', fixture)
+        self.assertIn('assert_eq!(run(command()).unwrap(), 0);', fixture)
+        production = source.split('#[cfg(all(test,', 1)[0]
+        self.assertNotIn('await_native_fixture_inactivity', production)
+        self.assertNotIn('thread::sleep', production)
 if __name__=='__main__': unittest.main()
