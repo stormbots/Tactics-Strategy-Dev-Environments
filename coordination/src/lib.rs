@@ -359,6 +359,66 @@ mod tests {
     // a lease just released by another test. Each contention test still runs
     // several real processes against its own gates.
     static FIXTURE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    fn lock_fixtures(lock: &std::sync::Mutex<()>) -> std::sync::MutexGuard<'_, ()> {
+        // This mutex serializes independent fixture directories; it protects no
+        // shared transaction state. Preserve the original failing test, but do
+        // not turn its panic into unrelated PoisonError failures in later tests.
+        lock.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn storage_fixture_powershell() -> Command {
+        let mut command =
+            Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+        // Actions starts Rust under pwsh. Unlike a direct pwsh -> powershell
+        // invocation, Rust does not strip PowerShell 7's incompatible module
+        // paths. Let the fixed Windows PowerShell 5.1 executable build its own
+        // defaults. Preserve every other inherited CI/runtime variable.
+        command.env_remove("PSModulePath").args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+        ]);
+        command
+    }
+
+    #[test]
+    fn storage_fixture_does_not_inherit_powershell_seven_module_paths() {
+        let command = storage_fixture_powershell();
+        assert_eq!(
+            command.get_program(),
+            std::ffi::OsStr::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+        );
+        let overrides: Vec<_> = command.get_envs().collect();
+        assert_eq!(overrides.len(), 1);
+        assert!(overrides[0]
+            .0
+            .to_string_lossy()
+            .eq_ignore_ascii_case("PSModulePath"));
+        assert!(overrides[0].1.is_none());
+        assert!(command.get_args().any(|arg| arg == "-NoProfile"));
+        assert_eq!(
+            command.get_args().last(),
+            Some(std::ffi::OsStr::new("-File"))
+        );
+    }
+
+    #[test]
+    fn a_failed_fixture_does_not_poison_independent_fixture_execution() {
+        let lock = std::sync::Arc::new(std::sync::Mutex::new(()));
+        let child = lock.clone();
+        let failure = std::thread::spawn(move || {
+            let _guard = child.lock().unwrap();
+            panic!("Synthetic fixture failure; the original test must still fail");
+        })
+        .join();
+        assert!(failure.is_err());
+        assert!(lock.is_poisoned());
+        drop(lock_fixtures(&lock));
+        drop(lock_fixtures(&lock));
+    }
     struct Fixture {
         path: PathBuf,
         _guard: std::sync::MutexGuard<'static, ()>,
@@ -373,7 +433,7 @@ mod tests {
                 );
                 return None;
             }
-            let guard = FIXTURE_LOCK.lock().unwrap();
+            let guard = lock_fixtures(&FIXTURE_LOCK);
             let name = format!(
                 "coordination-test-{}-{}",
                 std::process::id(),
@@ -726,14 +786,7 @@ mod tests {
         {
             let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../tests/Invoke-RecoveryStorageStudentCI.ps1");
-            let result = Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                ])
+            let result = storage_fixture_powershell()
                 .arg(script)
                 .arg("-FixtureRoot")
                 .arg(&f.path)

@@ -157,5 +157,36 @@ class RecoveryFeasibilityWorkflow(unittest.TestCase):
         self.assertIn("Test-CoordinationCI.ps1", package["run"])
 
 
+class CoordinationWorkflowExitContract(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        path = Path(__file__).resolve().parents[1] / WORKFLOW
+        steps = yaml.safe_load(path.read_text())["jobs"]["update-trust"]["steps"]
+        self.step = next(step for step in steps
+                         if step.get("name") == "Native cross-process coordination contracts")
+
+    def run_with_cargo_failure(self, failed_command, code):
+        import subprocess
+        # No real cargo/test/build invocation. Match Actions' explicit bash
+        # fail-fast shell and simulate a failed native process in this step.
+        stub = ('cargo() { printf "%s\\n" "$1"; '
+                f'if [ "$1" = "{failed_command}" ]; then return {code}; fi; '
+                'return 0; }\n')
+        self.assertEqual(self.step["shell"], "bash")
+        return subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o",
+                               "pipefail", "-c", stub + self.step["run"]],
+                              capture_output=True, text=True, check=False, timeout=10)
+
+    def test_failed_tests_cannot_be_hidden_by_successful_formatting_or_clippy(self):
+        result = self.run_with_cargo_failure("test", 23)
+        self.assertEqual(result.returncode, 23, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["test"])
+
+    def test_failed_formatting_stops_before_clippy(self):
+        result = self.run_with_cargo_failure("fmt", 24)
+        self.assertEqual(result.returncode, 24, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["test", "fmt"])
+
+
 if __name__ == "__main__":
     unittest.main()

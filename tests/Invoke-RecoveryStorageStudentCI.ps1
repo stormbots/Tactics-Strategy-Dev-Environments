@@ -4,6 +4,9 @@ param([Parameter(Mandatory=$true)][string]$FixtureRoot,
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Disposable GitHub runner required.' }
 if ($FixtureRoot -notmatch '^C:\\ProgramData\\coordination-test-[0-9]+-[0-9]+$') { throw 'Unexpected fixture root.' }
+# Pin the in-box 5.1 security module, not a same-named PowerShell 7 module
+# inherited through a pwsh -> Rust -> Windows PowerShell process chain.
+Import-Module "$PSHOME\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1" -ErrorAction Stop
 $userName = 'SdeStore' + [guid]::NewGuid().ToString('N').Substring(0,8)
 $work = Join-Path 'C:\Users\Public' ('SdeStoreProbe-' + [guid]::NewGuid().ToString('N'))
 $createdUser = $false

@@ -96,6 +96,9 @@ jobs:
         with:
           workspaces: updater -> target
       - name: Native cross-process coordination contracts
+        # Explicit bash -e/pipefail semantics on both platforms: PowerShell's
+        # default native-command behavior can mask a failed test with later fmt.
+        shell: bash
         env:
           SDE_REQUIRE_COORDINATION: ${{ runner.os == 'Windows' && '1' || '' }}
         run: |

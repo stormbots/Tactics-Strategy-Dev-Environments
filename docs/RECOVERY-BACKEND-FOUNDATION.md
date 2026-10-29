@@ -58,6 +58,30 @@ permission evidence. Real Windows ACL tests, standard-user child execution,
 privileged Linux fixtures, and PowerShell helper parsing/execution remain CI work.
 The GNU target check is not a substitute for Windows MSVC/native execution.
 
+### Windows fixture follow-up
+
+DevOps rejected `b47a119e04f5d6497915a867df7d63f06256c327` as a complete validation
+result: Linux root production storage passed 17/17, but Windows trust job
+`123167864652` in run `40788568792` logged a security-module autoload failure in
+the student fixture, followed by two mutex-poison cascades. The workflow advertised
+success because later native fmt/Clippy commands replaced the failed test exit
+code. That green conclusion is not accepted as Windows production-storage proof.
+
+The follow-up isolates the test-only Windows PowerShell 5.1 child from inherited
+PowerShell 7 `PSModulePath` entries, explicitly imports its in-box security module,
+and permits independent fixture directories to run after a poisoned serialization
+mutex without suppressing the original failing test. The coordination CI step now
+uses explicit fail-fast Bash on both platforms, with regression tests simulating
+test/fmt failures to prove later commands cannot hide them.
+
+Local follow-up: 14 workflow/scope tests passed; the Rust harness completed 19
+entries successfully (protected non-root fixtures still return early locally).
+The new environment/poison-recovery unit tests, Linux/Windows-target Clippy,
+formatting and diff checks passed. Native Windows module loading and real
+production-storage permission checks require a fresh exact-head CI run on both
+platforms. No production function, guard, journal, or release/UAT state changed
+in this follow-up.
+
 ## Exact native acceptance criteria
 
 Use the latest PR head and existing Build Skyview Dev Setup workflow. No new
