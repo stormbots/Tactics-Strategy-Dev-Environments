@@ -44,6 +44,17 @@ Linux and Windows GNU all-target Clippy with warnings denied passed. CI-scope
 contracts 17/17 passed; Python compilation, Bash syntax and diff checks passed.
 PowerShell and actual package execution are deferred to the existing workflows.
 
+At initial head `043e4a5`, Build `40827893914` Linux trust job `123295103940`
+failed 51/52 in the root-required suite. Bootstrap itself returned successfully;
+the following test assertion incorrectly expected `inspect_at()` to return an
+empty view while the fixture still held the exclusive installation lease.
+Inspection correctly returned `Busy`. The focused correction expects that result
+and directly checks that none of the six recovery metadata/archive paths exists
+while the gate is held. Existing byte/lease assertions and the post-release
+empty inspection remain. No production behavior or CI requirement was relaxed.
+Revised-head native validation remains required; the non-root local harness
+cannot establish that privileged assertion.
+
 New `bootstrap_*` native coordinator tests cover clean/idempotent initialization,
 legacy evidence identity, submitted-intent retention, changed generations, corrupt
 metadata, and live installation leases. The existing real standard-user storage

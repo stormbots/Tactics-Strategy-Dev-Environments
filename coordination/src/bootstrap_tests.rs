@@ -45,8 +45,22 @@ fn bootstrap_live_package_hook_defers_preparation_without_replacing_gates() {
     let transaction = install.begin_transaction().unwrap();
     let original = std::fs::read(f.path.join("transaction.json")).unwrap();
     bootstrap_at(&f.path).unwrap();
-    assert!(recovery::inspect_at(&f.path).unwrap().is_none());
-    assert!(!f.path.join("recovery-context.json").exists());
+    // Inspection acquires its own exclusive operation lease. While the live
+    // installation owns that lease, Busy is required, not an empty snapshot.
+    assert_eq!(recovery::inspect_at(&f.path).unwrap_err(), Error::Busy);
+    for name in [
+        "recovery-incident.json",
+        "recovery-binding.json",
+        "recovery-acknowledgment.json",
+        "recovery-context.json",
+        "recovery-disposition.json",
+        "recovery-archive",
+    ] {
+        assert!(
+            !f.path.join(name).exists(),
+            "Live work must not be published as an interruption: {name}"
+        );
+    }
     assert_eq!(
         std::fs::read(f.path.join("transaction.json")).unwrap(),
         original
