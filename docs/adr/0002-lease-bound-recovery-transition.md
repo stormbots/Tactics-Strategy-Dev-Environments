@@ -1,7 +1,11 @@
 # ADR 0002: Fresh safety and a lease-bound recovery transition
 
-Status: implemented foundation; native validation pending; existing application
-consumers are not connected. Depends on accepted [ADR 0001](0001-interruption-acknowledgment-boundary.md).
+Status: foundation accepted at `c0a3ecd` in Build `40821734101` (Windows 44/44,
+root-required Linux 47/47). Native sources were readable/stable; this is not an
+actual reboot test. Existing execution consumers are not connected. The next
+[bootstrap increment](../RECOVERY-BOOTSTRAP-INTEGRATION.md) connects only incident
+preparation during normally authorized installation. Depends on accepted
+[ADR 0001](0001-interruption-acknowledgment-boundary.md).
 
 ## Decision
 

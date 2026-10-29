@@ -157,6 +157,51 @@ class RecoveryFeasibilityWorkflow(unittest.TestCase):
         self.assertIn("Test-CoordinationCI.ps1", package["run"])
 
 
+class RecoveryBootstrapWorkflow(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        self.root = root
+        self.steps = yaml.safe_load((root / WORKFLOW).read_text())["jobs"]["native"]["steps"]
+
+    def step(self, name):
+        matching = [step for step in self.steps if step.get("name") == name]
+        self.assertEqual(len(matching), 1)
+        self.assertNotIn("continue-on-error", matching[0])
+        return matching[0]
+
+    def test_windows_installed_probe_is_required_after_install_and_before_upgrade(self):
+        step = self.step("Required Windows installed recovery bootstrap")
+        self.assertEqual(step["if"], "runner.os == 'Windows' && matrix.bundle == 'nsis'")
+        self.assertEqual(step["shell"], "pwsh")
+        self.assertIn("-File ./tests/Test-RecoveryBootstrapCI.ps1", step["run"])
+        self.assertIn("$probeExit = $LASTEXITCODE", step["run"])
+        self.assertIn("$probeExit -ne 0 -or $output -cnotcontains", step["run"])
+        self.assertIn("SDE_RECOVERY_WINDOWS_INSTALLED_BOOTSTRAP_OK", step["run"])
+        installed = self.step("Verify Windows application bootstrap without applying a baseline")
+        upgrade = self.step("Build unpublished newer Windows fixture and verify signed SYSTEM upgrade")
+        self.assertLess(self.steps.index(installed), self.steps.index(step))
+        self.assertLess(self.steps.index(step), self.steps.index(upgrade))
+
+    def test_linux_installed_probe_propagates_failure_and_requires_marker(self):
+        step = self.step("Required Linux installed recovery bootstrap")
+        self.assertEqual(step["if"], "runner.os == 'Linux'")
+        self.assertEqual(step["shell"], "bash")
+        self.assertIn("set -euo pipefail", step["run"])
+        self.assertIn("sudo env GITHUB_ACTIONS=true python3 tests/verify_recovery_bootstrap_native.py", step["run"])
+        self.assertIn("grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK", step["run"])
+        installed = self.step("Verify Linux application bootstrap without applying a baseline")
+        self.assertLess(self.steps.index(installed), self.steps.index(step))
+
+    def test_actual_mint_runs_installed_probe_before_applied_fixture(self):
+        script = (self.root / "tests/Test-LinuxSelfUpdateCI.sh").read_text()
+        invocation = 'python3 /work/tests/verify_recovery_bootstrap_native.py "$root/old.deb"'
+        self.assertIn(invocation, script)
+        self.assertIn("grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK", script)
+        self.assertLess(script.index(invocation), script.index("# Deterministic applied tool policy"))
+        self.assertIn("set -Eeuo pipefail", script)
+
+
 class CoordinationWorkflowExitContract(unittest.TestCase):
     def setUp(self):
         import yaml

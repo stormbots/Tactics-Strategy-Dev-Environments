@@ -1,5 +1,13 @@
 # Safe recovery transition: engineering handoff
 
+Accepted exact head `c0a3ecd282409af436cac12a32ed8a771707ff06` in
+[Build 40821734101](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40821734101).
+DevOps confirmed Windows trust 44/44 and required Linux root coordinator 47/47,
+including native restart-source/activity, mutation/child, durable replay and
+production-storage tests. Windows feasibility, native builds and both signed
+upgrades passed. No merge, release, owner UAT or evidence mutation occurred.
+The handoff below is historical; next is [bootstrap integration](RECOVERY-BOOTSTRAP-INTEGRATION.md).
+
 Branch: `codex/recovery-safe-transition`, based on accepted PR #115 head
 `046d56bd4f5f723e1d21eadbbc95674c558016ac` (Build `40800652705`). This stacked
 branch includes still-unmerged #113–#115. It is not a complete feature or UAT

@@ -1,8 +1,9 @@
 # Interrupted-operation recovery: self-service implementation plan
 
 Status: engineering approved; native permission feasibility and production
-storage foundation and durable acknowledgment passed; lease-bound safe transition
-pending native validation. See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
+storage foundation, durable acknowledgment and lease-bound safe transition passed;
+normally privileged bootstrap integration pending native validation.
+See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.
 

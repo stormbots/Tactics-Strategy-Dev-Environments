@@ -1,12 +1,20 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [safe transition](RECOVERY-SAFE-TRANSITION.md),
-branch `codex/recovery-safe-transition`, pending native validation.
+Current increment: [bootstrap integration](RECOVERY-BOOTSTRAP-INTEGRATION.md),
+branch `codex/recovery-bootstrap-integration`, pending native validation.
+Safe transition passed at `c0a3ecd282409af436cac12a32ed8a771707ff06` in
+[Build 40821734101](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40821734101).
+Windows trust passed 44/44; required Linux root coordinator passed 47/47.
+Native restart-source availability, mutation/child coordination, production
+storage and durable replay passed, as did native builds, feasibility markers and
+signed-upgrade checks. These results do not prove an actual reboot/resumption or
+the still-unimplemented full UI/execution integration.
 Durable acknowledgment passed at `046d56bd4f5f723e1d21eadbbc95674c558016ac`
 in [Build 40800652705](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40800652705).
 Windows trust reported 30/30; required Linux root tests, both native builds,
 feasibility markers and signed-upgrade checks passed. This accepts that increment,
-not the full recovery redesign. Existing application consumers remain unwired.
+not the full recovery redesign. The current increment connects only the normally
+privileged installation hook; execution, GUI and scheduling consumers remain unwired.
 The [production backend foundation](RECOVERY-BACKEND-FOUNDATION.md) passed at
 `59884166cd336153160238f7367dcec0b136744a` in Build run `40792896158`, attempt 2.
 The record below is the historical

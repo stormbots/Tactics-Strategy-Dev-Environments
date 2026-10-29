@@ -318,6 +318,14 @@ jobs:
             cargo test --locked --manifest-path updater/Cargo.toml --lib host::tests::installed_native_fixture_identity -- --exact --nocapture
             if ($LASTEXITCODE -ne 0) { throw 'Installed native identity failed before provisioning.' }
           } finally { Remove-Item Env:SDE_APPONLY_IDENTITY_FIXTURE }
+      - name: Required Windows installed recovery bootstrap
+        if: runner.os == 'Windows' && matrix.bundle == 'nsis'
+        shell: pwsh
+        run: |
+          $output = @(& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-RecoveryBootstrapCI.ps1)
+          $probeExit = $LASTEXITCODE
+          $output | Write-Output
+          if ($probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_INSTALLED_BOOTSTRAP_OK') { throw 'Required installed Windows recovery bootstrap evidence missing.' }
       - name: Rust tests
         run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri
@@ -354,6 +362,13 @@ jobs:
           test -r /var/lib/skyview-robotics-coordination/operations.gate
           test "$(coordination/target/release/sde-coordination status)" = '"idle"'
           test ! -e /var/lib/skyview-robotics/student-dev/version
+      - name: Required Linux installed recovery bootstrap
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo env GITHUB_ACTIONS=true python3 tests/verify_recovery_bootstrap_native.py dist/Skyview-Dev-Setup-LinuxMint-amd64.deb | tee "$RUNNER_TEMP/sde-recovery-bootstrap.txt"
+          grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK "$RUNNER_TEMP/sde-recovery-bootstrap.txt"
       - name: Required signed upgrade on Linux Mint 22.3
         if: runner.os == 'Linux'
         shell: bash

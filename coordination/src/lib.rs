@@ -6,6 +6,8 @@ use std::{
 };
 #[cfg(test)]
 mod acknowledgment_tests;
+#[cfg(test)]
+mod bootstrap_tests;
 pub mod inspection;
 pub mod mutation;
 #[cfg(test)]
@@ -79,7 +81,19 @@ pub enum Status {
 }
 
 pub fn initialize() -> Result<()> {
-    initialize_at(&root())
+    bootstrap_at(&root())
+}
+
+/// Normally privileged application-install hook. Prepare a legacy incident only
+/// when no supervisor owns the operation gate. A signed updater intentionally
+/// holds that gate across package hooks: keep initialization idempotent and defer
+/// recovery metadata, never publish a live transaction as an interruption.
+fn bootstrap_at(dir: &Path) -> Result<()> {
+    initialize_at(dir)?;
+    match recovery::prepare_at(dir) {
+        Ok(_) | Err(Error::Busy) => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 pub fn session() -> Result<Lease> {
     acquire_at(&root(), "sessions.gate", true)
@@ -759,7 +773,7 @@ mod tests {
         }
         let Some(f) = Fixture::new() else { return };
         let original = interrupted_fixture(&f);
-        recovery::prepare_at(&f.path).unwrap();
+        bootstrap_at(&f.path).unwrap();
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

@@ -7,6 +7,12 @@ foundation is described separately in [ADR 0002](0002-lease-bound-recovery-trans
 Implements the T1 checkpoint in
 [the recovery plan](../INTERRUPTED-OPERATION-RECOVERY-PLAN.md).
 
+Current implementation note: the [bootstrap increment](../RECOVERY-BOOTSTRAP-INTEGRATION.md)
+now connects incident preparation to the existing normally privileged installation
+hook. Preparation defers when a live supervisor holds the gate. It never commits
+consent, archives/retires a journal or enables execution. Earlier milestone-scope
+descriptions below are historical; full deployment/integration remains incomplete.
+
 ## Context
 
 The owner approved acknowledgment by any student without a separate elevation
