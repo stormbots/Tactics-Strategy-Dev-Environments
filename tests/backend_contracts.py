@@ -1,6 +1,10 @@
 """Read-only regression checks for the provisioning safety contract."""
 from pathlib import Path
+import importlib.util
 import re, unittest
+import stat
+from types import SimpleNamespace
+from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
@@ -114,4 +118,55 @@ class Backends(unittest.TestCase):
         marker = 'SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK'
         self.assertIn('grep -Fxq ' + marker, self.text('tests/Test-LinuxSelfUpdateCI.sh'))
         self.assertIn('grep -Fxq ' + marker, self.text('.github/workflows/build-dev-setup.yml'))
+    def manual_fixture_module(self):
+        spec = importlib.util.spec_from_file_location(
+            'manual_native_fixture', ROOT / 'tests/verify_manual_recovery_native.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    def test_manual_fixture_requires_every_ancestor_to_be_protected(self):
+        fixture = self.manual_fixture_module()
+        self.assertEqual(fixture.FIXTURE_PARENT, Path('/var/lib'))
+        source = self.text('tests/verify_manual_recovery_native.py')
+        self.assertIn('dir=FIXTURE_PARENT', source)
+        for invocation in ('require_protected_directory(FIXTURE_PARENT)',
+                           'require_protected_script(script)',
+                           'require_protected_script(install)'):
+            self.assertIn(invocation, source)
+        path = Path('/var/lib/sde-manual-ci-synthetic')
+        good = SimpleNamespace(st_uid=0, st_mode=stat.S_IFDIR | 0o755)
+        with patch.object(Path, 'lstat', autospec=True, return_value=good) as metadata:
+            fixture.require_protected_directory(path)
+        self.assertEqual([call.args[0] for call in metadata.call_args_list],
+                         [path, *path.parents])
+        for bad in (
+            SimpleNamespace(st_uid=0, st_mode=stat.S_IFDIR | 0o777),
+            SimpleNamespace(st_uid=0, st_mode=stat.S_IFDIR | 0o775),
+            SimpleNamespace(st_uid=1000, st_mode=stat.S_IFDIR | 0o755),
+            SimpleNamespace(st_uid=0, st_mode=stat.S_IFLNK | 0o755),
+        ):
+            # The leaf is private; an untrusted ancestor must STILL reject it.
+            with patch.object(Path, 'lstat', autospec=True, side_effect=(
+                lambda current, bad=bad: bad if current == Path('/var/lib') else good)):
+                with self.assertRaisesRegex(AssertionError, 'ancestor ' + re.escape(str(Path('/var/lib'))) + ': uid='):
+                    fixture.require_protected_directory(path)
+    def test_manual_fixture_scripts_match_production_file_trust_shape(self):
+        fixture = self.manual_fixture_module()
+        path = Path('/var/lib/sde-manual-ci-synthetic/Update-SkyviewStudentDev.sh')
+        directory = SimpleNamespace(st_uid=0, st_mode=stat.S_IFDIR | 0o755)
+        good = SimpleNamespace(st_uid=0, st_mode=stat.S_IFREG | 0o644, st_nlink=1)
+        for info, allowed in (
+            (good, True),
+            (SimpleNamespace(st_uid=0, st_mode=stat.S_IFREG | 0o664, st_nlink=1), False),
+            (SimpleNamespace(st_uid=1000, st_mode=stat.S_IFREG | 0o644, st_nlink=1), False),
+            (SimpleNamespace(st_uid=0, st_mode=stat.S_IFREG | 0o644, st_nlink=2), False),
+            (SimpleNamespace(st_uid=0, st_mode=stat.S_IFLNK | 0o644, st_nlink=1), False),
+        ):
+            with patch.object(Path, 'lstat', autospec=True, side_effect=(
+                lambda current, info=info: info if current == path else directory)):
+                if allowed:
+                    fixture.require_protected_script(path)
+                else:
+                    with self.assertRaisesRegex(AssertionError, 'Untrusted manual fixture script'):
+                        fixture.require_protected_script(path)
 if __name__=='__main__': unittest.main()

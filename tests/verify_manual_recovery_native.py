@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 import uuid
@@ -14,18 +15,44 @@ import uuid
 ROOT = Path('/var/lib/skyview-robotics-coordination')
 APP = '/usr/bin/skyview-dev-setup'
 BACKEND = Path('/usr/lib/Skyview Dev Setup/backend/linux')
+FIXTURE_PARENT = Path('/var/lib')
+
+
+def require_protected_directory(path):
+    # A root-only child cannot make a writable ancestor safe. Hosted runners
+    # deliberately expose /opt to tool installers; use /var/lib, as the shared
+    # coordinator fixtures do. Diagnose metadata instead of changing the host.
+    for ancestor in (path, *path.parents):
+        info = ancestor.lstat()
+        assert (stat.S_ISDIR(info.st_mode) and info.st_uid == 0
+                and not info.st_mode & 0o022), (
+            f'Untrusted manual fixture ancestor {ancestor}: '
+            f'uid={info.st_uid}, mode={stat.S_IMODE(info.st_mode):04o}, '
+            f'type={stat.S_IFMT(info.st_mode):06o}')
+
+
+def require_protected_script(path):
+    require_protected_directory(path.parent)
+    info = path.lstat()
+    assert (stat.S_ISREG(info.st_mode) and info.st_uid == 0
+            and not info.st_mode & 0o022 and info.st_nlink == 1), (
+        f'Untrusted manual fixture script {path}: '
+        f'uid={info.st_uid}, mode={stat.S_IMODE(info.st_mode):04o}, '
+        f'type={stat.S_IFMT(info.st_mode):06o}, links={info.st_nlink}')
 
 
 def main():
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.geteuid() != 0:
         raise RuntimeError('Disposable root GitHub runner required.')
+    require_protected_directory(FIXTURE_PARENT)
     if (ROOT / 'transaction.json').exists() or (ROOT / 'recovery-archive').exists():
         raise RuntimeError('Expected clean disposable manual-supervision fixture.')
     capability = subprocess.run([APP, '--coordination-init'], check=True,
                                 capture_output=True, text=True)
     assert capability.stdout.strip() == 'SDE_LINUX_SYSTEM_SUPERVISOR_V1'
-    with tempfile.TemporaryDirectory(prefix='sde-manual-ci-', dir='/opt') as directory:
+    with tempfile.TemporaryDirectory(prefix='sde-manual-ci-', dir=FIXTURE_PARENT) as directory:
         fixture = Path(directory)
+        require_protected_directory(fixture)
         (fixture / 'lib').mkdir()
         for name in ('coordination.sh', 'coordination.py'):
             shutil.copyfile(BACKEND / 'lib' / name, fixture / 'lib' / name)
@@ -51,6 +78,7 @@ else: raise AssertionError('Lost the native supervisor gate')
 PY
 ''')
         script.chmod(0o644)
+        require_protected_script(script)
         # An ordinary desktop token, even if it is a sudo-group member, cannot
         # ask this mode to elevate or access protected transaction state.
         def student():
@@ -79,6 +107,7 @@ PY
             '[[ "$#" == 2 && "$1" == --system-only && "$2" == student-ci ]]\n'
             '[[ -z "${BASH_ENV:-}"'))
         install.chmod(0o644)
+        require_protected_script(install)
         subprocess.run(['/bin/bash', str(install), '--system-only', 'student-ci'], check=True)
         assert ready.read_text() == 'real nesting proved'
         assert not (ROOT / 'transaction.json').exists()

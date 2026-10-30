@@ -92,6 +92,33 @@ Linux checksum manifest, coordinator Rust formatting and diff checks passed.
 Packaged Tauri execution, ShellCheck/actionlint and protected/root/native proofs
 remain delegated to the existing workflows; no local native pass is claimed.
 
+### Fixture correction after initial native validation
+
+Build `40946730414`, attempt 2, at `347b59e96c8b855b7e8a82c2c5760947c2a153c3`
+failed in native Linux job `123727450657` before the manual-supervisor marker.
+The fixture put its root-owned script under `/opt/sde-manual-ci-*`; the app
+correctly returned `untrusted_entry_point` (exit 76). The native gate validates
+every ancestor, not merely the private temporary directory and script. GitHub's
+[runner image configuration](https://github.com/actions/runner-images/blob/main/images/ubuntu/scripts/build/configure-system.sh)
+explicitly makes `/opt` mode 0777. A private root-owned child does not repair a
+writable ancestor. The failed log did not capture individual ancestor metadata.
+
+The fixture now uses `/var/lib`, matching the already-passing protected coordinator
+fixtures, and independently checks each ancestor and both synthetic scripts with
+`lstat` before native invocation. A mismatch fails with UID, mode, type and (for
+files) link count, rather than silently changing host permissions. It never
+chmods/chowns `/opt`, relaxes the production gate, changes coordination storage,
+skips the marker, or substitutes a checkout binary. Metadata unit regressions
+cover a private leaf under a writable/non-root/symlinked ancestor and unsafe
+file mode, owner, symlink and hard-link counts. These are test setup checks,
+not native trust evidence.
+
+Focused local validation of the correction: thirteen backend contracts, Python
+compilation and diff checks passed. Production Rust, shell wrapper, checksums,
+workflows and all journal/gate/nesting behavior are unchanged. Actual installed
+host and Mint 22.3 markers, Mint signed upgrade and every inherited Windows/Linux
+gate must pass on the revised exact head; they remain pending, not waived.
+
 ## DevOps prompt
 
 Validate the new PR's exact head in its existing Build Skyview Dev Setup run.
