@@ -231,6 +231,15 @@ class RecoveryBootstrapWorkflow(unittest.TestCase):
         self.assertLess(self.steps.index(installed), self.steps.index(step))
         self.assertLess(self.steps.index(step), self.steps.index(upgrade))
 
+    def test_windows_package_hook_gate_keeps_exit_and_both_required_markers(self):
+        step = self.step("Package the existing Chocolatey backend")
+        self.assertIn("$coordinationExit = $LASTEXITCODE", step["run"])
+        self.assertIn("$coordinationExit -ne 0", step["run"])
+        for marker in ('WINDOWS_COORDINATION_SUPERVISION_OK', 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK'):
+            self.assertIn("$coordinationOutput -cnotcontains '" + marker + "'", step["run"])
+        self.assertLess(step["run"].index('$coordinationExit = $LASTEXITCODE'),
+                        step["run"].index('$coordinationOutput | Write-Output'))
+
 
 class CoordinationWorkflowExitContract(unittest.TestCase):
     def setUp(self):

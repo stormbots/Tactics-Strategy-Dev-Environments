@@ -1,7 +1,12 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [Windows direct maintenance recovery](RECOVERY-WINDOWS-MAINTENANCE.md),
-branch `codex/recovery-windows-manual-supervision`, pending native validation.
+Current increment: [Windows package-hook parent boundary](RECOVERY-WINDOWS-PACKAGE-HOOK.md),
+branch `codex/recovery-windows-package-hook`, pending native validation.
+Windows direct maintenance (#121) passed at `7c6d374185370893b610b5d59dc8245d3b0cbcff`
+in [Build 41000952438](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41000952438).
+The installed manual-maintenance, signed SYSTEM, scheduled-tool and inherited
+Windows/Linux trust checks passed, as did host/manual and actual Mint 22.3
+manual/signed-upgrade evidence. This is not full Windows Install/Repair parity.
 Codex now owns both engineering and DevOps. The owner canceled the hourly
 automation; active Cloud sessions must leave a durable checkpoint when only CI
 remains pending. No separate CI-chat handoff is required.

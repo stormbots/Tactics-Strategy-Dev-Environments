@@ -124,6 +124,23 @@ class Backends(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
+    def test_chocolatey_hook_requires_authenticated_parent_before_any_configuration(self):
+        hook = self.text('windows/chocolatey/tools/chocolateyInstall.ps1')
+        self.assertIn('Invoke-SkyviewCoordinated -Mutation -RequireParent -Action {', hook)
+        self.assertLess(hook.index('-RequireParent'), hook.index("$Skyview = 'C:"))
+        source = self.text('windows/chocolatey/tools/Coordination.ps1')
+        parent = source.index('    if ($RequireParent) {')
+        self.assertLess(source.index('if ($administrator -and $env:SKYVIEW_TRANSACTION_TOKEN)'), parent)
+        self.assertLess(parent, source.index('if ($Mutation -and $EntryPoint)'))
+        self.assertLess(parent, source.index('$session = $null; $operation = $null;'))
+        self.assertIn('if (-not $RequireParent -and $global:SkyviewOperationLease', source)
+        body = source[parent:].split('    if ($Mutation -and $EntryPoint)', 1)[0]
+        self.assertIn('SDE_SUPERVISOR_REQUIRED:', body)
+        self.assertNotIn('& $Action', body)
+        self.assertNotIn('Remove-Item', body)
+        self.assertIn('-Mutation -RequireParent -Action', self.text('tests/Invoke-RecoveryNestingCI.ps1'))
+        workflow = self.text('.github/workflows/build-dev-setup.yml')
+        self.assertIn("$coordinationOutput -cnotcontains 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK'", workflow)
     def test_windows_manual_maintenance_preserves_nested_proof_and_native_gates(self):
         source = self.text('windows/chocolatey/tools/Coordination.ps1')
         nested = source.index('if ($administrator -and $env:SKYVIEW_TRANSACTION_TOKEN)')

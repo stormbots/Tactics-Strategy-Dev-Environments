@@ -206,8 +206,10 @@ jobs:
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
           $errors = Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Error
           if ($errors) { $errors | Format-Table; throw 'PowerShell analysis failed.' }
-          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-CoordinationCI.ps1
-          if ($LASTEXITCODE -ne 0) { throw 'Coordination supervision failed.' }
+          $coordinationOutput = @(& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-CoordinationCI.ps1)
+          $coordinationExit = $LASTEXITCODE
+          $coordinationOutput | Write-Output
+          if ($coordinationExit -ne 0 -or $coordinationOutput -cnotcontains 'WINDOWS_COORDINATION_SUPERVISION_OK' -or $coordinationOutput -cnotcontains 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK') { throw 'Required coordination/package-hook supervision evidence missing.' }
           ./tests/Test-BackendContracts.ps1
           ./tests/Test-MetadataContracts.ps1
           ./tests/Test-MaintenanceCI.ps1

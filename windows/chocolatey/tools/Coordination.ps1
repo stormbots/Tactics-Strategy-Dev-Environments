@@ -71,8 +71,9 @@ function Invoke-SkyviewNativeMaintenanceProcess {
 }
 function Invoke-SkyviewCoordinated {
     param([scriptblock]$Action, [switch]$Mutation, [switch]$ReadOnly,
-          [string]$EntryPoint, [string[]]$EntryArguments=@())
+          [string]$EntryPoint, [string[]]$EntryArguments=@(), [switch]$RequireParent)
     if ($Mutation -and $ReadOnly) { throw 'A changing operation cannot use read-only coordination.' }
+    if ($RequireParent -and -not $Mutation) { throw 'Parent transaction enforcement requires a changing operation.' }
     $root = $script:SkyviewCoordinationRoot
     Assert-SkyviewProtectedPath 'C:\' -Anchor
     Assert-SkyviewProtectedPath 'C:\ProgramData' -Anchor
@@ -80,7 +81,7 @@ function Invoke-SkyviewCoordinated {
     $journal = Join-Path $root 'transaction.json'
     $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     $administrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if ($global:SkyviewOperationLease -is [IO.FileStream] -and
+    if (-not $RequireParent -and $global:SkyviewOperationLease -is [IO.FileStream] -and
         -not $global:SkyviewOperationLease.SafeFileHandle.IsClosed -and
         $global:SkyviewOperationLease.Name -eq (Join-Path $root 'operations.gate')) {
         & $Action
@@ -103,6 +104,12 @@ function Invoke-SkyviewCoordinated {
         if (-not $held) { throw 'The supervising SDE transaction was interrupted; mentor review is required.' }
         & $Action
         return
+    }
+    if ($RequireParent) {
+        # A package hook runs AFTER Chocolatey has begun package work. It must
+        # reuse a genuine SDE parent, not create a fresh journal around already
+        # running packages or interpret a retained incident as permission.
+        throw 'SDE_SUPERVISOR_REQUIRED: Run Install or Repair from the installed SDE application. The package configuration hook cannot start an independent transaction.'
     }
     if ($Mutation -and $EntryPoint) {
         if (-not $administrator) { throw 'System operations require administrator authentication.' }

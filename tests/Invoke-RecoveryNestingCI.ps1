@@ -5,6 +5,6 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $FixtureRoot -notmatch '^C:\\ProgramData\
 Import-Module "$PSHOME\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1" -ErrorAction Stop
 . (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Coordination.ps1')
 $script:SkyviewCoordinationRoot = $FixtureRoot
-Invoke-SkyviewCoordinated -Mutation -Action {
+Invoke-SkyviewCoordinated -Mutation -RequireParent -Action {
     Write-Output 'SDE_RECOVERY_EXISTING_WINDOWS_NESTING_OK'
 }

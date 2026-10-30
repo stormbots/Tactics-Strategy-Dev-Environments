@@ -4,6 +4,12 @@ Branch: `codex/recovery-windows-manual-supervision`.
 Base: accepted #120 head `dcd86bf141543ee6e8ecfbfeb7265e86d25fb7ee`,
 Build `40988511475`, attempt 2. The recovery stack remains unmerged.
 
+Accepted #121 head: `7c6d374185370893b610b5d59dc8245d3b0cbcff`, Build
+`41000952438`. The installed Windows maintenance marker, version/nesting checks,
+signed SYSTEM upgrade and scheduled-tool marker passed. Linux host and actual
+Mint 22.3 manual markers/signed upgrade, general and both trust jobs passed.
+This supersedes historical pending language below. No merge/release/UAT occurred.
+
 ## Scope and acceptance criteria
 
 This bounded T4 increment connects the direct `Update-SkyviewTools.ps1` and
