@@ -124,6 +124,25 @@ class Backends(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
+    def test_windows_install_repair_preserves_outer_and_nested_contracts(self):
+        source = self.text('windows/Install-SkyviewStudentDev.ps1')
+        self.assertIn("if ($SystemOnly) { $entryArguments += '-SystemOnly' }", source)
+        self.assertIn("if ($Repair) { $entryArguments += '-Repair' }", source)
+        self.assertIn('-Mutation -EntryPoint $PSCommandPath -EntryArguments $entryArguments -Action {', source)
+        native = self.text('updater/src/manual_windows.rs')
+        self.assertIn('Some("install-skyviewstudentdev.ps1")', native)
+        self.assertIn('SHGetKnownFolderPath(', native)
+        self.assertIn('token_member(WinLocalSystemSid) != Some(false)', native)
+        self.assertIn('FOLDERID_RoamingAppData', native)
+        self.assertIn('FOLDERID_LocalAppData', native)
+        fixture = self.text('tests/Test-WindowsManualRecoveryCI.ps1')
+        self.assertIn('SDE_RECOVERY_WINDOWS_MANUAL_INSTALL_REPAIR_OK', fixture)
+        self.assertIn('Manual setup lost native current-account known folders.', fixture)
+        self.assertIn('Unacknowledged incident was released.', fixture)
+        baseline = self.text('tests/Test-Node24MigrationCI.ps1')
+        self.assertIn('Invoke-SkyviewCoordinated -Mutation -Action {', baseline)
+        self.assertIn('SKYVIEW_SYSTEM_SETUP_OK', baseline)
+
     def test_chocolatey_hook_requires_authenticated_parent_before_any_configuration(self):
         hook = self.text('windows/chocolatey/tools/chocolateyInstall.ps1')
         self.assertIn('Invoke-SkyviewCoordinated -Mutation -RequireParent -Action {', hook)

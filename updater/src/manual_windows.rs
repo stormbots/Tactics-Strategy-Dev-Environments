@@ -1,4 +1,4 @@
-//! Already-elevated direct maintenance only. Not application installation,
+//! Already-elevated direct system setup and maintenance. Not application installation,
 //! elevation, or a frontend command. Reuses installed-path ACL validation and
 //! the same coordinator/completion policy as the Linux manual adapter.
 pub use sde_coordination::manual::Failure;
@@ -10,20 +10,24 @@ use std::{
 };
 use windows_sys::Win32::{Security::*, Storage::FileSystem::*};
 
-fn elevated() -> bool {
+fn token_member(kind: WELL_KNOWN_SID_TYPE) -> Option<bool> {
     let mut sid = [0u32; 17];
     let mut size = 68;
     let mut member = 0;
-    unsafe {
+    let success = unsafe {
         CreateWellKnownSid(
-            WinBuiltinAdministratorsSid,
+            kind,
             std::ptr::null_mut(),
             sid.as_mut_ptr().cast(),
             &mut size,
         ) != 0
             && CheckTokenMembership(std::ptr::null_mut(), sid.as_ptr() as _, &mut member) != 0
-            && member != 0
-    }
+    };
+    success.then_some(member != 0)
+}
+
+fn elevated() -> bool {
+    token_member(WinBuiltinAdministratorsSid) == Some(true)
 }
 
 fn arguments_allowed(script: &Path, args: &[OsString]) -> bool {
@@ -34,6 +38,13 @@ fn arguments_allowed(script: &Path, args: &[OsString]) -> bool {
         .as_deref()
     {
         Some("update-skyviewtools.ps1") => args.is_empty(),
+        Some("install-skyviewstudentdev.ps1") => {
+            args.len() <= 2
+                && args
+                    .iter()
+                    .all(|arg| arg == "-SystemOnly" || arg == "-Repair")
+                && (args.len() != 2 || args[0] != args[1])
+        }
         Some("update-node24.ps1") => {
             args.is_empty()
                 || (args.len() == 2
@@ -105,6 +116,89 @@ fn trusted_script(script: &Path) -> bool {
         && info.nNumberOfLinks == 1
 }
 
+fn profile_environment(system_only: bool) -> Result<[OsString; 3], Failure> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows_sys::Win32::{
+        Foundation::{CloseHandle, HANDLE},
+        System::{
+            Com::CoTaskMemFree,
+            Threading::{GetCurrentProcess, OpenProcessToken},
+        },
+        UI::Shell::*,
+    };
+    if system_only {
+        return Ok([
+            r"C:\Windows\System32\config\systemprofile".into(),
+            r"C:\Windows\System32\config\systemprofile\AppData\Roaming".into(),
+            r"C:\Windows\System32\config\systemprofile\AppData\Local".into(),
+        ]);
+    }
+    if token_member(WinLocalSystemSid) != Some(false) {
+        return Err(Failure::InvalidInvocation);
+    }
+    struct Token(HANDLE);
+    impl Drop for Token {
+        fn drop(&mut self) {
+            unsafe {
+                CloseHandle(self.0);
+            }
+        }
+    }
+    let mut handle = std::ptr::null_mut();
+    if unsafe {
+        OpenProcessToken(
+            GetCurrentProcess(),
+            TOKEN_QUERY | TOKEN_IMPERSONATE,
+            &mut handle,
+        )
+    } == 0
+    {
+        return Err(Failure::InvalidInvocation);
+    }
+    let token = Token(handle);
+    // Resolve the effective account through Windows, not caller-controlled
+    // environment variables. Preserve redirected known folders; do not invent
+    // AppData paths by appending to USERPROFILE. No directory is created here.
+    let folder = |id: &windows_sys::core::GUID| -> Result<OsString, Failure> {
+        let mut pointer = std::ptr::null_mut();
+        let result =
+            unsafe { SHGetKnownFolderPath(id, KF_FLAG_DONT_VERIFY as u32, token.0, &mut pointer) };
+        let value = if result >= 0 && !pointer.is_null() {
+            let mut length = 0;
+            unsafe {
+                while *pointer.add(length) != 0 {
+                    length += 1;
+                }
+                Some(OsString::from_wide(std::slice::from_raw_parts(
+                    pointer, length,
+                )))
+            }
+        } else {
+            None
+        };
+        unsafe {
+            CoTaskMemFree(pointer.cast());
+        }
+        value
+            .filter(|value| Path::new(value).is_absolute())
+            .ok_or(Failure::InvalidInvocation)
+    };
+    let profile = folder(&FOLDERID_Profile)?;
+    // SYSTEM has no desktop user phase. Its callers must request SystemOnly;
+    // a bare invocation must never configure systemprofile as a student profile.
+    if profile
+        .to_string_lossy()
+        .eq_ignore_ascii_case(r"C:\Windows\System32\config\systemprofile")
+    {
+        return Err(Failure::InvalidInvocation);
+    }
+    Ok([
+        profile,
+        folder(&FOLDERID_RoamingAppData)?,
+        folder(&FOLDERID_LocalAppData)?,
+    ])
+}
+
 pub fn run(script: &Path, args: &[OsString]) -> Result<i32, Failure> {
     use std::os::windows::process::CommandExt;
     // No private-state access, diagnostics, temporary files or child execution
@@ -115,6 +209,12 @@ pub fn run(script: &Path, args: &[OsString]) -> Result<i32, Failure> {
     if !trusted_script(script) {
         return Err(Failure::UntrustedEntryPoint);
     }
+    let setup = script
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.eq_ignore_ascii_case("Install-SkyviewStudentDev.ps1"));
+    let [profile, roaming, local] =
+        profile_environment(!setup || args.iter().any(|arg| arg == "-SystemOnly"))?;
     let base = sde_coordination::root().join("manual-temp");
     crate::host::validate(&sde_coordination::root()).map_err(|_| Failure::UntrustedEntryPoint)?;
     if base
@@ -142,9 +242,7 @@ pub fn run(script: &Path, args: &[OsString]) -> Result<i32, Failure> {
         .env("ProgramFiles",r"C:\Program Files").env("ProgramFiles(x86)",r"C:\Program Files (x86)")
         .env("ChocolateyInstall",r"C:\ProgramData\chocolatey")
         .env("TEMP",&temporary).env("TMP",&temporary)
-        .env("USERPROFILE",r"C:\Windows\System32\config\systemprofile")
-        .env("APPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Roaming")
-        .env("LOCALAPPDATA",r"C:\Windows\System32\config\systemprofile\AppData\Local")
+        .env("USERPROFILE",profile).env("APPDATA",roaming).env("LOCALAPPDATA",local)
         .env("PSModulePath",r"C:\Windows\System32\WindowsPowerShell\v1.0\Modules;C:\Program Files\WindowsPowerShell\Modules")
         .env("PATHEXT",".COM;.EXE;.BAT;.CMD").env("PROCESSOR_ARCHITECTURE","AMD64");
     sde_coordination::manual::run_trusted_backend(command)
@@ -167,10 +265,26 @@ mod tests {
             let args = args.into_iter().map(OsString::from).collect::<Vec<_>>();
             assert_eq!(arguments_allowed(script, &args), allowed);
         }
-        assert!(!arguments_allowed(
-            Path::new(r"C:\ProgramData\Install-SkyviewStudentDev.ps1"),
-            &[]
-        ));
+        let setup = Path::new(r"C:\ProgramData\Install-SkyviewStudentDev.ps1");
+        for (args, allowed) in [
+            (vec![], true),
+            (vec!["-SystemOnly"], true),
+            (vec!["-Repair"], true),
+            (vec!["-SystemOnly", "-Repair"], true),
+            (vec!["-Repair", "-SystemOnly"], true),
+            (vec!["-Repair", "-Repair"], false),
+            (vec!["-SystemOnly:false"], false),
+            (vec!["-Command", "exit 0"], false),
+            (vec!["-TargetUser", "student"], false),
+        ] {
+            assert_eq!(
+                arguments_allowed(
+                    setup,
+                    &args.into_iter().map(OsString::from).collect::<Vec<_>>()
+                ),
+                allowed
+            );
+        }
         assert!(!arguments_allowed(
             Path::new(r"C:\ProgramData\Update-SkyviewTools.ps1"),
             &["-Skip".into()]

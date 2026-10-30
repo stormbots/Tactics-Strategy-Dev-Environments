@@ -1,7 +1,13 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [Windows package-hook parent boundary](RECOVERY-WINDOWS-PACKAGE-HOOK.md),
-branch `codex/recovery-windows-package-hook`, pending native validation.
+Current increment: [Windows direct Install/Repair](RECOVERY-WINDOWS-INSTALL-REPAIR.md),
+branch `codex/recovery-windows-install-supervision`, pending native validation.
+Windows package-hook parent boundary (#122) passed at
+`26a769b773fa0500427c5a675348579a484bc508` in
+[Build 41010290087](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41010290087).
+The Windows package-hook, manual, installed bootstrap, signed SYSTEM and scheduled
+markers passed, as did both trust jobs, general checks and Linux host/actual Mint
+22.3 manual/signed-upgrade checks. No partial stack merge or release occurred.
 Windows direct maintenance (#121) passed at `7c6d374185370893b610b5d59dc8245d3b0cbcff`
 in [Build 41000952438](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41000952438).
 The installed manual-maintenance, signed SYSTEM, scheduled-tool and inherited

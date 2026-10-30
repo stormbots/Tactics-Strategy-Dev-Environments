@@ -336,6 +336,7 @@ jobs:
           $probeExit = $LASTEXITCODE
           $output | Write-Output
           if ($probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK') { throw 'Required Windows manual maintenance evidence missing.' }
+          if ($output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_INSTALL_REPAIR_OK') { throw 'Required Windows manual Install/Repair evidence missing.' }
       - name: Rust tests
         run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri

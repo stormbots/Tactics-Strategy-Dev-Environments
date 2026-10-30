@@ -226,6 +226,7 @@ class RecoveryBootstrapWorkflow(unittest.TestCase):
         self.assertIn("-File ./tests/Test-WindowsManualRecoveryCI.ps1", step["run"])
         self.assertIn("$probeExit = $LASTEXITCODE", step["run"])
         self.assertIn("$probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK'", step["run"])
+        self.assertIn("$output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_INSTALL_REPAIR_OK'", step["run"])
         installed = self.step("Required Windows installed recovery bootstrap")
         upgrade = self.step("Build unpublished newer Windows fixture and verify signed SYSTEM upgrade")
         self.assertLess(self.steps.index(installed), self.steps.index(step))

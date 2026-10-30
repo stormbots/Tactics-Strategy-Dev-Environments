@@ -99,6 +99,31 @@ $nodeBody = $nodeBody.Replace("'native nesting proved'", '$Version')
 & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $node -Version '24.21.0'
 if ($LASTEXITCODE -ne 0 -or [IO.File]::ReadAllText($ready) -cne '24.21.0') { throw 'Version data was not preserved across supervision.' }
 Remove-Item $ready
+$setup = Join-Path $fixture 'Install-SkyviewStudentDev.ps1'
+$setupBody = [IO.File]::ReadAllText($script).Replace(
+    'Invoke-SkyviewCoordinated -Mutation -EntryPoint $PSCommandPath -Action {',
+    '$entryArguments = @(); if ($SystemOnly) { $entryArguments += ''-SystemOnly'' }; if ($Repair) { $entryArguments += ''-Repair'' }; Invoke-SkyviewCoordinated -Mutation -EntryPoint $PSCommandPath -EntryArguments $entryArguments -Action {')
+$setupBody = $setupBody.Replace("'native nesting proved'", '(@{systemOnly=[bool]$SystemOnly;repair=[bool]$Repair;profile=$env:USERPROFILE;roaming=$env:APPDATA;local=$env:LOCALAPPDATA} | ConvertTo-Json -Compress)')
+[IO.File]::WriteAllText($setup,('param([switch]$SystemOnly,[switch]$Repair)' + [Environment]::NewLine + $setupBody),(New-Object Text.UTF8Encoding($false)))
+$expectedProfile = [Environment]::GetFolderPath('UserProfile')
+$expectedRoaming = [Environment]::GetFolderPath('ApplicationData')
+$expectedLocal = [Environment]::GetFolderPath('LocalApplicationData')
+foreach ($case in @(@{args=@();systemOnly=$false;repair=$false},@{args=@('-Repair');systemOnly=$false;repair=$true},@{args=@('-SystemOnly');systemOnly=$true;repair=$false},@{args=@('-SystemOnly','-Repair');systemOnly=$true;repair=$true})) {
+    $originalProfile = $env:USERPROFILE; $originalRoaming = $env:APPDATA; $originalLocal = $env:LOCALAPPDATA
+    try {
+        $env:USERPROFILE='C:\untrusted-profile'; $env:APPDATA='C:\untrusted-roaming'; $env:LOCALAPPDATA='C:\untrusted-local'
+        $arguments = $case.args
+        & 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $setup @arguments
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $ready)) { throw 'Installed Install/Repair did not complete.' }
+    } finally { $env:USERPROFILE=$originalProfile; $env:APPDATA=$originalRoaming; $env:LOCALAPPDATA=$originalLocal }
+    $observed = Get-Content $ready -Raw | ConvertFrom-Json
+    if ($observed.systemOnly -ne $case.systemOnly -or $observed.repair -ne $case.repair) { throw 'Install/Repair switches were not preserved.' }
+    if ($case.systemOnly) {
+        if ($observed.profile -cne 'C:\Windows\System32\config\systemprofile') { throw 'SystemOnly changed profile policy.' }
+    } elseif ($observed.profile -cne $expectedProfile -or $observed.roaming -cne $expectedRoaming -or $observed.local -cne $expectedLocal) { throw 'Manual setup lost native current-account known folders.' }
+    if (Test-Path (Join-Path $root 'transaction.json')) { throw 'Known-completed setup retained a journal.' }
+    Remove-Item $ready
+}
 $env:SKYVIEW_TRANSACTION_TOKEN = 'forged-ci-only'
 $previousErrorPreference = $ErrorActionPreference
 try {
@@ -113,7 +138,7 @@ $fileSecurity = New-Object Security.AccessControl.FileSecurity
 $fileSecurity.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)')
 $file = New-Object IO.FileStream($journal,[IO.FileMode]::CreateNew,[Security.AccessControl.FileSystemRights]::Write,[IO.FileShare]::None,4096,[IO.FileOptions]::WriteThrough,$fileSecurity)
 try { $bytes=[Text.Encoding]::UTF8.GetBytes($original);$file.Write($bytes,0,$bytes.Length);$file.Flush($true) } finally {$file.Dispose()}
-& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script
+& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $setup -SystemOnly -Repair
 if ($LASTEXITCODE -ne 75 -or (Test-Path $ready) -or [IO.File]::ReadAllText($journal) -cne $original) { throw 'Unacknowledged incident was released.' }
 $incident = Get-Content (Join-Path $root 'recovery-incident.json') -Raw | ConvertFrom-Json
 $id = [guid]::ParseExact($incident.incidentId,'D').ToString()
@@ -126,10 +151,10 @@ if ($context.bootKey -notmatch '^windows-session-start:(\d+):(\d+):(\d+):(\d+)$'
 $context.bootKey = 'windows-session-start:' + ((1..4 | ForEach-Object { ([long]$Matches[$_] + 1).ToString([Globalization.CultureInfo]::InvariantCulture) }) -join ':')
 $utf8 = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllText($contextPath,($context | ConvertTo-Json -Compress),$utf8)
-& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script
+& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $setup -SystemOnly -Repair
 if ($LASTEXITCODE -ne 75 -or (Test-Path $ready) -or [IO.File]::ReadAllText($journal) -cne $original) { throw 'Restart replaced consent.' }
 [IO.File]::WriteAllText((Join-Path $root 'recovery-acknowledgment.json'),($incident | ConvertTo-Json -Compress),$utf8)
-& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script
+& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $setup -SystemOnly -Repair
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $ready) -or (Test-Path $journal)) { throw 'Acknowledged maintenance continuation failed.' }
 $archive = Join-Path $root 'recovery-archive'
 $expected = @("$id.journal","$id.receipt.json","$id.retired-journal")
@@ -151,3 +176,4 @@ try {
     }
 } finally { $gate.Dispose() }
 Write-Output 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK'
+Write-Output 'SDE_RECOVERY_WINDOWS_MANUAL_INSTALL_REPAIR_OK'
