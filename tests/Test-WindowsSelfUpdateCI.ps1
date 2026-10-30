@@ -148,6 +148,7 @@ try {
     if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern 'SDE_SIGNED_SYSTEM_UPGRADE_OK')) { throw 'Required native test did not execute.' }
     if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern 'SDE_E2E_NATIVE_WINDOWS_OK')) { throw 'Required end-to-end native test did not execute.' }
     if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern '^SDE_RECOVERY_SCHEDULED_TOOL_CONTRACT_OK\s*$')) { throw 'Required scheduled-tool recovery contract did not execute.' }
+    if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern '^SDE_RECOVERY_APPLICATION_INSTALL_CONTRACT_OK\s*$')) { throw 'Required application installation recovery contract did not execute.' }
 } finally {
     # Removing the fixture task does not kill its running worker or packages.
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false

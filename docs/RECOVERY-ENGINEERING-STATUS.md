@@ -1,7 +1,18 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [Windows direct Install/Repair](RECOVERY-WINDOWS-INSTALL-REPAIR.md),
-branch `codex/recovery-windows-install-supervision`, pending native validation.
+Current increment: [application-updater recovery integration and T4 parity review](RECOVERY-APPLICATION-UPDATER.md),
+branch `codex/recovery-application-updater`, pending native validation.
+A completed-run notice authorizes Codex to validate/fix that checkpoint and start
+the next planned engineering increment. Do not stop at a status-only handoff when
+actionable planned work remains. Pause only for long pending CI, an actual owner
+decision/signing approval, or owner UAT.
+Windows direct Install/Repair (#123) passed at
+`fd7762f41a85088655dd277e7c71f1319b7cd038` in
+[Build 41015393940](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41015393940).
+Both Windows installed manual markers, real nested provisioning, signed SYSTEM
+upgrade and scheduled-tool contract passed, along with Linux host/actual Mint 22.3
+manual/signed-upgrade evidence, both trust jobs and general checks. This is not
+actual reboot or standalone real-package owner UAT evidence.
 Windows package-hook parent boundary (#122) passed at
 `26a769b773fa0500427c5a675348579a484bc508` in
 [Build 41010290087](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41010290087).

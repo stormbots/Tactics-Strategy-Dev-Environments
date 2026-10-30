@@ -62,6 +62,7 @@ SDE_MINT_NATIVE_FIXTURE="$root/1.2.2/Skyview-Dev-Setup-LinuxMint-amd64.deb" "$ro
 grep -q SDE_NATIVE_MINT_UPGRADE_OK "$root/native-result.txt"
 grep -q SDE_E2E_NATIVE_MINT_OK "$root/native-result.txt"
 grep -Fxq SDE_RECOVERY_SCHEDULED_TOOL_CONTRACT_OK "$root/native-result.txt"
+grep -Fxq SDE_RECOVERY_APPLICATION_INSTALL_CONTRACT_OK "$root/native-result.txt"
 history=/usr/local/libexec/skyview-maintenance-history.py
 dropin=/etc/systemd/system/skyview-student-dev-update.service.d/sde-self-update.conf
 [[ -f "$history" && ! -L "$history" && "$(stat -c '%U:%a' "$history")" == root:700 ]]

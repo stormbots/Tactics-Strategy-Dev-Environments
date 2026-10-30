@@ -3,9 +3,10 @@
 Status: engineering approved; native permission feasibility and production
 storage foundation, durable acknowledgment and lease-bound safe transition passed;
 normally privileged bootstrap and privileged GUI helper supervision passed;
-T4 scheduled-tool, Linux manual and Windows direct maintenance supervision passed.
-The Windows package-hook parent boundary is pending native validation;
-Install/Repair outer-script integration and T4 parity remain incomplete.
+T4 scheduled-tool, Linux manual, Windows direct maintenance/Install/Repair and
+package-hook parent boundary passed native validation. The backend execution-parity
+review is recorded with the current T5 application-updater integration, pending CI.
+Read-only diagnosis, reports/history and final frontend admission/resume remain.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.

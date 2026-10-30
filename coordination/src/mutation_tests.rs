@@ -11,6 +11,122 @@ const OLD: &str = "linux:9fe3858b-58da-4b96-b47d-ec2f1b867353";
 const NEW: &str = "linux:52c95da7-e764-405c-84de-a1b435042916";
 
 #[test]
+fn mutation_preparation_holds_leases_without_changing_interrupted_evidence() {
+    let Some(f) = Fixture::new() else { return };
+    let (original, incident) = submitted(&f);
+    let identity = recovery::read_journal(&f.path).unwrap().unwrap().1;
+    let context = std::fs::read(f.path.join("recovery-context.json")).unwrap();
+    let preparation = mutation::prepare_at(&f.path, Scope::Installation).unwrap();
+    assert!(preparation.interrupted());
+    assert_eq!(
+        acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+        Error::Busy
+    );
+    assert_eq!(
+        acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+        Error::Busy
+    );
+    drop(preparation); // Invalid signature, pause or no eligible update: no begin.
+    let (after, after_identity) = recovery::read_journal(&f.path).unwrap().unwrap();
+    assert_eq!(after, original);
+    assert!(identity == after_identity);
+    assert_eq!(
+        std::fs::read(f.path.join("recovery-context.json")).unwrap(),
+        context
+    );
+    assert!(!f.path.join("recovery-archive").exists());
+    assert!(!f.path.join("recovery-disposition.json").exists());
+    assert_eq!(
+        recovery::inspect_at(&f.path).unwrap().unwrap().incident_id,
+        incident
+    );
+    drop(acquire_at(&f.path, "sessions.gate", true).unwrap());
+}
+
+#[test]
+fn mutation_preparation_transfers_installation_leases_without_a_gap() {
+    let Some(f) = Fixture::new() else { return };
+    let (original, incident) = submitted(&f);
+    let preparation = mutation::prepare_at(&f.path, Scope::Installation).unwrap();
+    let guard = preparation
+        .begin_with_probe(|| {
+            assert_eq!(
+                acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+                Error::Busy
+            );
+            assert_eq!(
+                acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+                Error::Busy
+            );
+            facts(Activity::Inactive, PackageHealth::Unknown, Some(NEW))
+        })
+        .unwrap();
+    let current: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(f.path.join("transaction.json")).unwrap()).unwrap();
+    assert_eq!(current["kind"], "installation");
+    assert_eq!(
+        std::fs::read(
+            f.path
+                .join("recovery-archive")
+                .join(format!("{incident}.journal"))
+        )
+        .unwrap(),
+        original
+    );
+    assert_eq!(
+        acquire_at(&f.path, "sessions.gate", true).unwrap_err(),
+        Error::Busy
+    );
+    // No child launched: explicitly finish this known aborted attempt.
+    guard.finish_known().unwrap();
+    drop(acquire_at(&f.path, "sessions.gate", true).unwrap());
+}
+
+#[test]
+fn mutation_preparation_cannot_turn_consent_into_a_safety_bypass() {
+    for (activity, health) in [
+        (Activity::Active, PackageHealth::Healthy),
+        (Activity::Unknown, PackageHealth::Unknown),
+        (Activity::Inactive, PackageHealth::Incomplete),
+    ] {
+        let Some(f) = Fixture::new() else { return };
+        let (original, _) = submitted(&f);
+        let preparation = mutation::prepare_at(&f.path, Scope::Installation).unwrap();
+        assert!(preparation
+            .begin_with_probe(|| facts(activity, health, Some(NEW)))
+            .is_err());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        assert!(!f.path.join("recovery-archive").exists());
+        drop(acquire_at(&f.path, "sessions.gate", true).unwrap());
+    }
+}
+
+#[test]
+fn mutation_preparation_system_scope_shares_sessions_but_does_not_create_a_journal() {
+    let Some(f) = Fixture::new() else { return };
+    let preparation = mutation::prepare_at(&f.path, Scope::System).unwrap();
+    assert!(!preparation.interrupted());
+    let gui = acquire_at(&f.path, "sessions.gate", true).unwrap();
+    assert_eq!(
+        acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+        Error::Busy
+    );
+    assert!(!f.path.join("transaction.json").exists());
+    drop(preparation);
+    assert_eq!(
+        mutation::prepare_at(&f.path, Scope::Installation)
+            .err()
+            .unwrap(),
+        Error::Busy
+    );
+    drop(gui);
+    drop(mutation::prepare_at(&f.path, Scope::Installation).unwrap());
+}
+
+#[test]
 fn mutation_runner_preserves_existing_platform_nesting_and_does_not_clear_on_exit() {
     let Some(f) = Fixture::new() else { return };
     let mut guard = mutation::begin_at(&f.path, Scope::System, || {

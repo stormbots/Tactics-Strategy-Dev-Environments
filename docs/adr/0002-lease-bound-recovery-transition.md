@@ -7,6 +7,15 @@ actual reboot test. Existing execution consumers are not connected. The next
 preparation during normally authorized installation. Depends on accepted
 [ADR 0001](0001-interruption-acknowledgment-boundary.md).
 
+Current integration note: the [application-updater increment](../RECOVERY-APPLICATION-UPDATER.md)
+adds a non-authoritative preparation lease for eligibility/signature/staging work.
+It can hold ordinary locks while old evidence remains, but cannot grant mutation
+permission or consume acknowledgment. Its begin operation transfers the same
+handles into this ADR's existing transition; no locks are released between
+authentication and fresh native/incident checks. Interrupted staging preserves
+old inputs and recovery receipts. The historical foundation scope below remains
+unchanged; native integration validation is a separate gate.
+
 ## Decision
 
 An unlocked SDE operation gate cannot establish that a previous installer or its

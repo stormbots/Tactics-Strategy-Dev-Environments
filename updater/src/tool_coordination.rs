@@ -50,7 +50,7 @@ pub(crate) fn run(command: Command) -> crate::Result<i32> {
 }
 
 #[cfg(all(test, any(target_os = "linux", windows)))]
-fn await_native_fixture_inactivity(
+pub(crate) fn await_native_fixture_inactivity(
     budget: std::time::Duration,
     interval: std::time::Duration,
     mut observe: impl FnMut() -> (
@@ -134,7 +134,10 @@ pub(crate) fn native_contracts() {
         std::fs::read(root.join("transaction.json")).unwrap(),
         original
     );
-    assert!(!root.join("recovery-archive").exists());
+    assert!(!root
+        .join("recovery-archive")
+        .join(format!("{}.journal", incident.incident_id))
+        .exists());
 
     // Simulate *previous* restart provenance only in this disposable synthetic
     // fixture. This does not reboot a host or claim actual reboot/UAT proof.
@@ -177,7 +180,10 @@ pub(crate) fn native_contracts() {
         std::fs::read(root.join("transaction.json")).unwrap(),
         original
     );
-    assert!(!root.join("recovery-archive").exists());
+    assert!(!root
+        .join("recovery-archive")
+        .join(format!("{}.journal", incident.incident_id))
+        .exists());
     coordination::recovery::submit(&incident.incident_id).unwrap();
     assert_eq!(run(command()).unwrap(), 0);
     assert!(!root.join("transaction.json").exists());

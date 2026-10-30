@@ -76,6 +76,37 @@ class Backends(unittest.TestCase):
         self.assertIn("-Pattern '^" + marker + r'\s*$', windows)
         for name in ('linux_install.rs', 'windows_install.rs'):
             self.assertIn('crate::tool_coordination::native_contracts();', self.text('updater/src/' + name))
+
+    def test_application_installation_authenticates_before_recovery_and_retains_postchecks(self):
+        for name in ('linux_install.rs', 'windows_install.rs'):
+            source = self.text('updater/src/' + name)
+            selected = source.split('fn install_selected(', 1)[1].split('fn prune', 1)[0]
+            self.assertIn('Scope::Installation', selected)
+            self.assertLess(selected.index('authenticate_staged('), selected.index('preparation.begin()'))
+            self.assertLess(selected.index('preparation.begin()'), selected.index('guard.run('))
+            self.assertLess(selected.index('guard.run('), selected.index('resources(&candidate.version)'))
+            self.assertLess(selected.index('resources(&candidate.version)'), selected.index('installation_coordination::finish(guard)'))
+            self.assertNotIn('lease.begin_transaction()', selected)
+            self.assertIn('Scope::System', source.split('report.phase = crate::observation::Phase::Download', 1)[0])
+            self.assertIn('if !operation.interrupted()', source)
+            self.assertIn('report.recovery_available = if operation.interrupted()', source)
+            self.assertIn('crate::installation_coordination::native_contracts(|authorized|', source)
+        linux = self.text('updater/src/linux_install.rs').split('fn install_selected(', 1)[1].split('fn prune', 1)[0]
+        self.assertNotIn('.arg("--audit")', linux)
+        helper = self.text('updater/src/installation_coordination.rs').split('#[cfg(all(test,', 1)[0]
+        self.assertIn('inspection::collect()', helper)
+        self.assertIn('known_backend_completion(true, facts.activity, facts.health)', helper)
+        self.assertNotIn('recovery::submit', helper)
+
+    def test_signed_native_application_recovery_marker_is_required_on_both_platforms(self):
+        marker = 'SDE_RECOVERY_APPLICATION_INSTALL_CONTRACT_OK'
+        self.assertIn('grep -Fxq ' + marker, self.text('tests/Test-LinuxSelfUpdateCI.sh'))
+        self.assertIn("-Pattern '^" + marker + r'\s*$', self.text('tests/Test-WindowsSelfUpdateCI.ps1'))
+        helper = self.text('updater/src/installation_coordination.rs')
+        self.assertIn('assert!(install(false).is_err())', helper)
+        self.assertIn('Acknowledged signed native application upgrade must complete', helper)
+        self.assertIn('Consent alone cannot prove the old process lifetime ended', helper)
+        self.assertIn('Restart alone cannot replace consent', helper)
     def test_system_fixture_explicitly_receives_ci_context_before_native_execution(self):
         source = self.text('tests/Test-WindowsSelfUpdateCI.ps1')
         self.assertIn("if ($env:GITHUB_ACTIONS -ne 'true') { throw", source)

@@ -73,10 +73,75 @@ impl std::fmt::Debug for Mutation {
 /// after its independent platform/policy/signature/identity eligibility checks.
 /// Old operation()/installation() APIs retain their original conservative gate.
 pub fn begin(scope: Scope) -> std::result::Result<Mutation, BeginError> {
+    prepare(scope)?.begin()
+}
+
+/// Holds the ordinary operation/session leases for eligibility, signature and
+/// staging checks, without acknowledging/retiring evidence or creating a new
+/// transaction. This is NOT permission to execute a system/package mutation.
+pub struct Preparation {
+    operation: Lease,
+    session: Lease,
+    directory: PathBuf,
+    scope: Scope,
+    interrupted: bool,
+}
+
+pub fn prepare(scope: Scope) -> crate::Result<Preparation> {
+    let preparation = prepare_at(&crate::root(), scope)?;
     if scope == Scope::Installation {
         crate::compatible_maintenance()?;
     }
-    begin_at(&crate::root(), scope, inspection::collect)
+    Ok(preparation)
+}
+
+pub(crate) fn prepare_at(dir: &Path, scope: Scope) -> crate::Result<Preparation> {
+    let operation = crate::acquire_at(dir, "operations.gate", false)?;
+    let session = crate::acquire_at(dir, "sessions.gate", scope == Scope::System)?;
+    let interrupted = match crate::no_interruption(dir) {
+        Ok(()) => false,
+        Err(Error::Interrupted) => {
+            // Validate protected storage without publishing or changing it.
+            recovery::read_journal(dir)?;
+            true
+        }
+        Err(error) => return Err(error),
+    };
+    Ok(Preparation {
+        operation,
+        session,
+        directory: dir.into(),
+        scope,
+        interrupted,
+    })
+}
+
+impl Preparation {
+    /// Non-authoritative snapshot under these leases. Never prune older staging
+    /// while an uncertain installation might still need its original inputs.
+    pub fn interrupted(&self) -> bool {
+        self.interrupted
+    }
+
+    /// Called only after the trusted caller has established all independent
+    /// installation eligibility. Reuses both leases with no release/reacquire
+    /// gap; fresh native checks and actual durable consent are still mandatory.
+    pub fn begin(self) -> std::result::Result<Mutation, BeginError> {
+        self.begin_with_probe(inspection::collect)
+    }
+
+    pub(crate) fn begin_with_probe(
+        self,
+        probe: impl FnMut() -> inspection::NativeFacts,
+    ) -> std::result::Result<Mutation, BeginError> {
+        begin_leased_at(
+            &self.directory,
+            self.scope,
+            self.operation,
+            self.session,
+            probe,
+        )
+    }
 }
 
 fn allowed(observation: &Observation) -> bool {
@@ -89,10 +154,18 @@ fn allowed(observation: &Observation) -> bool {
 pub(crate) fn begin_at(
     dir: &Path,
     scope: Scope,
+    probe: impl FnMut() -> inspection::NativeFacts,
+) -> std::result::Result<Mutation, BeginError> {
+    prepare_at(dir, scope)?.begin_with_probe(probe)
+}
+
+fn begin_leased_at(
+    dir: &Path,
+    scope: Scope,
+    operation: Lease,
+    session: Lease,
     mut probe: impl FnMut() -> inspection::NativeFacts,
 ) -> std::result::Result<Mutation, BeginError> {
-    let operation = crate::acquire_at(dir, "operations.gate", false)?;
-    let session = crate::acquire_at(dir, "sessions.gate", scope == Scope::System)?;
     let interrupted = match crate::no_interruption(dir) {
         Ok(()) => false,
         Err(Error::Interrupted) => true,
