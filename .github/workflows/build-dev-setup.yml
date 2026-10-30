@@ -210,6 +210,7 @@ jobs:
           $coordinationExit = $LASTEXITCODE
           $coordinationOutput | Write-Output
           if ($coordinationExit -ne 0 -or $coordinationOutput -cnotcontains 'WINDOWS_COORDINATION_SUPERVISION_OK' -or $coordinationOutput -cnotcontains 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK') { throw 'Required coordination/package-hook supervision evidence missing.' }
+          if ($coordinationOutput -cnotcontains 'SDE_RECOVERY_WINDOWS_READONLY_VALIDATION_OK') { throw 'Required Windows read-only validation evidence missing.' }
           ./tests/Test-BackendContracts.ps1
           ./tests/Test-MetadataContracts.ps1
           ./tests/Test-MaintenanceCI.ps1
@@ -387,6 +388,7 @@ jobs:
           set -euo pipefail
           sudo env GITHUB_ACTIONS=true python3 tests/verify_manual_recovery_native.py | tee "$RUNNER_TEMP/sde-manual-recovery.txt"
           grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK "$RUNNER_TEMP/sde-manual-recovery.txt"
+          grep -Fxq SDE_RECOVERY_LINUX_READONLY_VALIDATION_OK "$RUNNER_TEMP/sde-manual-recovery.txt"
       - name: Required signed upgrade on Linux Mint 22.3
         if: runner.os == 'Linux'
         shell: bash

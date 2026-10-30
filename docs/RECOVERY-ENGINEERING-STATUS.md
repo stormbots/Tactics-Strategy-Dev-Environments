@@ -1,7 +1,14 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [application-updater recovery integration and T4 parity review](RECOVERY-APPLICATION-UPDATER.md),
-branch `codex/recovery-application-updater`, pending native validation.
+Current increment: [read-only diagnosis and self-service guidance](RECOVERY-READONLY-DIAGNOSIS.md),
+branch `codex/recovery-readonly-diagnosis`, pending native validation.
+Application-updater backend integration (#124) passed at
+`8935a4137ca67fa26b4c61f3f4e4ca0cea90e12e` in
+[Build 41074586107](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41074586107),
+attempt 2. Both signed native application-recovery markers, actual Mint 22.3 and
+Windows SYSTEM upgrades, both trust jobs and inherited checks passed. The first
+Windows attempt hit an evidenced Chocolatey HTTP 504; its safety refusal was
+preserved and a fresh-runner infrastructure retry passed without source changes.
 A completed-run notice authorizes Codex to validate/fix that checkpoint and start
 the next planned engineering increment. Do not stop at a status-only handoff when
 actionable planned work remains. Pause only for long pending CI, an actual owner

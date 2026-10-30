@@ -149,6 +149,28 @@ class Backends(unittest.TestCase):
         marker = 'SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK'
         self.assertIn('grep -Fxq ' + marker, self.text('tests/Test-LinuxSelfUpdateCI.sh'))
         self.assertIn('grep -Fxq ' + marker, self.text('.github/workflows/build-dev-setup.yml'))
+
+    def test_readonly_diagnosis_never_converts_validation_to_mutation_authority(self):
+        validator = self.text('linux/Validate-SkyviewStudentDev.sh')
+        self.assertIn('skyview_coordinate readonly "$@"', validator)
+        engine = self.text('linux/lib/coordination.py')
+        self.assertIn("if mode != 'readonly':", engine)
+        self.assertIn("if mode == 'system':", engine)
+        self.assertIn("'session', 'operation', 'system', 'readonly'", engine)
+        self.assertIn('readonly_command(command)', engine)
+        self.assertIn("path.name != 'Validate-SkyviewStudentDev.sh'", engine)
+        shell = self.text('linux/lib/coordination.sh')
+        self.assertLess(shell.index('engine=/usr/local/lib/skyview-student-dev/coordination.py'), shell.index('elif [[ "$mode" == readonly ]]'))
+        self.assertIn('run readonly /bin/bash "$SCRIPT_DIR/$(basename -- "$0")"', shell)
+        for source in (engine, self.text('windows/chocolatey/tools/Coordination.ps1')):
+            self.assertIn('Validation does not acknowledge it or authorize changes', source)
+        linux_marker = 'SDE_RECOVERY_LINUX_READONLY_VALIDATION_OK'
+        self.assertIn(linux_marker, self.text('tests/verify_manual_recovery_native.py'))
+        for path in ('tests/Test-LinuxSelfUpdateCI.sh', '.github/workflows/build-dev-setup.yml'):
+            self.assertIn('grep -Fxq ' + linux_marker, self.text(path))
+        windows_marker = 'SDE_RECOVERY_WINDOWS_READONLY_VALIDATION_OK'
+        self.assertIn(windows_marker, self.text('tests/Test-CoordinationCI.ps1'))
+        self.assertIn("$coordinationOutput -cnotcontains '" + windows_marker + "'", self.text('.github/workflows/build-dev-setup.yml'))
     def manual_fixture_module(self):
         spec = importlib.util.spec_from_file_location(
             'manual_native_fixture', ROOT / 'tests/verify_manual_recovery_native.py')

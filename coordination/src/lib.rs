@@ -8,6 +8,7 @@ use std::{
 mod acknowledgment_tests;
 #[cfg(test)]
 mod bootstrap_tests;
+pub mod guidance;
 pub mod inspection;
 #[cfg(any(target_os = "linux", windows))]
 pub mod manual;

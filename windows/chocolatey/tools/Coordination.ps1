@@ -146,7 +146,7 @@ function Invoke-SkyviewCoordinated {
             # Validation must remain available for diagnosis. Keep the exclusive
             # operation gate, never read/clear the private journal, and retain the
             # interruption as a warning rather than treating validation as recovery.
-            Write-Host 'SKYVIEW_EVENT|validation|WARNING|An interrupted system operation still needs mentor review before another change.'
+            Write-Host 'SKYVIEW_EVENT|validation|WARNING|An interrupted system operation remains recorded. Validation does not acknowledge it or authorize changes. Open Recovery for current checks and self-service steps.'
         }
         if ($Mutation) {
             if (-not $administrator) { throw 'System operations require administrator authentication.' }

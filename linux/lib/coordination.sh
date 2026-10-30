@@ -26,6 +26,8 @@ skyview_coordinate() {
       exit 76
     fi
     exec /usr/bin/skyview-dev-setup --supervise-linux-system "$SCRIPT_DIR/$(basename -- "$0")" "$@"
+  elif [[ "$mode" == readonly ]]; then
+    exec /usr/bin/python3 "$engine" run readonly /bin/bash "$SCRIPT_DIR/$(basename -- "$0")" "$@"
   else
     exec /usr/bin/python3 "$engine" run "$mode" /bin/bash "$0" "$@"
   fi

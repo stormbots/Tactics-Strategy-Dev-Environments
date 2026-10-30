@@ -236,7 +236,7 @@ class RecoveryBootstrapWorkflow(unittest.TestCase):
         step = self.step("Package the existing Chocolatey backend")
         self.assertIn("$coordinationExit = $LASTEXITCODE", step["run"])
         self.assertIn("$coordinationExit -ne 0", step["run"])
-        for marker in ('WINDOWS_COORDINATION_SUPERVISION_OK', 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK'):
+        for marker in ('WINDOWS_COORDINATION_SUPERVISION_OK', 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK', 'SDE_RECOVERY_WINDOWS_READONLY_VALIDATION_OK'):
             self.assertIn("$coordinationOutput -cnotcontains '" + marker + "'", step["run"])
         self.assertLess(step["run"].index('$coordinationExit = $LASTEXITCODE'),
                         step["run"].index('$coordinationOutput | Write-Output'))

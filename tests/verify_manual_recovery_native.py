@@ -136,6 +136,24 @@ PY
         slot = ROOT / 'recovery-acknowledgment.json'
         assert json.loads(slot.read_text()) == {}, 'Manual invocation silently acknowledged'
         assert not (ROOT / 'recovery-archive').exists()
+        # Real installed public validator, also as an actual non-elevated user.
+        # Readiness failures are expected on app-only fixtures, but diagnosis
+        # must reach its summary without reading/clearing private evidence.
+        before_validation = {p.name: p.read_bytes() for p in ROOT.iterdir() if p.is_file()}
+        before_stat = journal.stat()
+        for as_student in (False, True):
+            result = subprocess.run(['/bin/bash', str(BACKEND / 'Validate-SkyviewStudentDev.sh')],
+                                    preexec_fn=student if as_student else None,
+                                    capture_output=True, text=True,
+                                    env={**os.environ, 'HOME': '/nonexistent'} if as_student else None)
+            assert result.returncode in (0, 1), result.stderr
+            assert 'SKYVIEW_EVENT|summary|' in result.stdout, result.stdout
+            assert 'Validation does not acknowledge it or authorize changes' in result.stdout
+            assert journal.read_bytes() == original and journal.stat().st_ino == identity
+        assert journal.stat().st_mtime_ns == before_stat.st_mtime_ns
+        assert {p.name: p.read_bytes() for p in ROOT.iterdir() if p.is_file()} == before_validation
+        assert not (ROOT / 'recovery-archive').exists()
+        print('SDE_RECOVERY_LINUX_READONLY_VALIDATION_OK', flush=True)
         incident = json.loads((ROOT / 'recovery-incident.json').read_text())
         incident_id = incident['incidentId']
         assert str(uuid.UUID(incident_id)) == incident_id
