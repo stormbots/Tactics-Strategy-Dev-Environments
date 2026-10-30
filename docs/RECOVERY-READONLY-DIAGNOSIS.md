@@ -118,6 +118,16 @@ compilation, shell syntax and diff checks passed. Nine protected Python tests
 were explicitly skipped at local UID 1000, not claimed as root/native acceptance.
 Windows PowerShell/native, root Linux and actual Mint evidence remain pending CI.
 
+Initial CI at `71e5e638ddba1eca0386be737fca0962f749bcae` in Build
+`41095366970` passed both native and trust jobs, including actual Windows and
+host/Mint read-only validation markers plus both signed application upgrades.
+General checks failed only at `sha256sum --check`: the three changed Linux files
+had stale manifest hashes. The follow-up updates those exact entries, adds a
+backend regression verifying every listed hash and requiring these safety files
+to stay listed, and reruns validation on the new exact head. No hash check,
+manifest entry or inherited CI gate is removed or bypassed. Local backend
+contracts now total 20, all passing; the complete manifest check also passed.
+
 ## Durable continuation
 
 The PR comment records the exact head and initial Build URL. A completed-run

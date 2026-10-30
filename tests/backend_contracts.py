@@ -1,6 +1,7 @@
 """Read-only regression checks for the provisioning safety contract."""
 from pathlib import Path
 import importlib.util
+import hashlib
 import re, unittest
 import stat
 from types import SimpleNamespace
@@ -8,6 +9,11 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_linux_integrity_manifest_matches_shipped_sources(self):
+        entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
+        self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh'}.issubset(entries))
+        for name, expected in entries.items():
+            self.assertEqual(hashlib.sha256((ROOT / 'linux' / name).read_bytes()).hexdigest(), expected, name)
     def test_canonical_extensions_match(self):
         self.assertEqual(self.text('linux/extensions.txt').splitlines(),self.text('windows/chocolatey/tools/extensions.txt').splitlines())
     def test_linux_user_boundary(self):
