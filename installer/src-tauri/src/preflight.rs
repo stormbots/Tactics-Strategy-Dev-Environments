@@ -17,11 +17,19 @@ pub struct Check {
     pub status: Status,
     pub detail: String,
 }
-pub fn inspect(
+pub fn inspect(root: &std::path::Path, operation: crate::Operation) -> Result<Vec<Check>, String> {
+    inspect_with_coordination(root, operation, true)
+}
+
+fn inspect_with_coordination(
     root: &std::path::Path,
     operation: crate::Operation,
+    include_coordination: bool,
 ) -> Result<Vec<Check>, String> {
-    if !matches!(operation, crate::Operation::Install | crate::Operation::Update) {
+    if !matches!(
+        operation,
+        crate::Operation::Install | crate::Operation::Update
+    ) {
         return Err("Preflight is available only for Install and Update.".into());
     }
     #[cfg(windows)]
@@ -52,15 +60,17 @@ pub fn inspect(
     {
         return Err("Invalid preflight results. Check again.".into());
     }
-    let (status, detail) = match sde_coordination::operation() {
+    if include_coordination {
+        let (status, detail) = match sde_coordination::operation() {
         Ok(_lease) => (Status::Pass, "No conflicting operation or unresolved transaction was detected. The native backend acquires the operation gate again before changes.".to_string()),
         Err(error) => (Status::Blocking, format!("{} No changes have been started; ask a mentor about an interrupted or untrusted state.", error)),
     };
-    rows.push(Check {
-        name: "Operation coordination".into(),
-        status,
-        detail,
-    });
+        rows.push(Check {
+            name: "Operation coordination".into(),
+            status,
+            detail,
+        });
+    }
     if !crate::platform().supported {
         rows.insert(
             0,
@@ -98,13 +108,35 @@ pub fn before_operation(
     root: &std::path::Path,
     operation: crate::Operation,
     acknowledged_uncertainty: bool,
+    emit: impl FnMut(String),
+) -> bool {
+    before_operation_with(root, operation, acknowledged_uncertainty, emit, true)
+}
+
+/// Only the normally privileged helper uses this entry. Its next step MUST
+/// acquire/recheck the authoritative Rust mutation guard before launching work.
+/// Do not reject a valid recovery intent through the older blanket gate first.
+pub fn before_privileged_operation(
+    root: &std::path::Path,
+    operation: crate::Operation,
+    acknowledged_uncertainty: bool,
+    emit: impl FnMut(String),
+) -> bool {
+    before_operation_with(root, operation, acknowledged_uncertainty, emit, false)
+}
+
+fn before_operation_with(
+    root: &std::path::Path,
+    operation: crate::Operation,
+    acknowledged_uncertainty: bool,
     mut emit: impl FnMut(String),
+    include_coordination: bool,
 ) -> bool {
     emit(format!(
         "SKYVIEW_EVENT|phase|preflight|Rechecking {} prerequisites",
         operation.name()
     ));
-    match inspect(root, operation) {
+    match inspect_with_coordination(root, operation, include_coordination) {
         Ok(rows) if can_continue(&rows, acknowledged_uncertainty) => {
             for row in rows {
                 emit(format!(
@@ -159,10 +191,9 @@ mod tests {
     fn check_contract_rejects_unknown_or_incomplete_fields() {
         let valid = r#"{"name":"System disk","status":"pass","detail":"Enough space"}"#;
         assert!(serde_json::from_str::<Check>(valid).is_ok());
-        assert!(serde_json::from_str::<Check>(
-            r#"{"name":"System disk","status":"pass"}"#
-        )
-        .is_err());
+        assert!(
+            serde_json::from_str::<Check>(r#"{"name":"System disk","status":"pass"}"#).is_err()
+        );
         assert!(serde_json::from_str::<Check>(
             r#"{"name":"System disk","status":"pass","detail":"Enough","extra":true}"#
         )

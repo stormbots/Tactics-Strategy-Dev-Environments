@@ -39,9 +39,17 @@ if (Test-Path $core) {
 }
 # Continue through the real system setup so dependency/configuration failures
 # beyond the previously failing MSI are covered before shipping another patch.
+# Keep this existing real-package regression in its original legacy coordinated
+# parent context. The checkout is not a protected installed entry point, and the
+# preceding real MSI fixture can still have native package activity. This is NOT
+# proof of the new native outer/completion policy: the mandatory installed manual
+# fixture proves that independently, including Install/Repair flags and consent.
+. (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Coordination.ps1')
 for ($attempt = 1; $attempt -le 2; $attempt++) {
     try {
+        Invoke-SkyviewCoordinated -Mutation -Action {
         & (Join-Path $PSScriptRoot '../windows/Install-SkyviewStudentDev.ps1') -SystemOnly
+        }
         break
     }
     catch {
