@@ -18,7 +18,7 @@ pub struct Context {
     logs: Option<String>,
 }
 
-fn device_name() -> String {
+pub(crate) fn device_name() -> String {
     #[cfg(windows)]
     let candidate = std::env::var("COMPUTERNAME").ok();
     #[cfg(not(windows))]
@@ -52,7 +52,7 @@ fn newest_log(directory: &Path) -> Option<PathBuf> {
     candidates.pop().map(|(_, path)| path)
 }
 
-fn redact_home(app: &tauri::AppHandle, value: &str) -> String {
+pub(crate) fn redact_home(app: &tauri::AppHandle, value: &str) -> String {
     let redacted = crate::protocol::redact(value);
     let Ok(home) = app.path().home_dir() else {
         return redacted;
