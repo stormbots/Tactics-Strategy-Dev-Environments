@@ -96,6 +96,9 @@ jobs:
         with:
           workspaces: updater -> target
       - name: Native cross-process coordination contracts
+        # Explicit bash -e/pipefail semantics on both platforms: PowerShell's
+        # default native-command behavior can mask a failed test with later fmt.
+        shell: bash
         env:
           SDE_REQUIRE_COORDINATION: ${{ runner.os == 'Windows' && '1' || '' }}
         run: |
@@ -108,6 +111,12 @@ jobs:
         run: |
           sudo env "PATH=$PATH" "CARGO_HOME=${CARGO_HOME:-$HOME/.cargo}" "RUSTUP_HOME=${RUSTUP_HOME:-$HOME/.rustup}" SDE_REQUIRE_COORDINATION=1 cargo test --locked --manifest-path coordination/Cargo.toml
           sudo env SDE_REQUIRE_COORDINATION=1 python3 -m unittest discover -s tests -p 'test_coordination.py'
+      - name: Recovery acknowledgment contract
+        run: python -m unittest discover -s tests -p 'test_recovery_acknowledgment_contract.py' -v
+      - name: Root-owned recovery acknowledgment feasibility
+        if: runner.os == 'Linux'
+        shell: bash
+        run: sudo env GITHUB_ACTIONS=true SDE_REQUIRE_RECOVERY_FEASIBILITY=1 python3 tests/test_recovery_acknowledgment_contract.py -v
       - name: Native Minisign interoperability dependency
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y minisign
@@ -177,6 +186,17 @@ jobs:
       - name: Prepare Linux coordination fixtures
         if: runner.os == 'Linux'
         run: sudo coordination/target/release/sde-coordination init
+      - name: Required Windows acknowledgment feasibility
+        if: runner.os == 'Windows' && matrix.bundle == 'nsis'
+        shell: pwsh
+        run: |
+          $output = @(& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-RecoveryAcknowledgmentFeasibilityCI.ps1)
+          $probeExit = $LASTEXITCODE
+          $output | Write-Output
+          if ($probeExit -ne 0) { throw "Recovery acknowledgment feasibility failed (exit $probeExit)." }
+          foreach ($marker in @('SDE_RECOVERY_WINDOWS_STANDARD_USER_INTENT_OK','SDE_RECOVERY_WINDOWS_PRIVILEGED_CONSUMER_OK')) {
+            if ($output -cnotcontains $marker) { throw "Required recovery acknowledgment evidence missing: $marker" }
+          }
       - name: Package the existing Chocolatey backend
         if: runner.os == 'Windows'
         shell: pwsh
@@ -298,6 +318,14 @@ jobs:
             cargo test --locked --manifest-path updater/Cargo.toml --lib host::tests::installed_native_fixture_identity -- --exact --nocapture
             if ($LASTEXITCODE -ne 0) { throw 'Installed native identity failed before provisioning.' }
           } finally { Remove-Item Env:SDE_APPONLY_IDENTITY_FIXTURE }
+      - name: Required Windows installed recovery bootstrap
+        if: runner.os == 'Windows' && matrix.bundle == 'nsis'
+        shell: pwsh
+        run: |
+          $output = @(& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-RecoveryBootstrapCI.ps1)
+          $probeExit = $LASTEXITCODE
+          $output | Write-Output
+          if ($probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_INSTALLED_BOOTSTRAP_OK') { throw 'Required installed Windows recovery bootstrap evidence missing.' }
       - name: Rust tests
         run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri
@@ -334,6 +362,20 @@ jobs:
           test -r /var/lib/skyview-robotics-coordination/operations.gate
           test "$(coordination/target/release/sde-coordination status)" = '"idle"'
           test ! -e /var/lib/skyview-robotics/student-dev/version
+      - name: Required Linux installed recovery bootstrap
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo env GITHUB_ACTIONS=true python3 tests/verify_recovery_bootstrap_native.py dist/Skyview-Dev-Setup-LinuxMint-amd64.deb | tee "$RUNNER_TEMP/sde-recovery-bootstrap.txt"
+          grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK "$RUNNER_TEMP/sde-recovery-bootstrap.txt"
+      - name: Required Linux installed manual recovery supervisor
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo env GITHUB_ACTIONS=true python3 tests/verify_manual_recovery_native.py | tee "$RUNNER_TEMP/sde-manual-recovery.txt"
+          grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK "$RUNNER_TEMP/sde-manual-recovery.txt"
       - name: Required signed upgrade on Linux Mint 22.3
         if: runner.os == 'Linux'
         shell: bash

@@ -18,6 +18,10 @@ printf 'test placeholder\n' > "$root/1.2.2/failure/Skyview-Dev-Setup-Windows-x64
 cp /work/updater/target/debug/sde-native-mint-tests "$root/native-tests"
 chmod 0700 "$root/native-tests"
 apt-get -y --no-remove install "$root/old.deb"
+python3 /work/tests/verify_recovery_bootstrap_native.py "$root/old.deb" | tee "$root/recovery-bootstrap.txt"
+grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK "$root/recovery-bootstrap.txt"
+python3 /work/tests/verify_manual_recovery_native.py | tee "$root/manual-recovery.txt"
+grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK "$root/manual-recovery.txt"
 [[ ! -e /usr/local/sbin/skyview-student-dev-update ]]
 [[ ! -e /etc/systemd/system/skyview-student-dev-update.service ]]
 [[ ! -e /var/lib/skyview-robotics/student-dev/version ]]
@@ -57,6 +61,7 @@ dpkg-deb --build "$root/failure-build" "$root/1.2.2/failure/Skyview-Dev-Setup-Li
 SDE_MINT_NATIVE_FIXTURE="$root/1.2.2/Skyview-Dev-Setup-LinuxMint-amd64.deb" "$root/native-tests" --exact linux_install::tests::signed_upgrade_on_native_mint --nocapture | tee "$root/native-result.txt"
 grep -q SDE_NATIVE_MINT_UPGRADE_OK "$root/native-result.txt"
 grep -q SDE_E2E_NATIVE_MINT_OK "$root/native-result.txt"
+grep -Fxq SDE_RECOVERY_SCHEDULED_TOOL_CONTRACT_OK "$root/native-result.txt"
 history=/usr/local/libexec/skyview-maintenance-history.py
 dropin=/etc/systemd/system/skyview-student-dev-update.service.d/sde-self-update.conf
 [[ -f "$history" && ! -L "$history" && "$(stat -c '%U:%a' "$history")" == root:700 ]]

@@ -1,0 +1,187 @@
+"""Installed Linux manual supervisor, synthetic no-package child on disposable CI.
+
+Run on the host and inside actual Mint after installed-bootstrap verification.
+Never invoked during normal unittest discovery or against owner workstations.
+"""
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import tempfile
+import uuid
+
+ROOT = Path('/var/lib/skyview-robotics-coordination')
+APP = '/usr/bin/skyview-dev-setup'
+BACKEND = Path('/usr/lib/Skyview Dev Setup/backend/linux')
+FIXTURE_PARENT = Path('/var/lib')
+
+
+def require_protected_directory(path):
+    # A root-only child cannot make a writable ancestor safe. Hosted runners
+    # deliberately expose /opt to tool installers; use /var/lib, as the shared
+    # coordinator fixtures do. Diagnose metadata instead of changing the host.
+    for ancestor in (path, *path.parents):
+        info = ancestor.lstat()
+        assert (stat.S_ISDIR(info.st_mode) and info.st_uid == 0
+                and not info.st_mode & 0o022), (
+            f'Untrusted manual fixture ancestor {ancestor}: '
+            f'uid={info.st_uid}, mode={stat.S_IMODE(info.st_mode):04o}, '
+            f'type={stat.S_IFMT(info.st_mode):06o}')
+
+
+def require_protected_script(path):
+    require_protected_directory(path.parent)
+    info = path.lstat()
+    assert (stat.S_ISREG(info.st_mode) and info.st_uid == 0
+            and not info.st_mode & 0o022 and info.st_nlink == 1), (
+        f'Untrusted manual fixture script {path}: '
+        f'uid={info.st_uid}, mode={stat.S_IMODE(info.st_mode):04o}, '
+        f'type={stat.S_IFMT(info.st_mode):06o}, links={info.st_nlink}')
+
+
+def main():
+    if os.environ.get('GITHUB_ACTIONS') != 'true' or os.geteuid() != 0:
+        raise RuntimeError('Disposable root GitHub runner required.')
+    require_protected_directory(FIXTURE_PARENT)
+    if (ROOT / 'transaction.json').exists() or (ROOT / 'recovery-archive').exists():
+        raise RuntimeError('Expected clean disposable manual-supervision fixture.')
+    capability = subprocess.run([APP, '--coordination-init'], check=True,
+                                capture_output=True, text=True)
+    assert capability.stdout.strip() == 'SDE_LINUX_SYSTEM_SUPERVISOR_V1'
+    with tempfile.TemporaryDirectory(prefix='sde-manual-ci-', dir=FIXTURE_PARENT) as directory:
+        fixture = Path(directory)
+        require_protected_directory(fixture)
+        (fixture / 'lib').mkdir()
+        for name in ('coordination.sh', 'coordination.py'):
+            shutil.copyfile(BACKEND / 'lib' / name, fixture / 'lib' / name)
+        script = fixture / 'Update-SkyviewStudentDev.sh'
+        ready = fixture / 'child-ran'
+        script.write_text('''#!/bin/bash
+set -Eeuo pipefail
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/coordination.sh"
+skyview_coordinate system "$@"
+[[ -z "${BASH_ENV:-}" && "$HOME" == /root ]]
+/usr/bin/python3 -I - "$SCRIPT_DIR" <<'PY'
+import importlib.util,sys
+from pathlib import Path
+p=Path(sys.argv[1])
+s=importlib.util.spec_from_file_location('coord', p/'lib/coordination.py')
+c=importlib.util.module_from_spec(s);s.loader.exec_module(c);c.check()
+assert c.JOURNAL.exists()
+try: c.gate('operations.gate', False)
+except BlockingIOError: pass
+else: raise AssertionError('Lost the native supervisor gate')
+(p/'child-ran').write_text('real nesting proved')
+PY
+''')
+        script.chmod(0o644)
+        require_protected_script(script)
+        # An ordinary desktop token, even if it is a sudo-group member, cannot
+        # ask this mode to elevate or access protected transaction state.
+        def student():
+            os.setgroups([])
+            os.setgid(65534)
+            os.setuid(65534)
+        denied = subprocess.run([APP, '--supervise-linux-system', str(script)],
+                                preexec_fn=student, capture_output=True, text=True)
+        assert denied.returncode == 76, denied.stderr
+        assert not ready.exists() and not (ROOT / 'transaction.json').exists()
+        # Data never becomes an interpreter command or unsupported option.
+        denied = subprocess.run([APP, '--supervise-linux-system', str(script), '--skip'],
+                                capture_output=True, text=True)
+        assert denied.returncode == 76, denied.stderr
+        assert not ready.exists() and not (ROOT / 'transaction.json').exists()
+        # Enter through the shell wrapper, not directly through the Rust API.
+        subprocess.run(['/bin/bash', str(script)], check=True)
+        assert ready.read_text() == 'real nesting proved'
+        assert not (ROOT / 'transaction.json').exists()
+        ready.unlink()
+        # Install/system Repair preserves the target-account arguments through
+        # re-execution; this fixture never provisions a real account or package.
+        install = fixture / 'Install-SkyviewStudentDev.sh'
+        install.write_text(script.read_text().replace(
+            '[[ -z "${BASH_ENV:-}"',
+            '[[ "$#" == 2 && "$1" == --system-only && "$2" == student-ci ]]\n'
+            '[[ -z "${BASH_ENV:-}"'))
+        install.chmod(0o644)
+        require_protected_script(install)
+        subprocess.run(['/bin/bash', str(install), '--system-only', 'student-ci'], check=True)
+        assert ready.read_text() == 'real nesting proved'
+        assert not (ROOT / 'transaction.json').exists()
+        ready.unlink()
+        # A forged "already nested" environment never avoids the real FD check.
+        forged = {**os.environ, 'SKYVIEW_SESSION_FD': '98765',
+                  'SKYVIEW_OPERATION_FD': '98766'}
+        denied = subprocess.run(['/bin/bash', str(script)], env=forged,
+                                capture_output=True, text=True)
+        assert denied.returncode != 0 and not ready.exists()
+        assert not (ROOT / 'transaction.json').exists()
+        # Preserve a synthetic retained incident through a blocked manual call.
+        # No acknowledgment is generated by the CLI or shell wrapper.
+        journal = ROOT / 'transaction.json'
+        original = b'{"schema":1,"kind":"system","id":"manual-ci-only"}'
+        fd = os.open(journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(original)
+            stream.flush()
+            os.fsync(stream.fileno())
+        identity = journal.stat().st_ino
+        denied = subprocess.run(['/bin/bash', str(script)], capture_output=True, text=True)
+        assert denied.returncode == 75, denied.stderr
+        assert not ready.exists()
+        assert journal.stat().st_ino == identity and journal.read_bytes() == original
+        slot = ROOT / 'recovery-acknowledgment.json'
+        assert json.loads(slot.read_text()) == {}, 'Manual invocation silently acknowledged'
+        assert not (ROOT / 'recovery-archive').exists()
+        incident = json.loads((ROOT / 'recovery-incident.json').read_text())
+        incident_id = incident['incidentId']
+        assert str(uuid.UUID(incident_id)) == incident_id
+        context_path = ROOT / 'recovery-context.json'
+        context = json.loads(context_path.read_text())
+        assert context['bootKey'].startswith('linux:')
+        previous_boot = 'linux:' + str(uuid.uuid4())
+        assert previous_boot != context['bootKey']
+        # Synthetic previous-boot metadata only, never a reboot or a production
+        # override. Native current activity is still independently inspected.
+        context['bootKey'] = previous_boot
+        context_path.write_text(json.dumps(context))
+        denied = subprocess.run(['/bin/bash', str(script)], capture_output=True, text=True)
+        assert denied.returncode == 75 and not ready.exists(), denied.stderr
+        assert journal.stat().st_ino == identity and journal.read_bytes() == original
+        assert not (ROOT / 'recovery-archive').exists(), 'Restart inferred consent'
+        # Model an explicit incident-specific intent through the existing public
+        # slot. The wrapper itself must never synthesize this decision.
+        slot.write_text(json.dumps(incident))
+        subprocess.run(['/bin/bash', str(script)], check=True)
+        assert ready.read_text() == 'real nesting proved'
+        assert not journal.exists()
+        archive = ROOT / 'recovery-archive'
+        evidence = archive / (incident_id + '.journal')
+        retired = archive / (incident_id + '.retired-journal')
+        receipt = archive / (incident_id + '.receipt.json')
+        assert evidence.read_bytes() == original and retired.read_bytes() == original
+        assert retired.stat().st_ino == identity, 'Original object was not retained'
+        assert receipt.is_file()
+        # Cleanup only this fully verified synthetic history, with its operation
+        # gate held. No active journal is cleared. Failure retains CI evidence.
+        import fcntl
+        with (ROOT / 'operations.gate').open('rb') as gate:
+            fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            assert not journal.exists()
+            assert retired.stat().st_ino == identity and retired.read_bytes() == original
+            assert set(archive.iterdir()) == {evidence, retired, receipt}
+            for path in (evidence, retired, receipt):
+                path.unlink()
+            archive.rmdir()
+            for name in ('recovery-incident.json', 'recovery-binding.json',
+                         'recovery-context.json', 'recovery-acknowledgment.json',
+                         'recovery-disposition.json'):
+                (ROOT / name).unlink(missing_ok=True)
+    print('SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK')
+
+
+if __name__ == '__main__':
+    main()
