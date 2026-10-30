@@ -17,7 +17,9 @@ impl Failure {
     pub fn exit_code(&self) -> i32 {
         match self {
             Self::Coordination(mutation::BeginError::Safety(_))
-            | Self::Coordination(mutation::BeginError::Coordination(crate::Error::Busy)) => 75,
+            | Self::Coordination(mutation::BeginError::Coordination(
+                crate::Error::Busy | crate::Error::Interrupted,
+            )) => 75,
             _ => 76,
         }
     }
@@ -125,6 +127,27 @@ mod tests {
     };
 
     #[test]
+    fn manual_coordination_exit_codes_preserve_deferral_and_hard_errors() {
+        for (error, expected) in [
+            (crate::Error::Busy, 75),
+            (crate::Error::Interrupted, 75),
+            (crate::Error::Unavailable, 76),
+            (crate::Error::Untrusted, 76),
+            (crate::Error::NeedsRepair, 76),
+        ] {
+            let failure = Failure::Coordination(error.into());
+            assert_eq!(failure.exit_code(), expected, "{error:?}");
+        }
+        for failure in [
+            Failure::InvalidInvocation,
+            Failure::UntrustedEntryPoint,
+            Failure::UncertainCompletion,
+        ] {
+            assert_eq!(failure.exit_code(), 76);
+        }
+    }
+
+    #[test]
     fn manual_arguments_never_accept_a_shell_command_or_extra_option() {
         for (path, args, allowed) in [
             (
@@ -230,16 +253,20 @@ mod tests {
 
     #[test]
     fn manual_acknowledged_previous_generation_retains_original_evidence() {
+        use std::os::unix::fs::MetadataExt;
         let Some(f) = Fixture::new() else { return };
         let original = crate::tests::interrupted_fixture(&f);
+        let original_inode = std::fs::metadata(f.path.join("transaction.json"))
+            .unwrap()
+            .ino();
         let incident = crate::recovery::prepare_at(&f.path).unwrap().unwrap();
         let context = f.path.join("recovery-context.json");
         let mut value: serde_json::Value =
             serde_json::from_slice(&std::fs::read(&context).unwrap()).unwrap();
         value["bootKey"] = serde_json::json!("linux:9fe3858b-58da-4b96-b47d-ec2f1b867353");
         std::fs::write(context, serde_json::to_vec(&value).unwrap()).unwrap();
-        crate::recovery::submit_at(&f.path, &incident.incident_id).unwrap();
-        let path = script(&f, "exit 0\n");
+        let ready = f.path.join("child-ran");
+        let path = script(&f, &format!("printf ran > {}\nexit 0\n", ready.display()));
         let observe = || {
             test_facts(
                 Activity::Inactive,
@@ -247,10 +274,35 @@ mod tests {
                 Some("linux:52c95da7-e764-405c-84de-a1b435042916".into()),
             )
         };
+        // Independent restart evidence allows the consent check, not execution.
+        // No submitted intent becomes Coordination(Interrupted); the outer
+        // manual protocol must report deferral without clearing any evidence.
+        let blocked = run_at(&f.path, command(&path, &[]).unwrap(), observe).unwrap_err();
+        assert!(matches!(
+            &blocked,
+            Failure::Coordination(mutation::BeginError::Coordination(
+                crate::Error::Interrupted
+            ))
+        ));
+        assert_eq!(blocked.exit_code(), 75);
+        assert!(!ready.exists());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        assert_eq!(
+            std::fs::metadata(f.path.join("transaction.json"))
+                .unwrap()
+                .ino(),
+            original_inode
+        );
+        assert!(!f.path.join("recovery-archive").exists());
+        crate::recovery::submit_at(&f.path, &incident.incident_id).unwrap();
         assert_eq!(
             run_at(&f.path, command(&path, &[]).unwrap(), observe).unwrap(),
             0
         );
+        assert!(ready.exists());
         assert!(!f.path.join("transaction.json").exists());
         for suffix in ["journal", "retired-journal"] {
             assert_eq!(
@@ -263,6 +315,16 @@ mod tests {
                 original
             );
         }
+        assert_eq!(
+            std::fs::metadata(
+                f.path
+                    .join("recovery-archive")
+                    .join(format!("{}.retired-journal", incident.incident_id))
+            )
+            .unwrap()
+            .ino(),
+            original_inode
+        );
         assert!(f
             .path
             .join("recovery-archive")

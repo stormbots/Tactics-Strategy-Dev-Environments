@@ -119,6 +119,41 @@ workflows and all journal/gate/nesting behavior are unchanged. Actual installed
 host and Mint 22.3 markers, Mint signed upgrade and every inherited Windows/Linux
 gate must pass on the revised exact head; they remain pending, not waived.
 
+### Consent-required deferral classification
+
+Build `40978768354` at `9767b5dd720fcfdb3448ae72bc36cad6808a1bff` reached
+the restart-without-consent assertion in the installed Linux verifier. The
+application returned typed `Coordination(Interrupted)`, not success. Once fresh
+safety/restart observations allow checking consent, `record_locked` returns no
+receipt for an absent/invalid intent and `mutation::begin_at` correctly blocks
+with `Interrupted`. The manual adapter classified that result as exit 76, while
+its supported consent-required deferral protocol and verifier require exit 75.
+
+The scoped fix adds only `Interrupted` to the manual adapter's deferral mapping.
+It does not change the shared mutation decision, receipt validation, retirement,
+journal, nesting, or gate behavior. The installed verifier's exit-75/no-child
+assertion and both required host/Mint markers remain unchanged. A deterministic
+local regression first reproduced `Interrupted: 76 != 75`, then passed after
+the mapping correction. It also keeps unavailable/untrusted/repair-required,
+invalid invocation and uncertain completion classified as exit 76. The root-only
+manual lifecycle regression now explicitly checks no consent after simulated
+restart: exit 75, no child, unchanged original bytes/inode and no archive; then
+valid consent permits the existing evidence-preserving transition. Root-required
+execution remains CI responsibility, not a local pass claim.
+
+Focused local validation: ten manual Rust test entries passed (protected cases
+return early at UID 1000), Linux all-target Clippy with warnings denied, Rust
+formatting and diff checks passed. Native Linux host, actual Mint 22.3 and every
+inherited Windows/Linux gate remain required on the new exact head.
+
+The same failed Build's Windows native job encountered HTTP 503 fetching
+`powershell-core` 7.6.9 from the Chocolatey community feed in the existing real
+Node migration fixture. That is separately evidenced infrastructure failure;
+no Windows application change or retry was made for it. DevOps must reassess
+the feed on the corrected head and still require the full signed SYSTEM upgrade,
+not infer success from the skipped step. No release or UAT action occurred;
+owner Windows evidence and Mint v1.2.18 35/0/0 remain preserved.
+
 ## DevOps prompt
 
 Validate the new PR's exact head in its existing Build Skyview Dev Setup run.
