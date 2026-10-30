@@ -43,6 +43,7 @@ fn main() {
             "support_context",
             "save_support_report",
             "save_recovery_summary",
+            "acknowledge_recovery_incident",
             "list_recovery_reports",
             "read_recovery_report",
             "delete_recovery_report",

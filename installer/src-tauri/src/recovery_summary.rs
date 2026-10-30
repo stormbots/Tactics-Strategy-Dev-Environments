@@ -1,5 +1,5 @@
-//! Fixed per-user summary commands. Saving or deleting a report never submits
-//! an acknowledgment or changes protected operational state. T8 owns that flow.
+//! Fixed per-user summaries and a single-action machine intent controller.
+//! Report operations alone never acknowledge; intent is not execution authority.
 use crate::{
     recovery_reports::{self, Safety, Store, Summary, Validation},
     support,
@@ -49,15 +49,21 @@ pub async fn save_recovery_summary(
     incident_id: String,
     validation: Option<Validation>,
 ) -> Result<SaveOutcome, String> {
-    tauri::async_runtime::spawn_blocking(move || save(app, incident_id, validation))
+    tauri::async_runtime::spawn_blocking(move || {
+        let summary = capture(&app, incident_id, validation)?;
+        match store(&app).and_then(|store| store.save(&summary)) {
+            Ok(id) => Ok(SaveOutcome { saved:true, report_id:Some(id), warning:None }),
+            Err(_) => Ok(SaveOutcome { saved:false, report_id:None, warning:Some("The summary could not be saved. Original machine evidence remains separate; saving failure is not an acknowledgment or execution decision.".into()) }),
+        }
+    })
         .await
         .map_err(|_| "Recovery summary task is unavailable.".to_string())?
 }
-fn save(
-    app: tauri::AppHandle,
+fn capture(
+    app: &tauri::AppHandle,
     incident_id: String,
     validation: Option<Validation>,
-) -> Result<SaveOutcome, String> {
+) -> Result<Summary, String> {
     if !uuid::Uuid::parse_str(&incident_id).is_ok_and(|id| id.to_string() == incident_id) {
         return Err("Invalid incident identifier.".into());
     }
@@ -90,13 +96,44 @@ fn save(
             decision: tag(observation.decision),
         },
     };
-    sanitize(&app, &mut summary);
-    // No chooser, preview, log opt-in or OS-privilege prompt. The report records
-    // actual unavailable fields and original validation time, never a fake run.
-    match store(&app).and_then(|store| store.save(&summary)) {
-        Ok(id) => Ok(SaveOutcome { saved:true, report_id:Some(id), warning:None }),
-        Err(_) => Ok(SaveOutcome { saved:false, report_id:None, warning:Some("The summary could not be saved. Original machine evidence remains separate; saving failure is not an acknowledgment or execution decision.".into()) }),
-    }
+    sanitize(app, &mut summary);
+    // Invalid diagnostic input is not a report-storage failure to waive.
+    summary.validate()?;
+    Ok(summary)
+}
+
+fn submission_error(error: sde_coordination::Error) -> String {
+    use sde_coordination::Error;
+    match error {
+        Error::Busy => "SDE is currently in use. Submission is unconfirmed; Check Again when it finishes.",
+        Error::Interrupted => "The incident changed. Submission is unconfirmed; Check Again before acknowledging it.",
+        Error::Untrusted => "Recovery storage failed its security checks. Submission is unconfirmed; retain the evidence and review diagnostics.",
+        Error::Unavailable | Error::NeedsRepair => "Recovery submission is unavailable or could not be confirmed. Check Again; the original incident has not been dismissed by this action.",
+    }.into()
+}
+
+#[tauri::command]
+pub async fn acknowledge_recovery_incident(
+    app: tauri::AppHandle,
+    incident_id: String,
+    confirmed: bool,
+    validation: Option<Validation>,
+) -> Result<crate::recovery_acknowledgment::Outcome, String> {
+    // Share the application operation lock: no overlapping GUI operation or
+    // duplicate acknowledgment task. Native gates still arbitrate other apps.
+    let guard = app.state::<crate::Busy>().enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        crate::recovery_acknowledgment::run(
+            incident_id.clone(),
+            confirmed,
+            || capture(&app, incident_id, validation),
+            |summary| store(&app)?.save(summary),
+            |id| sde_coordination::recovery::submit(id).map_err(submission_error),
+        )
+    })
+    .await
+    .map_err(|_| "Acknowledgment task ended without a confirmed result. Check Again; do not assume acknowledgment or completion.".to_string())?
 }
 #[tauri::command]
 pub async fn list_recovery_reports(

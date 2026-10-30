@@ -49,7 +49,7 @@ pub struct Summary {
     pub validation: Option<Validation>,
 }
 impl Summary {
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         if self.schema != 1
             || !id(&self.report_id)
             || !id(&self.incident_id)

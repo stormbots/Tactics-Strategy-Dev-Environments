@@ -21,6 +21,9 @@ mod mutation_tests;
 pub mod observations;
 pub mod recovery;
 #[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_acknowledgment.rs"]
+mod recovery_acknowledgment_flow_tests;
+#[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_reports.rs"]
 #[allow(dead_code)]
 mod recovery_report_store_tests;

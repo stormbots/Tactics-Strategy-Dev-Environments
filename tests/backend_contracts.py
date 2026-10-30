@@ -16,7 +16,8 @@ class Backends(unittest.TestCase):
         self.assertIn('support::redact_home(app', source)
         self.assertIn('if !confirmed', source)
         self.assertNotIn('choose_path', source)
-        self.assertNotIn('recovery::submit', source)
+        reports_only = source.split('pub async fn acknowledge_recovery_incident', 1)[0]
+        self.assertNotIn('recovery::submit', reports_only)
         self.assertNotIn('journal::acknowledge', source)
         storage = self.text('installer/src-tauri/src/recovery_reports.rs')
         self.assertIn('create_new(true)', storage)
@@ -27,6 +28,22 @@ class Backends(unittest.TestCase):
         self.assertIn('sde-report-ci-', storage)
         self.assertNotIn('sde_coordination::', storage)
         self.assertIn('../../installer/src-tauri/src/recovery_reports.rs', self.text('coordination/src/lib.rs'))
+    def test_acknowledgment_controller_is_one_report_attempt_then_intent_not_execution(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs')
+        controller = source.split('pub async fn acknowledge_recovery_incident', 1)[1].split('#[tauri::command]', 1)[0]
+        self.assertIn('app.state::<crate::Busy>().enter()', controller)
+        self.assertIn('recovery_acknowledgment::run(', controller)
+        self.assertIn('recovery::submit(id).map_err(submission_error)', controller)
+        self.assertNotIn('journal::acknowledge', controller)
+        self.assertNotIn('record_acknowledgment(', controller)
+        self.assertNotIn('mutation::', controller)
+        self.assertNotIn('process::', controller)
+        flow = self.text('installer/src-tauri/src/recovery_acknowledgment.rs')
+        self.assertLess(flow.index('let snapshot = capture()?'), flow.index('match save(&snapshot)'))
+        self.assertLess(flow.index('match save(&snapshot)'), flow.index('match submit(&incident_id)'))
+        self.assertIn('Unconfirmed', flow)
+        self.assertIn('summary.validate()?', source)
+        self.assertIn('../../installer/src-tauri/src/recovery_acknowledgment.rs', self.text('coordination/src/lib.rs'))
     def test_linux_integrity_manifest_matches_shipped_sources(self):
         entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
         self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh'}.issubset(entries))

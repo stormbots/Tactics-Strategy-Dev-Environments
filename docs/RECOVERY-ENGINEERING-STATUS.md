@@ -1,7 +1,13 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [per-user recovery report storage foundation](RECOVERY-REPORT-STORAGE.md),
-branch `codex/recovery-report-storage`, pending native validation.
+Current increment: [single-action machine acknowledgment controller](RECOVERY-ACKNOWLEDGMENT-CONTROLLER.md),
+branch `codex/recovery-acknowledgment-controller`, pending native validation.
+Per-user report storage (#126) passed at `adbc52aa8699fc972af52697388ca4865383a297`
+in [Build 41117670454](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41117670454).
+Windows trust passed 64/64 including six storage tests; root Linux passed 78/78
+including seven storage tests. Both native jobs and inherited Windows SYSTEM/Mint
+22.3 signed upgrades and recovery markers passed. This is storage acceptance, not
+completed report/history interaction or acknowledgment/resume UX.
 Read-only diagnosis/self-service guidance (#125) passed at
 `281dcbe3bb182718b1aa8a97ac9f948d4263ad3c` in
 [Build 41105464316](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41105464316).

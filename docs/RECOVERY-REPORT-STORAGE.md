@@ -1,6 +1,11 @@
 # Per-user recovery report storage foundation
 
 Branch: `codex/recovery-report-storage`.
+Accepted at `adbc52aa8699fc972af52697388ca4865383a297` in
+[Build 41117670454](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41117670454).
+Both native/trust jobs and inherited gates passed; see the subsequent
+[acknowledgment controller](RECOVERY-ACKNOWLEDGMENT-CONTROLLER.md). Pending-CI
+language below records this storage increment's original handoff, not live state.
 Base: accepted #125 at `281dcbe3bb182718b1aa8a97ac9f948d4263ad3c`,
 [Build 41105464316](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41105464316),
 full success. General/integrity, both trust jobs and both native jobs passed,

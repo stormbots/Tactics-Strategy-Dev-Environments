@@ -15,6 +15,7 @@
     "allow-support-context",
     "allow-save-support-report",
     "allow-save-recovery-summary",
+    "allow-acknowledge-recovery-incident",
     "allow-list-recovery-reports",
     "allow-read-recovery-report",
     "allow-delete-recovery-report",

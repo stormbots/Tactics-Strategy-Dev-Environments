@@ -21,6 +21,116 @@ fn archive_path(f: &Fixture, id: &str, extension: &str) -> PathBuf {
         .join(format!("{id}.{extension}"))
 }
 
+fn controller_summary(id: &str) -> crate::recovery_report_store_tests::Summary {
+    use crate::recovery_report_store_tests::{Safety, Summary};
+    Summary {
+        schema: 1,
+        report_id: uuid::Uuid::new_v4().to_string(),
+        incident_id: id.into(),
+        captured_at: 100,
+        application_version: "CI".into(),
+        platform: "Synthetic native fixture".into(),
+        device_name: "CI".into(),
+        safety: Safety {
+            observed_at: 99,
+            trust: "unknown".into(),
+            activity: "unknown".into(),
+            package_health: "unknown".into(),
+            activity_reason: "native_inspection_unavailable".into(),
+            decision: "block_trust_unknown".into(),
+        },
+        validation: None,
+    }
+}
+
+#[test]
+fn acknowledgment_controller_native_report_and_storage_failure_preserve_gate_and_evidence() {
+    use crate::{recovery_acknowledgment_flow_tests as flow, recovery_report_store_tests::Store};
+    for fail_save in [false, true] {
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+        let store = Store::new(f.path.join("diagnostic-reports")).unwrap();
+        let result = flow::run(
+            incident.incident_id.clone(),
+            true,
+            || {
+                assert_eq!(
+                    recovery::inspect_at(&f.path).unwrap(),
+                    Some(incident.clone())
+                );
+                Ok(controller_summary(&incident.incident_id))
+            },
+            |summary| {
+                if fail_save {
+                    Err("simulated disk full".into())
+                } else {
+                    store.save(summary)
+                }
+            },
+            |id| recovery::submit_at(&f.path, id).map_err(|_| "Submission unconfirmed".into()),
+        )
+        .unwrap();
+        assert_eq!(result.intent_status, flow::IntentStatus::Submitted);
+        assert_eq!(result.report_warning.is_some(), fail_save);
+        if let Some(report) = result.report_id {
+            assert_eq!(
+                store.load(&report).unwrap().incident_id,
+                incident.incident_id
+            );
+        } else {
+            assert!(fail_save);
+        }
+        assert!(recovery::pending_at(&f.path).unwrap());
+        assert!(acknowledgment::inspect_at(&f.path).unwrap().is_none());
+        assert!(!f.path.join("recovery-archive").exists());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+        assert_eq!(no_interruption(&f.path).unwrap_err(), Error::Interrupted);
+    }
+}
+
+#[test]
+fn acknowledgment_controller_native_live_gate_after_report_retains_report_without_consent() {
+    use crate::{recovery_acknowledgment_flow_tests as flow, recovery_report_store_tests::Store};
+    let Some(f) = Fixture::new() else { return };
+    let original = interrupted_fixture(&f);
+    let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+    let store = Store::new(f.path.join("diagnostic-reports")).unwrap();
+    let held = std::cell::RefCell::new(None);
+    let result = flow::run(
+        incident.incident_id.clone(),
+        true,
+        || Ok(controller_summary(&incident.incident_id)),
+        |summary| {
+            let id = store.save(summary)?;
+            *held.borrow_mut() = Some(acquire_at(&f.path, "operations.gate", false).unwrap());
+            Ok(id)
+        },
+        |id| {
+            assert_eq!(recovery::submit_at(&f.path, id).unwrap_err(), Error::Busy);
+            Err("Submission unconfirmed; Check Again".into())
+        },
+    )
+    .unwrap();
+    drop(held);
+    assert_eq!(result.intent_status, flow::IntentStatus::Unconfirmed);
+    assert_eq!(
+        store.load(&result.report_id.unwrap()).unwrap().incident_id,
+        incident.incident_id
+    );
+    assert!(!recovery::pending_at(&f.path).unwrap());
+    assert_eq!(
+        std::fs::read(f.path.join("transaction.json")).unwrap(),
+        original
+    );
+    assert!(!f.path.join("recovery-archive").exists());
+    assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+}
+
 #[test]
 fn durable_acknowledgment_preserves_evidence_and_survives_intent_loss_and_restart() {
     let Some(f) = Fixture::new() else { return };
