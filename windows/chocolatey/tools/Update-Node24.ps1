@@ -2,7 +2,9 @@ param([string]$Version)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Coordination.ps1')
 try {
-Invoke-SkyviewCoordinated -Mutation -Action {
+$coordinationArguments = @()
+if ($PSBoundParameters.ContainsKey('Version')) { $coordinationArguments = @('-Version',$Version) }
+Invoke-SkyviewCoordinated -Mutation -EntryPoint $PSCommandPath -EntryArguments $coordinationArguments -Action {
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Node24.ps1')
 Install-SkyviewNode24 -Version $Version

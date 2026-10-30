@@ -119,5 +119,158 @@ class CiScope(unittest.TestCase):
                 self.assertTrue(application_required([WORKFLOW], before, after))
 
 
+class RecoveryFeasibilityWorkflow(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        path = Path(__file__).resolve().parents[1] / WORKFLOW
+        self.native = yaml.safe_load(path.read_text())["jobs"]["native"]
+        self.steps = self.native["steps"]
+        self.probes = [step for step in self.steps
+                       if step.get("name") == "Required Windows acknowledgment feasibility"]
+
+    def test_required_probe_is_on_windows_nsis_matrix(self):
+        self.assertIn({"os": "windows-2022", "bundle": "nsis",
+                       "asset": "Skyview-Dev-Setup-Windows-x64.exe"},
+                      self.native["strategy"]["matrix"]["include"])
+        self.assertEqual(len(self.probes), 1)
+        self.assertEqual(self.probes[0]["if"],
+                         "runner.os == 'Windows' && matrix.bundle == 'nsis'")
+        self.assertEqual(self.probes[0]["shell"], "pwsh")
+        self.assertNotIn("continue-on-error", self.probes[0])
+
+    def test_probe_requires_exit_zero_and_both_exact_markers(self):
+        self.assertEqual(len(self.probes), 1)
+        script = self.probes[0]["run"]
+        self.assertIn("-File ./tests/Test-RecoveryAcknowledgmentFeasibilityCI.ps1", script)
+        self.assertIn("$probeExit = $LASTEXITCODE", script)
+        self.assertIn('if ($probeExit -ne 0) { throw', script)
+        self.assertIn("SDE_RECOVERY_WINDOWS_STANDARD_USER_INTENT_OK", script)
+        self.assertIn("SDE_RECOVERY_WINDOWS_PRIVILEGED_CONSUMER_OK", script)
+        self.assertIn('if ($output -cnotcontains $marker) { throw', script)
+        self.assertIn("$output | Write-Output", script)
+
+    def test_probe_is_separate_from_and_before_chocolatey_packaging(self):
+        package = next(step for step in self.steps
+                       if step.get("name") == "Package the existing Chocolatey backend")
+        self.assertNotIn("Test-RecoveryAcknowledgmentFeasibilityCI.ps1", package["run"])
+        self.assertLess(self.steps.index(self.probes[0]), self.steps.index(package))
+        self.assertIn("Test-CoordinationCI.ps1", package["run"])
+
+
+class RecoveryBootstrapWorkflow(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        self.root = root
+        self.steps = yaml.safe_load((root / WORKFLOW).read_text())["jobs"]["native"]["steps"]
+
+    def step(self, name):
+        matching = [step for step in self.steps if step.get("name") == name]
+        self.assertEqual(len(matching), 1)
+        self.assertNotIn("continue-on-error", matching[0])
+        return matching[0]
+
+    def test_windows_installed_probe_is_required_after_install_and_before_upgrade(self):
+        step = self.step("Required Windows installed recovery bootstrap")
+        self.assertEqual(step["if"], "runner.os == 'Windows' && matrix.bundle == 'nsis'")
+        self.assertEqual(step["shell"], "pwsh")
+        self.assertIn("-File ./tests/Test-RecoveryBootstrapCI.ps1", step["run"])
+        self.assertIn("$probeExit = $LASTEXITCODE", step["run"])
+        self.assertIn("$probeExit -ne 0 -or $output -cnotcontains", step["run"])
+        self.assertIn("SDE_RECOVERY_WINDOWS_INSTALLED_BOOTSTRAP_OK", step["run"])
+        installed = self.step("Verify Windows application bootstrap without applying a baseline")
+        upgrade = self.step("Build unpublished newer Windows fixture and verify signed SYSTEM upgrade")
+        self.assertLess(self.steps.index(installed), self.steps.index(step))
+        self.assertLess(self.steps.index(step), self.steps.index(upgrade))
+
+    def test_linux_installed_probe_propagates_failure_and_requires_marker(self):
+        step = self.step("Required Linux installed recovery bootstrap")
+        self.assertEqual(step["if"], "runner.os == 'Linux'")
+        self.assertEqual(step["shell"], "bash")
+        self.assertIn("set -euo pipefail", step["run"])
+        self.assertIn("sudo env GITHUB_ACTIONS=true python3 tests/verify_recovery_bootstrap_native.py", step["run"])
+        self.assertIn("grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK", step["run"])
+        installed = self.step("Verify Linux application bootstrap without applying a baseline")
+        self.assertLess(self.steps.index(installed), self.steps.index(step))
+
+    def test_actual_mint_runs_installed_probe_before_applied_fixture(self):
+        script = (self.root / "tests/Test-LinuxSelfUpdateCI.sh").read_text()
+        invocation = 'python3 /work/tests/verify_recovery_bootstrap_native.py "$root/old.deb"'
+        self.assertIn(invocation, script)
+        self.assertIn("grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK", script)
+        self.assertLess(script.index(invocation), script.index("# Deterministic applied tool policy"))
+        self.assertIn("set -Eeuo pipefail", script)
+
+    def test_linux_manual_supervisor_is_required_on_host_and_actual_mint(self):
+        step = self.step("Required Linux installed manual recovery supervisor")
+        self.assertEqual(step["if"], "runner.os == 'Linux'")
+        self.assertEqual(step["shell"], "bash")
+        self.assertIn("set -euo pipefail", step["run"])
+        self.assertIn("sudo env GITHUB_ACTIONS=true python3 tests/verify_manual_recovery_native.py", step["run"])
+        marker = "grep -Fxq SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK"
+        self.assertIn(marker, step["run"])
+        bootstrap = self.step("Required Linux installed recovery bootstrap")
+        upgrade = self.step("Required signed upgrade on Linux Mint 22.3")
+        self.assertLess(self.steps.index(bootstrap), self.steps.index(step))
+        self.assertLess(self.steps.index(step), self.steps.index(upgrade))
+        script = (self.root / "tests/Test-LinuxSelfUpdateCI.sh").read_text()
+        invocation = "python3 /work/tests/verify_manual_recovery_native.py"
+        self.assertIn(invocation, script)
+        self.assertIn(marker, script)
+        self.assertLess(script.index(invocation), script.index("# Deterministic applied tool policy"))
+
+    def test_windows_manual_maintenance_requires_installed_release_and_marker(self):
+        step = self.step("Required Windows installed manual maintenance recovery")
+        self.assertEqual(step["if"], "runner.os == 'Windows' && matrix.bundle == 'nsis'")
+        self.assertEqual(step["shell"], "pwsh")
+        self.assertIn("-File ./tests/Test-WindowsManualRecoveryCI.ps1", step["run"])
+        self.assertIn("$probeExit = $LASTEXITCODE", step["run"])
+        self.assertIn("$probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK'", step["run"])
+        installed = self.step("Required Windows installed recovery bootstrap")
+        upgrade = self.step("Build unpublished newer Windows fixture and verify signed SYSTEM upgrade")
+        self.assertLess(self.steps.index(installed), self.steps.index(step))
+        self.assertLess(self.steps.index(step), self.steps.index(upgrade))
+
+    def test_windows_package_hook_gate_keeps_exit_and_both_required_markers(self):
+        step = self.step("Package the existing Chocolatey backend")
+        self.assertIn("$coordinationExit = $LASTEXITCODE", step["run"])
+        self.assertIn("$coordinationExit -ne 0", step["run"])
+        for marker in ('WINDOWS_COORDINATION_SUPERVISION_OK', 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK'):
+            self.assertIn("$coordinationOutput -cnotcontains '" + marker + "'", step["run"])
+        self.assertLess(step["run"].index('$coordinationExit = $LASTEXITCODE'),
+                        step["run"].index('$coordinationOutput | Write-Output'))
+
+
+class CoordinationWorkflowExitContract(unittest.TestCase):
+    def setUp(self):
+        import yaml
+        path = Path(__file__).resolve().parents[1] / WORKFLOW
+        steps = yaml.safe_load(path.read_text())["jobs"]["update-trust"]["steps"]
+        self.step = next(step for step in steps
+                         if step.get("name") == "Native cross-process coordination contracts")
+
+    def run_with_cargo_failure(self, failed_command, code):
+        import subprocess
+        # No real cargo/test/build invocation. Match Actions' explicit bash
+        # fail-fast shell and simulate a failed native process in this step.
+        stub = ('cargo() { printf "%s\\n" "$1"; '
+                f'if [ "$1" = "{failed_command}" ]; then return {code}; fi; '
+                'return 0; }\n')
+        self.assertEqual(self.step["shell"], "bash")
+        return subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o",
+                               "pipefail", "-c", stub + self.step["run"]],
+                              capture_output=True, text=True, check=False, timeout=10)
+
+    def test_failed_tests_cannot_be_hidden_by_successful_formatting_or_clippy(self):
+        result = self.run_with_cargo_failure("test", 23)
+        self.assertEqual(result.returncode, 23, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["test"])
+
+    def test_failed_formatting_stops_before_clippy(self):
+        result = self.run_with_cargo_failure("fmt", 24)
+        self.assertEqual(result.returncode, 24, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["test", "fmt"])
+
+
 if __name__ == "__main__":
     unittest.main()

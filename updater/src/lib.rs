@@ -6,9 +6,12 @@ mod e2e;
 pub mod host;
 #[cfg(target_os = "linux")]
 mod linux_install;
+#[cfg(windows)]
+pub mod manual_windows;
 pub mod observation;
 pub mod policy;
 pub mod staging;
+mod tool_coordination;
 #[cfg(target_os = "linux")]
 pub use linux_install::{maintain_linux, set_linux_pause};
 #[cfg(any(windows, test))]
