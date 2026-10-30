@@ -9,7 +9,7 @@ mod acknowledgment_tests;
 #[cfg(test)]
 mod bootstrap_tests;
 pub mod inspection;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", windows))]
 pub mod manual;
 pub mod mutation;
 #[cfg(test)]

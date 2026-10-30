@@ -326,6 +326,14 @@ jobs:
           $probeExit = $LASTEXITCODE
           $output | Write-Output
           if ($probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_INSTALLED_BOOTSTRAP_OK') { throw 'Required installed Windows recovery bootstrap evidence missing.' }
+      - name: Required Windows installed manual maintenance recovery
+        if: runner.os == 'Windows' && matrix.bundle == 'nsis'
+        shell: pwsh
+        run: |
+          $output = @(& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./tests/Test-WindowsManualRecoveryCI.ps1)
+          $probeExit = $LASTEXITCODE
+          $output | Write-Output
+          if ($probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK') { throw 'Required Windows manual maintenance evidence missing.' }
       - name: Rust tests
         run: cargo test --locked -- --nocapture
         working-directory: installer/src-tauri

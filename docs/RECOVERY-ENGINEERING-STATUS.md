@@ -1,7 +1,16 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [Linux manual system supervision](RECOVERY-LINUX-MANUAL-SUPERVISION.md),
-branch `codex/recovery-linux-manual-supervision`, pending native validation.
+Current increment: [Windows direct maintenance recovery](RECOVERY-WINDOWS-MAINTENANCE.md),
+branch `codex/recovery-windows-manual-supervision`, pending native validation.
+Codex now owns both engineering and DevOps. The owner canceled the hourly
+automation; active Cloud sessions must leave a durable checkpoint when only CI
+remains pending. No separate CI-chat handoff is required.
+Linux manual supervision (#120) passed at `dcd86bf141543ee6e8ecfbfeb7265e86d25fb7ee`
+in [Build 40988511475](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40988511475),
+attempt 2. Host and actual Mint 22.3 manual markers/signed upgrade passed in
+attempt 1; Windows Rust tests, signed SYSTEM and scheduled-tool markers passed on
+the authorized infrastructure retry. All applicable checks passed. This accepts
+that bounded increment, not complete T4 parity, a merged stack or owner UAT.
 Scheduled tool supervision passed at `c3328f2c79d3093e92e1c8c8fbf3b56e77f093f1`
 in [Build 40925960095](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/40925960095).
 Windows signed SYSTEM upgrade and both scheduled-tool contract markers passed;

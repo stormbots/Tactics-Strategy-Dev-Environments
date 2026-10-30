@@ -1,8 +1,10 @@
-//! Already-root Linux shell entry points. No elevation, IPC or consent override.
-//! The app dispatches this mode before starting a GUI; nested shell scripts still
-//! prove their real inherited descriptors through the existing Python checker.
+//! Shared manual mutation/completion policy. Platform adapters validate their
+//! already-root/elevated caller and protected backend; no elevation, IPC or
+//! consent override. Linux nested scripts still prove real inherited descriptors.
 use crate::{inspection, mutation, safety::known_backend_completion};
-use std::{ffi::OsString, path::Path, process::Command};
+#[cfg(target_os = "linux")]
+use std::ffi::OsString;
+use std::{path::Path, process::Command};
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind", content = "detail")]
@@ -25,6 +27,7 @@ impl Failure {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn arguments_allowed(script: &Path, args: &[OsString]) -> bool {
     if !script.is_absolute() {
         return false;
@@ -53,6 +56,7 @@ fn arguments_allowed(script: &Path, args: &[OsString]) -> bool {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn command(script: &Path, args: &[OsString]) -> Result<Command, Failure> {
     use std::os::unix::fs::MetadataExt;
     // Before inspecting private state, executing diagnostics, or launching any
@@ -85,8 +89,16 @@ fn command(script: &Path, args: &[OsString]) -> Result<Command, Failure> {
 /// Only root may select an absolute protected backend file with a supported
 /// name/argument shape. There is no privileged GUI handler for caller paths.
 /// Normal sudo authentication remains in the original shell workflow.
+#[cfg(target_os = "linux")]
 pub fn run(script: &Path, args: &[OsString]) -> Result<i32, Failure> {
     let command = command(script, args)?;
+    run_trusted_backend(command)
+}
+
+/// Rust-only adapter for an already-privileged, platform-validated backend.
+/// This is not an IPC command/path interface or an elevation mechanism. Callers
+/// must validate their effective token, fixed interpreter, script and arguments.
+pub fn run_trusted_backend(command: Command) -> Result<i32, Failure> {
     run_at(&crate::root(), command, inspection::collect)
 }
 
@@ -117,7 +129,7 @@ fn run_at(
     Ok(status.code().unwrap_or(1))
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
     use crate::{

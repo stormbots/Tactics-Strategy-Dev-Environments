@@ -6,6 +6,8 @@ mod e2e;
 pub mod host;
 #[cfg(target_os = "linux")]
 mod linux_install;
+#[cfg(windows)]
+pub mod manual_windows;
 pub mod observation;
 pub mod policy;
 pub mod staging;

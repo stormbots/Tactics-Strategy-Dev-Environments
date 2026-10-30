@@ -219,6 +219,18 @@ class RecoveryBootstrapWorkflow(unittest.TestCase):
         self.assertIn(marker, script)
         self.assertLess(script.index(invocation), script.index("# Deterministic applied tool policy"))
 
+    def test_windows_manual_maintenance_requires_installed_release_and_marker(self):
+        step = self.step("Required Windows installed manual maintenance recovery")
+        self.assertEqual(step["if"], "runner.os == 'Windows' && matrix.bundle == 'nsis'")
+        self.assertEqual(step["shell"], "pwsh")
+        self.assertIn("-File ./tests/Test-WindowsManualRecoveryCI.ps1", step["run"])
+        self.assertIn("$probeExit = $LASTEXITCODE", step["run"])
+        self.assertIn("$probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK'", step["run"])
+        installed = self.step("Required Windows installed recovery bootstrap")
+        upgrade = self.step("Build unpublished newer Windows fixture and verify signed SYSTEM upgrade")
+        self.assertLess(self.steps.index(installed), self.steps.index(step))
+        self.assertLess(self.steps.index(step), self.steps.index(upgrade))
+
 
 class CoordinationWorkflowExitContract(unittest.TestCase):
     def setUp(self):

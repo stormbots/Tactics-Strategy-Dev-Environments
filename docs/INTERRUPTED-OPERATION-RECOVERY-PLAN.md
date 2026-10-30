@@ -3,8 +3,9 @@
 Status: engineering approved; native permission feasibility and production
 storage foundation, durable acknowledgment and lease-bound safe transition passed;
 normally privileged bootstrap and privileged GUI helper supervision passed;
-T4 scheduled-tool supervision passed; Linux manual system supervision is pending
-native validation. Windows outer-script integration and T4 parity remain incomplete.
+T4 scheduled-tool and Linux manual system supervision passed. Windows direct
+maintenance is pending native validation; Install/Repair/Chocolatey outer-script
+integration and T4 parity remain incomplete.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.
@@ -12,7 +13,10 @@ Prepared October 28, 2026. Source inspected: main commit
 This plan records the 15-question design interview. The owner subsequently waived
 the prototype: there is no wireframe, mockup, or prototype approval phase.
 The owner authorized engineering after plan review. Codex owns application engineering and
-targeted tests; the CI workflow chat owns full native verification and packaging.
+targeted tests. The owner subsequently delegated DevOps to Codex as well: existing
+workflows remain authoritative for native verification and packaging, without
+requiring the owner to relay work between chats. The hourly automation was canceled;
+active Cloud sessions leave durable checkpoints when long CI jobs remain pending.
 The owner performs focused UAT after the consolidated candidate is ready.
 
 ## 1. Goal and finish line
@@ -279,7 +283,7 @@ integrate them into one coherent candidate, not partially functional UAT builds.
 | T7: Reports and history | T3; Rust support, report schema/rendering, safe file operations | Automatic summary save is atomic and best-effort; optional logs, redaction, machine-only context, actual timestamps, retention, export, and deletion semantics are tested. |
 | T8: Recovery interaction | T2–T7; App, safeOperations, DetailsPages, readiness model | Single action resumes the intended flow; no extra acknowledgment elevation, save click, mentor clearance, status card, automatic crash retry, or stale incident suppression. Keyboard/focus, themes, zoom, and compact layout work. |
 | T9: Consolidation and engineering review | T1–T8; contract tests, docs | Review full diff and privilege boundary, run affected targeted suites/build, document compatibility and limitations, update UAT guide without overwriting historical results. Commit and supply CI handoff. |
-| T10: External validation and owner UAT | CI workflow chat, then owner | Applicable Windows/Mint native, coordination, fixture, updater and signed-upgrade checks pass on exact source. Deliver one authenticated candidate with a short focused UAT sheet; preserve all previous evidence. |
+| T10: External validation and owner UAT | Codex through existing CI workflows, then owner | Applicable Windows/Mint native, coordination, fixture, updater and signed-upgrade checks pass on exact source. Deliver one authenticated candidate with a short focused UAT sheet; preserve all previous evidence. |
 
 Order T7/T8 work so that no final user-visible button promises persistence before
 the backend contract exists. No prototype is required. Do not stop for routine
@@ -355,6 +359,11 @@ to manufacture a UAT pass. UAT cannot guarantee that the historical unknown
 operation completed safely.
 
 ## 11. Engineering and CI handoffs
+
+Role update: Codex owns both engineering and DevOps. The handoff below is now
+an internal durable checkpoint, not a request for the owner to relay prompts
+between chats. Continue unblocked work; when only long CI remains, record exact
+source/run evidence and end the active Cloud session without continuous polling.
 
 Engineering stops when implementation is committed, targeted verification is
 complete, and full external validation is pending. Supply branch, exact SHA,

@@ -4,6 +4,12 @@ Branch: `codex/recovery-linux-manual-supervision`, based on accepted #119 head
 `c3328f2c79d3093e92e1c8c8fbf3b56e77f093f1`. The recovery stack remains unmerged.
 This is another bounded part of T4, not full cross-platform parity or owner UAT.
 
+Accepted #120 head: `dcd86bf141543ee6e8ecfbfeb7265e86d25fb7ee`, Build
+`40988511475`, attempt 2. Linux host/Mint manual markers and Mint signed upgrade
+passed in attempt 1; Windows's infrastructure retry passed Rust, signed SYSTEM
+and scheduled-tool checks. All applicable gates passed; no merge/release/UAT.
+This supersedes the historical pending/failure notes below.
+
 ## Acceptance criteria and boundary
 
 Linux Install/system Repair and Update shell entry points use the shared native

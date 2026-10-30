@@ -124,6 +124,33 @@ class Backends(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
+    def test_windows_manual_maintenance_preserves_nested_proof_and_native_gates(self):
+        source = self.text('windows/chocolatey/tools/Coordination.ps1')
+        nested = source.index('if ($administrator -and $env:SKYVIEW_TRANSACTION_TOKEN)')
+        outer = source.index('if ($Mutation -and $EntryPoint)')
+        self.assertLess(nested, outer)
+        body = source[outer:].split('    $session = $null;', 1)[0]
+        self.assertIn("@('--coordination-init') -Capture", body)
+        self.assertIn('SDE_WINDOWS_MAINTENANCE_SUPERVISOR_V1', body)
+        self.assertIn('--supervise-windows-maintenance', body)
+        self.assertIn('exit $result.ExitCode', body)
+        self.assertNotIn('& $Action', body)
+        self.assertNotIn('Remove-Item', body)
+        self.assertIn('$process.StandardOutput.ReadLineAsync()', source)
+        self.assertIn('$process.StandardError.ReadLineAsync()', source)
+        self.assertNotIn('$process.Kill()', source)
+        for name in ('Update-SkyviewTools.ps1', 'Update-Node24.ps1'):
+            self.assertIn('-EntryPoint $PSCommandPath', self.text('windows/chocolatey/tools/' + name))
+        adapter = self.text('updater/src/manual_windows.rs')
+        self.assertIn('CheckTokenMembership(', adapter)
+        self.assertIn('crate::host::validate(&current)', adapter)
+        self.assertIn('info.nNumberOfLinks == 1', adapter)
+        self.assertIn('sde_coordination::manual::run_trusted_backend(command)', adapter)
+        self.assertNotIn('recovery::submit', adapter)
+        self.assertNotIn('runas', adapter.lower())
+        workflow = self.text('.github/workflows/build-dev-setup.yml')
+        self.assertIn('Required Windows installed manual maintenance recovery', workflow)
+        self.assertIn("$output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK'", workflow)
     def test_manual_fixture_requires_every_ancestor_to_be_protected(self):
         fixture = self.manual_fixture_module()
         self.assertEqual(fixture.FIXTURE_PARENT, Path('/var/lib'))
