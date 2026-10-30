@@ -1,8 +1,11 @@
 param([switch]$SystemOnly, [switch]$Repair)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'chocolatey/tools/Coordination.ps1')
+$entryArguments = @()
+if ($SystemOnly) { $entryArguments += '-SystemOnly' }
+if ($Repair) { $entryArguments += '-Repair' }
 try {
-Invoke-SkyviewCoordinated -Mutation -Action {
+Invoke-SkyviewCoordinated -Mutation -EntryPoint $PSCommandPath -EntryArguments $entryArguments -Action {
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 # Skyview Robotics Windows 11 development workstation bootstrap

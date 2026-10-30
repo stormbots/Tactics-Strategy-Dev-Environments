@@ -47,6 +47,16 @@ pub fn validated_success(code: i32, lines: &[String]) -> bool {
             .any(|e| e.kind == "validation" && e.key == "FAIL")
 }
 
+/// Timestamp actual validator output collection, never report generation or
+/// operation success. Partial/failed checks still have a collection time.
+pub fn validation_time(previous: Option<u64>, line: &str, observed_at: u64) -> Option<u64> {
+    if parse(line).is_some_and(|event| event.kind == "validation") {
+        (observed_at != 0).then_some(observed_at)
+    } else {
+        previous
+    }
+}
+
 pub fn redact(line: &str) -> String {
     use regex::Regex;
     use std::sync::OnceLock;
@@ -63,6 +73,35 @@ pub fn redact(line: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn validation_time_tracks_actual_checks_not_success_or_report_capture() {
+        use super::validation_time;
+        assert_eq!(validation_time(None, "ordinary output", 100), None);
+        assert_eq!(
+            validation_time(None, "SKYVIEW_EVENT|summary|0|Done", 100),
+            None
+        );
+        assert_eq!(
+            validation_time(None, "SKYVIEW_EVENT|validation|PASS|Git", 50),
+            Some(50)
+        );
+        assert_eq!(
+            validation_time(Some(50), "SKYVIEW_EVENT|validation|FAIL|Python", 60),
+            Some(60)
+        );
+        assert_eq!(
+            validation_time(Some(60), "SKYVIEW_EVENT|summary|1|Failed", 100),
+            Some(60)
+        );
+        assert_eq!(
+            validation_time(Some(60), "SKYVIEW_EVENT|validation|INVALID|No", 100),
+            Some(60)
+        );
+        assert_eq!(
+            validation_time(Some(60), "SKYVIEW_EVENT|validation|INFO|No clock", 0),
+            None
+        );
+    }
     use super::*;
     #[test]
     fn parses_protocol_without_scraping() {

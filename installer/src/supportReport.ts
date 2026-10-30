@@ -1,4 +1,4 @@
-import type { Check } from "./model";
+import { collectionTime, type Check } from "./model";
 import type {
   MaintenanceObservation,
   OperationIncident,
@@ -29,6 +29,7 @@ export function supportSnapshot(input: {
   applicationVersion: string;
   checks: Check[];
   validationComplete: boolean;
+  validationCollectedAt?: number | null;
   incident: OperationIncident | null;
   maintenance: MaintenanceObservation | null;
   includeLogs: boolean;
@@ -45,7 +46,10 @@ export function supportSnapshot(input: {
     platform: input.platform,
     applicationVersion: input.applicationVersion,
     validation: {
-      collectedAt: input.validationComplete ? new Date().toISOString() : null,
+      collectedAt:
+        input.checks.length && collectionTime(input.validationCollectedAt)
+          ? new Date(input.validationCollectedAt! * 1000).toISOString()
+          : null,
       outcome,
       checks: input.checks.map(({ status, message }) => ({ status, message })),
     },

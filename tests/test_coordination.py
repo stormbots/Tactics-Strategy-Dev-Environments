@@ -122,6 +122,69 @@ class Supervision(unittest.TestCase):
         coordination.JOURNAL.write_text('malformed stale state')
         with self.assertRaises(coordination.CoordinationError):
             coordination.run('operation', [sys.executable, '-c', 'raise Exception("must not start")'])
+
+    def test_readonly_validation_retains_evidence_and_excludes_mutations(self):
+        validator = self.root / 'Validate-SkyviewStudentDev.sh'
+        validator.write_text('#!/bin/bash\nexit 1\n')
+        validator.chmod(0o644)
+        original = b'private interrupted evidence; not a command or consent'
+        coordination.JOURNAL.write_bytes(original)
+        coordination.JOURNAL.chmod(0o600)
+        before = coordination.JOURNAL.stat()
+        before_files = {path.name: path.read_bytes() for path in self.root.iterdir()}
+        command = ['/bin/bash', str(validator)]
+        result = coordination.run('readonly', command)
+        self.assertEqual(result, 1, 'Preserve real validation failure, not assumed readiness')
+        self.assertEqual(coordination.JOURNAL.read_bytes(), original)
+        after = coordination.JOURNAL.stat()
+        self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+        self.assertEqual({path.name: path.read_bytes() for path in self.root.iterdir()}, before_files)
+        for invalid in ([sys.executable, '-c', 'raise Exception("must not start")'], ['/bin/bash', str(validator), '--system-only']):
+            with self.assertRaises(coordination.CoordinationError):
+                coordination.run('readonly', invalid)
+        with self.assertRaises(coordination.CoordinationError):
+            coordination.run('system', [sys.executable, '-c', 'raise Exception("must not start")'])
+        lease = coordination.gate('operations.gate', False)
+        try:
+            with self.assertRaises(BlockingIOError):
+                coordination.run('readonly', command)
+        finally:
+            os.close(lease)
+
+        validator.chmod(0o666)
+        try:
+            with self.assertRaises(coordination.CoordinationError):
+                coordination.run('readonly', command)
+        finally:
+            validator.chmod(0o644)
+        linked = self.root / 'other-name'
+        os.link(validator, linked)
+        try:
+            with self.assertRaises(coordination.CoordinationError):
+                coordination.run('readonly', command)
+        finally:
+            linked.unlink()
+
+    def test_standard_user_can_diagnose_without_reading_private_journal(self):
+        validator = self.root / 'Validate-SkyviewStudentDev.sh'
+        validator.write_text('#!/bin/bash\nprintf "123\\n"\n')
+        validator.chmod(0o644)
+        coordination.JOURNAL.write_bytes(b'private interruption')
+        coordination.JOURNAL.chmod(0o600)
+        # Supply only this test's source as data; nobody must not depend on
+        # traverse access to the privileged runner's checkout or home directory.
+        program = ('import sys;from pathlib import Path;'
+                   'c={"__name__":"coordination_fixture"};exec(sys.argv[1],c);'
+                   'c["ROOT"]=Path(sys.argv[2]);c["JOURNAL"]=c["ROOT"]/"transaction.json";'
+                   'sys.exit(c["run"]("readonly",["/bin/bash",str(c["ROOT"]/"Validate-SkyviewStudentDev.sh")]))')
+        def student():
+            os.setgroups([]); os.setgid(65534); os.setuid(65534)
+        result = subprocess.run([sys.executable, '-c', program, ENGINE.read_text(), str(self.root)],
+                                preexec_fn=student, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('123', result.stdout)
+        self.assertIn('Validation does not acknowledge', result.stdout)
+        self.assertEqual(coordination.JOURNAL.read_bytes(), b'private interruption')
     def test_unsafe_modes_and_symlinks_rejected(self):
         (self.root / 'operations.gate').chmod(0o644)
         with self.assertRaises(coordination.CoordinationError):

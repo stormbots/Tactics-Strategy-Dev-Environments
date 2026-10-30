@@ -357,14 +357,16 @@ export default function App() {
       );
       dispatch({ type: "complete", report });
       if ((selected === "validate" || selected === "repair") && incident) {
-        if (report.success && !backendInterrupted) {
+        if (selected === "repair" && report.success && !backendInterrupted) {
           await acknowledgeOperationIncident(incident.id);
           setIncident(null);
           setPage("overview");
           setNotice(
-            selected === "validate"
-              ? "Validation passed. The interrupted operation is resolved; validation does not mean that operation completed."
-              : "Repair and its final validation passed. The interrupted operation is resolved.",
+            "Repair and its final validation passed. The interrupted operation is resolved.",
+          );
+        } else if (selected === "validate" && report.success) {
+          setNotice(
+            "Validation passed. It does not acknowledge the interruption, prove that operation completed, or authorize another change. Recovery evidence remains available.",
           );
         } else if (selected === "validate" && !report.success) {
           const records = toolsFrom(report.lines);
@@ -933,7 +935,7 @@ export default function App() {
                 {backendActive
                   ? "Keep this app open and wait for the current system operation to finish. Do not start another change."
                   : backendInterrupted
-                    ? "A previous system operation needs mentor review before Install, Update or Repair can run. You can run validation and save a support report. Passing validation does not clear this system interruption."
+                    ? "An interrupted system operation remains recorded. You can run validation and save diagnostic information. Review the current findings and self-service recovery steps before making changes. Passing validation does not acknowledge or clear this interruption."
                     : `The ${incident?.operation ?? "setup"} operation stopped during the ${incident?.stage ?? "unknown"} stage. Run validation before making another change.`}
               </p>
               {incident?.logPath && (
@@ -1154,6 +1156,7 @@ export default function App() {
           <SupportReportDialog
             checks={s.checks}
             validationComplete={s.validationComplete}
+            validationCollectedAt={s.validationCollectedAt}
             platform={s.platform.label}
             incident={incident}
             maintenance={maintenance}
