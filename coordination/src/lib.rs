@@ -4,6 +4,30 @@ use std::{
     fs::File,
     path::{Path, PathBuf},
 };
+#[cfg(test)]
+mod acknowledgment_tests;
+#[cfg(test)]
+mod bootstrap_tests;
+// Compile/test the exact platform-independent per-user report store on both
+// native trust paths without depending on a graphical runtime. Not production
+// machine-coordination code and not an authorization surface.
+pub mod guidance;
+pub mod inspection;
+#[cfg(any(target_os = "linux", windows))]
+pub mod manual;
+pub mod mutation;
+#[cfg(test)]
+mod mutation_tests;
+pub mod observations;
+pub mod recovery;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_acknowledgment.rs"]
+mod recovery_acknowledgment_flow_tests;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_reports.rs"]
+#[allow(dead_code)]
+mod recovery_report_store_tests;
+pub mod safety;
 #[cfg(windows)]
 mod windows;
 
@@ -70,7 +94,19 @@ pub enum Status {
 }
 
 pub fn initialize() -> Result<()> {
-    initialize_at(&root())
+    bootstrap_at(&root())
+}
+
+/// Normally privileged application-install hook. Prepare a legacy incident only
+/// when no supervisor owns the operation gate. A signed updater intentionally
+/// holds that gate across package hooks: keep initialization idempotent and defer
+/// recovery metadata, never publish a live transaction as an interruption.
+fn bootstrap_at(dir: &Path) -> Result<()> {
+    initialize_at(dir)?;
+    match recovery::prepare_at(dir) {
+        Ok(_) | Err(Error::Busy) => Ok(()),
+        Err(error) => Err(error),
+    }
 }
 pub fn session() -> Result<Lease> {
     acquire_at(&root(), "sessions.gate", true)
@@ -357,12 +393,72 @@ mod tests {
     // a lease just released by another test. Each contention test still runs
     // several real processes against its own gates.
     static FIXTURE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    struct Fixture {
-        path: PathBuf,
+    fn lock_fixtures(lock: &std::sync::Mutex<()>) -> std::sync::MutexGuard<'_, ()> {
+        // This mutex serializes independent fixture directories; it protects no
+        // shared transaction state. Preserve the original failing test, but do
+        // not turn its panic into unrelated PoisonError failures in later tests.
+        lock.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn storage_fixture_powershell() -> Command {
+        let mut command =
+            Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+        // Actions starts Rust under pwsh. Unlike a direct pwsh -> powershell
+        // invocation, Rust does not strip PowerShell 7's incompatible module
+        // paths. Let the fixed Windows PowerShell 5.1 executable build its own
+        // defaults. Preserve every other inherited CI/runtime variable.
+        command.env_remove("PSModulePath").args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+        ]);
+        command
+    }
+
+    #[test]
+    fn storage_fixture_does_not_inherit_powershell_seven_module_paths() {
+        let command = storage_fixture_powershell();
+        assert_eq!(
+            command.get_program(),
+            std::ffi::OsStr::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+        );
+        let overrides: Vec<_> = command.get_envs().collect();
+        assert_eq!(overrides.len(), 1);
+        assert!(overrides[0]
+            .0
+            .to_string_lossy()
+            .eq_ignore_ascii_case("PSModulePath"));
+        assert!(overrides[0].1.is_none());
+        assert!(command.get_args().any(|arg| arg == "-NoProfile"));
+        assert_eq!(
+            command.get_args().last(),
+            Some(std::ffi::OsStr::new("-File"))
+        );
+    }
+
+    #[test]
+    fn a_failed_fixture_does_not_poison_independent_fixture_execution() {
+        let lock = std::sync::Arc::new(std::sync::Mutex::new(()));
+        let child = lock.clone();
+        let failure = std::thread::spawn(move || {
+            let _guard = child.lock().unwrap();
+            panic!("Synthetic fixture failure; the original test must still fail");
+        })
+        .join();
+        assert!(failure.is_err());
+        assert!(lock.is_poisoned());
+        drop(lock_fixtures(&lock));
+        drop(lock_fixtures(&lock));
+    }
+    pub(super) struct Fixture {
+        pub(super) path: PathBuf,
         _guard: std::sync::MutexGuard<'static, ()>,
     }
     impl Fixture {
-        fn new() -> Option<Self> {
+        pub(super) fn new() -> Option<Self> {
             #[cfg(unix)]
             if unsafe { libc::geteuid() } != 0 {
                 assert!(
@@ -371,7 +467,7 @@ mod tests {
                 );
                 return None;
             }
-            let guard = FIXTURE_LOCK.lock().unwrap();
+            let guard = lock_fixtures(&FIXTURE_LOCK);
             let name = format!(
                 "coordination-test-{}-{}",
                 std::process::id(),
@@ -559,5 +655,278 @@ mod tests {
             assert!(!error.to_string().is_empty());
             assert!(serde_json::to_string(&error).is_ok());
         }
+    }
+
+    pub(super) fn interrupted_fixture(f: &Fixture) -> Vec<u8> {
+        let install = installation_at(&f.path).unwrap();
+        // Synthetic installation record without a public incident ID, matching
+        // the legacy shape. No installer/package child is ever started.
+        drop(install.begin_transaction().unwrap());
+        drop(install);
+        std::fs::read(f.path.join("transaction.json")).unwrap()
+    }
+
+    #[test]
+    fn recovery_legacy_binding_survives_restart_without_clearing_or_authorizing() {
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let first = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_eq!(recovery::inspect_at(&f.path).unwrap(), Some(first.clone()));
+        recovery::submit_at(&f.path, &first.incident_id).unwrap();
+        {
+            let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+            assert!(recovery::pending_at(&f.path).unwrap());
+        }
+        initialize_at(&f.path).unwrap();
+        assert_eq!(recovery::prepare_at(&f.path).unwrap(), Some(first));
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        // An intent is not a disposition or a permission to execute. Until the
+        // lifecycle/safety consumers are integrated, both old guards still hold.
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+        assert_eq!(no_interruption(&f.path).unwrap_err(), Error::Interrupted);
+    }
+
+    #[test]
+    fn recovery_changed_evidence_rotates_identity_and_rejects_stale_intent() {
+        let Some(f) = Fixture::new() else { return };
+        interrupted_fixture(&f);
+        let first = recovery::prepare_at(&f.path).unwrap().unwrap();
+        recovery::submit_at(&f.path, &first.incident_id).unwrap();
+        std::fs::write(
+            f.path.join("transaction.json"),
+            b"different synthetic journal",
+        )
+        .unwrap();
+        {
+            let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+            assert!(!recovery::pending_at(&f.path).unwrap());
+        }
+        let second = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_ne!(first.incident_id, second.incident_id);
+        assert_eq!(
+            recovery::submit_at(&f.path, &first.incident_id).unwrap_err(),
+            Error::Interrupted
+        );
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert!(!recovery::pending_at(&f.path).unwrap());
+    }
+
+    #[test]
+    fn recovery_no_record_and_busy_gate_never_provision_a_fake_incident() {
+        let Some(f) = Fixture::new() else { return };
+        assert_eq!(recovery::prepare_at(&f.path).unwrap(), None);
+        assert!(!f.path.join("recovery-incident.json").exists());
+        interrupted_fixture(&f);
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert_eq!(recovery::prepare_at(&f.path).unwrap_err(), Error::Busy);
+        assert_eq!(recovery::inspect_at(&f.path).unwrap_err(), Error::Busy);
+        assert!(recovery::submit_at(&f.path, "not-an-id").is_err());
+        assert!(!f.path.join("recovery-incident.json").exists());
+    }
+
+    #[test]
+    fn recovery_partial_intent_is_not_approval_and_public_marker_has_no_private_data() {
+        let Some(f) = Fixture::new() else { return };
+        interrupted_fixture(&f);
+        recovery::prepare_at(&f.path).unwrap();
+        let public: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(f.path.join("recovery-incident.json")).unwrap())
+                .unwrap();
+        assert_eq!(public.as_object().unwrap().len(), 2);
+        assert!(public.get("schema").is_some());
+        assert!(public.get("incidentId").is_some());
+        for data in [b"{".as_slice(), b"{}".as_slice(), b"\xff".as_slice()] {
+            std::fs::write(f.path.join("recovery-acknowledgment.json"), data).unwrap();
+            let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+            assert!(!recovery::pending_at(&f.path).unwrap());
+        }
+    }
+
+    #[test]
+    fn recovery_student_probe() {
+        let Some(dir) = std::env::var_os("SDE_TEST_RECOVERY_DIR") else {
+            return;
+        };
+        let dir = PathBuf::from(dir);
+        #[cfg(unix)]
+        assert_eq!(unsafe { libc::geteuid() }, 65534);
+        let incident = recovery::inspect_at(&dir).unwrap().unwrap();
+        assert!(std::fs::read(dir.join("transaction.json")).is_err());
+        assert!(std::fs::read(dir.join("recovery-binding.json")).is_err());
+        assert!(std::fs::OpenOptions::new()
+            .write(true)
+            .open(dir.join("transaction.json"))
+            .is_err());
+        assert!(std::fs::OpenOptions::new()
+            .write(true)
+            .open(dir.join("recovery-incident.json"))
+            .is_err());
+        assert!(
+            crate::mutation::begin_at(&dir, crate::mutation::Scope::System, || panic!(
+                "A standard account must not reach mutation after private evidence access"
+            ))
+            .is_err()
+        );
+        recovery::submit_at(&dir, &incident.incident_id).unwrap();
+        println!("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK");
+    }
+
+    #[test]
+    fn recovery_real_standard_user_can_submit_through_production_storage() {
+        #[cfg(windows)]
+        if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
+            assert!(
+                std::env::var("SDE_REQUIRE_COORDINATION").as_deref() != Ok("1"),
+                "Required Windows account probe needs a disposable CI runner"
+            );
+            return;
+        }
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        bootstrap_at(&f.path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            use std::os::unix::process::CommandExt;
+            // The runner checkout's ancestors may be private. Test storage
+            // permissions, not incidental access to /home/runner or its cache.
+            let binary = f.path.join("student-probe");
+            std::fs::copy(std::env::current_exe().unwrap(), &binary).unwrap();
+            std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+            let mut command = Command::new(binary);
+            command
+                .args(["--exact", "tests::recovery_student_probe", "--nocapture"])
+                .env("SDE_TEST_RECOVERY_DIR", &f.path);
+            // Only async-signal-safe syscalls in the forked child. No global
+            // process privilege change, account change, or package invocation.
+            unsafe {
+                command.pre_exec(|| {
+                    if libc::setgroups(0, std::ptr::null()) != 0
+                        || libc::setgid(65534) != 0
+                        || libc::setuid(65534) != 0
+                    {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                    Ok(())
+                });
+            }
+            let result = command.output().unwrap();
+            assert!(
+                result.status.success(),
+                "Student storage probe failed: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert!(String::from_utf8_lossy(&result.stdout)
+                .contains("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK"));
+        }
+        #[cfg(windows)]
+        {
+            let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../tests/Invoke-RecoveryStorageStudentCI.ps1");
+            let result = storage_fixture_powershell()
+                .arg(script)
+                .arg("-FixtureRoot")
+                .arg(&f.path)
+                .arg("-TestBinary")
+                .arg(std::env::current_exe().unwrap())
+                .output()
+                .unwrap();
+            assert!(
+                result.status.success(),
+                "Windows student storage fixture failed: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert!(String::from_utf8_lossy(&result.stdout)
+                .contains("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK"));
+        }
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert!(recovery::pending_at(&f.path).unwrap());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+    }
+
+    #[test]
+    fn recovery_recreated_identical_legacy_bytes_are_a_new_generation() {
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let first = recovery::prepare_at(&f.path).unwrap().unwrap();
+        recovery::submit_at(&f.path, &first.incident_id).unwrap();
+        // Fixture-only replacement: model a new old-format record whose PID and
+        // bytes are identical. Retain the old object to prevent inode reuse.
+        std::fs::rename(
+            f.path.join("transaction.json"),
+            f.path.join("old-fixture.json"),
+        )
+        .unwrap();
+        assert_eq!(interrupted_fixture(&f), original);
+        let second = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_ne!(first.incident_id, second.incident_id);
+        let _lease = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert!(!recovery::pending_at(&f.path).unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn recovery_native_storage_rejects_link_and_permission_changes() {
+        use std::os::unix::ffi::OsStrExt;
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let Some(f) = Fixture::new() else { return };
+        let original = interrupted_fixture(&f);
+        let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+        let slot = f.path.join("recovery-acknowledgment.json");
+        std::fs::set_permissions(&slot, std::fs::Permissions::from_mode(0o644)).unwrap();
+        assert_eq!(
+            recovery::submit_at(&f.path, &incident.incident_id).unwrap_err(),
+            Error::Untrusted
+        );
+        std::fs::remove_file(&slot).unwrap();
+        symlink("transaction.json", &slot).unwrap();
+        assert!(recovery::submit_at(&f.path, &incident.incident_id).is_err());
+        assert_eq!(
+            std::fs::read(f.path.join("transaction.json")).unwrap(),
+            original
+        );
+        std::fs::remove_file(&slot).unwrap();
+        let fifo = std::ffi::CString::new(slot.as_os_str().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o666) }, 0);
+        assert_eq!(
+            recovery::submit_at(&f.path, &incident.incident_id).unwrap_err(),
+            Error::Untrusted
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn recovery_rejects_overbroad_intent_rights_and_exposed_private_binding() {
+        let Some(f) = Fixture::new() else { return };
+        interrupted_fixture(&f);
+        let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+        let slot = f.path.join("recovery-acknowledgment.json");
+        assert!(Command::new("icacls.exe")
+            .arg(&slot)
+            .args(["/grant", "*S-1-5-32-545:M"])
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert_eq!(
+            recovery::submit_at(&f.path, &incident.incident_id).unwrap_err(),
+            Error::Untrusted
+        );
+        let binding = f.path.join("recovery-binding.json");
+        assert!(Command::new("icacls.exe")
+            .arg(binding)
+            .args(["/grant", "*S-1-5-32-545:R"])
+            .output()
+            .unwrap()
+            .status
+            .success());
+        assert_eq!(recovery::prepare_at(&f.path).unwrap_err(), Error::Untrusted);
+        assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
     }
 }

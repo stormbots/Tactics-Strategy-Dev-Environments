@@ -102,7 +102,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("directs an interrupted operation through fresh validation", async () => {
+it("keeps an interrupted operation unacknowledged after successful validation", async () => {
+  const acknowledgmentsBefore = vi.mocked(acknowledgeOperationIncident).mock.calls.length;
   const id = "256f7aea-bf4d-4d0f-a73a-68c2b74e258b";
   vi.mocked(inspectOperationIncident).mockResolvedValueOnce({
     backendActive: false,
@@ -132,10 +133,11 @@ it("directs an interrupted operation through fresh validation", async () => {
     name: "A previous operation was interrupted",
   });
   fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
-  await screen.findByRole("heading", { name: "Ready!" });
-  expect(acknowledgeOperationIncident).toHaveBeenCalledWith(id);
+  await screen.findByRole("heading", { name: "Validation passed." });
+  expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(acknowledgmentsBefore);
+  expect(screen.getByRole("button", { name: "Recovery" })).toBeTruthy();
   expect(
-    screen.getByText(/does not mean that operation completed/),
+    screen.getByText(/does not acknowledge the interruption/),
   ).toBeTruthy();
 });
 
@@ -475,7 +477,7 @@ it("reviews Update for an available managed update without starting it", async (
     ),
   );
 });
-it("retains unknown diagnostics as plain text and offers mentor guidance", async () => {
+it("retains unknown diagnostics as plain text and offers diagnostic review", async () => {
   const message = "Unknown check <script>alert('example')</script>";
   vi.mocked(operate).mockClear();
   vi.mocked(inspect).mockResolvedValueOnce({
@@ -491,7 +493,7 @@ it("retains unknown diagnostics as plain text and offers mentor guidance", async
   const { container } = render(<App />);
   await screen.findByRole("heading", { name: "Needs attention" });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
-  expect(screen.getByText("This check needs a mentor's review")).toBeTruthy();
+  expect(screen.getByText("This check needs diagnostic review")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /Review Repair/ })).toBeNull();
   const details = container.querySelector(
     ".check-diagnostics",
@@ -523,7 +525,7 @@ it("blocks guidance actions while an operation is streaming checks", async () =>
   expect(vi.mocked(operate)).toHaveBeenCalledTimes(1);
 });
 
-it("keeps command diagnostics ending in not found on the mentor path", async () => {
+it("keeps command diagnostics ending in not found on the diagnostic-review path", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
     code: 1,
     success: false,

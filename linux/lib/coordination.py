@@ -77,7 +77,28 @@ def sync_directory():
     finally:
         os.close(fd)
 
+def readonly_command(command):
+    # Read-only leases are not a generic way to supervise changing scripts with
+    # an old journal present. Only the fixed protected public validator may run.
+    if (len(command) not in (2, 3) or command[0] != '/bin/bash'
+            or (len(command) == 3 and command[2] != '--check-updates')):
+        raise CoordinationError('Read-only coordination requires the protected SDE validator.')
+    path = Path(command[1])
+    if not path.is_absolute() or path.name != 'Validate-SkyviewStudentDev.sh':
+        raise CoordinationError('Read-only coordination requires the protected SDE validator.')
+    for item in (path, *path.parents):
+        m = item.lstat()
+        regular = stat.S_ISREG(m.st_mode)
+        if (m.st_uid != 0 or m.st_mode & 0o022
+                or (item == path and (not regular or m.st_nlink != 1))
+                or (item != path and not stat.S_ISDIR(m.st_mode))):
+            raise CoordinationError('Read-only coordination requires the protected SDE validator.')
+
 def run(mode, command):
+    if mode not in ('session', 'operation', 'system', 'readonly'):
+        raise CoordinationError('Invalid SDE coordination invocation.')
+    if mode == 'readonly':
+        readonly_command(command)
     session = gate('sessions.gate', True, os.environ.get(SESSION))
     operation = None
     journal = False
@@ -88,7 +109,12 @@ def run(mode, command):
             operation = gate('operations.gate', False)
             leases.append(operation)
             if JOURNAL.exists() or JOURNAL.is_symlink():
-                raise CoordinationError('An interrupted system operation needs mentor review before another change.')
+                if mode != 'readonly':
+                    raise CoordinationError('An interrupted system operation needs mentor review before another change.')
+                # No read/parse, intent submission, publication or unlink of
+                # private evidence. The actual held gates still exclude other
+                # SDE operations; readiness checks are not mutation authority.
+                print('SKYVIEW_EVENT|validation|WARNING|An interrupted system operation remains recorded. Validation does not acknowledge it or authorize changes. Open Recovery for current checks and self-service steps.', flush=True)
             env[OPERATION] = str(operation)
             if mode == 'system':
                 if os.geteuid() != 0:
@@ -119,7 +145,7 @@ def main():
         if sys.argv[1:] == ['check']:
             check()
             return 0
-        if len(sys.argv) >= 4 and sys.argv[1] == 'run' and sys.argv[2] in ('session', 'operation', 'system'):
+        if len(sys.argv) >= 4 and sys.argv[1] == 'run' and sys.argv[2] in ('session', 'operation', 'system', 'readonly'):
             return run(sys.argv[2], sys.argv[3:])
         raise CoordinationError('Invalid SDE coordination invocation.')
     except BlockingIOError:
