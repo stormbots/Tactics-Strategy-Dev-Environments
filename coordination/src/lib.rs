@@ -8,6 +8,9 @@ use std::{
 mod acknowledgment_tests;
 #[cfg(test)]
 mod bootstrap_tests;
+// Compile/test the exact platform-independent per-user report store on both
+// native trust paths without depending on a graphical runtime. Not production
+// machine-coordination code and not an authorization surface.
 pub mod guidance;
 pub mod inspection;
 #[cfg(any(target_os = "linux", windows))]
@@ -17,6 +20,10 @@ pub mod mutation;
 mod mutation_tests;
 pub mod observations;
 pub mod recovery;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_reports.rs"]
+#[allow(dead_code)]
+mod recovery_report_store_tests;
 pub mod safety;
 #[cfg(windows)]
 mod windows;

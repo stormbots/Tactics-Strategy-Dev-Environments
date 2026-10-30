@@ -9,6 +9,24 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_recovery_reports_are_user_artifacts_not_acknowledgment_authority(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs')
+        self.assertIn('.app_data_dir()', source)
+        self.assertIn('.join("recovery-reports")', source)
+        self.assertIn('support::redact_home(app', source)
+        self.assertIn('if !confirmed', source)
+        self.assertNotIn('choose_path', source)
+        self.assertNotIn('recovery::submit', source)
+        self.assertNotIn('journal::acknowledge', source)
+        storage = self.text('installer/src-tauri/src/recovery_reports.rs')
+        self.assertIn('create_new(true)', storage)
+        self.assertIn('Commit marker is last', storage)
+        self.assertIn('Never overwrite a report ID', storage)
+        self.assertIn('incomplete_or_unreadable', storage)
+        self.assertIn('default-src', storage)
+        self.assertIn('sde-report-ci-', storage)
+        self.assertNotIn('sde_coordination::', storage)
+        self.assertIn('../../installer/src-tauri/src/recovery_reports.rs', self.text('coordination/src/lib.rs'))
     def test_linux_integrity_manifest_matches_shipped_sources(self):
         entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
         self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh'}.issubset(entries))

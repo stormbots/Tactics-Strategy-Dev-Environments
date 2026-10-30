@@ -1,7 +1,13 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [read-only diagnosis and self-service guidance](RECOVERY-READONLY-DIAGNOSIS.md),
-branch `codex/recovery-readonly-diagnosis`, pending native validation.
+Current increment: [per-user recovery report storage foundation](RECOVERY-REPORT-STORAGE.md),
+branch `codex/recovery-report-storage`, pending native validation.
+Read-only diagnosis/self-service guidance (#125) passed at
+`281dcbe3bb182718b1aa8a97ac9f948d4263ad3c` in
+[Build 41105464316](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41105464316).
+General/integrity, both trust jobs, both native signed upgrades and Windows plus
+Linux host/actual Mint 22.3 read-only validation markers passed. This does not
+complete tri-state frontend admission or the final acknowledgment/resume UI.
 Application-updater backend integration (#124) passed at
 `8935a4137ca67fa26b4c61f3f4e4ca0cea90e12e` in
 [Build 41074586107](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41074586107),

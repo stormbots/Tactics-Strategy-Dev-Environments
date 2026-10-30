@@ -5,6 +5,8 @@ mod journal;
 mod preflight;
 mod process;
 mod protocol;
+mod recovery_reports;
+mod recovery_summary;
 mod schedule;
 mod support;
 mod updates;
@@ -553,6 +555,10 @@ fn main() {
             acknowledge_operation_incident,
             support_context,
             save_support_report,
+            recovery_summary::save_recovery_summary,
+            recovery_summary::list_recovery_reports,
+            recovery_summary::read_recovery_report,
+            recovery_summary::delete_recovery_report,
             inspect_self_update,
             set_self_update_paused,
             run_operation,

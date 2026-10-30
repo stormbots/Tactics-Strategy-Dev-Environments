@@ -6,8 +6,9 @@ normally privileged bootstrap and privileged GUI helper supervision passed;
 T4 scheduled-tool, Linux manual, Windows direct maintenance/Install/Repair and
 package-hook parent boundary passed native validation. The backend execution-parity
 review and T5 application-updater backend integration passed native CI. Current
-T6 read-only diagnosis/self-service guidance is pending CI; reports/history and
-final frontend safety-observation, acknowledgment and resume work remain.
+T6 read-only diagnosis/self-service guidance passed CI. The current bounded T7
+per-user report storage foundation is pending CI; report/acknowledgment/history
+integration and final frontend safety-observation/resume work remain.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.
