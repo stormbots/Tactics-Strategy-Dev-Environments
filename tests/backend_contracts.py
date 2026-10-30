@@ -44,6 +44,26 @@ class Backends(unittest.TestCase):
         self.assertIn('Unconfirmed', flow)
         self.assertIn('summary.validate()?', source)
         self.assertIn('../../installer/src-tauri/src/recovery_acknowledgment.rs', self.text('coordination/src/lib.rs'))
+    def test_recovery_context_is_fixed_read_only_diagnostic_provenance(self):
+        source = self.text('installer/src-tauri/src/recovery_context.rs').split('#[cfg(test)]', 1)[0]
+        self.assertIn('directory.join("operation-journal.json")', source)
+        self.assertIn('MAX_RECORD + 1', source)
+        self.assertIn('O_NOFOLLOW', source)
+        self.assertIn('GetFileInformationByHandle', source)
+        self.assertNotIn('fs::write', source)
+        self.assertNotIn('set_permissions', source)
+        self.assertNotIn('recovery::submit', source)
+        capture = self.text('installer/src-tauri/src/recovery_summary.rs')
+        self.assertIn('Source::User => recovery_context::read_user(', capture)
+        self.assertIn('Source::Machine)', capture)
+        self.assertIn('../../installer/src-tauri/src/recovery_context.rs', self.text('coordination/src/lib.rs'))
+    def test_validation_timestamp_is_collected_natively_not_at_report_generation(self):
+        source = self.text('installer/src-tauri/src/main.rs')
+        self.assertIn('protocol::validation_time(', source)
+        self.assertIn('validation_collected_at: Option<u64>', source)
+        report = self.text('installer/src/supportReport.ts')
+        self.assertNotIn('collectedAt: input.validationComplete ? new Date()', report)
+        self.assertIn('input.validationCollectedAt', report)
     def test_linux_integrity_manifest_matches_shipped_sources(self):
         entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
         self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh'}.issubset(entries))

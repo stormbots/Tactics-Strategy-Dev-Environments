@@ -51,6 +51,49 @@ describe("structured protocol", () => {
     ).toEqual(["PASS", "WARNING", "FAIL", "INFO"]));
 });
 describe("operation states", () => {
+  it("retains native Validation time across report creation and resets it for a new run", () => {
+    const original = 1793016000;
+    const completed = reducer(initialState, {
+      type: "complete",
+      report: {
+        ...report(valid),
+        validation_collected_at: original,
+      },
+    });
+    expect(completed.validationCollectedAt).toBe(original);
+    expect(
+      reducer(completed, { type: "start", mode: "validate" })
+        .validationCollectedAt,
+    ).toBeNull();
+    expect(
+      reducer(initialState, { type: "initial", report: report(valid) })
+        .validationCollectedAt,
+    ).toBeNull();
+  });
+  it("timestamps failed checks but does not invent a timestamp for absent or malformed checks", () => {
+    const result = {
+      ...report(["SKYVIEW_EVENT|validation|FAIL|Git missing"], 1),
+      validation_collected_at: 50,
+    };
+    expect(
+      reducer(initialState, { type: "complete", report: result })
+        .validationCollectedAt,
+    ).toBe(50);
+    for (const time of [undefined, null, NaN, Infinity, -1, 0, 1.5, 1e15]) {
+      expect(
+        reducer(initialState, {
+          type: "complete",
+          report: { ...result, validation_collected_at: time },
+        }).validationCollectedAt,
+      ).toBeNull();
+    }
+    expect(
+      reducer(initialState, {
+        type: "complete",
+        report: { ...report([]), validation_collected_at: 50 },
+      }).validationCollectedAt,
+    ).toBeNull();
+  });
   for (const mode of ["install", "repair", "validate", "update"] as Mode[])
     it(`completes ${mode} only with successful validation`, () => {
       let state = reducer(initialState, { type: "start", mode });

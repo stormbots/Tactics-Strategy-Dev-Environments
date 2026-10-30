@@ -1,6 +1,11 @@
 # Single-action machine acknowledgment controller
 
 Branch: `codex/recovery-acknowledgment-controller`.
+Accepted at `996ec223261d15605cf12a6f3c281b5eb3a06825` in full successful
+[Build 41139930489](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41139930489).
+Windows trust 72/72, root Linux 86/86 and all inherited native gates passed.
+The subsequent [incident-context increment](RECOVERY-INCIDENT-CONTEXT.md) continues
+T7. Pending-CI language below records this controller's original handoff.
 Base: #126 at `adbc52aa8699fc972af52697388ca4865383a297`, accepted in
 [Build 41117670454](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41117670454).
 Windows trust passed 64/64 including six report-store tests. Root-required Linux

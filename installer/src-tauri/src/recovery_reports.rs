@@ -47,6 +47,8 @@ pub struct Summary {
     pub device_name: String,
     pub safety: Safety,
     pub validation: Option<Validation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<crate::recovery_context::Context>,
 }
 impl Summary {
     pub(crate) fn validate(&self) -> Result<()> {
@@ -88,6 +90,9 @@ impl Summary {
             {
                 return Err("Invalid validation snapshot.".into());
             }
+        }
+        if let Some(context) = &self.context {
+            context.validate(&self.incident_id, self.captured_at)?;
         }
         Ok(())
     }
@@ -257,8 +262,23 @@ fn escape(value: &str) -> String {
         .replace('\'', "&#39;")
 }
 pub fn html(summary: &Summary) -> String {
-    let mut body = String::from("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'none'; base-uri 'none'; form-action 'none'\"><title>SDE recovery summary</title></head><body><h1>SDE recovery summary</h1><p>This local summary may contain identifying information. Sharing is your choice; SDE does not upload it.</p><p>Captured before acknowledgment submission. This report is not an execution permit and does not prove the interrupted operation completed. No detailed logs or private journal bytes are included.</p>");
-    body.push_str("<p>Original private journal, operation stage and completion evidence were not collected. Read-only findings are best-effort observations, not privileged verification.</p>");
+    let mut body = String::from("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'none'; base-uri 'none'; form-action 'none'\"><title>SDE recovery summary</title></head><body><h1>SDE recovery summary</h1><p>This local summary may contain identifying information. Sharing is your choice; SDE does not upload it.</p><p>This snapshot does not attest earlier or later acknowledgment status. This report is not an execution permit and does not prove the interrupted operation completed. No detailed logs or private journal bytes are included.</p>");
+    match &summary.context {
+        Some(crate::recovery_context::Context::Machine { .. }) => body.push_str("<p>Source: machine incident. Original private journal, operation stage and completion evidence were not collected.</p>"),
+        Some(crate::recovery_context::Context::User { incident }) => {
+            body.push_str("<p>Source: this account's operation journal. These are recorded diagnostic fields, not proof of package outcome, inactivity or completion. Machine incident evidence is not included.</p>");
+            for (label, value) in [
+                ("Recorded operation", incident.operation.clone()),
+                ("Last recorded stage", incident.stage.clone()),
+                ("Original start (Unix seconds)", incident.started_at.to_string()),
+                ("Original last observation (Unix seconds)", incident.observed_at.to_string()),
+            ] {
+                body.push_str(&format!("<p>{}: {}</p>", label, escape(&value)));
+            }
+        },
+        None => body.push_str("<p>Source provenance is unavailable in this older summary. Original private journal, operation stage and completion evidence were not collected.</p>"),
+    }
+    body.push_str("<p>Read-only safety findings are separate best-effort machine observations, not privileged verification. No operation is certified completed.</p>");
     for (label, value) in [
         ("Report", summary.report_id.clone()),
         ("Incident", summary.incident_id.clone()),
@@ -498,8 +518,45 @@ mod tests {
                     message: "<script>not executable</script>".into(),
                 }],
             }),
+            context: None,
         }
     }
+    #[test]
+    fn recovery_reports_context_roundtrip_preserves_user_provenance_and_reads_legacy_reports() {
+        use crate::recovery_context::{Context, UserIncident};
+        let f = Fixture::new();
+        let mut report = summary();
+        let legacy = serde_json::to_value(&report).unwrap();
+        assert!(legacy.get("context").is_none());
+        assert!(serde_json::from_value::<Summary>(legacy)
+            .unwrap()
+            .context
+            .is_none());
+        report.context = Some(Context::User {
+            incident: UserIncident {
+                id: report.incident_id.clone(),
+                operation: "update".into(),
+                stage: "profile".into(),
+                started_at: 10,
+                observed_at: 20,
+            },
+        });
+        f.store.save(&report).unwrap();
+        let loaded = f.store.load(&report.report_id).unwrap();
+        let rendered = html(&loaded);
+        assert!(rendered.contains("this account&#39;s") || rendered.contains("this account's"));
+        assert!(rendered.contains("Original start (Unix seconds): 10"));
+        assert!(rendered.contains("Last recorded stage: profile"));
+        assert!(rendered.contains("not proof of package outcome"));
+        report.context = Some(Context::Machine {
+            incident_id: uuid::Uuid::new_v4().to_string(),
+        });
+        assert!(report.validate().is_err());
+        let mut forged = serde_json::to_value(&loaded).unwrap();
+        forged["context"]["incident"]["logPath"] = serde_json::json!("private path");
+        assert!(serde_json::from_value::<Summary>(forged).is_err());
+    }
+
     #[test]
     fn recovery_reports_committed_summary_retains_times_and_renders_passive_content() {
         let f = Fixture::new();
@@ -511,7 +568,8 @@ mod tests {
         let html = html(&loaded);
         assert!(html.contains("&lt;script&gt;") && !html.contains("<script>"));
         assert!(
-            html.contains("default-src 'none'") && html.contains("Captured before acknowledgment")
+            html.contains("default-src 'none'")
+                && html.contains("does not attest earlier or later acknowledgment status")
         );
         assert_eq!(f.store.list(None, 50).unwrap().entries[0].status, "saved");
         assert!(f.store.save(&s).is_err(), "Never overwrite a report ID");

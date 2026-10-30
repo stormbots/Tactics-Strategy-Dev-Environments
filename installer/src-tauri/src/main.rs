@@ -6,6 +6,7 @@ mod preflight;
 mod process;
 mod protocol;
 mod recovery_acknowledgment;
+mod recovery_context;
 mod recovery_reports;
 mod recovery_summary;
 mod schedule;
@@ -69,6 +70,7 @@ struct Report {
     lines: Vec<String>,
     log_path: String,
     platform: Platform,
+    validation_collected_at: Option<u64>,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -175,8 +177,17 @@ fn run(
         Some(journal::Active::begin(&app, &run_id, op, &log)?)
     };
     let mut lines: Vec<String> = Vec::new();
+    let mut validation_collected_at = None;
     let mut emit = |line: String| {
         let line = protocol::redact(&line);
+        validation_collected_at = protocol::validation_time(
+            validation_collected_at,
+            &line,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|time| time.as_secs())
+                .unwrap_or_default(),
+        );
         let _ = writeln!(file, "{line}");
         let _ = file.flush();
         let _ = app.emit(
@@ -284,6 +295,7 @@ fn run(
         lines,
         log_path: log.display().to_string(),
         platform,
+        validation_collected_at,
     })
 }
 #[tauri::command]

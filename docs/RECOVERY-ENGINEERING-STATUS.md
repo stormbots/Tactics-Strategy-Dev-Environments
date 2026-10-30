@@ -1,7 +1,14 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [single-action machine acknowledgment controller](RECOVERY-ACKNOWLEDGMENT-CONTROLLER.md),
-branch `codex/recovery-acknowledgment-controller`, pending native validation.
+Current increment: [incident provenance and Validation collection time](RECOVERY-INCIDENT-CONTEXT.md),
+branch `codex/recovery-incident-context`, pending native validation.
+Single-action machine acknowledgment controller (#127) passed at
+`996ec223261d15605cf12a6f3c281b5eb3a06825` in
+[Build 41139930489](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41139930489).
+Windows trust passed 72/72 and root Linux 86/86, including both protected controller
+tests. Both native jobs, general checks, actual Mint 22.3 and Windows SYSTEM signed
+upgrades and all inherited recovery markers passed. This accepts intent-controller
+behavior, not completed user-only acknowledgment, history or final Recovery UI.
 Per-user report storage (#126) passed at `adbc52aa8699fc972af52697388ca4865383a297`
 in [Build 41117670454](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41117670454).
 Windows trust passed 64/64 including six storage tests; root Linux passed 78/78

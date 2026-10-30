@@ -1,6 +1,7 @@
 //! Fixed per-user summaries and a single-action machine intent controller.
 //! Report operations alone never acknowledge; intent is not execution authority.
 use crate::{
+    recovery_context::{self, Context, Source},
     recovery_reports::{self, Safety, Store, Summary, Validation},
     support,
 };
@@ -48,12 +49,13 @@ pub async fn save_recovery_summary(
     app: tauri::AppHandle,
     incident_id: String,
     validation: Option<Validation>,
+    source: Option<Source>,
 ) -> Result<SaveOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let summary = capture(&app, incident_id, validation)?;
+        let summary = capture(&app, incident_id, validation, source.unwrap_or_default())?;
         match store(&app).and_then(|store| store.save(&summary)) {
             Ok(id) => Ok(SaveOutcome { saved:true, report_id:Some(id), warning:None }),
-            Err(_) => Ok(SaveOutcome { saved:false, report_id:None, warning:Some("The summary could not be saved. Original machine evidence remains separate; saving failure is not an acknowledgment or execution decision.".into()) }),
+            Err(_) => Ok(SaveOutcome { saved:false, report_id:None, warning:Some("The summary could not be saved. Original operational evidence remains separate; saving failure is not an acknowledgment or execution decision.".into()) }),
         }
     })
         .await
@@ -63,21 +65,36 @@ fn capture(
     app: &tauri::AppHandle,
     incident_id: String,
     validation: Option<Validation>,
+    source: Source,
 ) -> Result<Summary, String> {
     if !uuid::Uuid::parse_str(&incident_id).is_ok_and(|id| id.to_string() == incident_id) {
         return Err("Invalid incident identifier.".into());
-    }
-    let incident = sde_coordination::recovery::inspect()
-        .map_err(|_| "Current recovery evidence is unavailable; Check Again.")?
-        .ok_or("No current machine incident was observed.")?;
-    if incident.incident_id != incident_id {
-        return Err("The incident changed; Check Again before acknowledging it.".into());
     }
     let observation = sde_coordination::observations::inspect();
     let captured_at = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|_| "Capture time unavailable.")?
         .as_secs();
+    let context = match source {
+        Source::Machine => {
+            let incident = sde_coordination::recovery::inspect()
+                .map_err(|_| "Current recovery evidence is unavailable; Check Again.")?
+                .ok_or("No current machine incident was observed.")?;
+            if incident.incident_id != incident_id {
+                return Err("The incident changed; Check Again before acknowledging it.".into());
+            }
+            Context::Machine {
+                incident_id: incident_id.clone(),
+            }
+        }
+        Source::User => recovery_context::read_user(
+            &app.path()
+                .app_data_dir()
+                .map_err(|_| "Application data is unavailable.")?,
+            &incident_id,
+            captured_at,
+        )?,
+    };
     let mut summary = Summary {
         schema: 1,
         report_id: uuid::Uuid::new_v4().to_string(),
@@ -87,6 +104,7 @@ fn capture(
         platform: crate::platform().label,
         device_name: support::device_name(),
         validation,
+        context: Some(context),
         safety: Safety {
             observed_at: observation.observed_at,
             trust: tag(observation.trust),
@@ -127,7 +145,7 @@ pub async fn acknowledge_recovery_incident(
         crate::recovery_acknowledgment::run(
             incident_id.clone(),
             confirmed,
-            || capture(&app, incident_id, validation),
+            || capture(&app, incident_id, validation, Source::Machine),
             |summary| store(&app)?.save(summary),
             |id| sde_coordination::recovery::submit(id).map_err(submission_error),
         )

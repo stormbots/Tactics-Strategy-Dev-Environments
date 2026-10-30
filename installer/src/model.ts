@@ -140,7 +140,16 @@ export type Report = {
   lines: string[];
   log_path: string;
   platform: { label: string; supported: boolean };
+  validation_collected_at?: number | null;
 };
+export function collectionTime(value: unknown): number | null {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value > 0 &&
+    value <= 8640000000000
+    ? value
+    : null;
+}
 export function parseEvent(line: string): Event | null {
   const match = /^SKYVIEW_EVENT\|([^|]+)\|([^|]*)\|([^\r\n]*)\r?$/.exec(line);
   if (!match) return null;
@@ -212,6 +221,7 @@ export function reportPassed(report: Report): boolean {
 }
 export type State = {
   validationComplete: boolean;
+  validationCollectedAt: number | null;
   stage: "checking" | "idle" | "running" | "success" | "failure";
   mode: Mode;
   progress: number;
@@ -227,6 +237,7 @@ export type State = {
 };
 export const initialState: State = {
   validationComplete: false,
+  validationCollectedAt: null,
   stage: "checking",
   mode: "install",
   progress: 0,
@@ -252,6 +263,9 @@ export function reducer(s: State, a: Action): State {
       ...s,
       mode: "validate",
       validationComplete: reportPassed(a.report),
+      validationCollectedAt: checksFrom(a.report.lines).length
+        ? collectionTime(a.report.validation_collected_at)
+        : null,
       stage: checksFrom(a.report.lines).length ? "idle" : "failure",
       error: checksFrom(a.report.lines).length
         ? ""
@@ -272,6 +286,7 @@ export function reducer(s: State, a: Action): State {
       ...s,
       stage: "running",
       validationComplete: false,
+      validationCollectedAt: null,
       mode: a.mode,
       progress: 0,
       phase:
@@ -303,6 +318,9 @@ export function reducer(s: State, a: Action): State {
       ...s,
       stage: valid ? "success" : "failure",
       validationComplete: valid,
+      validationCollectedAt: checks.length
+        ? collectionTime(a.report.validation_collected_at)
+        : null,
       checks,
       logs: a.report.lines.slice(-2000),
       progress: valid ? 100 : s.progress,

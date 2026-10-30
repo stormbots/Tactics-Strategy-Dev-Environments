@@ -40,6 +40,7 @@ fn controller_summary(id: &str) -> crate::recovery_report_store_tests::Summary {
             decision: "block_trust_unknown".into(),
         },
         validation: None,
+        context: None,
     }
 }
 

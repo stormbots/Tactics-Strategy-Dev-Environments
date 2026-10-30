@@ -1156,6 +1156,7 @@ export default function App() {
           <SupportReportDialog
             checks={s.checks}
             validationComplete={s.validationComplete}
+            validationCollectedAt={s.validationCollectedAt}
             platform={s.platform.label}
             incident={incident}
             maintenance={maintenance}
