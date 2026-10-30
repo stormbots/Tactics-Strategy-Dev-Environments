@@ -28,6 +28,11 @@ $root = 'C:\ProgramData\SdeNativeSelfUpdateTest'
 Start-Transcript -Path (Join-Path $root 'native-upgrade.txt') -Force
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') { throw 'Expected SYSTEM.' }
+    # Task Scheduler creates a separate SYSTEM environment; it does not inherit
+    # the runner's CI indicator. The outer harness already required disposable
+    # CI before creating this private worker. Pass only this non-secret test
+    # context, never the runner environment/credentials or a production override.
+    $env:GITHUB_ACTIONS = 'true'
     # Model the observed legacy parent ACL before the real signed installer.
     # Existing file bytes remain protected. Reproduce the October 14 inherited
     # CI Write on Logs as well as the parent; no manual ACL repair is performed.
@@ -63,6 +68,10 @@ try {
     if ([Convert]::ToBase64String([IO.File]::ReadAllBytes($legacyLog)) -ne $logBefore -or (Get-Acl -LiteralPath $legacyLog).Sddl -ne $logAclBefore) { throw 'Native installer changed legacy log evidence/private permissions.' }
     if ((Get-Content -LiteralPath $policy -Raw | ConvertFrom-Json).paused -ne $false) { throw 'Application installation did not enable SDE updates.' }
     Write-Output 'SDE_NATIVE_LEGACY_LOGS_ACL_OK'
+    # Read-only fixture diagnostics: identify package processes without exposing
+    # command lines, arguments, credentials or private coordination contents.
+    Get-CimInstance -ClassName Win32_Process -OperationTimeoutSec 3 -Filter "Name = 'choco.exe' OR Name = 'msiexec.exe' OR Name = 'winget.exe' OR Name = 'dism.exe'" -ErrorAction Stop |
+        Select-Object Name,ProcessId,ParentProcessId | ConvertTo-Json -Compress
     $env:SDE_NATIVE_UPGRADE_FIXTURE = $root
     & (Join-Path $root 'native-tests.exe') --exact windows_install::native::tests::signed_upgrade_under_system --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Native signed upgrade test failed.' }
@@ -124,7 +133,9 @@ $action = New-ScheduledTaskAction -Execute 'C:\Windows\System32\WindowsPowerShel
 Register-ScheduledTask -TaskName $taskName -Action $action -User SYSTEM -RunLevel Highest -Force | Out-Null
 try {
     Start-ScheduledTask -TaskName $taskName
-    $deadline = [DateTime]::UtcNow.AddMinutes(10)
+    # Allow the native fixture's bounded 15-minute read-only inactivity wait in
+    # addition to actual upgrades. A deadline never terminates package work.
+    $deadline = [DateTime]::UtcNow.AddMinutes(30)
     while (-not (Test-Path (Join-Path $root 'done')) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Seconds 2 }
     if (Test-Path (Join-Path $root 'native-upgrade.txt')) { Get-Content (Join-Path $root 'native-upgrade.txt') }
     if (-not (Test-Path (Join-Path $root 'done'))) { throw 'Native test exceeded runner deadline; do not terminate package transactions.' }
@@ -136,6 +147,7 @@ try {
     if ($after.Task.Actions.Exec.Arguments -notlike '*SelfUpdate\Invoke-SkyviewMaintenance.ps1*') { throw 'Task did not migrate to the protected host.' }
     if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern 'SDE_SIGNED_SYSTEM_UPGRADE_OK')) { throw 'Required native test did not execute.' }
     if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern 'SDE_E2E_NATIVE_WINDOWS_OK')) { throw 'Required end-to-end native test did not execute.' }
+    if (-not (Select-String -LiteralPath (Join-Path $root 'native-upgrade.txt') -Pattern '^SDE_RECOVERY_SCHEDULED_TOOL_CONTRACT_OK\s*$')) { throw 'Required scheduled-tool recovery contract did not execute.' }
 } finally {
     # Removing the fixture task does not kill its running worker or packages.
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false

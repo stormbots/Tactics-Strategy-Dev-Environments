@@ -280,12 +280,11 @@ mod native {
             file.sync_all()
                 .map_err(|_| "Maintenance supervisor flush failed")?;
         }
-        let code = powershell()
-            .arg(run.join("Invoke-AppliedMaintenance.ps1"))
-            .status()
-            .map_err(|_| "Tool maintenance could not start")?
-            .code();
-        Ok(code)
+        let mut supervisor = powershell();
+        supervisor.arg(run.join("Invoke-AppliedMaintenance.ps1"));
+        // The embedded wrapper validates the private nesting token and live
+        // gate, then snapshots the applied baseline under Rust's same leases.
+        crate::tool_coordination::run(supervisor).map(Some)
     }
     fn resources(expected: &str) -> Result<()> {
         if host::windows::installed_identity()
@@ -605,6 +604,10 @@ mod native {
         };
         let result = (|| {
             report.tool_exit = tool_maintenance()?;
+            if let Some(outcome) = crate::tool_coordination::incomplete_outcome(report.tool_exit) {
+                report.outcome = outcome.into();
+                return Err("Tool maintenance did not complete successfully; application installation deferred".into());
+            }
             report.phase = crate::observation::Phase::Identity;
             let installed =
                 host::installed().map_err(|e| format!("Installed identity unavailable: {e:?}"))?;
@@ -914,6 +917,7 @@ mod native {
                 process.stdout.is_empty(),
                 "Installer launched SDE under SYSTEM"
             );
+            crate::tool_coordination::native_contracts();
             set_pause(
                 serde_json::from_slice::<Policy>(&policy_before)
                     .unwrap()

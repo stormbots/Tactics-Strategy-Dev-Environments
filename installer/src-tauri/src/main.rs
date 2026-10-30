@@ -443,6 +443,48 @@ fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(
 }
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    #[cfg(windows)]
+    if args.get(1).map(String::as_str) == Some("--supervise-windows-maintenance") {
+        let native_args: Vec<std::ffi::OsString> = std::env::args_os().skip(2).collect();
+        let result = native_args
+            .first()
+            .ok_or(sde_coordination::manual::Failure::InvalidInvocation)
+            .and_then(|script| {
+                sde_update_trust::manual_windows::run(std::path::Path::new(script), &native_args[1..])
+            });
+        let code = match result {
+            Ok(code) => code,
+            Err(error) => {
+                eprintln!(
+                    "SKYVIEW_EVENT|error|coordination|{}",
+                    serde_json::to_string(&error).unwrap()
+                );
+                error.exit_code()
+            }
+        };
+        std::process::exit(code);
+    }
+    #[cfg(target_os = "linux")]
+    if args.get(1).map(String::as_str) == Some("--supervise-linux-system") {
+        let native_args: Vec<std::ffi::OsString> = std::env::args_os().skip(2).collect();
+        let result = native_args
+            .first()
+            .ok_or(sde_coordination::manual::Failure::InvalidInvocation)
+            .and_then(|script| {
+                sde_coordination::manual::run(std::path::Path::new(script), &native_args[1..])
+            });
+        let code = match result {
+            Ok(code) => code,
+            Err(error) => {
+                eprintln!(
+                    "SKYVIEW_EVENT|error|coordination|{}",
+                    serde_json::to_string(&error).unwrap()
+                );
+                error.exit_code()
+            }
+        };
+        std::process::exit(code);
+    }
     if args.get(1).map(String::as_str) == Some("--privileged") {
         let acknowledgement = args.get(4).map(String::as_str);
         let code = if args.len() == 5
@@ -464,7 +506,16 @@ fn main() {
     }
     if args.get(1).map(String::as_str) == Some("--coordination-init") && args.len() == 2 {
         match sde_coordination::initialize() {
-            Ok(()) => return,
+            Ok(()) => {
+                // Existing safe non-GUI mode lets old/new shell wrappers
+                // negotiate support without sending an unknown flag to an old
+                // app (which would otherwise open a GUI). Not an execution permit.
+                #[cfg(target_os = "linux")]
+                println!("SDE_LINUX_SYSTEM_SUPERVISOR_V1");
+                #[cfg(windows)]
+                let _ = writeln!(std::io::stdout(), "SDE_WINDOWS_MAINTENANCE_SUPERVISOR_V1");
+                return;
+            }
             Err(e) => {
                 eprintln!("{e}");
                 std::process::exit(1);

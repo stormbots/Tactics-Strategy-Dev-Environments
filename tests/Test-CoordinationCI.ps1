@@ -5,9 +5,36 @@ $journal = Join-Path $root 'transaction.json'
 $engine = (Resolve-Path (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Coordination.ps1')).Path
 . $engine
 if (Test-Path $journal) { throw 'Unexpected transaction at fixture start.' }
+$ranUnsupervised = $false
+$parentRequired = $false
+try { Invoke-SkyviewCoordinated -Mutation -RequireParent -Action { $script:ranUnsupervised = $true } }
+catch { if ($_.Exception.Message -notlike 'SDE_SUPERVISOR_REQUIRED:*') { throw }; $parentRequired = $true }
+if (-not $parentRequired -or $ranUnsupervised -or (Test-Path $journal)) { throw 'Unsupervised package configuration was accepted or changed the journal.' }
+# A FileStream with the right name is not enough for the parent-required hook.
+# It must reach the private-token plus physical held-gate verification instead.
+$previousLease = $global:SkyviewOperationLease
+$forgedLease = [IO.File]::Open((Join-Path $root 'operations.gate'),'Open','Read','Read')
+try {
+    $global:SkyviewOperationLease = $forgedLease
+    $parentRequired = $false
+    try { Invoke-SkyviewCoordinated -Mutation -RequireParent -Action { $script:ranUnsupervised = $true } }
+    catch { if ($_.Exception.Message -notlike 'SDE_SUPERVISOR_REQUIRED:*') { throw }; $parentRequired = $true }
+    if (-not $parentRequired -or $ranUnsupervised -or (Test-Path $journal)) { throw 'A forged global lease authorized package configuration.' }
+} finally { $global:SkyviewOperationLease = $previousLease; $forgedLease.Dispose() }
+# Exercise the actual hook entry point, not just the coordination function.
+# No package manager is launched: rejection must precede configuration stages.
+$hook = (Resolve-Path (Join-Path $PSScriptRoot '../windows/chocolatey/tools/chocolateyInstall.ps1')).Path
+$hookOutput = Join-Path $env:RUNNER_TEMP ('sde-hook-rejection-' + [guid]::NewGuid().ToString('N') + '.txt')
+$hookError = $hookOutput + '.err'
+$hookProcess = Start-Process powershell.exe -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$hook`"" -PassThru -RedirectStandardOutput $hookOutput -RedirectStandardError $hookError
+[void]$hookProcess.Handle
+$hookProcess.WaitForExit()
+if ($null -eq $hookProcess.ExitCode -or $hookProcess.ExitCode -eq 0 -or -not (Select-String -LiteralPath $hookError -Pattern 'SDE_SUPERVISOR_REQUIRED:')) { throw 'Actual unsupervised package hook was not rejected.' }
+if ((Test-Path $journal) -or (Select-String -LiteralPath $hookOutput -Pattern '^SKYVIEW_EVENT\|progress\|')) { throw 'Rejected hook started configuration or created a journal.' }
+$hookProcess.Dispose()
 Invoke-SkyviewCoordinated -Mutation -Action {
-    Invoke-SkyviewCoordinated -Action { Write-Host 'SAME_PROCESS_NESTING_OK' }
-    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '$engine'; Invoke-SkyviewCoordinated -Mutation -Action { Write-Output 'CHILD_TRANSACTION_OK' }"
+    Invoke-SkyviewCoordinated -Mutation -RequireParent -Action { Write-Host 'SAME_PROCESS_NESTING_OK' }
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command ". '$engine'; Invoke-SkyviewCoordinated -Mutation -RequireParent -Action { Write-Output 'CHILD_TRANSACTION_OK' }"
     if ($LASTEXITCODE -ne 0) { throw 'Child could not reuse its authenticated transaction.' }
 }
 if (Test-Path $journal) { throw 'Normal completion left a transaction record.' }
@@ -44,6 +71,10 @@ try {
     catch { if ($_.Exception.Message -notlike '*interrupted*mentor*') { throw }; $blocked = $true }
     if (-not $blocked) { throw 'An interrupted transaction was silently repeated.' }
     $journalBefore = [IO.File]::ReadAllBytes($journal)
+    $parentRequired = $false
+    try { Invoke-SkyviewCoordinated -Mutation -RequireParent -Action { throw 'Retained evidence cannot authorize package configuration.' } }
+    catch { if ($_.Exception.Message -notlike 'SDE_SUPERVISOR_REQUIRED:*') { throw }; $parentRequired = $true }
+    if (-not $parentRequired -or [Convert]::ToBase64String([IO.File]::ReadAllBytes($journal)) -ne [Convert]::ToBase64String($journalBefore)) { throw 'Parent-required hook changed interruption evidence.' }
     $incompatible = $false
     try { Invoke-SkyviewCoordinated -ReadOnly -Mutation -Action { throw 'Incompatible modes must not run.' } }
     catch { if ($_.Exception.Message -ne 'A changing operation cannot use read-only coordination.') { throw }; $incompatible = $true }
@@ -76,3 +107,4 @@ try {
     Remove-Item $fixture -Recurse -Force
 }
 Write-Host 'WINDOWS_COORDINATION_SUPERVISION_OK'
+Write-Host 'SDE_WINDOWS_PACKAGE_HOOK_PARENT_REQUIRED_OK'
