@@ -18,8 +18,60 @@ function Assert-SkyviewProtectedPath([string]$Path, [switch]$Gate, [switch]$Anch
     if ($Gate -and ($item.PSIsContainer -or $item.Length -ne 0)) { throw 'Invalid SDE coordination gate.' }
     if (-not $Gate -and -not $item.PSIsContainer) { throw 'Invalid SDE coordination directory.' }
 }
+function Invoke-SkyviewNativeMaintenanceProcess {
+    param([string[]]$Arguments, [switch]$Capture)
+    # Explicit process pipes also work with the installed GUI-subsystem binary.
+    # Drain both streams concurrently, without buffering package logs or killing
+    # installers to enforce a timeout. No Invoke-Expression or shell command text.
+    $application = 'C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe'
+    $quoted = foreach ($argument in $Arguments) {
+        '"' + (($argument -replace '(\\*)"', '$1$1\"') -replace '(\\+)$', '$1$1') + '"'
+    }
+    $start = New-Object Diagnostics.ProcessStartInfo
+    $start.FileName = $application
+    $start.Arguments = $quoted -join ' '
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = New-Object Text.UTF8Encoding($false)
+    $start.StandardErrorEncoding = New-Object Text.UTF8Encoding($false)
+    $process = New-Object Diagnostics.Process
+    $process.StartInfo = $start
+    $captured = New-Object Text.StringBuilder
+    try {
+        if (-not $process.Start()) { throw 'SDE maintenance supervisor could not start.' }
+        $stdout = $process.StandardOutput.ReadLineAsync()
+        $stderr = $process.StandardError.ReadLineAsync()
+        while ($null -ne $stdout -or $null -ne $stderr) {
+            $progress = $false
+            if ($null -ne $stdout -and $stdout.IsCompleted) {
+                $line = $stdout.GetAwaiter().GetResult()
+                if ($null -eq $line) { $stdout = $null }
+                else {
+                    if ($Capture) {
+                        if ($captured.Length + $line.Length -gt 1024) { throw 'Invalid supervisor capability response.' }
+                        [void]$captured.AppendLine($line)
+                    } else { Write-Host $line }
+                    $stdout = $process.StandardOutput.ReadLineAsync()
+                }
+                $progress = $true
+            }
+            if ($null -ne $stderr -and $stderr.IsCompleted) {
+                $line = $stderr.GetAwaiter().GetResult()
+                if ($null -eq $line) { $stderr = $null }
+                else { Write-Host $line; $stderr = $process.StandardError.ReadLineAsync() }
+                $progress = $true
+            }
+            if (-not $progress) { Start-Sleep -Milliseconds 20 }
+        }
+        $process.WaitForExit()
+        [pscustomobject]@{ExitCode=$process.ExitCode;Output=$captured.ToString()}
+    } finally { $process.Dispose() }
+}
 function Invoke-SkyviewCoordinated {
-    param([scriptblock]$Action, [switch]$Mutation, [switch]$ReadOnly)
+    param([scriptblock]$Action, [switch]$Mutation, [switch]$ReadOnly,
+          [string]$EntryPoint, [string[]]$EntryArguments=@())
     if ($Mutation -and $ReadOnly) { throw 'A changing operation cannot use read-only coordination.' }
     $root = $script:SkyviewCoordinationRoot
     Assert-SkyviewProtectedPath 'C:\' -Anchor
@@ -51,6 +103,28 @@ function Invoke-SkyviewCoordinated {
         if (-not $held) { throw 'The supervising SDE transaction was interrupted; mentor review is required.' }
         & $Action
         return
+    }
+    if ($Mutation -and $EntryPoint) {
+        if (-not $administrator) { throw 'System operations require administrator authentication.' }
+        $nativeSession = $null
+        try {
+            # Keep coordinated application replacement out of capability/launch
+            # negotiation. This is only a shared lease, never mutation authority.
+            Assert-SkyviewProtectedPath (Join-Path $root 'sessions.gate') -Gate
+            $nativeSession = [IO.File]::Open((Join-Path $root 'sessions.gate'),'Open','Read','Read')
+            # Older installed apps understand this safe non-GUI mode, but return
+            # no capability. Never send an unknown flag to an older app.
+            $capability = Invoke-SkyviewNativeMaintenanceProcess -Arguments @('--coordination-init') -Capture
+            if ($capability.ExitCode -ne 0 -or $capability.Output.Trim() -cne 'SDE_WINDOWS_MAINTENANCE_SUPERVISOR_V1') {
+                throw 'Install or repair the SDE application to enable compatible maintenance supervision.'
+            }
+            $result = Invoke-SkyviewNativeMaintenanceProcess -Arguments (@('--supervise-windows-maintenance',[IO.Path]::GetFullPath($EntryPoint)) + $EntryArguments)
+            # Reexecute once, never replay $Action or clear the native journal.
+            exit $result.ExitCode
+        } catch [IO.IOException] {
+            if (($_.Exception.HResult -band 0xffff) -eq 32) { exit 75 }
+            throw
+        } finally { if ($nativeSession) { $nativeSession.Dispose() } }
     }
     $session = $null; $operation = $null; $ownedJournal = $false
     $previousToken = $env:SKYVIEW_TRANSACTION_TOKEN
