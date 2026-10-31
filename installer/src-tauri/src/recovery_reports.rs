@@ -162,6 +162,12 @@ pub(crate) fn private_directory(path: &Path) -> Result<()> {
             .create(path)
             .map_err(|_| "Recovery report directory could not be created.")?;
     }
+    existing_private_directory(path)
+}
+// Strictly read-only variant for diagnostic/history lookup: never recreate a
+// directory that disappears concurrently after an existence check.
+pub(crate) fn existing_private_directory(path: &Path) -> Result<()> {
+    ancestors(path)?;
     let m = plain(path, true)?;
     #[cfg(unix)]
     {
@@ -336,11 +342,15 @@ impl Store {
         private_directory(&directory)?;
         Ok(Self { directory })
     }
+    pub fn existing(directory: PathBuf) -> Result<Self> {
+        existing_private_directory(&directory)?;
+        Ok(Self { directory })
+    }
     fn bundle(&self, report_id: &str) -> Result<PathBuf> {
         if !id(report_id) {
             return Err("Invalid report identifier.".into());
         }
-        private_directory(&self.directory)?;
+        existing_private_directory(&self.directory)?;
         let path = self.directory.join(report_id);
         plain(&path, true)?;
         Ok(path)
@@ -522,6 +532,21 @@ mod tests {
             context: None,
         }
     }
+    #[test]
+    fn recovery_reports_read_only_open_never_creates_or_recreates_report_storage() {
+        let f = Fixture::new();
+        let absent = f.root.join("absent");
+        assert!(Store::existing(absent.clone()).is_err());
+        assert!(!absent.exists());
+        let summary = summary();
+        f.store.save(&summary).unwrap();
+        let reader = Store::existing(f.root.join("reports")).unwrap();
+        f.store.delete(&summary.report_id).unwrap();
+        fs::remove_dir(f.root.join("reports")).unwrap();
+        assert!(reader.load(&summary.report_id).is_err());
+        assert!(!f.root.join("reports").exists());
+    }
+
     #[test]
     fn recovery_reports_context_roundtrip_preserves_user_provenance_and_reads_legacy_reports() {
         use crate::recovery_context::{Context, UserIncident};

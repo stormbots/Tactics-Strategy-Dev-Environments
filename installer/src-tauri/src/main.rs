@@ -7,6 +7,7 @@ mod process;
 mod protocol;
 mod recovery_acknowledgment;
 mod recovery_context;
+mod recovery_history;
 mod recovery_reports;
 mod recovery_summary;
 mod recovery_user;
@@ -575,6 +576,7 @@ fn main() {
             recovery_summary::inspect_user_recovery_acknowledgment,
             recovery_summary::list_recovery_reports,
             recovery_summary::read_recovery_report,
+            recovery_summary::read_recovery_report_details,
             recovery_summary::delete_recovery_report,
             inspect_self_update,
             set_self_update_paused,

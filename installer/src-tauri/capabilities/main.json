@@ -20,6 +20,7 @@
     "allow-inspect-user-recovery-acknowledgment",
     "allow-list-recovery-reports",
     "allow-read-recovery-report",
+    "allow-read-recovery-report-details",
     "allow-delete-recovery-report",
     "allow-inspect-self-update",
     "allow-set-self-update-paused",

@@ -48,6 +48,7 @@ fn main() {
             "inspect_user_recovery_acknowledgment",
             "list_recovery_reports",
             "read_recovery_report",
+            "read_recovery_report_details",
             "delete_recovery_report",
             "inspect_self_update",
             "set_self_update_paused",

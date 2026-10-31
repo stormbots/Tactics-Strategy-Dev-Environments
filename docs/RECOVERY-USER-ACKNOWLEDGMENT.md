@@ -1,6 +1,11 @@
 # Evidence-preserving acknowledgment for this account's incident
 
 Branch: `codex/recovery-user-acknowledgment`.
+Accepted at `2d4da242b9f133d9ac42115c34fbdd84bb25a5df` in full successful
+[Build 41153070913](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41153070913):
+Windows trust 84/84, root Linux 99/99, both native jobs and inherited gates passed.
+The [report-history observation increment](RECOVERY-HISTORY-OBSERVATIONS.md) follows;
+pending-CI language below records this task's original checkpoint.
 Base: accepted #128 at `36a23adcce4aeec74baea32beb84fcfa3b28f287`,
 [Build 41143508845](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41143508845).
 Windows trust passed 76/76; root Linux passed 91/91. User/report context and native

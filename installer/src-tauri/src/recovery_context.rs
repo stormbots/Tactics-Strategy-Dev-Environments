@@ -165,7 +165,25 @@ pub(crate) fn read_evidence(
     if self::identity(&file)? != identity {
         return Err("User evidence changed while being read; Check Again.".into());
     }
-    let record: Record = serde_json::from_slice(&bytes).map_err(|_| "User evidence is invalid.")?;
+    let context = preserved_context(&bytes, expected, captured_at)?;
+    let mut digest = Sha256::new();
+    digest.update(identity.as_bytes());
+    digest.update([0]);
+    digest.update(&bytes);
+    Ok(Evidence {
+        context,
+        bytes,
+        generation: format!("{:x}", digest.finalize()),
+        _file: file,
+    })
+}
+
+// Decode a retained diagnostic copy, not a current file identity or permit.
+pub(crate) fn preserved_context(bytes: &[u8], expected: &str, captured_at: u64) -> Result<Context> {
+    if bytes.len() as u64 > MAX_RECORD {
+        return Err("User evidence is oversized.".into());
+    }
+    let record: Record = serde_json::from_slice(bytes).map_err(|_| "User evidence is invalid.")?;
     if record.schema != 1
         || record.acknowledged
         || record
@@ -185,16 +203,7 @@ pub(crate) fn read_evidence(
         },
     };
     context.validate(expected, captured_at)?;
-    let mut digest = Sha256::new();
-    digest.update(identity.as_bytes());
-    digest.update([0]);
-    digest.update(&bytes);
-    Ok(Evidence {
-        context,
-        bytes,
-        generation: format!("{:x}", digest.finalize()),
-        _file: file,
-    })
+    Ok(context)
 }
 
 #[cfg(unix)]

@@ -9,6 +9,25 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_report_history_is_read_only_scoped_and_not_execution_authority(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs')
+        details = source.split('pub async fn read_recovery_report_details', 1)[1].split('pub async fn delete_recovery_report', 1)[0]
+        for forbidden in ('recovery::submit', 'journal::acknowledge', 'record_acknowledgment(', 'mutation::', 'process::'):
+            self.assertNotIn(forbidden, details)
+        self.assertIn('sanitize(&app', details)
+        self.assertIn('Store::existing(', details)
+        self.assertNotIn('store(&app)', details)
+        self.assertIn('recovery_reports::html(&summary)', details)
+        self.assertIn('inspect_acknowledgment()', details)
+        user = self.text('installer/src-tauri/src/recovery_user.rs').split('pub fn inspect_report', 1)[1].split('pub fn with_report', 1)[0]
+        self.assertIn('existing_private_directory', user)
+        self.assertNotIn('files::private_directory(', user)
+        self.assertNotIn('publish(', user)
+        self.assertIn('Some(report_id)', user)
+        self.assertIn('.take(129)', user)
+        policy = self.text('installer/src-tauri/src/recovery_history.rs')
+        self.assertIn('continuation: "not_recorded"', policy)
+        self.assertIn('../../installer/src-tauri/src/recovery_history.rs', self.text('coordination/src/lib.rs'))
     def test_recovery_reports_are_user_artifacts_not_acknowledgment_authority(self):
         source = self.text('installer/src-tauri/src/recovery_summary.rs')
         self.assertIn('.app_data_dir()', source)

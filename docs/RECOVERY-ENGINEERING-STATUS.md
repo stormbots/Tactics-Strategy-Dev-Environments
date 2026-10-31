@@ -1,7 +1,14 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [evidence-preserving user acknowledgment](RECOVERY-USER-ACKNOWLEDGMENT.md),
-branch `codex/recovery-user-acknowledgment`, pending native validation.
+Current increment: [read-only report acknowledgment observations](RECOVERY-HISTORY-OBSERVATIONS.md),
+branch `codex/recovery-history-observations`, pending native validation.
+Evidence-preserving per-user acknowledgment (#129) passed at
+`2d4da242b9f133d9ac42115c34fbdd84bb25a5df` in
+[Build 41153070913](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41153070913).
+Windows trust 84/84 and root Linux 99/99 passed, with eight per-user tests on each
+platform. Both native jobs and inherited actual Mint 22.3/Windows SYSTEM signed
+upgrades passed. Legacy user-journal dismissal/overwrite and final UI integration
+remain outstanding; no partial-stack merge or release occurred.
 Incident provenance and actual Validation timestamps (#128) passed at
 `36a23adcce4aeec74baea32beb84fcfa3b28f287` in
 [Build 41143508845](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41143508845).

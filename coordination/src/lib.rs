@@ -28,6 +28,9 @@ mod recovery_acknowledgment_flow_tests;
 #[allow(dead_code)]
 mod recovery_context;
 #[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_history.rs"]
+mod recovery_history;
+#[cfg(test)]
 use recovery_report_store_tests as recovery_reports;
 #[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_reports.rs"]

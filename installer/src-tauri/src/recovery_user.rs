@@ -139,6 +139,91 @@ impl Store {
     ) -> Result<Decision> {
         self.acknowledge_at(evidence, report_id, now, |_| Ok(()))
     }
+    /// Read only retained decisions explicitly linked to this report. Never
+    /// infer a generation from UUID/identical context, or require a current
+    /// journal: it may legitimately have been replaced by a later operation.
+    pub fn inspect_report(
+        &self,
+        report_id: &str,
+        expected: &recovery_context::UserIncident,
+        now: u64,
+    ) -> Result<Option<Decision>> {
+        if !canonical(report_id) || !canonical(&expected.id) || now == 0 {
+            return Err("Invalid report history request.".into());
+        }
+        let expected_context = Context::User {
+            incident: expected.clone(),
+        };
+        expected_context.validate(&expected.id, now)?;
+        let root = self.app_data.join("recovery-state");
+        let directory = root.join(&expected.id);
+        for path in [&root, &directory] {
+            match fs::symlink_metadata(path) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+                Err(_) => return Err("Retained acknowledgment history is unavailable.".into()),
+                Ok(_) => files::existing_private_directory(path)?,
+            }
+        }
+        // Bounded read, not a retention limit. Excess data yields unavailable;
+        // nothing is deleted or silently declared unacknowledged.
+        let entries = fs::read_dir(&directory)
+            .map_err(|_| "Retained history is unavailable.")?
+            .take(129)
+            .collect::<std::io::Result<Vec<_>>>()
+            .map_err(|_| "Retained history is unavailable.")?;
+        if entries.len() > 128 {
+            return Err(
+                "History lookup limit reached; acknowledgment status is unavailable.".into(),
+            );
+        }
+        let mut observed = None;
+        for entry in entries {
+            let generation = entry.file_name().to_string_lossy().into_owned();
+            if generation.len() != 64
+                || !generation
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            {
+                return Err("Unexpected retained history entry.".into());
+            }
+            let path = entry.path();
+            files::existing_private_directory(&path)?;
+            let Some(bytes) = optional(&path.join("acknowledged.json"), 4096)? else {
+                continue;
+            };
+            let receipt: Receipt = serde_json::from_slice(&bytes)
+                .map_err(|_| "Retained acknowledgment is invalid.")?;
+            if receipt.schema != 1
+                || receipt.generation != generation
+                || receipt.decision.incident_id != expected.id
+                || receipt.decision.acknowledged_at == 0
+                || receipt.decision.acknowledged_at > now
+                || receipt
+                    .decision
+                    .report_id
+                    .as_ref()
+                    .is_some_and(|id| !canonical(id))
+            {
+                return Err("Retained acknowledgment is invalid or stale.".into());
+            }
+            // A valid decision linked to another report is not evidence about
+            // this one, even when its source UUID and bytes look identical.
+            if receipt.decision.report_id.as_deref() != Some(report_id) {
+                continue;
+            }
+            let original = files::read(&path.join("evidence.json"), 16 * 1024)?;
+            if receipt.evidence_sha256 != format!("{:x}", Sha256::digest(&original))
+                || recovery_context::preserved_context(&original, &expected.id, now)?
+                    != expected_context
+                || receipt.decision.acknowledged_at < expected.observed_at
+                || observed.is_some()
+            {
+                return Err("Retained report binding is changed, ambiguous or unreadable.".into());
+            }
+            observed = Some(receipt.decision);
+        }
+        Ok(observed)
+    }
     pub fn with_report(
         &self,
         evidence: &Evidence,
@@ -564,6 +649,88 @@ mod tests {
         assert_eq!(outcome.report_id, Some(report));
         assert!(outcome.acknowledgment.is_none());
         assert!(!f.app.join("recovery-state").exists());
+    }
+
+    #[test]
+    fn user_history_report_binding_survives_current_journal_replacement_without_acknowledging_it() {
+        let f = Fixture::new();
+        let store = f.store();
+        let evidence = f.evidence();
+        let Context::User { incident } = evidence.context.clone() else {
+            panic!("user source")
+        };
+        let report = uuid::Uuid::new_v4().to_string();
+        let original = evidence.bytes.clone();
+        let decision = store
+            .acknowledge(&evidence, Some(report.clone()), 100)
+            .unwrap();
+        drop(evidence);
+        fs::rename(f.path(), f.app.join("earlier-journal.json")).unwrap();
+        fs::write(f.path(), original).unwrap();
+        assert_eq!(
+            store.inspect_report(&report, &incident, 101).unwrap(),
+            Some(decision)
+        );
+        assert!(store.inspect(&f.evidence(), 101).unwrap().is_none());
+        assert!(store
+            .inspect_report(&uuid::Uuid::new_v4().to_string(), &incident, 101)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn user_history_absence_is_read_only_and_invalid_or_changed_binding_is_not_a_decision() {
+        let f = Fixture::new();
+        let store = f.store();
+        let evidence = f.evidence();
+        let Context::User { incident } = evidence.context.clone() else {
+            panic!("user source")
+        };
+        let report = uuid::Uuid::new_v4().to_string();
+        assert!(store
+            .inspect_report(&report, &incident, 100)
+            .unwrap()
+            .is_none());
+        assert!(!f.app.join("recovery-state").exists());
+        assert!(store.inspect_report("../private", &incident, 100).is_err());
+        store
+            .acknowledge(&evidence, Some(report.clone()), 100)
+            .unwrap();
+        assert!(store.inspect_report(&report, &incident, 99).is_err());
+        let saved = store.directory(&evidence).unwrap().join("evidence.json");
+        fs::write(&saved, b"damaged retained bytes").unwrap();
+        assert!(store.inspect_report(&report, &incident, 101).is_err());
+        assert_eq!(fs::read(saved).unwrap(), b"damaged retained bytes");
+        assert_eq!(fs::read(f.path()).unwrap(), evidence.bytes);
+    }
+
+    #[test]
+    fn user_history_lookup_bound_never_purges_or_reports_a_false_negative() {
+        let f = Fixture::new();
+        let store = f.store();
+        let evidence = f.evidence();
+        let Context::User { incident } = evidence.context.clone() else {
+            panic!("user source")
+        };
+        let report = uuid::Uuid::new_v4().to_string();
+        store
+            .acknowledge(&evidence, Some(report.clone()), 100)
+            .unwrap();
+        let parent = store
+            .directory(&evidence)
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        for generation in 0..128 {
+            files::private_directory(&parent.join(format!("{generation:064x}"))).unwrap();
+        }
+        assert!(store
+            .inspect_report(&report, &incident, 101)
+            .unwrap_err()
+            .contains("limit"));
+        assert_eq!(fs::read_dir(parent).unwrap().count(), 129);
+        assert!(store.inspect(&evidence, 101).unwrap().is_some());
     }
 
     #[cfg(windows)]

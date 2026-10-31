@@ -226,6 +226,56 @@ pub async fn read_recovery_report(
     .map_err(|_| "Report read task is unavailable.".to_string())?
 }
 #[tauri::command]
+pub async fn read_recovery_report_details(
+    app: tauri::AppHandle,
+    report_id: String,
+) -> Result<ReportDetails, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = app
+            .path()
+            .app_data_dir()
+            .map_err(|_| "Application data is unavailable.")?;
+        let reports = Store::existing(directory.join("recovery-reports"))?;
+        let mut summary = reports.load(&report_id)?;
+        sanitize(&app, &mut summary);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "History observation time unavailable.")?
+            .as_secs();
+        let acknowledgment = crate::recovery_history::observe(
+            &summary,
+            now,
+            || {
+                sde_coordination::recovery::inspect_acknowledgment()
+                    .map(|record| record.map(|record| (record.incident_id, record.acknowledged_at)))
+                    .map_err(|_| ())
+            },
+            |report, incident| {
+                let directory = app.path().app_data_dir().map_err(|_| ())?;
+                crate::recovery_user::Store::new(directory)
+                    .inspect_report(report, incident, now)
+                    .map_err(|_| ())
+            },
+        );
+        Ok(ReportDetails {
+            report_id,
+            html: recovery_reports::html(&summary),
+            acknowledgment,
+        })
+    })
+    .await
+    .map_err(|_| "History observation task is unavailable.".to_string())?
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportDetails {
+    pub report_id: String,
+    pub html: String,
+    pub acknowledgment: crate::recovery_history::Observation,
+}
+
+#[tauri::command]
 pub async fn delete_recovery_report(
     app: tauri::AppHandle,
     report_id: String,
