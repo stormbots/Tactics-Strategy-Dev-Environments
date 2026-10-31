@@ -9,6 +9,7 @@ mod recovery_acknowledgment;
 mod recovery_context;
 mod recovery_reports;
 mod recovery_summary;
+mod recovery_user;
 mod schedule;
 mod support;
 mod updates;
@@ -570,6 +571,8 @@ fn main() {
             save_support_report,
             recovery_summary::save_recovery_summary,
             recovery_summary::acknowledge_recovery_incident,
+            recovery_summary::acknowledge_user_recovery_incident,
+            recovery_summary::inspect_user_recovery_acknowledgment,
             recovery_summary::list_recovery_reports,
             recovery_summary::read_recovery_report,
             recovery_summary::delete_recovery_report,

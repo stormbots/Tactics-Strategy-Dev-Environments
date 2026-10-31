@@ -8,9 +8,9 @@ package-hook parent boundary passed native validation. The backend execution-par
 review and T5 application-updater backend integration passed native CI. Current
 T6 read-only diagnosis/self-service guidance passed CI. The current bounded T7
 per-user report storage foundation and single-action machine intent controller
-passed CI. User-only provenance and actual Validation timestamps are pending CI;
-retained acknowledgment/history integration, user-only acknowledgment and final
-frontend safety-observation/resume work remain.
+passed CI, as did user-only provenance and actual Validation timestamps.
+Evidence-preserving user-only acknowledgment is pending CI; retained history,
+safe user-journal lifecycle and final frontend safety-observation/resume remain.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.

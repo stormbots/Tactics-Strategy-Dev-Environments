@@ -44,6 +44,8 @@ fn main() {
             "save_support_report",
             "save_recovery_summary",
             "acknowledge_recovery_incident",
+            "acknowledge_user_recovery_incident",
+            "inspect_user_recovery_acknowledgment",
             "list_recovery_reports",
             "read_recovery_report",
             "delete_recovery_report",

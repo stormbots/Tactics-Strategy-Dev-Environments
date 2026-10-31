@@ -154,6 +154,55 @@ pub async fn acknowledge_recovery_incident(
     .map_err(|_| "Acknowledgment task ended without a confirmed result. Check Again; do not assume acknowledgment or completion.".to_string())?
 }
 #[tauri::command]
+pub async fn acknowledge_user_recovery_incident(
+    app: tauri::AppHandle,
+    incident_id: String,
+    confirmed: bool,
+    validation: Option<Validation>,
+) -> Result<crate::recovery_user::Outcome, String> {
+    if !confirmed {
+        return Err("Confirm acknowledgment of this user incident before continuing.".into());
+    }
+    let guard = app.state::<crate::Busy>().enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "Observation time unavailable.")?.as_secs();
+        // Keep this exact opened source while capturing a sanitized report.
+        // Raw bytes/native generation never enter IPC or the shareable report.
+        let evidence = recovery_context::read_evidence(&directory, &incident_id, now)?;
+        let summary = capture(&app, incident_id, validation, Source::User)?;
+        if summary.context.as_ref() != Some(&evidence.context) {
+            return Err("User evidence changed; Check Again before acknowledging it.".into());
+        }
+        crate::recovery_user::Store::new(directory).with_report(&evidence, summary.captured_at,
+            || store(&app)?.save(&summary))
+    }).await.map_err(|_| "User acknowledgment task ended without a confirmed result. Check Again; no operation was launched.".to_string())?
+}
+
+#[tauri::command]
+pub async fn inspect_user_recovery_acknowledgment(
+    app: tauri::AppHandle,
+    incident_id: String,
+) -> Result<Option<crate::recovery_user::Decision>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = app
+            .path()
+            .app_data_dir()
+            .map_err(|_| "Application data is unavailable.")?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "Observation time unavailable.")?
+            .as_secs();
+        let evidence = recovery_context::read_evidence(&directory, &incident_id, now)?;
+        crate::recovery_user::Store::new(directory).inspect(&evidence, now)
+    })
+    .await
+    .map_err(|_| "User acknowledgment observation is unavailable.".to_string())?
+}
+
+#[tauri::command]
 pub async fn list_recovery_reports(
     app: tauri::AppHandle,
     cursor: Option<String>,

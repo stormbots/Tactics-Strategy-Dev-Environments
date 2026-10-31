@@ -147,7 +147,8 @@ fn ancestors(path: &Path) -> Result<()> {
     }
     Ok(())
 }
-fn private_directory(path: &Path) -> Result<()> {
+// Shared only with the per-user acknowledgment store. Never machine authority.
+pub(crate) fn private_directory(path: &Path) -> Result<()> {
     ancestors(path)?;
     if !path.exists() {
         let mut builder = fs::DirBuilder::new();
@@ -222,7 +223,7 @@ fn open(path: &Path, create: bool) -> Result<File> {
     }
     Ok(file)
 }
-fn read(path: &Path, max: u64) -> Result<Vec<u8>> {
+pub(crate) fn read(path: &Path, max: u64) -> Result<Vec<u8>> {
     let mut bytes = Vec::new();
     open(path, false)?
         .take(max + 1)
@@ -233,13 +234,13 @@ fn read(path: &Path, max: u64) -> Result<Vec<u8>> {
     }
     Ok(bytes)
 }
-fn write(path: &Path, bytes: &[u8]) -> Result<()> {
+pub(crate) fn write(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut file = open(path, true)?;
     file.write_all(bytes)
         .and_then(|_| file.sync_all())
         .map_err(|_| "Recovery report save failed.".into())
 }
-fn sync(path: &Path) -> Result<()> {
+pub(crate) fn sync(path: &Path) -> Result<()> {
     #[cfg(unix)]
     {
         File::open(path)

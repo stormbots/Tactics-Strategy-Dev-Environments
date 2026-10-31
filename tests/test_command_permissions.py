@@ -8,6 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CommandPermissions(unittest.TestCase):
+    def test_local_main_has_unique_module_declarations(self):
+        source = (ROOT / 'installer/src-tauri/src/main.rs').read_text(encoding='utf-8')
+        modules = re.findall(r'^mod\s+(\w+)\s*;', source, re.M)
+        self.assertEqual(len(modules), len(set(modules)), 'Duplicate Tauri module declaration')
+
     def test_frontend_commands_are_registered_and_granted_to_main(self):
         source = ROOT / 'installer/src'
         invoked = set()

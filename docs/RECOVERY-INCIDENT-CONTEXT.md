@@ -1,6 +1,11 @@
 # Recovery incident provenance and Validation collection time
 
 Branch: `codex/recovery-incident-context`.
+Accepted at `36a23adcce4aeec74baea32beb84fcfa3b28f287` in full successful
+[Build 41143508845](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41143508845).
+Windows trust 76/76, root Linux 91/91, native timestamp tests and inherited gates
+passed. The subsequent [user-acknowledgment increment](RECOVERY-USER-ACKNOWLEDGMENT.md)
+continues T7. Pending-CI language below records this context increment's original handoff.
 Base: accepted #127 at `996ec223261d15605cf12a6f3c281b5eb3a06825`,
 [Build 41139930489](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41139930489).
 Windows trust passed 72/72; root-required Linux passed 86/86. Both protected

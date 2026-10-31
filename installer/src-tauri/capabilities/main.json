@@ -16,6 +16,8 @@
     "allow-save-support-report",
     "allow-save-recovery-summary",
     "allow-acknowledge-recovery-incident",
+    "allow-acknowledge-user-recovery-incident",
+    "allow-inspect-user-recovery-acknowledgment",
     "allow-list-recovery-reports",
     "allow-read-recovery-report",
     "allow-delete-recovery-report",

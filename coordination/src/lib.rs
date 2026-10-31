@@ -28,9 +28,15 @@ mod recovery_acknowledgment_flow_tests;
 #[allow(dead_code)]
 mod recovery_context;
 #[cfg(test)]
+use recovery_report_store_tests as recovery_reports;
+#[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_reports.rs"]
 #[allow(dead_code)]
 mod recovery_report_store_tests;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_user.rs"]
+#[allow(dead_code)]
+mod recovery_user;
 pub mod safety;
 #[cfg(windows)]
 mod windows;

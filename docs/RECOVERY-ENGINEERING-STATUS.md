@@ -1,7 +1,14 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [incident provenance and Validation collection time](RECOVERY-INCIDENT-CONTEXT.md),
-branch `codex/recovery-incident-context`, pending native validation.
+Current increment: [evidence-preserving user acknowledgment](RECOVERY-USER-ACKNOWLEDGMENT.md),
+branch `codex/recovery-user-acknowledgment`, pending native validation.
+Incident provenance and actual Validation timestamps (#128) passed at
+`36a23adcce4aeec74baea32beb84fcfa3b28f287` in
+[Build 41143508845](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41143508845).
+Windows trust passed 76/76 and root Linux 91/91, including user/report context
+tests; native protocol timestamp tests passed on both platforms. General checks,
+both native/trust jobs and inherited recovery/signed-upgrade gates passed with
+actual Mint 22.3. This is provenance acceptance, not final history/admission UI.
 Single-action machine acknowledgment controller (#127) passed at
 `996ec223261d15605cf12a6f3c281b5eb3a06825` in
 [Build 41139930489](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41139930489).

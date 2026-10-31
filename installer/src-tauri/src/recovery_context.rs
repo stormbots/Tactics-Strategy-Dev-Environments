@@ -1,5 +1,6 @@
 //! Diagnostic provenance only. Never used to acknowledge or authorize work.
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{fs, io::Read, path::Path};
 
 type Result<T> = std::result::Result<T, String>;
@@ -13,7 +14,7 @@ pub enum Source {
     User,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct UserIncident {
     pub id: String,
@@ -23,7 +24,7 @@ pub struct UserIncident {
     pub observed_at: u64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(tag = "source", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Context {
     Machine {
@@ -77,6 +78,23 @@ struct Record {
 }
 
 pub fn read_user(directory: &Path, expected: &str, captured_at: u64) -> Result<Context> {
+    Ok(read_evidence(directory, expected, captured_at)?.context)
+}
+
+// Not serializable or constructible from IPC. Keep the original opened handle
+// alive while a caller preserves the snapshot; Windows denies writer/delete
+// sharing. Unix callers must still recheck the path's generation before commit.
+pub(crate) struct Evidence {
+    pub context: Context,
+    pub bytes: Vec<u8>,
+    pub generation: String,
+    _file: fs::File,
+}
+pub(crate) fn read_evidence(
+    directory: &Path,
+    expected: &str,
+    captured_at: u64,
+) -> Result<Evidence> {
     if !canonical(expected) || !directory.is_absolute() {
         return Err("Invalid user incident request.".into());
     }
@@ -135,12 +153,17 @@ pub fn read_user(directory: &Path, expected: &str, captured_at: u64) -> Result<C
             return Err("User evidence links are unsafe.".into());
         }
     }
+    let identity = identity(&file)?;
     let mut bytes = Vec::new();
-    file.take(MAX_RECORD + 1)
+    (&file)
+        .take(MAX_RECORD + 1)
         .read_to_end(&mut bytes)
         .map_err(|_| "User evidence read failed.")?;
     if bytes.len() as u64 > MAX_RECORD {
         return Err("User evidence is oversized.".into());
+    }
+    if self::identity(&file)? != identity {
+        return Err("User evidence changed while being read; Check Again.".into());
     }
     let record: Record = serde_json::from_slice(&bytes).map_err(|_| "User evidence is invalid.")?;
     if record.schema != 1
@@ -162,7 +185,55 @@ pub fn read_user(directory: &Path, expected: &str, captured_at: u64) -> Result<C
         },
     };
     context.validate(expected, captured_at)?;
-    Ok(context)
+    let mut digest = Sha256::new();
+    digest.update(identity.as_bytes());
+    digest.update([0]);
+    digest.update(&bytes);
+    Ok(Evidence {
+        context,
+        bytes,
+        generation: format!("{:x}", digest.finalize()),
+        _file: file,
+    })
+}
+
+#[cfg(unix)]
+fn identity(file: &fs::File) -> Result<String> {
+    use std::os::unix::fs::MetadataExt;
+    let metadata = file
+        .metadata()
+        .map_err(|_| "User evidence identity unavailable.")?;
+    Ok(format!(
+        "{}:{}:{}:{}:{}:{}:{}",
+        metadata.dev(),
+        metadata.ino(),
+        metadata.ctime(),
+        metadata.ctime_nsec(),
+        metadata.mtime(),
+        metadata.mtime_nsec(),
+        metadata.len()
+    ))
+}
+#[cfg(windows)]
+fn identity(file: &fs::File) -> Result<String> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::*;
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
+        return Err("User evidence identity unavailable.".into());
+    }
+    Ok(format!(
+        "{}:{}:{}:{}:{}:{}:{}:{}:{}",
+        info.dwVolumeSerialNumber,
+        info.nFileIndexHigh,
+        info.nFileIndexLow,
+        info.ftCreationTime.dwHighDateTime,
+        info.ftCreationTime.dwLowDateTime,
+        info.ftLastWriteTime.dwHighDateTime,
+        info.ftLastWriteTime.dwLowDateTime,
+        info.nFileSizeHigh,
+        info.nFileSizeLow
+    ))
 }
 
 fn linked(metadata: &fs::Metadata) -> bool {

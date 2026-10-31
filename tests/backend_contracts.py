@@ -64,6 +64,26 @@ class Backends(unittest.TestCase):
         report = self.text('installer/src/supportReport.ts')
         self.assertNotIn('collectedAt: input.validationComplete ? new Date()', report)
         self.assertIn('input.validationCollectedAt', report)
+    def test_user_acknowledgment_preserves_evidence_separately_from_reports_and_machine_authority(self):
+        source = self.text('installer/src-tauri/src/recovery_user.rs').split('#[cfg(test)]', 1)[0]
+        self.assertIn('.join("recovery-state")', source)
+        self.assertIn('"evidence.json"', source)
+        self.assertIn('"acknowledged.json"', source)
+        self.assertIn('RENAME_NOREPLACE', source)
+        self.assertIn('MOVEFILE_WRITE_THROUGH', source)
+        self.assertNotIn('MOVEFILE_REPLACE_EXISTING', source)
+        self.assertNotIn('remove_file', source)
+        self.assertNotIn('sde_coordination', source)
+        self.assertLess(source.index('publish(&directory, "evidence.json"'), source.index('"acknowledged.json",\n'))
+        commands = self.text('installer/src-tauri/src/recovery_summary.rs')
+        user = commands.split('pub async fn acknowledge_user_recovery_incident', 1)[1].split('pub async fn inspect_user_recovery_acknowledgment', 1)[0]
+        self.assertIn('if !confirmed', user)
+        self.assertIn('app.state::<crate::Busy>().enter()', user)
+        self.assertIn('Source::User', user)
+        self.assertIn('.with_report(', user)
+        self.assertNotIn('recovery::submit', user)
+        self.assertNotIn('journal::acknowledge', user)
+        self.assertIn('../../installer/src-tauri/src/recovery_user.rs', self.text('coordination/src/lib.rs'))
     def test_linux_integrity_manifest_matches_shipped_sources(self):
         entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
         self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh'}.issubset(entries))
