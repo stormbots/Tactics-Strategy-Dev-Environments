@@ -1,6 +1,11 @@
 # Selected history-view deletion, separate from operational authority
 
-Branch: `codex/recovery-history-view-deletion`. Bounded T7/T8 increment; native/browser CI pending.
+Branch: `codex/recovery-history-view-deletion`. Accepted at
+`f1e4941b07b248d7ec39e87afcb5511b48797c14` in
+[Build 41247275524](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41247275524).
+All 170 frontend/101 browser tests, root Linux 149/149, Windows trust 134/134,
+native Tauri Windows 104/104 and Linux 102/102 and inherited signed-upgrade gates
+passed. The earlier Linux fixture-isolation failure below is resolved.
 Base #136 `9f0fd91256af72538f98a1aca1708130fb25ad36` accepted in
 [Build 41240901801](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41240901801).
 

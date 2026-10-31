@@ -36,6 +36,9 @@ mod recovery_acknowledgment_flow_tests;
 #[allow(dead_code)]
 mod recovery_context;
 #[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_diagnostics.rs"]
+mod recovery_diagnostics;
+#[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_history.rs"]
 mod recovery_history;
 #[cfg(test)]

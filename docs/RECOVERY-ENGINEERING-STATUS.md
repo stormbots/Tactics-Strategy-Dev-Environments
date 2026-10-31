@@ -1,18 +1,26 @@
 # Interrupted-operation recovery: engineering status
 
-CI correction pending for #137: initial head
+Current increment: [unavailable-source diagnostics](RECOVERY-UNAVAILABLE-DIAGNOSTICS.md),
+branch `codex/recovery-unavailable-diagnostics`, pending native/browser CI.
+#137 is accepted at `f1e4941b07b248d7ec39e87afcb5511b48797c14` in
+[Build 41247275524](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41247275524):
+170 frontend/101 browser tests, root Linux 149/149, Windows trust 134/134,
+native Tauri Windows 104/104 and Linux 102/102 passed with all signed-upgrade and
+inherited gates. The two earlier root failures and fork regression are resolved.
+
+Historical CI correction for #137: initial head
 `0e196a2951a6d2106a11fe633de1ebd66fb7b2bd` / Build
 [41244249012](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41244249012)
 failed Linux root-owned contracts (146 passed, two `Busy` failures in bootstrap
-and standard-user fixture setup). Other jobs passed, but #137 is not accepted.
+and standard-user fixture setup). Other jobs passed, but that head was not accepted.
 A deterministic unprivileged Linux regression reproduces foreign-fork retention
 of a CLOEXEC lease until exec. Test-only shared isolation now covers protected
 and account gate fixtures plus independent process-creating probes. Production
-locking, assertions and inherited native gates are unchanged. Full replacement-
-head CI must pass before the next completeness increment.
+locking, assertions and inherited native gates are unchanged. Replacement-head
+CI passed as recorded above.
 
-Current increment: [selected history-view deletion](RECOVERY-HISTORY-VIEW-DELETION.md),
-branch `codex/recovery-history-view-deletion`, pending native/browser CI. This hides
+Accepted increment: [selected history-view deletion](RECOVERY-HISTORY-VIEW-DELETION.md),
+branch `codex/recovery-history-view-deletion`. This hides
 only eligible displayed snapshots for the current account, never operational state.
 Report-independent incident observations (#136) passed at
 `9f0fd91256af72538f98a1aca1708130fb25ad36` in

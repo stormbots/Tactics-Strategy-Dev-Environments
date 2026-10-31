@@ -1,5 +1,54 @@
 import { expect, it, vi } from "vitest";
 import { supportHtml, supportSnapshot } from "./supportReport";
+it("shares unavailable recovery categories without exporting unknown provider fields or implying no incident", () => {
+  const recovery = {
+    observedAt: 100,
+    machineEvidence: "unavailable",
+    accountEvidence: "unavailable",
+    accountDecision: "unavailable",
+    machineActivity: "unknown",
+    machineActivityReason: "native_inspection_unavailable",
+    machinePackageHealth: "unknown",
+    machineTrust: "unknown",
+    machineRestart: "unavailable",
+    machineSafetyDecision: "block_trust_unknown",
+    rawJournal: "synthetic-private-secret",
+    generation: "private-generation",
+  };
+  const report = supportSnapshot({
+    context: { deviceName: "TEST", logs: null, recovery },
+    platform: "Windows",
+    applicationVersion: "1",
+    checks: [],
+    validationComplete: false,
+    incident: null,
+    maintenance: null,
+    includeLogs: false,
+  });
+  const html = supportHtml(report);
+  expect(html).toContain("Read-only recovery findings");
+  expect(html).toContain("Account evidence</dt><dd>unavailable");
+  expect(html).toContain("does not establish absence");
+  expect(html).not.toContain("No interrupted operation was recorded");
+  expect(JSON.stringify(report)).not.toMatch(
+    /synthetic-private-secret|private-generation|rawJournal/,
+  );
+  recovery.machineEvidence = "<script>unsafe</script>";
+  expect(
+    supportHtml(
+      supportSnapshot({
+        context: { deviceName: "TEST", logs: null, recovery },
+        platform: "Mint",
+        applicationVersion: "1",
+        checks: [],
+        validationComplete: false,
+        incident: null,
+        maintenance: null,
+        includeLogs: false,
+      }),
+    ),
+  ).toContain("&lt;script&gt;unsafe&lt;/script&gt;");
+});
 
 it("produces a self-contained script-free report and omits logs by default", () => {
   vi.useFakeTimers();

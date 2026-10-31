@@ -11,6 +11,7 @@ mod protocol;
 mod recovery_acknowledgment;
 mod recovery_context;
 mod recovery_history;
+mod recovery_diagnostics;
 mod history_views;
 mod recovery_reports;
 mod recovery_preflight;
@@ -344,8 +345,9 @@ fn acknowledge_operation_incident(app: tauri::AppHandle, id: String) -> Result<(
 }
 
 #[tauri::command]
-fn support_context(app: tauri::AppHandle, include_logs: bool) -> Result<support::Context, String> {
-    support::context(&app, include_logs)
+async fn support_context(app: tauri::AppHandle, include_logs: bool) -> Result<support::Context, String> {
+    tauri::async_runtime::spawn_blocking(move || support::context(&app, include_logs))
+        .await.map_err(|_| "Support diagnostics task is unavailable.".to_string())?
 }
 
 #[tauri::command]

@@ -15,8 +15,8 @@ The native Recovery observation/admission contract and Recovery findings,
 acknowledgment/report and ordinary-review continuation UI passed native/browser CI.
 Retained summary history/view/share-copy export/deletion passed native/browser CI.
 Read-only report-independent minimum incident observations passed CI. Selected
-per-account history-view deletion is pending CI; malformed/unavailable-source
-completeness and final integration/UAT remain.
+per-account history-view deletion passed CI. Unavailable-source support diagnostics
+are pending CI; remaining edge-case completeness and final integration/UAT remain.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.

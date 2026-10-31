@@ -33,6 +33,11 @@ export function RecoveryPage({
 }) {
   const canAcknowledge =
     !!state && (state.canAcknowledgeMachine || state.canAcknowledgeUser);
+  const accountUnavailable =
+    !!state &&
+    state.machine.available &&
+    !state.user.available &&
+    state.nativeSafety.trust === "trusted";
   return (
     <section
       className="recovery-page"
@@ -68,9 +73,20 @@ export function RecoveryPage({
         )}
         {state && (
           <>
-            <h3>{state.guidance.title}</h3>
+            <h3>
+              {accountUnavailable
+                ? "Account recovery evidence unavailable"
+                : state.guidance.title}
+            </h3>
             <ul>
-              {state.guidance.steps.map((step) => (
+              {(accountUnavailable
+                ? [
+                    "Check Again. Keep the account journal and retained decisions unchanged; do not delete or rewrite them to enable changes.",
+                    "Create support report includes structured source-availability and machine-safety findings even when the account journal cannot be parsed. Review and share it only if you choose; malformed journal bytes are not copied.",
+                    "A normal Restart can end an earlier process lifetime but cannot repair malformed evidence or acknowledge an incident. Reinstalling SDE repairs application files, not an unreadable account journal.",
+                  ]
+                : state.guidance.steps
+              ).map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ul>

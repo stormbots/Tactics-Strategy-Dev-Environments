@@ -3,11 +3,13 @@ import type {
   MaintenanceObservation,
   OperationIncident,
   SupportReportSnapshot,
+  RecoverySupportSnapshot,
 } from "./safeOperations";
 
 export type SupportContext = {
   deviceName: string;
   logs: string | null;
+  recovery?: RecoverySupportSnapshot | null;
 };
 
 const escape = (value: string) =>
@@ -45,6 +47,20 @@ export function supportSnapshot(input: {
     deviceName: input.context.deviceName,
     platform: input.platform,
     applicationVersion: input.applicationVersion,
+    recovery: input.context.recovery
+      ? {
+          observedAt: input.context.recovery.observedAt,
+          machineEvidence: input.context.recovery.machineEvidence,
+          accountEvidence: input.context.recovery.accountEvidence,
+          accountDecision: input.context.recovery.accountDecision,
+          machineActivity: input.context.recovery.machineActivity,
+          machineActivityReason: input.context.recovery.machineActivityReason,
+          machinePackageHealth: input.context.recovery.machinePackageHealth,
+          machineTrust: input.context.recovery.machineTrust,
+          machineRestart: input.context.recovery.machineRestart,
+          machineSafetyDecision: input.context.recovery.machineSafetyDecision,
+        }
+      : null,
     validation: {
       collectedAt:
         input.checks.length && collectionTime(input.validationCollectedAt)
@@ -93,9 +109,39 @@ export function supportHtml(report: SupportReportSnapshot): string {
     : "Maintenance status was unavailable.";
   const operation = report.operation
     ? `${report.operation.kind}; ${report.operation.outcome} during ${report.operation.stage}`
-    : "No interrupted operation was recorded.";
+    : "No readable account operation context was provided. This does not establish absence of a machine/account interruption or prove completion.";
   const log = report.logs.included
     ? `<pre>${escape(report.logs.content ?? "")}</pre>`
     : `<p>${escape(report.logs.omission ?? "Logs were not included.")}</p>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Skyview SDE Support Report</title><style>body{font:15px system-ui,sans-serif;color:#172b4d;max-width:900px;margin:32px auto;padding:0 24px;line-height:1.5}h1{font-size:26px}h2{margin-top:28px;font-size:18px}dl{display:grid;grid-template-columns:180px 1fr;gap:6px 16px}dt{font-weight:700}dd{margin:0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccd5df;padding:8px;text-align:left;vertical-align:top}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#edf2f7;padding:14px;border-radius:6px}</style></head><body><h1>Skyview SDE Support Report</h1><p>Created ${escape(report.createdAt)}</p><h2>Device</h2><dl><dt>Device name</dt><dd>${escape(report.deviceName)}</dd><dt>Platform</dt><dd>${escape(report.platform)}</dd><dt>SDE version</dt><dd>${escape(report.applicationVersion)}</dd></dl><h2>Validation</h2><p>Outcome: ${escape(outcome)}</p><table><thead><tr><th>Status</th><th>Check</th></tr></thead><tbody>${checks}</tbody></table><h2>Interrupted operation</h2><p>${escape(operation)}</p><h2>Maintenance</h2><p>${escape(maintenance)}</p><h2>Application logs</h2>${log}</body></html>`;
+  const findings = report.recovery;
+  const recovery =
+    `<h2>Read-only recovery findings</h2><p>These are diagnostic snapshots, not acknowledgment, package repair, completion evidence or execution permission. Machine safety findings do not establish the earlier account process lifetime. No raw journals, private bindings or restart keys were collected.</p>` +
+    (findings
+      ? `<dl>${[
+          [
+            "Observed at",
+            findings.observedAt
+              ? new Date(findings.observedAt * 1000).toISOString()
+              : "Unavailable",
+          ],
+          ["Machine evidence", findings.machineEvidence],
+          ["Account evidence", findings.accountEvidence],
+          ["Matching account decision", findings.accountDecision],
+          ["Machine activity", findings.machineActivity],
+          ["Machine activity reason", findings.machineActivityReason],
+          ["Machine package health", findings.machinePackageHealth],
+          ["Machine trust", findings.machineTrust],
+          ["Machine restart evidence", findings.machineRestart],
+          ["Machine safety decision only", findings.machineSafetyDecision],
+        ]
+          .map(
+            ([label, value]) =>
+              `<dt>${escape(label)}</dt><dd>${escape(value)}</dd>`,
+          )
+          .join("")}</dl>`
+      : "<p>Structured recovery findings were unavailable in this report source. No clean state is inferred.</p>");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Skyview SDE Support Report</title><style>body{font:15px system-ui,sans-serif;color:#172b4d;max-width:900px;margin:32px auto;padding:0 24px;line-height:1.5}h1{font-size:26px}h2{margin-top:28px;font-size:18px}dl{display:grid;grid-template-columns:180px 1fr;gap:6px 16px}dt{font-weight:700}dd{margin:0}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccd5df;padding:8px;text-align:left;vertical-align:top}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#edf2f7;padding:14px;border-radius:6px}</style></head><body><h1>Skyview SDE Support Report</h1><p>Created ${escape(report.createdAt)}</p><h2>Device</h2><dl><dt>Device name</dt><dd>${escape(report.deviceName)}</dd><dt>Platform</dt><dd>${escape(report.platform)}</dd><dt>SDE version</dt><dd>${escape(report.applicationVersion)}</dd></dl><h2>Validation</h2><p>Outcome: ${escape(outcome)}</p><table><thead><tr><th>Status</th><th>Check</th></tr></thead><tbody>${checks}</tbody></table><h2>Interrupted operation</h2><p>${escape(operation)}</p><h2>Maintenance</h2><p>${escape(maintenance)}</p><h2>Application logs</h2>${log}</body></html>`.replace(
+    "<h2>Validation</h2>",
+    `${recovery}<h2>Validation</h2>`,
+  );
 }

@@ -136,12 +136,25 @@ export function overviewTone(
   return "green";
 }
 
+export type RecoverySupportSnapshot = {
+  observedAt: number | null;
+  machineEvidence: string;
+  accountEvidence: string;
+  accountDecision: string;
+  machineActivity: string;
+  machineActivityReason: string;
+  machinePackageHealth: string;
+  machineTrust: string;
+  machineRestart: string;
+  machineSafetyDecision: string;
+};
 export type SupportReportSnapshot = {
   schema: 1;
   createdAt: string;
   deviceName: string;
   platform: string;
   applicationVersion: string;
+  recovery?: RecoverySupportSnapshot | null;
   validation: {
     collectedAt: string | null;
     outcome: "ready" | "needsAttention" | "unavailable";

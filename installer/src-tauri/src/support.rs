@@ -16,6 +16,7 @@ const MAX_REPORT_BYTES: usize = 512 * 1024;
 pub struct Context {
     device_name: String,
     logs: Option<String>,
+    recovery: crate::recovery_diagnostics::Snapshot,
 }
 
 pub(crate) fn device_name() -> String {
@@ -72,6 +73,10 @@ fn redact_personal_path(value: &str, home: &str, case_insensitive: bool) -> Stri
 }
 
 pub fn context(app: &tauri::AppHandle, include_logs: bool) -> Result<Context, String> {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().map(|time| time.as_secs()).filter(|time| *time > 0);
+    let directory = app.path().app_data_dir().ok();
+    let recovery = crate::recovery_diagnostics::capture(directory.as_deref(), now,
+        sde_coordination::observations::inspect(), sde_coordination::recovery::inspect_public_state());
     let logs = if include_logs {
         let directory = app
             .path()
@@ -93,6 +98,7 @@ pub fn context(app: &tauri::AppHandle, include_logs: bool) -> Result<Context, St
     Ok(Context {
         device_name: device_name(),
         logs,
+        recovery,
     })
 }
 

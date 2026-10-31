@@ -421,6 +421,27 @@ it("shows unavailable findings as blocked, with diagnostics still accessible", a
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
 });
 
+it("unreadable account evidence receives source-specific guidance rather than a false machine repair instruction", async () => {
+  const state = interrupted("user");
+  state.user.available = false;
+  state.canAcknowledgeUser = false;
+  state.readiness = "blocked";
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "Account recovery evidence unavailable",
+  });
+  expect(
+    screen.getByText(
+      /Create support report includes structured source-availability/,
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText(/cannot repair malformed evidence/)).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Acknowledge interruption" }),
+  ).toBeNull();
+});
+
 it("retries startup validation without starting Install", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
     code: 1,

@@ -9,6 +9,13 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_unreadable_recovery_support_is_read_only_and_not_raw_source_export(self):
+        source = self.text('installer/src-tauri/src/recovery_diagnostics.rs').split('#[cfg(test)]',1)[0]
+        for forbidden in ('recovery::submit', 'record_acknowledgment', 'mutation::', 'remove_file', 'write(', 'pub generation', 'pub log_path'):
+            self.assertNotIn(forbidden, source)
+        self.assertIn('SourceStatus::Unavailable', source)
+        self.assertIn('machine_safety_decision', source)
+        self.assertIn('recovery_diagnostics::capture', self.text('installer/src-tauri/src/support.rs'))
     def test_process_creating_and_gate_holding_fixtures_share_test_only_isolation(self):
         root = self.text('coordination/src/lib.rs')
         self.assertIn('test_processes.rs', root)
