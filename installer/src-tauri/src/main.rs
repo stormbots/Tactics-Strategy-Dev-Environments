@@ -5,6 +5,11 @@ mod journal;
 mod preflight;
 mod process;
 mod protocol;
+mod recovery_acknowledgment;
+mod recovery_context;
+mod recovery_reports;
+mod recovery_summary;
+mod recovery_user;
 mod schedule;
 mod support;
 mod updates;
@@ -66,6 +71,7 @@ struct Report {
     lines: Vec<String>,
     log_path: String,
     platform: Platform,
+    validation_collected_at: Option<u64>,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,8 +178,17 @@ fn run(
         Some(journal::Active::begin(&app, &run_id, op, &log)?)
     };
     let mut lines: Vec<String> = Vec::new();
+    let mut validation_collected_at = None;
     let mut emit = |line: String| {
         let line = protocol::redact(&line);
+        validation_collected_at = protocol::validation_time(
+            validation_collected_at,
+            &line,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|time| time.as_secs())
+                .unwrap_or_default(),
+        );
         let _ = writeln!(file, "{line}");
         let _ = file.flush();
         let _ = app.emit(
@@ -281,6 +296,7 @@ fn run(
         lines,
         log_path: log.display().to_string(),
         platform,
+        validation_collected_at,
     })
 }
 #[tauri::command]
@@ -443,6 +459,48 @@ fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(
 }
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    #[cfg(windows)]
+    if args.get(1).map(String::as_str) == Some("--supervise-windows-maintenance") {
+        let native_args: Vec<std::ffi::OsString> = std::env::args_os().skip(2).collect();
+        let result = native_args
+            .first()
+            .ok_or(sde_coordination::manual::Failure::InvalidInvocation)
+            .and_then(|script| {
+                sde_update_trust::manual_windows::run(std::path::Path::new(script), &native_args[1..])
+            });
+        let code = match result {
+            Ok(code) => code,
+            Err(error) => {
+                eprintln!(
+                    "SKYVIEW_EVENT|error|coordination|{}",
+                    serde_json::to_string(&error).unwrap()
+                );
+                error.exit_code()
+            }
+        };
+        std::process::exit(code);
+    }
+    #[cfg(target_os = "linux")]
+    if args.get(1).map(String::as_str) == Some("--supervise-linux-system") {
+        let native_args: Vec<std::ffi::OsString> = std::env::args_os().skip(2).collect();
+        let result = native_args
+            .first()
+            .ok_or(sde_coordination::manual::Failure::InvalidInvocation)
+            .and_then(|script| {
+                sde_coordination::manual::run(std::path::Path::new(script), &native_args[1..])
+            });
+        let code = match result {
+            Ok(code) => code,
+            Err(error) => {
+                eprintln!(
+                    "SKYVIEW_EVENT|error|coordination|{}",
+                    serde_json::to_string(&error).unwrap()
+                );
+                error.exit_code()
+            }
+        };
+        std::process::exit(code);
+    }
     if args.get(1).map(String::as_str) == Some("--privileged") {
         let acknowledgement = args.get(4).map(String::as_str);
         let code = if args.len() == 5
@@ -464,7 +522,16 @@ fn main() {
     }
     if args.get(1).map(String::as_str) == Some("--coordination-init") && args.len() == 2 {
         match sde_coordination::initialize() {
-            Ok(()) => return,
+            Ok(()) => {
+                // Existing safe non-GUI mode lets old/new shell wrappers
+                // negotiate support without sending an unknown flag to an old
+                // app (which would otherwise open a GUI). Not an execution permit.
+                #[cfg(target_os = "linux")]
+                println!("SDE_LINUX_SYSTEM_SUPERVISOR_V1");
+                #[cfg(windows)]
+                let _ = writeln!(std::io::stdout(), "SDE_WINDOWS_MAINTENANCE_SUPERVISOR_V1");
+                return;
+            }
             Err(e) => {
                 eprintln!("{e}");
                 std::process::exit(1);
@@ -502,6 +569,13 @@ fn main() {
             acknowledge_operation_incident,
             support_context,
             save_support_report,
+            recovery_summary::save_recovery_summary,
+            recovery_summary::acknowledge_recovery_incident,
+            recovery_summary::acknowledge_user_recovery_incident,
+            recovery_summary::inspect_user_recovery_acknowledgment,
+            recovery_summary::list_recovery_reports,
+            recovery_summary::read_recovery_report,
+            recovery_summary::delete_recovery_report,
             inspect_self_update,
             set_self_update_paused,
             run_operation,

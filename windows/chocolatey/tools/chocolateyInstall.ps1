@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $Tools = $PSScriptRoot
 . (Join-Path $PSScriptRoot 'Coordination.ps1')
 try {
-Invoke-SkyviewCoordinated -Mutation -Action {
+Invoke-SkyviewCoordinated -Mutation -RequireParent -Action {
 $ErrorActionPreference = 'Stop'
 
 $Skyview = 'C:\ProgramData\SkyviewRobotics'

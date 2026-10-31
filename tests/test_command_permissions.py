@@ -8,6 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class CommandPermissions(unittest.TestCase):
+    def test_local_main_has_unique_module_declarations(self):
+        source = (ROOT / 'installer/src-tauri/src/main.rs').read_text(encoding='utf-8')
+        modules = re.findall(r'^mod\s+(\w+)\s*;', source, re.M)
+        self.assertEqual(len(modules), len(set(modules)), 'Duplicate Tauri module declaration')
+
     def test_frontend_commands_are_registered_and_granted_to_main(self):
         source = ROOT / 'installer/src'
         invoked = set()
@@ -29,6 +34,25 @@ class CommandPermissions(unittest.TestCase):
         self.assertEqual(cap['windows'], ['main'])
         self.assertNotIn('remote', cap, 'Local command permissions must not grant remote origins')
         self.assertEqual(cap['permissions'].count('allow-set-self-update-paused'), 1)
+
+    def test_privileged_helper_has_no_uncoordinated_script_launch(self):
+        source = (ROOT / 'installer/src-tauri/src/process.rs').read_text()
+        helper = source.split('pub fn helper(', 1)[1].split('pub fn elevated(', 1)[0]
+        self.assertEqual(helper.count('coordinated_stream(cmd,'), 2)
+        self.assertFalse(re.search(r'\bstream\(cmd,', helper))
+        self.assertEqual(helper.count('preflight::before_privileged_operation('), 2)
+        self.assertIn('if cfg!(debug_assertions)', helper)
+        self.assertIn('resource_backend()?', helper)
+
+    def test_helper_coordination_is_backend_authority_not_frontend_uncertainty(self):
+        source = (ROOT / 'installer/src-tauri/src/process.rs').read_text()
+        adapter = source.split('fn coordinated_stream(', 1)[1].split('#[cfg(test)]', 1)[0]
+        self.assertNotIn('acknowledged_uncertainty', adapter)
+        self.assertLess(adapter.index('mutation::begin('), adapter.index('.run_supervised('))
+        self.assertLess(adapter.index('inspection::collect()'), adapter.index('guard.finish_known()'))
+        preflight = (ROOT / 'installer/src-tauri/src/preflight.rs').read_text()
+        self.assertIn('inspect_with_coordination(root, operation, true)', preflight)
+        self.assertIn('before_operation_with(root, operation, acknowledged_uncertainty, emit, false)', preflight)
 
 
 if __name__ == '__main__':

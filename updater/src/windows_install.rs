@@ -280,12 +280,11 @@ mod native {
             file.sync_all()
                 .map_err(|_| "Maintenance supervisor flush failed")?;
         }
-        let code = powershell()
-            .arg(run.join("Invoke-AppliedMaintenance.ps1"))
-            .status()
-            .map_err(|_| "Tool maintenance could not start")?
-            .code();
-        Ok(code)
+        let mut supervisor = powershell();
+        supervisor.arg(run.join("Invoke-AppliedMaintenance.ps1"));
+        // The embedded wrapper validates the private nesting token and live
+        // gate, then snapshots the applied baseline under Rust's same leases.
+        crate::tool_coordination::run(supervisor).map(Some)
     }
     fn resources(expected: &str) -> Result<()> {
         if host::windows::installed_identity()
@@ -411,10 +410,12 @@ mod native {
         identity: impl Fn() -> Result<String>,
     ) -> Result<()> {
         report.phase = crate::observation::Phase::Verification;
-        let lease = sde_coordination::installation().map_err(|e| {
-            report.outcome = coordination_outcome(e).into();
-            format!("Installation deferred or requires repair: {e}")
-        })?;
+        let preparation =
+            sde_coordination::mutation::prepare(sde_coordination::mutation::Scope::Installation)
+                .map_err(|e| {
+                    report.outcome = coordination_outcome(e).into();
+                    format!("Installation deferred or requires repair: {e}")
+                })?;
         if policy()? {
             report.outcome = "paused".into();
             return Ok(());
@@ -430,7 +431,10 @@ mod native {
         let manifest = authenticate_staged(directory, candidate, authenticate)?;
         let asset = &manifest.metadata().platforms["windows-x86_64"];
         report.outcome = "failed".into();
-        let journal = lease.begin_transaction().map_err(|e| e.to_string())?;
+        let mut guard = preparation.begin().map_err(|error| {
+            report.outcome = crate::installation_coordination::outcome(&error).into();
+            crate::installation_coordination::detail(&error)
+        })?;
         atomic_json(
             &Path::new(ROOT).join("installation.json"),
             &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":candidate.version,"sha256":asset.sha256,"transaction":directory.file_name().and_then(|s|s.to_str()),"startedAt":report.checked_at}),
@@ -440,7 +444,7 @@ mod native {
                 &Path::new(ROOT).join("installation.json"),
                 &serde_json::json!({"schemaVersion":1,"stage":"paused","candidateVersion":candidate.version}),
             )?;
-            journal.complete().map_err(|e| e.to_string())?;
+            guard.finish_known().map_err(|e| e.to_string())?;
             report.outcome = "paused".into();
             return Ok(());
         }
@@ -451,9 +455,10 @@ mod native {
         command.current_dir(directory).args(["/S", "/UPDATE"]);
         // Wait indefinitely; never kill an installer to enforce a timeout. A
         // supervisor crash keeps the private coordination intent and blocks retry.
-        let status = command
-            .status()
-            .map_err(|_| "Native installer completion unknown; mentor review required")?;
+        let status = guard.run(command).map_err(|error| {
+            report.outcome = crate::installation_coordination::outcome(&error).into();
+            crate::installation_coordination::detail(&error)
+        })?;
         let code = status.code().ok_or("Native installer completion unknown")?;
         report.native_exit = Some(code);
         report.reboot_required = code == 3010;
@@ -463,12 +468,12 @@ mod native {
         )?;
         if native_outcome(code) != NativeOutcome::Success {
             return Err(format!(
-                "Native installer returned {code}; mentor review required"
+                "Native installer returned {code}; review Recovery and package guidance"
             ));
         }
         report.phase = crate::observation::Phase::Postcheck;
         if identity()? != candidate.version {
-            return Err("Post-install version mismatch; mentor review required".into());
+            return Err("Post-install version mismatch; review Recovery before retry".into());
         }
         resources(&candidate.version)?;
         let recovery = Path::new(ROOT).join("recovery.json");
@@ -486,7 +491,7 @@ mod native {
             &Path::new(ROOT).join("installation.json"),
             &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code}),
         )?;
-        journal.complete().map_err(|e| e.to_string())?;
+        crate::installation_coordination::finish(guard)?;
         report.application_version = candidate.version.clone();
         report.outcome = "updated".into();
         if !report.recovery_available {
@@ -605,6 +610,10 @@ mod native {
         };
         let result = (|| {
             report.tool_exit = tool_maintenance()?;
+            if let Some(outcome) = crate::tool_coordination::incomplete_outcome(report.tool_exit) {
+                report.outcome = outcome.into();
+                return Err("Tool maintenance did not complete successfully; application installation deferred".into());
+            }
             report.phase = crate::observation::Phase::Identity;
             let installed =
                 host::installed().map_err(|e| format!("Installed identity unavailable: {e:?}"))?;
@@ -616,13 +625,20 @@ mod native {
             }
             let mut github = GitHub::new().map_err(|_| "GitHub unavailable")?;
             let staging_root = host::store().map_err(|_| "Protected staging unavailable")?;
-            let operation = sde_coordination::operation().map_err(|e| {
-                report.outcome = coordination_outcome(e).into();
-                e.to_string()
-            })?;
-            prune_staging(&staging_root)?;
-            report.recovery_available =
-                seed_recovery(&mut github, &staging_root, &installed.version).unwrap_or(false);
+            let operation =
+                sde_coordination::mutation::prepare(sde_coordination::mutation::Scope::System)
+                    .map_err(|e| {
+                        report.outcome = coordination_outcome(e).into();
+                        e.to_string()
+                    })?;
+            if !operation.interrupted() {
+                prune_staging(&staging_root)?;
+            }
+            report.recovery_available = if operation.interrupted() {
+                crate::observation::verify_recovery().is_ok()
+            } else {
+                seed_recovery(&mut github, &staging_root, &installed.version).unwrap_or(false)
+            };
             report.phase = crate::observation::Phase::Discovery;
             let candidate =
                 discovery::discover_with(&mut github, &installed.version, "windows-x86_64")
@@ -860,18 +876,24 @@ mod native {
             assert_eq!(report.outcome, "deferred");
             assert_eq!(report.native_exit, None);
             drop(maintenance);
-            install_selected(
-                &directory,
-                &candidate,
-                &mut report,
-                |b, s, t| crate::authenticate_with_key(b, s, t, &keys.pk),
-                || {
-                    host::windows::installed_identity()
-                        .map(|i| i.version)
-                        .map_err(|_| "Invalid installation".into())
-                },
-            )
-            .unwrap();
+            crate::installation_coordination::native_contracts(|authorized| {
+                install_selected(
+                    &directory,
+                    &candidate,
+                    &mut report,
+                    |b, s, t| {
+                        if !authorized {
+                            return Err("Fixture candidate authentication rejected".into());
+                        }
+                        crate::authenticate_with_key(b, s, t, &keys.pk)
+                    },
+                    || {
+                        host::windows::installed_identity()
+                            .map(|i| i.version)
+                            .map_err(|_| "Invalid installation".into())
+                    },
+                )
+            });
             assert_eq!(report.outcome, "updated");
             assert_eq!(report.native_exit, Some(0));
             assert_eq!(std::fs::read(marker).unwrap(), b"student project sentinel");
@@ -914,6 +936,7 @@ mod native {
                 process.stdout.is_empty(),
                 "Installer launched SDE under SYSTEM"
             );
+            crate::tool_coordination::native_contracts();
             set_pause(
                 serde_json::from_slice::<Policy>(&policy_before)
                     .unwrap()
