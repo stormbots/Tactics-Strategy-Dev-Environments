@@ -12,6 +12,7 @@ mod recovery_acknowledgment;
 mod recovery_context;
 mod recovery_history;
 mod recovery_reports;
+mod recovery_state;
 mod recovery_summary;
 mod recovery_user;
 mod schedule;
@@ -586,6 +587,7 @@ fn main() {
     });
     builder
         .manage(Busy::default())
+        .manage(recovery_state::Views::default())
         .manage(updates::Checks::default())
         .manage(session)
         .invoke_handler(tauri::generate_handler![
@@ -599,6 +601,7 @@ fn main() {
             recovery_summary::acknowledge_recovery_incident,
             recovery_summary::acknowledge_user_recovery_incident,
             recovery_summary::inspect_user_recovery_acknowledgment,
+            recovery_summary::inspect_recovery_state,
             recovery_summary::list_recovery_reports,
             recovery_summary::read_recovery_report,
             recovery_summary::read_recovery_report_details,

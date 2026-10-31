@@ -72,6 +72,42 @@ pub fn inspect() -> Result<Option<Incident>> {
     inspect_at(&crate::root())
 }
 
+/// Readable student intent is distinct from protected acknowledgment. This
+/// sanitized snapshot never verifies private evidence or grants a native permit.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicState {
+    pub incident: Incident,
+    pub intent_submitted: bool,
+    pub acknowledgment: Option<Acknowledgment>,
+}
+pub fn inspect_public_state() -> Result<Option<PublicState>> {
+    public_state_at(&crate::root())
+}
+pub(crate) fn public_state_at(dir: &Path) -> Result<Option<PublicState>> {
+    let _lease = acquire_at(dir, "operations.gate", false)?;
+    let Some(incident) = inspect_locked(dir)? else {
+        return Ok(None);
+    };
+    let mut bytes = Vec::new();
+    open(dir, INTENT, Kind::Intent, false, false)?
+        .take(MAX_RECORD + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| Error::Unavailable)?;
+    // Malformed/oversized student-writable content is not consent. Its safe
+    // fixed slot may still be replaced by normal bounded submission; unsafe
+    // ownership/permissions/type above remain errors, not a waived trust gate.
+    let intent_submitted = Incident::parse(&bytes)
+        .ok()
+        .is_some_and(|intent| intent == incident);
+    let acknowledgment = acknowledgment::public_locked(dir)?;
+    Ok(Some(PublicState {
+        incident,
+        intent_submitted,
+        acknowledgment,
+    }))
+}
+
 /// Write a bounded decision to the fixed, pre-created slot. No elevation and no
 /// creation of caller-controlled files. Partial/concurrent writes are invalid
 /// until a privileged consumer revalidates the exact private evidence binding.

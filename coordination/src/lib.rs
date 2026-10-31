@@ -33,6 +33,9 @@ mod recovery_context;
 #[path = "../../installer/src-tauri/src/recovery_history.rs"]
 mod recovery_history;
 #[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_state.rs"]
+mod recovery_state;
+#[cfg(test)]
 use recovery_report_store_tests as recovery_reports;
 #[cfg(all(test, windows))]
 #[path = "../../installer/src-tauri/src/elevation_windows.rs"]
@@ -798,6 +801,19 @@ mod tests {
             .is_err()
         );
         recovery::submit_at(&dir, &incident.incident_id).unwrap();
+        let public = recovery::public_state_at(&dir).unwrap().unwrap();
+        assert_eq!(public.incident.incident_id, incident.incident_id);
+        assert!(public.intent_submitted && public.acknowledgment.is_none());
+        let restart = inspection::RestartMarker::capture();
+        assert!(
+            !restart.missing(),
+            "Standard-user restart provenance must be available without elevation"
+        );
+        assert_eq!(
+            restart.restarted(),
+            observations::RestartEvidence::SameSession,
+            "Standard-user restart sources must be stable within the same OS session"
+        );
         println!("SDE_RECOVERY_PRODUCTION_STUDENT_SUBMISSION_OK");
     }
 

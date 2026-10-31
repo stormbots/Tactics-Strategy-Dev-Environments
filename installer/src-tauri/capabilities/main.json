@@ -18,6 +18,7 @@
     "allow-acknowledge-recovery-incident",
     "allow-acknowledge-user-recovery-incident",
     "allow-inspect-user-recovery-acknowledgment",
+    "allow-inspect-recovery-state",
     "allow-list-recovery-reports",
     "allow-read-recovery-report",
     "allow-read-recovery-report-details",

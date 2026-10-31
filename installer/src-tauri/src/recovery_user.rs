@@ -89,7 +89,7 @@ impl Store {
             match fs::symlink_metadata(&path) {
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
                 Err(_) => return Err("User acknowledgment history is unavailable.".into()),
-                Ok(_) => files::private_directory(&path)?,
+                Ok(_) => files::existing_private_directory(&path)?,
             }
         }
         self.inspect_in(&directory, evidence, now)

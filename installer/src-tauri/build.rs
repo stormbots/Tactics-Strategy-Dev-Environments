@@ -46,6 +46,7 @@ fn main() {
             "acknowledge_recovery_incident",
             "acknowledge_user_recovery_incident",
             "inspect_user_recovery_acknowledgment",
+            "inspect_recovery_state",
             "list_recovery_reports",
             "read_recovery_report",
             "read_recovery_report_details",

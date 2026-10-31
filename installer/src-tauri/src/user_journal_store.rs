@@ -11,6 +11,83 @@ use std::{
 };
 type Result<T> = std::result::Result<T, String>;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GateActivity {
+    Active,
+    Inactive,
+    Unknown,
+}
+/// Strictly read-only: an absent or unreadable gate is unknown, never created.
+pub fn inspect_gate(directory: &Path) -> GateActivity {
+    let parent = directory.join("recovery-state");
+    if files::existing_private_directory(&parent).is_err() {
+        return GateActivity::Unknown;
+    }
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.custom_flags(0x00200000).share_mode(0);
+    }
+    let file = match options.open(parent.join("user-operation.gate")) {
+        Ok(file) => file,
+        Err(error) => {
+            #[cfg(windows)]
+            if matches!(error.raw_os_error(), Some(32 | 33)) {
+                return GateActivity::Active;
+            }
+            let _ = error;
+            return GateActivity::Unknown;
+        }
+    };
+    let Ok(metadata) = file.metadata() else {
+        return GateActivity::Unknown;
+    };
+    if !metadata.is_file() {
+        return GateActivity::Unknown;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::{fd::AsRawFd, unix::fs::MetadataExt};
+        if metadata.nlink() != 1
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o077 != 0
+        {
+            return GateActivity::Unknown;
+        }
+        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+            return if matches!(
+                std::io::Error::last_os_error().raw_os_error(),
+                Some(libc::EWOULDBLOCK)
+            ) {
+                GateActivity::Active
+            } else {
+                GateActivity::Unknown
+            };
+        }
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::Storage::FileSystem::*;
+        let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+        if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0
+            || info.nNumberOfLinks != 1
+            || info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        {
+            return GateActivity::Unknown;
+        }
+    }
+    GateActivity::Inactive
+}
+
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SessionRecord {
@@ -84,7 +161,27 @@ fn require_restart(
     directory: &Path,
     incident: &crate::recovery_context::UserIncident,
 ) -> Result<()> {
+    if inspect_restart(directory, incident) != RestartEvidence::Confirmed {
+        return Err("The earlier user process lifetime is still unknown. Restart normally, then Check Again. Restart does not acknowledge or repair the incident.".into());
+    }
+    Ok(())
+}
+/// Inspect only existing provenance; never capture/refresh a baseline here.
+pub fn inspect_restart(
+    directory: &Path,
+    incident: &crate::recovery_context::UserIncident,
+) -> RestartEvidence {
+    read_restart(directory, incident).unwrap_or(RestartEvidence::Unavailable)
+}
+fn read_restart(
+    directory: &Path,
+    incident: &crate::recovery_context::UserIncident,
+) -> Result<RestartEvidence> {
     let path = session_path(directory, incident);
+    files::existing_private_directory(
+        path.parent()
+            .ok_or("User restart evidence is unavailable.")?,
+    )?;
     let record: SessionRecord = serde_json::from_slice(&files::read(&path, 4096)?)
         .map_err(|_| "User restart evidence is unreadable; keep the evidence and Check Again.")?;
     if record.schema != 1
@@ -93,10 +190,7 @@ fn require_restart(
     {
         return Err("User restart evidence does not match this incident.".into());
     }
-    if record.marker.restarted() != RestartEvidence::Confirmed {
-        return Err("The earlier user process lifetime is still unknown. Restart normally, then Check Again. Restart does not acknowledge or repair the incident.".into());
-    }
-    Ok(())
+    Ok(record.marker.restarted())
 }
 
 pub struct Lock {
@@ -469,6 +563,44 @@ mod tests {
         let replacement = fs::read(f.path()).unwrap();
         assert!(active.finish_not_started(102).is_err());
         assert_eq!(fs::read(f.path()).unwrap(), replacement);
+    }
+    #[test]
+    fn recovery_account_observation_never_creates_absent_state_and_reports_held_gate() {
+        let f = Fixture::new();
+        assert_eq!(inspect_gate(&f.directory), GateActivity::Unknown);
+        assert!(!f.directory.join("recovery-state").exists());
+        let id = uuid::Uuid::new_v4().to_string();
+        fs::write(f.path(), record(&id, "profile")).unwrap();
+        let evidence = recovery_context::read_evidence(&f.directory, &id, 100).unwrap();
+        let Context::User { incident } = &evidence.context else {
+            unreachable!()
+        };
+        assert_eq!(
+            inspect_restart(&f.directory, incident),
+            RestartEvidence::Unavailable
+        );
+        assert!(!f.directory.join("recovery-state").exists());
+        let held = Lock::acquire(&f.directory).unwrap();
+        assert_eq!(inspect_gate(&f.directory), GateActivity::Active);
+        drop(held);
+        assert_eq!(inspect_gate(&f.directory), GateActivity::Inactive);
+    }
+    #[test]
+    fn recovery_view_rejects_recreated_identical_user_evidence_before_any_acknowledgment() {
+        let f = Fixture::new();
+        let id = uuid::Uuid::new_v4().to_string();
+        let bytes = record(&id, "profile");
+        fs::write(f.path(), &bytes).unwrap();
+        let views = crate::recovery_state::Views::default();
+        let evidence = recovery_context::read_evidence(&f.directory, &id, 100).unwrap();
+        let token = views.bind(&id, &evidence.generation).unwrap();
+        drop(evidence);
+        fs::rename(f.path(), f.directory.join("earlier-journal.json")).unwrap();
+        fs::write(f.path(), &bytes).unwrap();
+        let current = recovery_context::read_evidence(&f.directory, &id, 100).unwrap();
+        assert!(views.verify(&token, &id, &current.generation).is_err());
+        assert!(!f.directory.join("recovery-state").exists());
+        assert_eq!(fs::read(f.path()).unwrap(), bytes);
     }
     #[test]
     fn user_journal_gate_probe() {

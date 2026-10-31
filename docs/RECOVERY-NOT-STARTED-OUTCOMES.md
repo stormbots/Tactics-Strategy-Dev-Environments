@@ -1,6 +1,12 @@
 # Native proven-not-started outcomes
 
 Branch: `codex/recovery-not-started-outcomes`.
+Accepted #132 head: `e2aa71eede4ceea878e70292ffd01af59759ce75` in
+[Build 41218520518](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41218520518).
+Windows trust 106/106, root Linux 120/120 and both native jobs passed. Native
+capture/spawn and Windows tracked-child exit-1223 tests passed, with all inherited
+Mint 22.3/Windows SYSTEM signed-upgrade gates. Real authentication-dialog and
+restart behavior remain owner UAT, not an automated dialog acceptance claim.
 Base: #131 at `175004d8a189e8d2dd2ec0a934da6f553ce5c784`, accepted in
 [Build 41214719832](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41214719832).
 Windows trust passed 100/100, root Linux 115/115; both native jobs, user-journal

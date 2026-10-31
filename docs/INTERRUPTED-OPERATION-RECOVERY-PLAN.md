@@ -10,8 +10,9 @@ T6 read-only diagnosis/self-service guidance passed CI. The current bounded T7
 per-user report storage foundation and single-action machine intent controller
 passed CI, as did user-only provenance and actual Validation timestamps.
 Evidence-preserving user-only acknowledgment and read-only report status passed
-CI, as did safe user-journal lifecycle. Native proven-not-started outcomes are
-pending CI; complete history and final frontend safety-observation/resume remain.
+CI, as did safe user-journal lifecycle and native proven-not-started outcomes.
+The native Recovery observation/admission contract is pending CI; complete history
+and final frontend safety-observation/resume remain.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.

@@ -1,12 +1,21 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [native proven-not-started outcomes](RECOVERY-NOT-STARTED-OUTCOMES.md),
-branch `codex/recovery-not-started-outcomes`, pending native validation.
+Current increment: [native Recovery observation contract](RECOVERY-STATE-CONTRACT.md),
+branch `codex/recovery-state-contract`, pending native validation. This T8
+prerequisite separates source availability, student intent, protected acknowledgment
+and admission to a fresh native check; it does not yet wire the final frontend.
+Native proven-not-started outcomes (#132) passed at
+`e2aa71eede4ceea878e70292ffd01af59759ce75` in
+[Build 41218520518](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41218520518).
+Windows trust passed 106/106 and root Linux 120/120. Both native jobs passed,
+including capture/spawn-error tests, Windows tracked-child exit 1223, actual Mint
+22.3 and Windows SYSTEM signed upgrades and all inherited recovery gates.
+Final Recovery UI/history and consolidated owner UAT remain outstanding.
 User-journal lifecycle (#131) passed at `175004d8a189e8d2dd2ec0a934da6f553ce5c784`
 in [Build 41214719832](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41214719832).
 Windows trust 100/100 and root Linux 115/115 passed; both native jobs, lifecycle
 tests and actual Mint 22.3/Windows SYSTEM signed-upgrade and recovery gates passed.
-Final native non-start/cancellation and Recovery UI/history integration remain;
+Final Recovery UI/history integration and real-dialog cancellation UAT remain;
 no partial-stack merge or owner UAT candidate yet.
 Read-only report acknowledgment observations (#130) passed at
 `0a678c08a590ded2df3ac3e2cbb2788cb5f09070` in

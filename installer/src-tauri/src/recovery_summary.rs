@@ -157,6 +157,7 @@ pub async fn acknowledge_recovery_incident(
 pub async fn acknowledge_user_recovery_incident(
     app: tauri::AppHandle,
     incident_id: String,
+    view_token: String,
     confirmed: bool,
     validation: Option<Validation>,
 ) -> Result<crate::recovery_user::Outcome, String> {
@@ -173,6 +174,7 @@ pub async fn acknowledge_user_recovery_incident(
         // Keep this exact opened source while capturing a sanitized report.
         // Raw bytes/native generation never enter IPC or the shareable report.
         let evidence = recovery_context::read_evidence(&directory, &incident_id, now)?;
+        app.state::<crate::recovery_state::Views>().verify(&view_token, &incident_id, &evidence.generation)?;
         crate::user_journal_store::prepare_incident_session(&directory, &evidence)?;
         let summary = capture(&app, incident_id, validation, Source::User)?;
         if summary.context.as_ref() != Some(&evidence.context) {
@@ -181,6 +183,88 @@ pub async fn acknowledge_user_recovery_incident(
         crate::recovery_user::Store::new(directory).with_report(&evidence, summary.captured_at,
             || store(&app)?.save(&summary))
     }).await.map_err(|_| "User acknowledgment task ended without a confirmed result. Check Again; no operation was launched.".to_string())?
+}
+
+#[tauri::command]
+pub async fn inspect_recovery_state(
+    app: tauri::AppHandle,
+) -> Result<crate::recovery_state::State, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use crate::{
+            recovery_state::{Machine, User},
+            user_journal_store::{inspect_gate, inspect_restart},
+        };
+        use sde_coordination::observations::RestartEvidence;
+        let before = sde_coordination::recovery::inspect_public_state();
+        let native = sde_coordination::observations::inspect();
+        let after = sde_coordination::recovery::inspect_public_state();
+        let consistent = match (&before, &after) {
+            (Ok(None), Ok(None)) => true,
+            (Ok(Some(before)), Ok(Some(after))) => {
+                before.incident.incident_id == after.incident.incident_id
+            }
+            _ => false,
+        };
+        let mut machine = Machine::from_public(after);
+        machine.available &= consistent;
+        let directory = app
+            .path()
+            .app_data_dir()
+            .map_err(|_| "Recovery data location is unavailable.")?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "Recovery observation time is unavailable.")?
+            .as_secs();
+        let gate = inspect_gate(&directory);
+        let mut user = User {
+            observed_at: now,
+            available: false,
+            incident: None,
+            acknowledgment: None,
+            restart: RestartEvidence::Unavailable,
+            gate,
+            view_token: None,
+        };
+        match recovery_context::read_current_evidence(&directory, now) {
+            Ok(None) => user.available = true,
+            Ok(Some(evidence)) => {
+                let Context::User { incident } = &evidence.context else {
+                    unreachable!()
+                };
+                user.restart = inspect_restart(&directory, incident);
+                user.incident = Some(incident.clone());
+                if let Ok(decision) =
+                    crate::recovery_user::Store::new(directory.clone()).inspect(&evidence, now)
+                {
+                    user.acknowledgment = decision;
+                    user.view_token = Some(
+                        app.state::<crate::recovery_state::Views>()
+                            .bind(&incident.id, &evidence.generation)?,
+                    );
+                    user.available = true;
+                }
+            }
+            Err(_) => (), // Unavailable is explicit, not an absent incident.
+        }
+        let after_gate = inspect_gate(&directory);
+        user.gate = if gate == crate::user_journal_store::GateActivity::Active
+            || after_gate == crate::user_journal_store::GateActivity::Active
+        {
+            crate::user_journal_store::GateActivity::Active
+        } else {
+            after_gate
+        };
+        let platform = if cfg!(windows) {
+            sde_coordination::guidance::Platform::Windows
+        } else {
+            sde_coordination::guidance::Platform::Linux
+        };
+        Ok(crate::recovery_state::assemble(
+            native, machine, user, platform,
+        ))
+    })
+    .await
+    .map_err(|_| "Recovery observation task is unavailable.".to_string())?
 }
 
 #[tauri::command]

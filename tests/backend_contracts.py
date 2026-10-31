@@ -9,6 +9,21 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_recovery_observation_is_read_only_and_user_ack_is_bound_to_native_view(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs')
+        observer = source.split('pub async fn inspect_recovery_state', 1)[1].split('pub async fn inspect_user_recovery_acknowledgment', 1)[0]
+        for forbidden in ('Lock::acquire', 'prepare_incident_session', 'recovery::submit', 'record_acknowledgment', 'mutation::'):
+            self.assertNotIn(forbidden, observer)
+        self.assertIn('machine.available &= consistent', observer)
+        self.assertIn('Ok(None) => user.available = true', observer)
+        ack = source.split('pub async fn acknowledge_user_recovery_incident', 1)[1].split('pub async fn inspect_recovery_state', 1)[0]
+        self.assertLess(ack.index('.verify('), ack.index('prepare_incident_session'))
+        self.assertLess(ack.index('.verify('), ack.index('let summary = capture'))
+        policy = self.text('installer/src-tauri/src/recovery_state.rs')
+        self.assertNotIn('Deserialize', policy)
+        self.assertIn('ReadyForNativeRecheck', policy)
+        self.assertIn('user.restart != RestartEvidence::Confirmed', policy)
+        self.assertIn('../../installer/src-tauri/src/recovery_state.rs', self.text('coordination/src/lib.rs'))
     def test_non_start_cleanup_uses_native_launch_evidence_not_exit_codes(self):
         source = self.text('installer/src-tauri/src/main.rs')
         run = source.split('fn run(', 1)[1].split('#[tauri::command]', 1)[0]

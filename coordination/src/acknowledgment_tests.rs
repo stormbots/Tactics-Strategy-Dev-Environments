@@ -21,6 +21,40 @@ fn archive_path(f: &Fixture, id: &str, extension: &str) -> PathBuf {
         .join(format!("{id}.{extension}"))
 }
 
+#[test]
+fn recovery_public_state_distinguishes_student_intent_without_committing_or_clearing() {
+    let Some(f) = Fixture::new() else { return };
+    let original = interrupted_fixture(&f);
+    let incident = recovery::prepare_at(&f.path).unwrap().unwrap();
+    let before = std::fs::read(f.path.join("recovery-binding.json")).unwrap();
+    let state = recovery::public_state_at(&f.path).unwrap().unwrap();
+    assert!(!state.intent_submitted && state.acknowledgment.is_none());
+    std::fs::write(
+        f.path.join("recovery-acknowledgment.json"),
+        vec![b'x'; 5000],
+    )
+    .unwrap();
+    assert!(
+        !recovery::public_state_at(&f.path)
+            .unwrap()
+            .unwrap()
+            .intent_submitted
+    );
+    recovery::submit_at(&f.path, &incident.incident_id).unwrap();
+    let state = recovery::public_state_at(&f.path).unwrap().unwrap();
+    assert!(state.intent_submitted && state.acknowledgment.is_none());
+    assert!(!f.path.join("recovery-archive").exists());
+    assert_eq!(
+        std::fs::read(f.path.join("transaction.json")).unwrap(),
+        original
+    );
+    assert_eq!(
+        std::fs::read(f.path.join("recovery-binding.json")).unwrap(),
+        before
+    );
+    assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+}
+
 fn controller_summary(id: &str) -> crate::recovery_report_store_tests::Summary {
     use crate::recovery_report_store_tests::{Safety, Summary};
     Summary {
