@@ -21,6 +21,8 @@ mod schedule;
 mod support;
 mod updates;
 mod user_journal_store;
+#[cfg(test)]
+mod test_processes;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,

@@ -9,6 +9,17 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_process_creating_and_gate_holding_fixtures_share_test_only_isolation(self):
+        root = self.text('coordination/src/lib.rs')
+        self.assertIn('test_processes.rs', root)
+        fixture = root.split('impl Fixture {', 1)[1].split('impl Drop for Fixture', 1)[0]
+        self.assertIn('crate::test_processes::isolate()', fixture)
+        user = self.text('installer/src-tauri/src/user_journal_store.rs').split('mod tests {', 1)[1]
+        self.assertIn('crate::test_processes::isolate()', user.split('fn path(', 1)[0])
+        inspection = self.text('coordination/src/inspection.rs').split('fn read_only_timeout_never_becomes_a_successful_probe', 1)[1].split('#[cfg', 1)[0]
+        self.assertIn('crate::test_processes::isolate()', inspection)
+        self.assertIn('#[cfg(test)]\nmod test_processes;', self.text('installer/src-tauri/src/main.rs'))
+        self.assertIn('foreign_fork_keeps_a_cloexec_lease_busy_until_exec', self.text('installer/src-tauri/src/test_processes.rs'))
     def test_history_view_deletion_is_native_bound_cosmetic_state_not_recovery_authority(self):
         source = self.text('installer/src-tauri/src/recovery_summary.rs')
         deletion = source.split('pub async fn delete_recovery_history_view', 1)[1].split('#[tauri::command]', 1)[0]

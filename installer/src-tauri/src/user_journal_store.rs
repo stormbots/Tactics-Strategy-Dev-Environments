@@ -383,13 +383,18 @@ mod tests {
     use super::*;
     struct Fixture {
         directory: PathBuf,
+        _isolation: std::sync::MutexGuard<'static, ()>,
     }
     impl Fixture {
         fn new() -> Self {
+            let isolation = crate::test_processes::isolate();
             let directory =
                 std::env::temp_dir().join(format!("sde-user-journal-ci-{}", uuid::Uuid::new_v4()));
             fs::create_dir(&directory).unwrap();
-            Self { directory }
+            Self {
+                directory,
+                _isolation: isolation,
+            }
         }
         fn path(&self) -> PathBuf {
             self.directory.join("operation-journal.json")

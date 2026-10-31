@@ -230,6 +230,8 @@ mod tests {
     }
     #[test]
     fn authorization_capture_disambiguates_real_helper_exit_and_incomplete_output() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
         for mode in ["cancel", "entered", "wrong", "invalid"] {
             let mut command = Command::new(std::env::current_exe().unwrap());
             command
@@ -259,6 +261,8 @@ mod tests {
     }
     #[test]
     fn authorization_spawn_failure_is_typed_and_has_no_child_output() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
         let command = Command::new(
             std::env::temp_dir().join(format!("sde-missing-launcher-{}", uuid::Uuid::new_v4())),
         );
@@ -300,6 +304,8 @@ mod tests {
 
     #[test]
     fn streamed_runner_preserves_exit_status_and_existing_redaction() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
         let mut command = Command::new(std::env::current_exe().unwrap());
         command
             .args([
@@ -397,6 +403,8 @@ mod tests {
     }
     #[test]
     fn drains_both_streams_and_reports_child_failure() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
         #[cfg(windows)]
         let mut command = Command::new(r"C:\Windows\System32\cmd.exe");
         #[cfg(windows)]
@@ -497,6 +505,8 @@ mod tests {
     }
     #[test]
     fn child_start_errors_are_actionable() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
         let mut emitted = false;
         let error = stream(Command::new("skyview-missing-executable-for-test"), |_| {
             emitted = true;

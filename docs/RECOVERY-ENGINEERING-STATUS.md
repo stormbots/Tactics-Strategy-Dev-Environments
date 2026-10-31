@@ -1,5 +1,16 @@
 # Interrupted-operation recovery: engineering status
 
+CI correction pending for #137: initial head
+`0e196a2951a6d2106a11fe633de1ebd66fb7b2bd` / Build
+[41244249012](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41244249012)
+failed Linux root-owned contracts (146 passed, two `Busy` failures in bootstrap
+and standard-user fixture setup). Other jobs passed, but #137 is not accepted.
+A deterministic unprivileged Linux regression reproduces foreign-fork retention
+of a CLOEXEC lease until exec. Test-only shared isolation now covers protected
+and account gate fixtures plus independent process-creating probes. Production
+locking, assertions and inherited native gates are unchanged. Full replacement-
+head CI must pass before the next completeness increment.
+
 Current increment: [selected history-view deletion](RECOVERY-HISTORY-VIEW-DELETION.md),
 branch `codex/recovery-history-view-deletion`, pending native/browser CI. This hides
 only eligible displayed snapshots for the current account, never operational state.

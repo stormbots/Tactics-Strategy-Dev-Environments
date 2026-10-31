@@ -440,6 +440,7 @@ mod tests {
         if std::env::var("SDE_REQUIRE_COORDINATION").as_deref() != Ok("1") {
             return;
         }
+        let _isolation = crate::test_processes::isolate();
         let facts = collect();
         assert_ne!(
             facts.activity,
@@ -463,6 +464,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn read_only_timeout_never_becomes_a_successful_probe() {
+        let _isolation = crate::test_processes::isolate();
         let mut command = Command::new("/bin/sh");
         command.args(["-c", "exec /bin/sleep 1"]);
         assert!(diagnostic(command, Duration::from_millis(20)).is_none());

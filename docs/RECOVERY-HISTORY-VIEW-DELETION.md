@@ -61,6 +61,34 @@ cleared. A matching marker is not an undo mechanism or proof of completion.
 
 ## Validation and pending gates
 
+Initial Build [41244249012](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41244249012)
+at `0e196a2951a6d2106a11fe633de1ebd66fb7b2bd` failed Linux root-owned
+coordination contracts: `bootstrap_legacy_journal_is_prepared_once_without_acknowledgment_or_retirement`
+at `bootstrap_tests.rs:23` and the standard-user fixture's preparation at
+`lib.rs:858` both received `Busy` (146 passed, two failed). Other jobs passed;
+the required root trust failure still blocks acceptance.
+
+The existing protected fixture mutex did not cover account-journal subprocess
+tests or standalone native inspection/timeout probes. An unrelated concurrent
+fork can inherit another thread's live gate descriptor until exec, even when the
+descriptor has CLOEXEC. A deterministic Linux regression now holds a harmless
+synthetic gate, forks with a bounded pipe handshake, closes the parent's handle,
+observes `EWOULDBLOCK`, then execs `/bin/true` and observes successful acquisition.
+The child uses async-signal-safe calls only; no package/workstation is involved.
+
+The test-only `test_processes` module now supplies one shared isolation mutex to
+protected/account gate fixtures and independent process-creating diagnostics and
+Tauri streaming/deadline tests. Intentional multi-process contention remains
+inside each fixture; no assertions are removed, `Busy` is not retried/waived, and
+production gate/drop/CLOEXEC behavior is unchanged. The full local 149-case
+coordinator harness passes with eight test threads, including the real fork
+regression, 11 account-gate tests and five inspection harness cases. Root-required
+fixtures and required-runner provenance checks still return early locally; these
+counts are not root/native acceptance. Linux/Windows-GNU clippy, 34 backend
+contracts, four command-permission tests and whitespace pass. Existing frontend
+success is not rerun for this test-only correction; native CI must validate the
+replacement exact head and every inherited gate again.
+
 Local: 170 frontend tests, production TypeScript/Vite build, Linux/Windows-GNU
 coordinator clippy with warnings denied, 33 backend contracts, four permission
 checks and whitespace pass. Six selected Rust test harness cases pass, but one

@@ -10,6 +10,9 @@ use std::{
 mod acknowledgment_tests;
 #[cfg(test)]
 mod bootstrap_tests;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/test_processes.rs"]
+mod test_processes;
 // Compile/test the exact platform-independent per-user report store on both
 // native trust paths without depending on a graphical runtime. Not production
 // machine-coordination code and not an authorization surface.
@@ -428,14 +431,6 @@ mod tests {
     // even with CLOEXEC. Isolate fixtures so such an unrelated fork cannot retain
     // a lease just released by another test. Each contention test still runs
     // several real processes against its own gates.
-    static FIXTURE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    fn lock_fixtures(lock: &std::sync::Mutex<()>) -> std::sync::MutexGuard<'_, ()> {
-        // This mutex serializes independent fixture directories; it protects no
-        // shared transaction state. Preserve the original failing test, but do
-        // not turn its panic into unrelated PoisonError failures in later tests.
-        lock.lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
 
     fn storage_fixture_powershell() -> Command {
         let mut command =
@@ -486,8 +481,8 @@ mod tests {
         .join();
         assert!(failure.is_err());
         assert!(lock.is_poisoned());
-        drop(lock_fixtures(&lock));
-        drop(lock_fixtures(&lock));
+        drop(crate::test_processes::lock(&lock));
+        drop(crate::test_processes::lock(&lock));
     }
     pub(super) struct Fixture {
         pub(super) path: PathBuf,
@@ -503,7 +498,7 @@ mod tests {
                 );
                 return None;
             }
-            let guard = lock_fixtures(&FIXTURE_LOCK);
+            let guard = crate::test_processes::isolate();
             let name = format!(
                 "coordination-test-{}-{}",
                 std::process::id(),
