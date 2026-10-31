@@ -291,7 +291,9 @@ it("does not resume a partially acknowledged pair and keeps its saved report ref
     await screen.findByRole("button", { name: "Acknowledge interruption" }),
   );
   await screen.findByRole("alert");
-  expect(screen.getByText(/saved-first-report/)).toBeTruthy();
+  expect(
+    screen.getByText("Local summary saved: saved-first-report."),
+  ).toBeTruthy();
   expect(screen.getByRole("alert").textContent).toContain("stale");
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
   expect(
@@ -346,7 +348,9 @@ it("unconfirmed machine submission cannot resume or silently retry consent", asy
     await screen.findByRole("button", { name: "Acknowledge interruption" }),
   );
   await screen.findByRole("alert");
-  expect(screen.getByText(/retained-report/)).toBeTruthy();
+  expect(
+    screen.getByText("Local summary saved: retained-report."),
+  ).toBeTruthy();
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
   expect(acknowledgeMachine).toHaveBeenCalledTimes(1);
 });

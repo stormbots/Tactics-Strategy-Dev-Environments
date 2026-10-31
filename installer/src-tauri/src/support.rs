@@ -186,6 +186,24 @@ pub fn save(app: &tauri::AppHandle, html: &str) -> Result<Option<String>, String
     Ok(Some(path.display().to_string()))
 }
 
+pub fn save_recovery_copy(
+    app: &tauri::AppHandle,
+    summary: &crate::recovery_reports::Summary,
+) -> Result<Option<String>, String> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "Export time is unavailable.")?
+        .as_secs();
+    let filename = format!("skyview-sde-recovery-{}-{timestamp}.html", summary.report_id);
+    let Some(path) = choose_path(app, &filename)? else {
+        return Ok(None);
+    };
+    let directory = app.path().app_data_dir()
+        .map_err(|_| "Application data is unavailable.")?;
+    crate::recovery_reports::export_copy(summary, &path, &directory)?;
+    Ok(Some(path.display().to_string()))
+}
+
 fn valid_html(html: &str, lower: &str) -> bool {
     !(html.is_empty()
         || html.len() > MAX_REPORT_BYTES

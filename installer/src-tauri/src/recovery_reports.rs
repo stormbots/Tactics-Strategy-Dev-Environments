@@ -336,6 +336,51 @@ pub fn html(summary: &Summary) -> String {
 pub struct Store {
     directory: PathBuf,
 }
+/// Explicit share-copy destination only. Never overwrite a report, a link, an
+/// existing file, or operational state. The source was loaded and redacted by
+/// the native controller; no caller HTML is accepted here.
+pub fn export_copy(summary: &Summary, destination: &Path, app_data: &Path) -> Result<()> {
+    summary.validate()?;
+    if !destination.is_absolute()
+        || !destination
+            .extension()
+            .and_then(|value| value.to_str())
+            .is_some_and(|value| value.eq_ignore_ascii_case("html"))
+    {
+        return Err("Choose a new local file ending in .html.".into());
+    }
+    let root = fs::canonicalize(app_data).map_err(|_| "Application data is unavailable.")?;
+    let parent = destination
+        .parent()
+        .and_then(|path| fs::canonicalize(path).ok())
+        .ok_or("Export folder is unavailable.")?;
+    if parent.starts_with(&root) {
+        return Err("Choose an export folder outside SDE application data.".into());
+    }
+    let destination = parent.join(destination.file_name().ok_or("Invalid export filename.")?);
+    let html = html(summary);
+    if html.len() as u64 > MAX_HTML {
+        return Err("Report exceeds its size limit.".into());
+    }
+    // create_new prevents existing files and hard/symbolic links from being
+    // truncated. No recursive deletion or cleanup is attempted after a failure.
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options
+        .open(destination)
+        .map_err(|_| "Choose a new filename; existing files are not overwritten.")?;
+    file.write_all(html.as_bytes())
+        .and_then(|_| file.sync_all())
+        .map_err(|_| {
+            "Export may be incomplete. Check the chosen file; the retained report remains separate."
+                .into()
+        })
+}
 impl Store {
     /// The application supplies its fixed per-user directory, never an IPC path.
     pub fn new(directory: PathBuf) -> Result<Self> {
@@ -420,7 +465,7 @@ impl Store {
         if !(1..=100).contains(&limit) || cursor.is_some_and(|v| !id(v)) {
             return Err("Invalid history page.".into());
         }
-        private_directory(&self.directory)?;
+        existing_private_directory(&self.directory)?;
         let mut ids = std::collections::BTreeSet::new();
         for entry in fs::read_dir(&self.directory).map_err(|_| "Report history unavailable.")? {
             let name = entry
@@ -463,6 +508,22 @@ impl Store {
             entries,
             next_cursor,
         })
+    }
+    /// Opening History is observation only: absence is empty, not an instruction
+    /// to provision storage. Unsafe/unreadable existing paths remain errors.
+    pub fn list_existing(directory: PathBuf, cursor: Option<&str>, limit: usize) -> Result<Page> {
+        if !(1..=100).contains(&limit) || cursor.is_some_and(|value| !id(value)) {
+            return Err("Invalid history page.".into());
+        }
+        ancestors(&directory)?;
+        match fs::symlink_metadata(&directory) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Page {
+                entries: vec![],
+                next_cursor: None,
+            }),
+            Err(_) => Err("Report history unavailable.".into()),
+            Ok(_) => Self::existing(directory)?.list(cursor, limit),
+        }
     }
     pub fn delete(&self, report_id: &str) -> Result<()> {
         let directory = self.bundle(report_id)?;
@@ -531,6 +592,81 @@ mod tests {
             }),
             context: None,
         }
+    }
+    #[test]
+    fn recovery_report_export_creates_a_passive_copy_without_overwriting_retained_or_external_files(
+    ) {
+        let f = Fixture::new();
+        let summary = summary();
+        f.store.save(&summary).unwrap();
+        let destination = f.root.join("shared.html");
+        let app_data = f.root.join("reports");
+        export_copy(&summary, &destination, &app_data).unwrap();
+        assert_eq!(fs::read_to_string(&destination).unwrap(), html(&summary));
+        assert!(export_copy(&summary, &destination, &app_data).is_err());
+        assert_eq!(
+            f.store.load(&summary.report_id).unwrap().report_id,
+            summary.report_id
+        );
+        let sentinel = f.root.join("existing.html");
+        fs::write(&sentinel, b"keep this").unwrap();
+        assert!(export_copy(&summary, &sentinel, &app_data).is_err());
+        assert_eq!(fs::read(&sentinel).unwrap(), b"keep this");
+        let inside = app_data.join("extra.html");
+        assert!(export_copy(&summary, &inside, &app_data).is_err());
+        assert!(!inside.exists());
+        assert!(export_copy(&summary, &f.root.join("bad.json"), &app_data).is_err());
+        assert!(export_copy(&summary, Path::new("relative.html"), &app_data).is_err());
+        let linked = f.root.join("linked.html");
+        let original = fs::read(app_data.join(&summary.report_id).join("summary.json")).unwrap();
+        fs::hard_link(
+            app_data.join(&summary.report_id).join("summary.json"),
+            &linked,
+        )
+        .unwrap();
+        assert!(export_copy(&summary, &linked, &app_data).is_err());
+        assert_eq!(fs::read(&linked).unwrap(), original);
+        // The fixture deliberately created a second link; production readers
+        // must reject it until that disposable alias is removed.
+        assert!(f.store.load(&summary.report_id).is_err());
+        fs::remove_file(&linked).unwrap();
+        assert!(f.store.load(&summary.report_id).is_ok());
+        #[cfg(unix)]
+        {
+            let alias = f.root.join("alias");
+            std::os::unix::fs::symlink(&app_data, &alias).unwrap();
+            assert!(export_copy(&summary, &alias.join("extra.html"), &app_data).is_err());
+            assert!(!inside.exists());
+        }
+    }
+    #[test]
+    fn recovery_history_listing_is_read_only_and_rejects_unsafe_existing_paths() {
+        let f = Fixture::new();
+        let absent = f.root.join("absent");
+        assert!(Store::list_existing(absent.clone(), None, 25)
+            .unwrap()
+            .entries
+            .is_empty());
+        assert!(!absent.exists());
+        assert!(Store::list_existing(absent.clone(), Some("../escape"), 25).is_err());
+        assert!(Store::list_existing(absent.clone(), None, 0).is_err());
+        fs::write(&absent, b"not a directory").unwrap();
+        assert!(Store::list_existing(absent.clone(), None, 25).is_err());
+        assert_eq!(fs::read(&absent).unwrap(), b"not a directory");
+        #[cfg(unix)]
+        {
+            let linked = f.root.join("linked");
+            std::os::unix::fs::symlink(f.root.join("reports"), &linked).unwrap();
+            assert!(Store::list_existing(linked, None, 25).is_err());
+        }
+        let report = summary();
+        f.store.save(&report).unwrap();
+        let page = Store::list_existing(f.root.join("reports"), None, 25).unwrap();
+        assert_eq!(page.entries[0].report_id, report.report_id);
+        f.store.delete(&report.report_id).unwrap();
+        fs::remove_dir(f.root.join("reports")).unwrap();
+        assert!(f.store.list(None, 25).is_err());
+        assert!(!f.root.join("reports").exists());
     }
     #[test]
     fn recovery_reports_read_only_open_never_creates_or_recreates_report_storage() {

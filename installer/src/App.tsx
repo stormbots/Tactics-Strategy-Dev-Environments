@@ -56,6 +56,7 @@ import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
+import { RecoveryReportHistory } from "./RecoveryReportHistory";
 import {
   acknowledgeMachine,
   acknowledgeUser,
@@ -1010,25 +1011,33 @@ export default function App() {
             )}
           </>
         ) : page === "recovery" ? (
-          <RecoveryPage
-            state={recovery}
-            loading={busy}
-            error={recoveryError}
-            pending={pendingOperation}
-            outcomes={acknowledgmentOutcomes}
-            onCheck={() => void refreshRecovery()}
-            onAcknowledge={() => void acknowledgeRecovery()}
-            onContinue={() => {
-              if (pendingOperation) void start(pendingOperation);
-            }}
-            onCancel={() => {
-              setPendingOperation(null);
-              setPage("overview");
-            }}
-            onValidate={() => void start("validate")}
-            onLogs={() => void openTarget("logs")}
-            onSupport={() => setReportOpen(true)}
-          />
+          <>
+            <RecoveryPage
+              state={recovery}
+              loading={busy}
+              error={recoveryError}
+              pending={pendingOperation}
+              outcomes={acknowledgmentOutcomes}
+              onCheck={() => void refreshRecovery()}
+              onAcknowledge={() => void acknowledgeRecovery()}
+              onContinue={() => {
+                if (pendingOperation) void start(pendingOperation);
+              }}
+              onCancel={() => {
+                setPendingOperation(null);
+                setPage("overview");
+              }}
+              onValidate={() => void start("validate")}
+              onLogs={() => void openTarget("logs")}
+              onSupport={() => setReportOpen(true)}
+            />
+            <RecoveryReportHistory
+              disabled={busy}
+              recentReports={acknowledgmentOutcomes.flatMap((result) =>
+                result.reportId ? [result.reportId] : [],
+              )}
+            />
+          </>
         ) : page === "validation" ? (
           <section className="validation-card">
             <div className="section-header">

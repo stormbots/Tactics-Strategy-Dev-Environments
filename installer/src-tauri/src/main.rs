@@ -606,6 +606,7 @@ fn main() {
             recovery_summary::list_recovery_reports,
             recovery_summary::read_recovery_report,
             recovery_summary::read_recovery_report_details,
+            recovery_summary::export_recovery_report,
             recovery_summary::delete_recovery_report,
             inspect_self_update,
             set_self_update_paused,

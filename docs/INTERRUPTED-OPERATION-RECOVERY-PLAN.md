@@ -11,9 +11,10 @@ per-user report storage foundation and single-action machine intent controller
 passed CI, as did user-only provenance and actual Validation timestamps.
 Evidence-preserving user-only acknowledgment and read-only report status passed
 CI, as did safe user-journal lifecycle and native proven-not-started outcomes.
-The native Recovery observation/admission contract passed CI. Recovery findings,
-acknowledgment/report and ordinary-review continuation UI are pending native/browser
-CI; complete history/export and final integration/UAT remain.
+The native Recovery observation/admission contract and Recovery findings,
+acknowledgment/report and ordinary-review continuation UI passed native/browser CI.
+Retained summary history/view/share-copy export/deletion are pending native/browser
+CI; report-independent minimum incident history and final integration/UAT remain.
 See [current engineering status](RECOVERY-ENGINEERING-STATUS.md).
 Prepared October 28, 2026. Source inspected: main commit
 `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04`, including #109–#112.

@@ -1318,6 +1318,29 @@ progress::-moz-progress-bar {
 .recovery-page .result-actions {
   margin-top: 22px;
 }
+.recovery-history {
+  margin-top: 22px;
+}
+.recovery-history p,
+.recovery-history button {
+  overflow-wrap: anywhere;
+}
+.recovery-report-list {
+  padding-inline-start: 20px;
+}
+.recovery-report-list li {
+  margin-block: 16px;
+}
+.recovery-report-list button {
+  margin: 4px;
+}
+.recovery-report-details iframe {
+  width: 100%;
+  min-height: 400px;
+  background: white;
+  color-scheme: light;
+  border: 1px solid var(--notice-line);
+}
 .report-dialog {
   position: fixed;
   top: 24px;

@@ -294,7 +294,10 @@ pub async fn list_recovery_reports(
     cursor: Option<String>,
     limit: usize,
 ) -> Result<recovery_reports::Page, String> {
-    tauri::async_runtime::spawn_blocking(move || store(&app)?.list(cursor.as_deref(), limit))
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+        Store::list_existing(directory.join("recovery-reports"), cursor.as_deref(), limit)
+    })
         .await
         .map_err(|_| "Report history task is unavailable.".to_string())?
 }
@@ -304,12 +307,36 @@ pub async fn read_recovery_report(
     report_id: String,
 ) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let mut summary = store(&app)?.load(&report_id)?;
+        let mut summary = existing_store(&app)?.load(&report_id)?;
         sanitize(&app, &mut summary);
         Ok(recovery_reports::html(&summary))
     })
     .await
     .map_err(|_| "Report read task is unavailable.".to_string())?
+}
+
+fn existing_store(app: &tauri::AppHandle) -> Result<Store, String> {
+    Store::existing(
+        app.path().app_data_dir()
+            .map_err(|_| "Application data is unavailable.")?
+            .join("recovery-reports"),
+    )
+}
+
+/// Only a selected committed summary is exported. Never accept HTML, an input
+/// path, private evidence or an execution argument from the caller.
+#[tauri::command]
+pub async fn export_recovery_report(
+    app: tauri::AppHandle,
+    report_id: String,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut summary = existing_store(&app)?.load(&report_id)?;
+        sanitize(&app, &mut summary);
+        support::save_recovery_copy(&app, &summary)
+    })
+    .await
+    .map_err(|_| "Report export task is unavailable.".to_string())?
 }
 #[tauri::command]
 pub async fn read_recovery_report_details(
@@ -370,7 +397,7 @@ pub async fn delete_recovery_report(
     if !confirmed {
         return Err("Confirm deletion of the selected local report. Operational recovery state will remain.".into());
     }
-    tauri::async_runtime::spawn_blocking(move || store(&app)?.delete(&report_id))
+    tauri::async_runtime::spawn_blocking(move || existing_store(&app)?.delete(&report_id))
         .await
         .map_err(|_| "Report deletion task is unavailable.".to_string())?
 }

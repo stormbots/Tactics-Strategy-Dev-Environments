@@ -9,6 +9,22 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_recovery_report_export_loads_committed_selected_summary_not_frontend_html_or_authority(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs')
+        export = source.split('pub async fn export_recovery_report', 1)[1].split('#[tauri::command]', 1)[0]
+        self.assertIn('report_id: String', export)
+        self.assertIn('existing_store(&app)?.load(&report_id)?', export)
+        self.assertLess(export.index('sanitize(&app'), export.index('support::save_recovery_copy('))
+        self.assertIn('support::save_recovery_copy(&app, &summary)', export)
+        for forbidden in ('html: String', 'path: String', 'recovery::submit', 'journal::acknowledge', 'mutation::', 'record_acknowledgment'):
+            self.assertNotIn(forbidden, export)
+        listing = source.split('pub async fn list_recovery_reports', 1)[1].split('#[tauri::command]', 1)[0]
+        self.assertIn('Store::list_existing(', listing)
+        ui = self.text('installer/src/RecoveryReportHistory.tsx')
+        self.assertIn('sandbox=""', ui)
+        self.assertNotIn('dangerouslySetInnerHTML', ui)
+        self.assertNotIn('acknowledgeMachine', ui)
+        self.assertNotIn('acknowledgeUser', ui)
     def test_recovery_frontend_and_preflight_use_native_request_admission_not_the_legacy_blanket_gate(self):
         preflight = self.text('installer/src-tauri/src/preflight.rs')
         self.assertIn('crate::recovery_preflight::inspect()', preflight)

@@ -1,6 +1,12 @@
 # Recovery interaction and ordinary-review continuation
 
-Branch: `codex/recovery-interaction`. Bounded T8 implementation; native/browser CI pending.
+Branch: `codex/recovery-interaction`. Bounded T8 implementation accepted at
+`d954c6d768c8c70dae50ca7835babf00cc4171e9` in
+[Build 41226670429](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41226670429).
+All 149 frontend tests and 89 browser checks passed, with Windows trust 119/119,
+root Linux 133/133, native Tauri Windows 92/92 and Linux 89/89. Both signed-upgrade
+paths, actual Mint 22.3 and all inherited recovery gates passed. Real dialogs,
+restart and complete history/export remain separate acceptance work below.
 Base #133 `de57ae045214052623788a7e8c4ca365bf7e0023` accepted in
 [Build 41222693951](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41222693951).
 

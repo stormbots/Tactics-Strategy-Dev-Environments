@@ -1,9 +1,16 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [Recovery interaction](RECOVERY-INTERACTION.md), branch
-`codex/recovery-interaction`, pending native/browser CI. This wires T8 findings,
-single-action acknowledgment/report outcomes and continuation through normal review,
-including removal of the remaining legacy blanket gate in read-only preflight.
+Current increment: [retained report history and share-copy export](RECOVERY-REPORT-HISTORY.md),
+branch `codex/recovery-report-history`, pending native/browser CI. Report history is
+not yet a complete incident ledger independent of saved reports; that remains next.
+Recovery interaction (#134) passed at
+`d954c6d768c8c70dae50ca7835babf00cc4171e9` in
+[Build 41226670429](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41226670429).
+All 149 frontend tests and 89 browser checks passed. Windows trust 119/119 and root
+Linux 133/133 passed; native Tauri Windows 92/92 and Linux 89/89 passed, including
+recovery-aware preflight. Both signed upgrades, actual Mint 22.3 and all inherited
+recovery gates passed. This accepts findings/acknowledgment/review integration,
+not final history completeness, real-dialog UAT or a partially merged stack.
 Native Recovery observation contract (#133) passed at
 `de57ae045214052623788a7e8c4ca365bf7e0023` in
 [Build 41222693951](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41222693951).

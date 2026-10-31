@@ -50,6 +50,7 @@ fn main() {
             "list_recovery_reports",
             "read_recovery_report",
             "read_recovery_report_details",
+            "export_recovery_report",
             "delete_recovery_report",
             "inspect_self_update",
             "set_self_update_paused",

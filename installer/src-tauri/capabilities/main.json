@@ -22,6 +22,7 @@
     "allow-list-recovery-reports",
     "allow-read-recovery-report",
     "allow-read-recovery-report-details",
+    "allow-export-recovery-report",
     "allow-delete-recovery-report",
     "allow-inspect-self-update",
     "allow-set-self-update-paused",
