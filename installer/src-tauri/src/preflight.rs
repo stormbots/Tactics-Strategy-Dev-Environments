@@ -61,10 +61,11 @@ fn inspect_with_coordination(
         return Err("Invalid preflight results. Check again.".into());
     }
     if include_coordination {
-        let (status, detail) = match sde_coordination::operation() {
-        Ok(_lease) => (Status::Pass, "No conflicting operation or unresolved transaction was detected. The native backend acquires the operation gate again before changes.".to_string()),
-        Err(error) => (Status::Blocking, format!("{} No changes have been started; ask a mentor about an interrupted or untrusted state.", error)),
-    };
+        let (status, detail) = match crate::recovery_preflight::inspect() {
+            crate::recovery_preflight::Admission::Ready => (Status::Pass, "No current machine safety blocker was observed. Native execution rechecks under its own gates.".to_string()),
+            crate::recovery_preflight::Admission::Warning => (Status::Warning, "Review Recovery findings: submitted intent is not a protected receipt and package health may remain unverified. Continuing requests a fresh privileged safety check, not permission to bypass it.".to_string()),
+            crate::recovery_preflight::Admission::Blocked => (Status::Blocking, "Recovery findings block changes or could not be verified. No package changes have started. Review Recovery and Check Again; do not delete evidence or locks.".to_string()),
+        };
         rows.push(Check {
             name: "Operation coordination".into(),
             status,

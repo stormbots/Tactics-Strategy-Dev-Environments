@@ -1,9 +1,17 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [native Recovery observation contract](RECOVERY-STATE-CONTRACT.md),
-branch `codex/recovery-state-contract`, pending native validation. This T8
-prerequisite separates source availability, student intent, protected acknowledgment
-and admission to a fresh native check; it does not yet wire the final frontend.
+Current increment: [Recovery interaction](RECOVERY-INTERACTION.md), branch
+`codex/recovery-interaction`, pending native/browser CI. This wires T8 findings,
+single-action acknowledgment/report outcomes and continuation through normal review,
+including removal of the remaining legacy blanket gate in read-only preflight.
+Native Recovery observation contract (#133) passed at
+`de57ae045214052623788a7e8c4ca365bf7e0023` in
+[Build 41222693951](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41222693951).
+Windows trust 118/118 and root Linux 132/132 passed, including real standard-user
+public-state/restart proof. Native Tauri Windows 91/91 and Linux 88/88 passed;
+both signed upgrades and actual Mint 22.3/inherited recovery markers passed.
+Retained-history/export interaction, malformed/unavailable-source completeness,
+consolidation and focused owner UAT remain; no partial-stack merge or release.
 Native proven-not-started outcomes (#132) passed at
 `e2aa71eede4ceea878e70292ffd01af59759ce75` in
 [Build 41218520518](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41218520518).

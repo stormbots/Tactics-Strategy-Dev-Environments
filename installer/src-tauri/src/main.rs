@@ -12,6 +12,7 @@ mod recovery_acknowledgment;
 mod recovery_context;
 mod recovery_history;
 mod recovery_reports;
+mod recovery_preflight;
 mod recovery_state;
 mod recovery_summary;
 mod recovery_user;
@@ -249,7 +250,7 @@ fn run(
                     sde_coordination::status(),
                     sde_coordination::Status::Interrupted
                 ) {
-                    emit("SKYVIEW_EVENT|error|system|System setup stopped. An interrupted operation needs mentor review before another change.".into());
+                    emit("SKYVIEW_EVENT|error|system|System setup stopped. Review the retained interruption and current safety findings in Recovery, then Check Again.".into());
                 } else {
                     emit(format!("SKYVIEW_EVENT|error|system|System setup stopped (exit {code}). Review the last package error in Show details, then retry."));
                 }

@@ -9,6 +9,21 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_recovery_frontend_and_preflight_use_native_request_admission_not_the_legacy_blanket_gate(self):
+        preflight = self.text('installer/src-tauri/src/preflight.rs')
+        self.assertIn('crate::recovery_preflight::inspect()', preflight)
+        self.assertNotIn('sde_coordination::operation()', preflight)
+        self.assertNotIn('mentor', preflight)
+        policy = self.text('installer/src-tauri/src/recovery_preflight.rs')
+        self.assertIn('state.intent_submitted', policy)
+        self.assertIn('Admission::Warning', policy)
+        self.assertNotIn('record_acknowledgment', policy)
+        self.assertNotIn('mutation::', policy)
+        self.assertIn('../../installer/src-tauri/src/recovery_preflight.rs', self.text('coordination/src/lib.rs'))
+        frontend = self.text('installer/src/App.tsx')
+        self.assertIn('const fresh = await refreshRecovery()', frontend)
+        self.assertNotIn('inspectOperationIncident', frontend)
+        self.assertNotIn('setInterval', self.text('installer/src/recovery.ts'))
     def test_recovery_observation_is_read_only_and_user_ack_is_bound_to_native_view(self):
         source = self.text('installer/src-tauri/src/recovery_summary.rs')
         observer = source.split('pub async fn inspect_recovery_state', 1)[1].split('pub async fn inspect_user_recovery_acknowledgment', 1)[0]

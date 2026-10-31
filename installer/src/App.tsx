@@ -29,8 +29,6 @@ import {
   toolStatus,
   toolNames,
   parseEvent,
-  checksFrom,
-  toolsFrom,
   updateInspectionIncomplete,
   type Check,
   type Mode,
@@ -40,7 +38,6 @@ import {
 import {
   appVersion,
   inspect,
-  inspectOperationIncident,
   inspectSchedule,
   native,
   open,
@@ -58,13 +55,21 @@ import {
 import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
+import { RecoveryPage } from "./RecoveryPage";
+import {
+  acknowledgeMachine,
+  acknowledgeUser,
+  inspectRecovery,
+  recoveryNeedsAttention,
+  type RecoveryState,
+  type AcknowledgmentResult,
+} from "./recovery";
 import {
   maintenanceHealth,
   overviewTone,
   type MaintenanceHealth,
   type MaintenanceObservation,
   type OperationIncident,
-  type ValidationDisposition,
 } from "./safeOperations";
 const modes: Record<
   Mode,
@@ -187,11 +192,22 @@ export default function App() {
     null,
   );
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
-  const [incident, setIncident] = useState<OperationIncident | null>(null);
-  const [backendActive, setBackendActive] = useState(false);
-  const [backendInterrupted, setBackendInterrupted] = useState(false);
-  const [recoveryDisposition, setRecoveryDisposition] =
-    useState<ValidationDisposition>("notRun");
+  const [recovery, setRecovery] = useState<RecoveryState | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryError, setRecoveryError] = useState("");
+  const [pendingOperation, setPendingOperation] = useState<Mode | null>(null);
+  const [acknowledgmentOutcomes, setAcknowledgmentOutcomes] = useState<
+    AcknowledgmentResult[]
+  >([]);
+  const actionInFlight = useRef(false);
+  const incident: OperationIncident | null = recovery?.user.incident
+    ? {
+        ...recovery.user.incident,
+        schema: 1,
+        logPath: null,
+        acknowledged: !!recovery.user.acknowledgment,
+      }
+    : null;
   const [reportOpen, setReportOpen] = useState(false);
   const runId = useRef("");
   const started = useRef(false);
@@ -199,7 +215,9 @@ export default function App() {
   const progressHeading = useRef<HTMLDivElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const previousPage = useRef(page);
-  const busy = s.stage === "running" || s.stage === "checking";
+  const busy =
+    s.stage === "running" || s.stage === "checking" || recoveryLoading;
+  const recoveryAttention = recoveryNeedsAttention(recovery);
   const status =
     !s.validationComplete &&
     s.checks.length > 0 &&
@@ -240,8 +258,13 @@ export default function App() {
     (check) => check.status === "WARNING",
   );
   const tone = overviewTone(
-    readinessFailures.length > 0,
-    validationWarning || (!validationObserved && s.stage !== "checking"),
+    readinessFailures.length > 0 ||
+      recovery?.decision === "block_incomplete" ||
+      recovery?.decision === "block_untrusted",
+    recoveryAttention ||
+      recovery?.nativeSafety.packageHealth === "unknown" ||
+      validationWarning ||
+      (!validationObserved && s.stage !== "checking"),
     maintenanceState,
   );
   async function refreshMaintenance() {
@@ -268,19 +291,27 @@ export default function App() {
   useEffect(() => {
     void refreshMaintenance();
   }, []);
+  async function refreshRecovery() {
+    setRecoveryLoading(true);
+    setRecoveryError("");
+    try {
+      const observation = await inspectRecovery();
+      setRecovery(observation);
+      return observation;
+    } catch {
+      setRecovery(null);
+      setRecoveryError(
+        "Recovery information could not be read. Check Again; no change has been authorized.",
+      );
+      return null;
+    } finally {
+      setRecoveryLoading(false);
+    }
+  }
   useEffect(() => {
-    inspectOperationIncident()
-      .then((observation) => {
-        setIncident(observation.incident);
-        setBackendActive(observation.backendActive);
-        setBackendInterrupted(!!observation.backendInterrupted);
-        if (
-          observation.backendInterrupted ||
-          (observation.incident && !observation.incident.acknowledged)
-        )
-          setPage("recovery");
-      })
-      .catch(() => setNotice("Recovery information could not be read."));
+    void refreshRecovery().then((observation) => {
+      if (recoveryNeedsAttention(observation)) setPage("recovery");
+    });
   }, []);
   useEffect(() => {
     if (!native) return;
@@ -311,97 +342,125 @@ export default function App() {
     confirmed = false,
     acknowledgedUncertainty = false,
   ) {
-    if (busy) return;
-    if (
-      backendActive ||
-      (backendInterrupted && selected !== "validate") ||
-      (incident &&
-        !incident.acknowledged &&
-        selected !== "validate" &&
-        !(selected === "repair" && recoveryDisposition === "repair"))
-    ) {
-      setPage("recovery");
-      setNotice(
-        backendActive
-          ? "Wait for the active system operation before starting another change."
-          : "Complete the Recovery steps before starting another change.",
-      );
-      return;
-    }
-    if (selected === "install" && !confirmed) {
-      setInstallPreflightOpen(true);
-      setPage("overview");
-      return;
-    }
-    if (selected === "update" && !confirmed) {
-      setPreviewOpen(true);
-      setPage("overview");
-      return;
-    }
-    setPreviewOpen(false);
-    setInstallPreflightOpen(false);
-    setGeneration((g) => g + 1);
-    setNotice("");
-    setMode(selected);
-    setPage("overview");
-    runId.current = crypto.randomUUID();
-    dispatch({ type: "start", mode: selected });
+    if (busy || actionInFlight.current) return;
+    actionInFlight.current = true;
     try {
-      const report = await operate(
-        selected,
-        runId.current,
-        checkUpdates,
-        acknowledgedUncertainty,
-        (line) => dispatch({ type: "line", line }),
-      );
-      dispatch({ type: "complete", report });
-      if ((selected === "validate" || selected === "repair") && incident) {
-        if (selected === "repair" && report.success && !backendInterrupted) {
-          setPage("overview");
+      const fresh = await refreshRecovery();
+      if (selected !== "validate" && recoveryNeedsAttention(fresh)) {
+        setPendingOperation(selected);
+        setPreviewOpen(false);
+        setInstallPreflightOpen(false);
+        setPage("recovery");
+        setNotice("Review the Recovery findings before starting this change.");
+        return;
+      }
+      if (fresh?.effectiveActivity === "active") {
+        setPage("recovery");
+        setNotice("Wait for the active operation to finish, then Check Again.");
+        return;
+      }
+      if (selected === "install" && !confirmed) {
+        setInstallPreflightOpen(true);
+        setPage("overview");
+        return;
+      }
+      if (selected === "update" && !confirmed) {
+        setPreviewOpen(true);
+        setPage("overview");
+        return;
+      }
+      setPreviewOpen(false);
+      setInstallPreflightOpen(false);
+      setPendingOperation(null);
+      setGeneration((g) => g + 1);
+      setNotice("");
+      setMode(selected);
+      setPage("overview");
+      runId.current = crypto.randomUUID();
+      dispatch({ type: "start", mode: selected });
+      try {
+        const report = await operate(
+          selected,
+          runId.current,
+          checkUpdates,
+          acknowledgedUncertainty,
+          (line) => dispatch({ type: "line", line }),
+        );
+        dispatch({ type: "complete", report });
+        if (
+          selected === "validate" &&
+          (fresh?.machine.incidentId || fresh?.user.incident)
+        ) {
           setNotice(
-            "Repair and its final validation passed. Previous incident evidence and its separate acknowledgment remain retained.",
+            "Validation does not acknowledge the interruption, prove that operation completed, or authorize another change. Recovery evidence remains available.",
           );
-        } else if (selected === "validate" && report.success) {
-          setNotice(
-            "Validation passed. It does not acknowledge the interruption, prove that operation completed, or authorize another change. Recovery evidence remains available.",
-          );
-        } else if (selected === "validate" && !report.success) {
-          const records = toolsFrom(report.lines);
-          const failures = checksFrom(report.lines).filter(
-            (check) => check.status === "FAIL",
-          );
-          setRecoveryDisposition(
-            failures.length > 0 &&
-              failures.every(
-                (check) =>
-                  validationGuidance(
-                    check,
-                    records.find(
-                      (record) => record.tool === toolForCheck(check),
-                    ),
-                    report.platform.supported,
-                  )?.operation === "repair",
-              )
-              ? "repair"
-              : "mentor",
-          );
+        }
+        const observation = await refreshRecovery();
+        if (selected !== "validate" && recoveryNeedsAttention(observation))
           setPage("recovery");
+        void refreshMaintenance();
+      } catch (e) {
+        dispatch({ type: "error", message: String(e) });
+      }
+    } finally {
+      actionInFlight.current = false;
+    }
+  }
+  async function acknowledgeRecovery() {
+    if (busy || actionInFlight.current || !recovery) return;
+    actionInFlight.current = true;
+    setRecoveryLoading(true);
+    setRecoveryError("");
+    let resume = false;
+    try {
+      const validation = s.checks.length
+        ? { collectedAt: s.validationCollectedAt, checks: s.checks }
+        : null;
+      // Each source keeps its own incident-bound result. A partial failure never
+      // acknowledges the other source or silently launches the pending request.
+      const operations = [
+        ...(recovery.canAcknowledgeMachine
+          ? [() => acknowledgeMachine(recovery, validation)]
+          : []),
+        ...(recovery.canAcknowledgeUser
+          ? [() => acknowledgeUser(recovery, validation)]
+          : []),
+      ];
+      for (const operation of operations) {
+        const result = await operation();
+        setAcknowledgmentOutcomes((previous) => [...previous, result]);
+        if (
+          result.intentStatus === "unconfirmed" ||
+          result.acknowledgmentWarning ||
+          (result.intentStatus === undefined && !result.acknowledgment)
+        ) {
+          throw new Error(
+            "Acknowledgment is unconfirmed. Check Again; the pending operation has not started.",
+          );
         }
       }
-      if (selected !== "validate") {
-        const observation = await inspectOperationIncident();
-        setBackendActive(observation.backendActive);
-        setBackendInterrupted(!!observation.backendInterrupted);
-        setIncident(observation.incident);
-        if (
-          observation.backendInterrupted ||
-          (observation.incident && !observation.incident.acknowledged)
-        )
-          setPage("recovery");
+      const fresh = await refreshRecovery();
+      resume =
+        !!operations.length &&
+        !!fresh &&
+        fresh.readiness === "ready_for_native_recheck";
+    } catch (error) {
+      setRecoveryError(String(error));
+      // Invalid/stale tokens are not silently retried with a freshly bound view.
+      setRecovery(null);
+    } finally {
+      actionInFlight.current = false;
+      setRecoveryLoading(false);
+    }
+    if (resume && pendingOperation) {
+      // Re-enter ordinary review, never reuse a pre-acknowledgment confirmation.
+      if (pendingOperation === "repair") {
+        setMode("repair");
+        setPage("overview");
+        setPendingOperation(null);
+      } else {
+        await start(pendingOperation);
       }
-      void refreshMaintenance();
-    } catch (e) {
-      dispatch({ type: "error", message: String(e) });
     }
   }
   function reviewOperation(operation: "repair" | "update") {
@@ -449,7 +508,7 @@ export default function App() {
             <LayoutDashboard size={18} />
             Overview
           </button>
-          {(backendInterrupted || (incident && !incident.acknowledged)) && (
+          {
             <button
               aria-current={page === "recovery" ? "page" : undefined}
               onClick={() => setPage("recovery")}
@@ -457,7 +516,7 @@ export default function App() {
               <TriangleAlert size={18} />
               Recovery
             </button>
-          )}
+          }
           <button
             aria-current={page === "validation" ? "page" : undefined}
             onClick={() => setPage("validation")}
@@ -530,6 +589,22 @@ export default function App() {
             {notice}
           </div>
         )}
+        {page !== "recovery" && acknowledgmentOutcomes.length > 0 && (
+          <div className="notice" role="status">
+            {acknowledgmentOutcomes.map((result, index) => (
+              <p key={`${result.incidentId}-${index}`}>
+                {result.reportId
+                  ? `Recovery summary saved: ${result.reportId}.`
+                  : "Recovery summary was not saved."}{" "}
+                {result.reportWarning} {result.intentWarning}{" "}
+                {result.acknowledgmentWarning}
+              </p>
+            ))}
+            <button className="text-button" onClick={() => setPage("recovery")}>
+              Review Recovery
+            </button>
+          </div>
+        )}
         {s.stage === "checking" &&
           (page === "overview" || page === "validation") && (
             <section
@@ -572,13 +647,25 @@ export default function App() {
                           ? "Checking this workstation…"
                           : busy
                             ? "Setup in progress"
-                            : validationReady
-                              ? "Ready!"
-                              : status}
+                            : recoveryAttention
+                              ? "Needs attention"
+                              : validationReady
+                                ? "Ready!"
+                                : status}
                       </h2>
                     </div>
                   </div>
                   <div className="status-counts">
+                    {recoveryAttention && (
+                      <button
+                        className="text-button"
+                        onClick={() => setPage("recovery")}
+                      >
+                        {recovery?.guidance.title ??
+                          "Recovery findings unavailable"}{" "}
+                        — Review Recovery
+                      </button>
+                    )}
                     <span>
                       <CheckCircle2 size={17} />
                       <strong>{passes}</strong> passed
@@ -705,7 +792,10 @@ export default function App() {
                 onContinue={(acknowledged) =>
                   void start("install", true, acknowledged)
                 }
-                onCancel={() => setInstallPreflightOpen(false)}
+                onCancel={() => {
+                  setInstallPreflightOpen(false);
+                  setPendingOperation(null);
+                }}
               />
             )}
             {previewOpen && (
@@ -716,7 +806,10 @@ export default function App() {
                 onContinue={(acknowledged) =>
                   void start("update", true, acknowledged)
                 }
-                onCancel={() => setPreviewOpen(false)}
+                onCancel={() => {
+                  setPreviewOpen(false);
+                  setPendingOperation(null);
+                }}
               />
             )}
             {(s.stage === "success" || s.stage === "failure") && (
@@ -917,102 +1010,25 @@ export default function App() {
             )}
           </>
         ) : page === "recovery" ? (
-          <section className="recovery-page" aria-labelledby="recovery-heading">
-            <div className="result-icon">
-              <TriangleAlert aria-hidden="true" />
-            </div>
-            <div>
-              <p className="eyebrow">SAFE RECOVERY</p>
-              <h2 id="recovery-heading">
-                {backendActive
-                  ? "Setup is still running"
-                  : "A previous operation was interrupted"}
-              </h2>
-              <p>
-                {backendActive
-                  ? "Keep this app open and wait for the current system operation to finish. Do not start another change."
-                  : backendInterrupted
-                    ? "An interrupted system operation remains recorded. You can run validation and save diagnostic information. Review the current findings and self-service recovery steps before making changes. Passing validation does not acknowledge or clear this interruption."
-                    : `The ${incident?.operation ?? "setup"} operation stopped during the ${incident?.stage ?? "unknown"} stage. Run validation before making another change.`}
-              </p>
-              {incident?.logPath && (
-                <p className="muted">
-                  The detailed operation log is still available.
-                </p>
-              )}
-              <div className="result-actions">
-                {backendActive ? (
-                  <button
-                    className="primary"
-                    onClick={async () => {
-                      const observation = await inspectOperationIncident();
-                      setBackendActive(observation.backendActive);
-                      setBackendInterrupted(!!observation.backendInterrupted);
-                      setIncident(observation.incident);
-                    }}
-                  >
-                    <RefreshCw size={16} /> Refresh recovery status
-                  </button>
-                ) : !backendInterrupted && recoveryDisposition === "repair" ? (
-                  <button
-                    className="primary"
-                    onClick={() => void start("repair", true)}
-                  >
-                    <Wrench size={16} /> Repair environment
-                  </button>
-                ) : backendInterrupted || recoveryDisposition === "notRun" ? (
-                  <button
-                    className="primary"
-                    onClick={() => void start("validate", true)}
-                  >
-                    <ClipboardCheck size={16} /> Run validation
-                  </button>
-                ) : null}
-                {backendInterrupted && !backendActive && (
-                  <button
-                    className="secondary"
-                    disabled={busy}
-                    onClick={async () => {
-                      try {
-                        const observation = await inspectOperationIncident();
-                        setBackendActive(observation.backendActive);
-                        setBackendInterrupted(!!observation.backendInterrupted);
-                        setIncident(observation.incident);
-                        if (
-                          !observation.backendInterrupted &&
-                          !observation.incident
-                        )
-                          setPage("overview");
-                      } catch {
-                        setNotice("Recovery information could not be read.");
-                      }
-                    }}
-                  >
-                    <RefreshCw size={16} /> Refresh recovery status
-                  </button>
-                )}
-                <button
-                  className="secondary"
-                  onClick={() => openTarget("logs")}
-                >
-                  <FolderOpen size={16} /> Open logs
-                </button>
-                <button
-                  className="secondary"
-                  onClick={() => setReportOpen(true)}
-                >
-                  <LifeBuoy size={16} /> Create support report
-                </button>
-                {recoveryDisposition === "mentor" && (
-                  <p role="status">
-                    Validation found a condition that does not have a safe
-                    automatic repair. Save the support report and ask a mentor
-                    to review it.
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          <RecoveryPage
+            state={recovery}
+            loading={busy}
+            error={recoveryError}
+            pending={pendingOperation}
+            outcomes={acknowledgmentOutcomes}
+            onCheck={() => void refreshRecovery()}
+            onAcknowledge={() => void acknowledgeRecovery()}
+            onContinue={() => {
+              if (pendingOperation) void start(pendingOperation);
+            }}
+            onCancel={() => {
+              setPendingOperation(null);
+              setPage("overview");
+            }}
+            onValidate={() => void start("validate")}
+            onLogs={() => void openTarget("logs")}
+            onSupport={() => setReportOpen(true)}
+          />
         ) : page === "validation" ? (
           <section className="validation-card">
             <div className="section-header">

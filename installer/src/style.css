@@ -1289,12 +1289,27 @@ progress::-moz-progress-bar {
 }
 .recovery-page {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding: 26px;
   border: 1px solid var(--warning-line);
   border-radius: 9px;
   background: var(--warning-surface);
+}
+.recovery-page p,
+.recovery-page li {
+  overflow-wrap: anywhere;
+}
+.recovery-findings {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 16px;
+}
+.recovery-findings dt {
+  font-weight: 600;
+}
+.recovery-findings dd {
+  margin: 0;
 }
 .recovery-page h2 {
   font-size: 24px;

@@ -1,6 +1,11 @@
 # Native Recovery observation and admission contract
 
-Branch: `codex/recovery-state-contract`. Bounded T8 prerequisite; native CI pending.
+Branch: `codex/recovery-state-contract`. Bounded T8 prerequisite accepted at
+`de57ae045214052623788a7e8c4ca365bf7e0023` in
+[Build 41222693951](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41222693951).
+Windows trust 118/118 and root Linux 132/132 passed, including real standard-user
+public observation and stable restart-source assertions. Both native jobs, actual
+Mint 22.3 and Windows SYSTEM signed upgrades and all inherited gates passed.
 Base #132: `e2aa71eede4ceea878e70292ffd01af59759ce75`, accepted in
 [Build 41218520518](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41218520518).
 
@@ -65,7 +70,8 @@ snapshot readability and stable native restart provenance. Failure of a standard
 account's restart query must be diagnosed, not waived or replaced with a mentor
 or acknowledgment-elevation requirement. No private restart key is printed.
 
-The frontend has no callers of the new contract yet. Next: integrate existing
+At this checkpoint the frontend had no callers of the new contract. The next
+[Recovery interaction increment](RECOVERY-INTERACTION.md) integrates existing
 Recovery/Overview UI, one-action automatic summary and acknowledgment, stale-view
 Check Again, explicit continuation through ordinary preflight/confirmation, and
 history/export. Complete malformed/unavailable-source self-service guidance and

@@ -33,6 +33,9 @@ mod recovery_context;
 #[path = "../../installer/src-tauri/src/recovery_history.rs"]
 mod recovery_history;
 #[cfg(test)]
+#[path = "../../installer/src-tauri/src/recovery_preflight.rs"]
+mod recovery_preflight;
+#[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_state.rs"]
 mod recovery_state;
 #[cfg(test)]
