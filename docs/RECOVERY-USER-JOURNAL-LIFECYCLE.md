@@ -1,6 +1,11 @@
 # Evidence-preserving user-journal lifecycle
 
 Branch: `codex/recovery-user-journal-lifecycle`.
+Accepted at `175004d8a189e8d2dd2ec0a934da6f553ce5c784` in full successful
+[Build 41214719832](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41214719832):
+Windows trust 100/100, root Linux 115/115 and inherited native gates passed.
+The [proven-not-started increment](RECOVERY-NOT-STARTED-OUTCOMES.md) follows;
+pending-CI language below records this task's original checkpoint.
 Base: #130 at `0a678c08a590ded2df3ac3e2cbb2788cb5f09070`, accepted in
 [Build 41210917994](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41210917994).
 Windows trust passed 92/92, root-required Linux 107/107. Both native jobs,

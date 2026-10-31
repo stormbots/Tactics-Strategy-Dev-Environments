@@ -9,6 +9,27 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_non_start_cleanup_uses_native_launch_evidence_not_exit_codes(self):
+        source = self.text('installer/src-tauri/src/main.rs')
+        run = source.split('fn run(', 1)[1].split('#[tauri::command]', 1)[0]
+        self.assertLess(run.index('preflight::before_operation('), run.index('journal::Active::begin('))
+        self.assertIn('proven_not_started = error.proven_not_started()', run)
+        self.assertIn('if proven_not_started', run)
+        self.assertIn('record.not_started()', run)
+        self.assertNotRegex(run, r'if code == (126|127|1223)')
+        process = self.text('installer/src-tauri/src/process.rs')
+        helper = process.split('pub fn helper(', 1)[1].split('pub fn elevated(', 1)[0]
+        self.assertLess(helper.index('SDE_HELPER_ENTERED'), helper.index('sde_coordination::session()'))
+        self.assertIn('StreamFailure::Spawn', process)
+        self.assertIn('result.capture_complete && capture.valid', process)
+        self.assertNotIn('catch {{ exit 1223 }}', process)
+        native = self.text('installer/src-tauri/src/elevation_windows.rs')
+        self.assertIn('ShellExecuteExW', native)
+        self.assertIn('OwnedHandle', native)
+        self.assertNotIn('TerminateProcess', native)
+        self.assertIn('code == actual_exit', process)
+        policy = self.text('installer/src-tauri/src/launch_outcome.rs').split('#[cfg(test)]', 1)[0]
+        self.assertNotIn('Deserialize', policy)
     def test_user_journal_lifecycle_does_not_overwrite_or_dismiss_unpreserved_evidence(self):
         journal = self.text('installer/src-tauri/src/journal.rs')
         legacy = journal.split('pub fn acknowledge(', 1)[1].split('#[cfg(test)]', 1)[0]

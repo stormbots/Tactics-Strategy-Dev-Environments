@@ -141,6 +141,7 @@ export type Report = {
   log_path: string;
   platform: { label: string; supported: boolean };
   validation_collected_at?: number | null;
+  mutation_outcome?: "not_requested" | "not_started" | "completed" | "uncertain";
 };
 export function collectionTime(value: unknown): number | null {
   return typeof value === "number" &&

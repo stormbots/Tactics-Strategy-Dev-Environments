@@ -34,6 +34,14 @@ mod recovery_context;
 mod recovery_history;
 #[cfg(test)]
 use recovery_report_store_tests as recovery_reports;
+#[cfg(all(test, windows))]
+#[path = "../../installer/src-tauri/src/elevation_windows.rs"]
+#[allow(dead_code)]
+mod elevation_windows;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/launch_outcome.rs"]
+#[allow(dead_code)]
+mod launch_outcome;
 #[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_reports.rs"]
 #[allow(dead_code)]

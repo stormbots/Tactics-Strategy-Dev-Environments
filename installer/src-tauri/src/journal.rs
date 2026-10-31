@@ -109,6 +109,9 @@ impl Active {
     pub fn complete(self) -> Result<(), String> {
         self.store.finish_known(now())
     }
+    pub fn not_started(self) -> Result<(), String> {
+        self.store.finish_not_started(now())
+    }
 }
 
 fn read(path: &Path) -> Result<Option<Incident>, String> {

@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #[cfg(windows)]
 mod desktop_icon;
+#[cfg(windows)]
+mod elevation_windows;
+mod launch_outcome;
 mod journal;
 mod preflight;
 mod process;
@@ -74,6 +77,7 @@ struct Report {
     log_path: String,
     platform: Platform,
     validation_collected_at: Option<u64>,
+    mutation_outcome: &'static str,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -174,11 +178,8 @@ fn run(
         .write(true)
         .open(&log)
         .map_err(|e| e.to_string())?;
-    let mut journal = if matches!(op, Operation::Validate) {
-        None
-    } else {
-        Some(journal::Active::begin(&app, &run_id, op, &log)?)
-    };
+    let mut journal: Option<journal::Active> = None;
+    let mut proven_not_started = false;
     let mut lines: Vec<String> = Vec::new();
     let mut validation_collected_at = None;
     let mut emit = |line: String| {
@@ -221,16 +222,25 @@ fn run(
             return Ok(75);
         }
         if !matches!(op, Operation::Validate) {
+            // Read-only preflight denial above must not replace an earlier
+            // incident or create a new recovery/restart requirement.
+            journal = Some(journal::Active::begin(&app, &run_id, op, &log)?);
             if let Some(record) = journal.as_mut() {
                 record.stage(journal::Stage::System)?;
             }
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());
-            let code = process::elevated(
+            let code = match process::elevated(
                 op.name(),
                 &run_id,
                 acknowledged_uncertainty,
                 &mut emit,
-            )?;
+            ) {
+                Ok(code) => code,
+                Err(error) => {
+                    proven_not_started = error.proven_not_started();
+                    return Err(error.message().to_string());
+                }
+            };
             if code != 0 {
                 if code == 75 {
                     emit("SKYVIEW_EVENT|warning|deferred|Another SDE operation is running. Please retry when it finishes.".into());
@@ -284,8 +294,13 @@ fn run(
         );
         lines.push(line);
     }
+    let mut mutation_outcome = if matches!(op, Operation::Validate) { "not_requested" }
+        else if journal.is_none() { "not_started" } else { "uncertain" };
     if let Some(record) = journal {
-        if success
+        if proven_not_started {
+            record.not_started()?;
+            mutation_outcome = "not_started";
+        } else if success
             && validation_collected_at.is_some()
             && matches!(sde_coordination::operation_active(), Ok(false))
             && !matches!(
@@ -297,6 +312,7 @@ fn run(
             )
         {
             record.complete()?;
+            mutation_outcome = "completed";
         }
     }
     Ok(Report {
@@ -306,6 +322,7 @@ fn run(
         log_path: log.display().to_string(),
         platform,
         validation_collected_at,
+        mutation_outcome,
     })
 }
 #[tauri::command]

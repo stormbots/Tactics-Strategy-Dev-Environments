@@ -239,6 +239,11 @@ impl Active {
             .map_err(|_| "The completed user journal could not be retired.".to_string())?;
         files::sync(&self.directory)
     }
+    /// Only the live caller's typed native no-start branch may use this. It
+    /// cannot clear a retained prior incident or protected machine transaction.
+    pub fn finish_not_started(self, now: u64) -> Result<()> {
+        self.finish_known(now)
+    }
 }
 
 fn persist(directory: &Path, bytes: &[u8]) -> Result<()> {
@@ -439,6 +444,31 @@ mod tests {
         let before = fs::read(&original).unwrap();
         assert!(Lock::acquire(&f.directory).is_err());
         assert_eq!(fs::read(original).unwrap(), before);
+    }
+    #[test]
+    fn user_journal_proven_non_start_retires_only_this_attempt_and_allows_explicit_retry() {
+        let f = Fixture::new();
+        let id = uuid::Uuid::new_v4().to_string();
+        let protected_standin = f.directory.join("synthetic-prior-protected-evidence");
+        fs::write(&protected_standin, b"not an actual machine root").unwrap();
+        let active = Active::begin(f.directory.clone(), &id, record(&id, "starting"), 100).unwrap();
+        active.finish_not_started(101).unwrap();
+        assert!(!f.path().exists());
+        assert_eq!(
+            fs::read(&protected_standin).unwrap(),
+            b"not an actual machine root"
+        );
+        let next = uuid::Uuid::new_v4().to_string();
+        let active =
+            Active::begin(f.directory.clone(), &next, record(&next, "starting"), 101).unwrap();
+        fs::write(
+            f.path(),
+            record(&uuid::Uuid::new_v4().to_string(), "system"),
+        )
+        .unwrap();
+        let replacement = fs::read(f.path()).unwrap();
+        assert!(active.finish_not_started(102).is_err());
+        assert_eq!(fs::read(f.path()).unwrap(), replacement);
     }
     #[test]
     fn user_journal_gate_probe() {
