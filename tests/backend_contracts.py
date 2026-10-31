@@ -9,6 +9,26 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_incident_history_is_read_only_report_independent_and_never_exports_private_generations(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs').split('pub async fn list_recovery_incidents', 1)[1].split('pub async fn list_recovery_reports', 1)[0]
+        self.assertIn('recovery::history::list(', source)
+        self.assertIn('.history(cursor.as_deref()', source)
+        for forbidden in ('store(&app)', 'record_acknowledgment', 'recovery::submit', 'prepare_incident_session', 'mutation::'):
+            self.assertNotIn(forbidden, source)
+        machine = self.text('coordination/src/recovery/history.rs')
+        self.assertIn('archive_observed_acknowledgment_unknown', machine)
+        self.assertNotIn('read_to_end', machine)
+        self.assertNotIn('read_optional', machine)
+        user = self.text('installer/src-tauri/src/recovery_user/history.rs')
+        self.assertIn('ambiguous_generations', user)
+        self.assertNotIn('recovery-reports', user)
+        self.assertNotIn('pub generation', user)
+        for code in [machine, user]:
+            for forbidden in ('remove_file', 'persist(', 'private_directory(', 'create_dir'):
+                if forbidden == 'private_directory(':
+                    self.assertNotIn('files::private_directory(', code)
+                else:
+                    self.assertNotIn(forbidden, code)
     def test_recovery_report_export_loads_committed_selected_summary_not_frontend_html_or_authority(self):
         source = self.text('installer/src-tauri/src/recovery_summary.rs')
         export = source.split('pub async fn export_recovery_report', 1)[1].split('#[tauri::command]', 1)[0]

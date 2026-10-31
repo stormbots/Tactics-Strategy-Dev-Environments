@@ -289,6 +289,39 @@ pub async fn inspect_user_recovery_acknowledgment(
 }
 
 #[tauri::command]
+pub async fn list_recovery_incidents(
+    app: tauri::AppHandle,
+    source: Source,
+    cursor: Option<String>,
+    limit: usize,
+) -> Result<IncidentHistoryPage, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "History observation time unavailable.")?.as_secs();
+        match source {
+            Source::Machine => Ok(IncidentHistoryPage {
+                observed_at: now,
+                machine: Some(sde_coordination::recovery::history::list(cursor.as_deref(), limit)
+                    .map_err(|_| "Machine incident history is unavailable; keep the evidence and Check Again.")?),
+                user: None,
+            }),
+            Source::User => {
+                let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+                Ok(IncidentHistoryPage { observed_at: now, machine: None,
+                    user: Some(crate::recovery_user::Store::new(directory).history(cursor.as_deref(), limit, now)?) })
+            }
+        }
+    }).await.map_err(|_| "Incident history observation is unavailable.".to_string())?
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IncidentHistoryPage {
+    pub observed_at: u64,
+    pub machine: Option<sde_coordination::recovery::history::Page>,
+    pub user: Option<crate::recovery_user::HistoryPage>,
+}
+
+#[tauri::command]
 pub async fn list_recovery_reports(
     app: tauri::AppHandle,
     cursor: Option<String>,

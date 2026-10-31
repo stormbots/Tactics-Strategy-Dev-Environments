@@ -22,6 +22,100 @@ fn archive_path(f: &Fixture, id: &str, extension: &str) -> PathBuf {
 }
 
 #[test]
+fn recovery_archive_history_is_read_only_and_never_infers_private_commit_or_completion() {
+    let Some(f) = Fixture::new() else { return };
+    let (original, id) = submitted_ack_fixture(&f);
+    assert!(recovery::history::list_at(&f.path, None, 25)
+        .unwrap()
+        .entries
+        .is_empty());
+    assert!(!f.path.join("recovery-archive").exists());
+    assert_eq!(
+        acknowledgment::record_at(&f.path, |phase| if phase == Phase::Evidence {
+            Err(Error::Unavailable)
+        } else {
+            Ok(())
+        })
+        .unwrap_err(),
+        Error::Unavailable
+    );
+    let page = recovery::history::list_at(&f.path, None, 1).unwrap();
+    assert_eq!(page.entries.len(), 1);
+    assert_eq!(page.entries[0].incident_id, id);
+    assert_eq!(
+        page.entries[0].status,
+        "archive_observed_acknowledgment_unknown"
+    );
+    assert_eq!(page.entries[0].continuation, "not_recorded");
+    let json = serde_json::to_string(&page).unwrap();
+    for secret in ["journal_sha256", "binding", "token", "logPath"] {
+        assert!(!json.contains(secret));
+    }
+    assert_eq!(
+        std::fs::read(f.path.join("transaction.json")).unwrap(),
+        original
+    );
+    assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+    assert!(recovery::history::list_at(&f.path, Some("../private"), 1).is_err());
+    assert!(recovery::history::list_at(&f.path, None, 0).is_err());
+    acknowledgment::record_at(&f.path, |_| Ok(()))
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        recovery::history::list_at(&f.path, None, 1)
+            .unwrap()
+            .entries[0]
+            .status,
+        "archive_observed_acknowledgment_unknown"
+    );
+    let _held = acquire_at(&f.path, "operations.gate", false).unwrap();
+    assert_eq!(
+        recovery::history::list_at(&f.path, None, 1).unwrap_err(),
+        Error::Busy
+    );
+}
+
+#[test]
+fn recovery_archive_history_pages_deduplicate_files_without_reading_or_purging_them() {
+    let Some(f) = Fixture::new() else { return };
+    let (_, first) = submitted_ack_fixture(&f);
+    acknowledgment::record_at(&f.path, |_| Ok(()))
+        .unwrap()
+        .unwrap();
+    let archive = f.path.join("recovery-archive");
+    let second = uuid::Uuid::new_v4().to_string();
+    acknowledgment::publish_once(
+        &archive,
+        &format!("{second}.journal"),
+        b"synthetic private bytes",
+    )
+    .unwrap();
+    let page = recovery::history::list_at(&f.path, None, 1).unwrap();
+    let cursor = page.next_cursor.unwrap();
+    let next = recovery::history::list_at(&f.path, Some(&cursor), 1).unwrap();
+    let mut ids = vec![
+        page.entries[0].incident_id.clone(),
+        next.entries[0].incident_id.clone(),
+    ];
+    ids.sort();
+    let mut expected = vec![first, second.clone()];
+    expected.sort();
+    assert_eq!(ids, expected);
+    assert!(next.next_cursor.is_none());
+    assert_eq!(
+        std::fs::read(archive.join(format!("{second}.journal"))).unwrap(),
+        b"synthetic private bytes"
+    );
+    let invalid = archive.join(format!("{}.journal", uuid::Uuid::new_v4()));
+    std::fs::create_dir(&invalid).unwrap();
+    assert_eq!(
+        recovery::history::list_at(&f.path, None, 25).unwrap_err(),
+        Error::Untrusted
+    );
+    assert!(invalid.is_dir());
+}
+
+#[test]
 fn recovery_public_state_distinguishes_student_intent_without_committing_or_clearing() {
     let Some(f) = Fixture::new() else { return };
     let original = interrupted_fixture(&f);

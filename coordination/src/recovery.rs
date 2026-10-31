@@ -3,6 +3,7 @@
 //! crate-private and requires a lease-borrowed permit from the mutation module.
 //! Bootstrap/GUI/execution consumers will be integrated only after native review.
 pub(crate) mod acknowledgment;
+pub mod history;
 pub(crate) mod restart;
 use crate::{acquire_at, Error, Result};
 pub use acknowledgment::{inspect_acknowledgment, record_acknowledgment, Acknowledgment};

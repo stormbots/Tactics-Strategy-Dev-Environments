@@ -12,6 +12,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
+#[path = "recovery_user/history.rs"]
+mod history;
+pub use history::Page as HistoryPage;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -44,6 +47,9 @@ pub struct Store {
 impl Store {
     pub fn new(app_data: PathBuf) -> Self {
         Self { app_data }
+    }
+    pub fn history(&self, cursor: Option<&str>, limit: usize, now: u64) -> Result<HistoryPage> {
+        history::list(&self.app_data, cursor, limit, now)
     }
     fn directory(&self, evidence: &Evidence) -> Result<PathBuf> {
         let Context::User { incident } = &evidence.context else {
@@ -421,6 +427,126 @@ mod tests {
         }
     }
 
+    #[test]
+    fn user_incident_history_is_read_only_and_survives_missing_reports_and_current_journal() {
+        let f = Fixture::new();
+        let store = f.store();
+        assert!(store.history(None, 25, 100).unwrap().entries.is_empty());
+        assert!(!f.app.join("recovery-state").exists());
+        let evidence = f.evidence();
+        let generation = evidence.generation.clone();
+        let result = store
+            .with_report(&evidence, 100, || Err("not saved".into()))
+            .unwrap();
+        assert!(result.report_id.is_none() && result.acknowledgment.is_some());
+        drop(evidence);
+        fs::remove_file(f.path()).unwrap();
+        let page = store.history(None, 25, 101).unwrap();
+        assert_eq!(page.entries.len(), 1);
+        assert_eq!(page.entries[0].incident_id, f.id);
+        assert_eq!(page.entries[0].status, "acknowledgment_observed");
+        assert_eq!(
+            page.entries[0]
+                .acknowledgment
+                .as_ref()
+                .unwrap()
+                .acknowledged_at,
+            100
+        );
+        assert_eq!(page.entries[0].continuation, "not_recorded");
+        let json = serde_json::to_string(&page).unwrap();
+        for private in [
+            generation.as_str(),
+            "logPath",
+            "/private/student",
+            "evidence_sha256",
+            "bootKey",
+        ] {
+            assert!(!json.contains(private));
+        }
+        assert!(!f.app.join("recovery-reports").exists());
+    }
+    #[test]
+    fn user_incident_history_retains_report_reference_without_requiring_the_report() {
+        let f = Fixture::new();
+        let report = uuid::Uuid::new_v4().to_string();
+        f.store()
+            .acknowledge(&f.evidence(), Some(report.clone()), 100)
+            .unwrap();
+        let page = f.store().history(None, 25, 101).unwrap();
+        assert_eq!(
+            page.entries[0].acknowledgment.as_ref().unwrap().report_id,
+            Some(report)
+        );
+        assert!(!f.app.join("recovery-reports").exists());
+        assert!(f.store().history(Some("../escape"), 25, 101).is_err());
+        assert!(f.store().history(None, 0, 101).is_err());
+    }
+    #[test]
+    fn user_incident_history_never_conflates_duplicate_generations_or_unavailable_evidence() {
+        let f = Fixture::new();
+        let evidence = f.evidence();
+        let store = f.store();
+        store.acknowledge(&evidence, None, 100).unwrap();
+        let directory = store.directory(&evidence).unwrap();
+        let original = directory.join("evidence.json");
+        fs::write(&original, b"corrupt").unwrap();
+        assert_eq!(
+            store.history(None, 25, 101).unwrap().entries[0].status,
+            "unavailable"
+        );
+        assert_eq!(fs::read(&original).unwrap(), b"corrupt");
+        files::private_directory(&directory.parent().unwrap().join("a".repeat(64))).unwrap();
+        let page = store.history(None, 25, 101).unwrap();
+        assert_eq!(page.entries[0].status, "ambiguous_generations");
+        assert!(page.entries[0].acknowledgment.is_none() && page.entries[0].context.is_none());
+    }
+    #[test]
+    fn user_incident_history_partial_publication_is_unknown_not_cleared() {
+        let f = Fixture::new();
+        let evidence = f.evidence();
+        let store = f.store();
+        store.acknowledge(&evidence, None, 100).unwrap();
+        let directory = store.directory(&evidence).unwrap();
+        fs::remove_file(directory.join("acknowledged.json")).unwrap();
+        let page = store.history(None, 25, 101).unwrap();
+        assert_eq!(page.entries[0].status, "acknowledgment_unknown");
+        assert!(page.entries[0].acknowledgment.is_none());
+        assert!(page.entries[0].context.is_some());
+        assert!(directory.join("evidence.json").exists());
+    }
+    #[test]
+    fn user_incident_history_pages_without_retention_purge_and_flags_unexpected_entries() {
+        let f = Fixture::new();
+        let store = f.store();
+        let mut expected = vec![];
+        for _ in 0..3 {
+            let id = uuid::Uuid::new_v4().to_string();
+            fs::write(f.path(), serde_json::to_vec(&serde_json::json!({"schema":1,"id":id,"operation":"update","stage":"profile","startedAt":10,"observedAt":20,"logPath":null,"acknowledged":false})).unwrap()).unwrap();
+            let evidence = recovery_context::read_evidence(&f.app, &id, 100).unwrap();
+            store.acknowledge(&evidence, None, 100).unwrap();
+            expected.push(id);
+        }
+        fs::write(f.app.join("recovery-state").join("unexpected"), b"retained").unwrap();
+        let mut cursor = None;
+        let mut observed = vec![];
+        loop {
+            let page = store.history(cursor.as_deref(), 1, 101).unwrap();
+            assert!(page.unexpected_entries);
+            observed.extend(page.entries.into_iter().map(|entry| entry.incident_id));
+            cursor = page.next_cursor;
+            if cursor.is_none() {
+                break;
+            }
+        }
+        observed.sort();
+        expected.sort();
+        assert_eq!(observed, expected);
+        assert_eq!(
+            fs::read(f.app.join("recovery-state").join("unexpected")).unwrap(),
+            b"retained"
+        );
+    }
     #[test]
     fn user_acknowledgment_preserves_source_and_commits_separate_generation_bound_decision() {
         let f = Fixture::new();

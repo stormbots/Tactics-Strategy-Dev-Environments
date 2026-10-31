@@ -245,7 +245,7 @@ fn run(
             };
             if code != 0 {
                 if code == 75 {
-                    emit("SKYVIEW_EVENT|warning|deferred|Another SDE operation is running. Please retry when it finishes.".into());
+                    emit("SKYVIEW_EVENT|warning|deferred|Setup was deferred by current safety checks. Review Recovery findings and Check Again; no completion or acknowledgment is inferred.".into());
                 } else if matches!(
                     sde_coordination::status(),
                     sde_coordination::Status::Interrupted
@@ -604,6 +604,7 @@ fn main() {
             recovery_summary::inspect_user_recovery_acknowledgment,
             recovery_summary::inspect_recovery_state,
             recovery_summary::list_recovery_reports,
+            recovery_summary::list_recovery_incidents,
             recovery_summary::read_recovery_report,
             recovery_summary::read_recovery_report_details,
             recovery_summary::export_recovery_report,

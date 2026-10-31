@@ -57,6 +57,7 @@ import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
 import { RecoveryReportHistory } from "./RecoveryReportHistory";
+import { RecoveryIncidentHistory } from "./RecoveryIncidentHistory";
 import {
   acknowledgeMachine,
   acknowledgeUser,
@@ -1031,6 +1032,7 @@ export default function App() {
               onLogs={() => void openTarget("logs")}
               onSupport={() => setReportOpen(true)}
             />
+            <RecoveryIncidentHistory disabled={busy} />
             <RecoveryReportHistory
               disabled={busy}
               recentReports={acknowledgmentOutcomes.flatMap((result) =>

@@ -197,7 +197,7 @@ pub(crate) fn record_locked(
 }
 
 #[cfg(unix)]
-fn validate_archive(dir: &Path) -> Result<()> {
+pub(crate) fn validate_archive(dir: &Path) -> Result<()> {
     use std::os::unix::fs::MetadataExt;
     let path = dir.join(ARCHIVE);
     crate::validate_dir(&path)?;
@@ -209,7 +209,7 @@ fn validate_archive(dir: &Path) -> Result<()> {
 }
 
 #[cfg(windows)]
-fn validate_archive(dir: &Path) -> Result<()> {
+pub(crate) fn validate_archive(dir: &Path) -> Result<()> {
     crate::windows::validate_recovery_archive(dir)
 }
 

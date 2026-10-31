@@ -48,6 +48,7 @@ fn main() {
             "inspect_user_recovery_acknowledgment",
             "inspect_recovery_state",
             "list_recovery_reports",
+            "list_recovery_incidents",
             "read_recovery_report",
             "read_recovery_report_details",
             "export_recovery_report",

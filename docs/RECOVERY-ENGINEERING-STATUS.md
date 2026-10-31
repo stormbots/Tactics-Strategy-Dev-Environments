@@ -1,8 +1,15 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [retained report history and share-copy export](RECOVERY-REPORT-HISTORY.md),
-branch `codex/recovery-report-history`, pending native/browser CI. Report history is
-not yet a complete incident ledger independent of saved reports; that remains next.
+Current increment: [read-only retained incident observations](RECOVERY-INCIDENT-HISTORY.md),
+branch `codex/recovery-incident-history`, pending native/browser CI. This discovers
+minimum account records and opaque machine archives independently of reports;
+history-view deletion and malformed/unavailable-source completeness remain next.
+Retained report history/share-copy export (#135) passed at
+`c069922659eac695f33ff4eff6682d4cf506832a` in
+[Build 41234049333](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41234049333).
+All 159 frontend and 93 browser tests passed. Windows trust 121/121, root Linux
+135/135 and native Tauri Windows 94/94 / Linux 91/91 passed, including actual
+listing/export source and both signed upgrades with all inherited recovery gates.
 Recovery interaction (#134) passed at
 `d954c6d768c8c70dae50ca7835babf00cc4171e9` in
 [Build 41226670429](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41226670429).
@@ -17,7 +24,7 @@ Native Recovery observation contract (#133) passed at
 Windows trust 118/118 and root Linux 132/132 passed, including real standard-user
 public-state/restart proof. Native Tauri Windows 91/91 and Linux 88/88 passed;
 both signed upgrades and actual Mint 22.3/inherited recovery markers passed.
-Retained-history/export interaction, malformed/unavailable-source completeness,
+History-view deletion, malformed/unavailable-source completeness,
 consolidation and focused owner UAT remain; no partial-stack merge or release.
 Native proven-not-started outcomes (#132) passed at
 `e2aa71eede4ceea878e70292ffd01af59759ce75` in

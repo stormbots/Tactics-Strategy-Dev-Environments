@@ -1,6 +1,12 @@
 # Retained summary history and explicit share-copy export
 
-Branch: `codex/recovery-report-history`. Bounded T7/T8 integration; native/browser CI pending.
+Branch: `codex/recovery-report-history`. Bounded T7/T8 integration accepted at
+`c069922659eac695f33ff4eff6682d4cf506832a` in
+[Build 41234049333](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41234049333).
+All 159 frontend/93 browser tests, Windows trust 121/121, root Linux 135/135,
+native Tauri Windows 94/94 and Linux 91/91 passed. New listing/export tests and all
+inherited recovery/signed SYSTEM/actual Mint 22.3 gates passed. Real save-dialog
+and manual sharing acceptance remains owner UAT, not automated fixture proof.
 Base #134: `d954c6d768c8c70dae50ca7835babf00cc4171e9`, accepted in
 [Build 41226670429](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41226670429).
 

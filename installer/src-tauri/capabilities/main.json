@@ -20,6 +20,7 @@
     "allow-inspect-user-recovery-acknowledgment",
     "allow-inspect-recovery-state",
     "allow-list-recovery-reports",
+    "allow-list-recovery-incidents",
     "allow-read-recovery-report",
     "allow-read-recovery-report-details",
     "allow-export-recovery-report",

@@ -807,6 +807,20 @@ mod tests {
         let public = recovery::public_state_at(&dir).unwrap().unwrap();
         assert_eq!(public.incident.incident_id, incident.incident_id);
         assert!(public.intent_submitted && public.acknowledgment.is_none());
+        let history = recovery::history::list_at(&dir, None, 25).unwrap();
+        assert_eq!(history.entries.len(), 1);
+        assert_ne!(history.entries[0].incident_id, incident.incident_id);
+        assert_eq!(
+            history.entries[0].status,
+            "archive_observed_acknowledgment_unknown"
+        );
+        for suffix in [".journal", ".receipt.json"] {
+            assert!(std::fs::read(
+                dir.join("recovery-archive")
+                    .join(format!("{}{}", history.entries[0].incident_id, suffix))
+            )
+            .is_err());
+        }
         let restart = inspection::RestartMarker::capture();
         assert!(
             !restart.missing(),
@@ -833,6 +847,33 @@ mod tests {
         let Some(f) = Fixture::new() else { return };
         let original = interrupted_fixture(&f);
         bootstrap_at(&f.path).unwrap();
+        // Synthetic earlier generation for the real standard-account history
+        // probe. No package or workstation state is involved.
+        let earlier = recovery::inspect_at(&f.path).unwrap().unwrap();
+        recovery::submit_at(&f.path, &earlier.incident_id).unwrap();
+        recovery::acknowledgment::record_at(&f.path, |_| Ok(()))
+            .unwrap()
+            .unwrap();
+        std::fs::rename(
+            f.path.join("transaction.json"),
+            f.path.join("previous-ci-transaction.json"),
+        )
+        .unwrap();
+        {
+            use std::io::Write;
+            let mut file = recovery::open(
+                &f.path,
+                "transaction.json",
+                recovery::Kind::Private,
+                true,
+                true,
+            )
+            .unwrap();
+            file.write_all(&original).unwrap();
+            file.sync_all().unwrap();
+        }
+        let current = recovery::prepare_at(&f.path).unwrap().unwrap();
+        assert_ne!(earlier.incident_id, current.incident_id);
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
