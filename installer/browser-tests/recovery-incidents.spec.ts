@@ -39,7 +39,7 @@ for (const theme of ["Light", "Dark"])
       await page.route("**/src/recoveryIncidents.ts*", (route) =>
         route.fulfill({
           contentType: "application/javascript",
-          body: `export async function listRecoveryIncidents(source){return {observedAt:100,machine:source==='machine'?${JSON.stringify(machine)}:null,user:source==='user'?${JSON.stringify(user)}:null};}`,
+          body: `export async function listRecoveryIncidents(source){return {observedAt:100,machine:source==='machine'?${JSON.stringify(machine)}:null,user:source==='user'?${JSON.stringify(user)}:null};} export async function deleteRecoveryHistoryView(){throw new Error('Read-only fixture');}`,
         }),
       );
       await page.setViewportSize({ width, height: 900 });

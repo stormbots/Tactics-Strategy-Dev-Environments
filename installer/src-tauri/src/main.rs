@@ -11,6 +11,7 @@ mod protocol;
 mod recovery_acknowledgment;
 mod recovery_context;
 mod recovery_history;
+mod history_views;
 mod recovery_reports;
 mod recovery_preflight;
 mod recovery_state;
@@ -589,6 +590,7 @@ fn main() {
     builder
         .manage(Busy::default())
         .manage(recovery_state::Views::default())
+        .manage(history_views::Views::default())
         .manage(updates::Checks::default())
         .manage(session)
         .invoke_handler(tauri::generate_handler![
@@ -605,6 +607,7 @@ fn main() {
             recovery_summary::inspect_recovery_state,
             recovery_summary::list_recovery_reports,
             recovery_summary::list_recovery_incidents,
+            recovery_summary::delete_recovery_history_view,
             recovery_summary::read_recovery_report,
             recovery_summary::read_recovery_report_details,
             recovery_summary::export_recovery_report,

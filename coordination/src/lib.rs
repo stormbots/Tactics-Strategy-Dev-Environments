@@ -14,6 +14,9 @@ mod bootstrap_tests;
 // native trust paths without depending on a graphical runtime. Not production
 // machine-coordination code and not an authorization surface.
 pub mod guidance;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/history_views.rs"]
+mod history_views;
 pub mod inspection;
 #[cfg(any(target_os = "linux", windows))]
 pub mod manual;

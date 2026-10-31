@@ -1,6 +1,12 @@
 # Read-only retained incident observations
 
-Branch: `codex/recovery-incident-history`. Bounded T7/T8 increment; native/browser CI pending.
+Branch: `codex/recovery-incident-history`. Bounded T7/T8 increment accepted at
+`9f0fd91256af72538f98a1aca1708130fb25ad36` in
+[Build 41240901801](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41240901801).
+All 165 frontend/97 browser tests, Windows trust 128/128, root Linux 142/142,
+native Tauri Windows 99/99 and Linux 96/96 passed. Actual standard-user archive
+enumeration/private read denial and both signed-upgrade paths passed. This accepts
+read-only discovery; subsequent view deletion has its own separate contract.
 Base #135: `c069922659eac695f33ff4eff6682d4cf506832a`, accepted in
 [Build 41234049333](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41234049333).
 

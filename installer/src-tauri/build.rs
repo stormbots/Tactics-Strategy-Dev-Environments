@@ -49,6 +49,7 @@ fn main() {
             "inspect_recovery_state",
             "list_recovery_reports",
             "list_recovery_incidents",
+            "delete_recovery_history_view",
             "read_recovery_report",
             "read_recovery_report_details",
             "export_recovery_report",

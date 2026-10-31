@@ -1,9 +1,16 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [read-only retained incident observations](RECOVERY-INCIDENT-HISTORY.md),
-branch `codex/recovery-incident-history`, pending native/browser CI. This discovers
-minimum account records and opaque machine archives independently of reports;
-history-view deletion and malformed/unavailable-source completeness remain next.
+Current increment: [selected history-view deletion](RECOVERY-HISTORY-VIEW-DELETION.md),
+branch `codex/recovery-history-view-deletion`, pending native/browser CI. This hides
+only eligible displayed snapshots for the current account, never operational state.
+Report-independent incident observations (#136) passed at
+`9f0fd91256af72538f98a1aca1708130fb25ad36` in
+[Build 41240901801](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41240901801).
+All 165 frontend/97 browser tests, Windows trust 128/128, root Linux 142/142,
+native Tauri Windows 99/99 and Linux 96/96 passed. Real standard-user archive
+enumeration/private read-denial and both signed-upgrade paths passed. Remaining:
+malformed/unavailable-source completeness and final execution/UX acceptance before
+consolidation, signing approval and focused owner UAT. No partial-stack merge.
 Retained report history/share-copy export (#135) passed at
 `c069922659eac695f33ff4eff6682d4cf506832a` in
 [Build 41234049333](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41234049333).

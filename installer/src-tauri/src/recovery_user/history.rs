@@ -11,6 +11,9 @@ pub struct Entry {
     pub context: Option<Context>,
     pub acknowledgment: Option<Decision>,
     pub continuation: &'static str,
+    #[serde(skip)]
+    pub view_key: String,
+    pub view_token: Option<String>,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -65,13 +68,16 @@ pub(super) fn list(app_data: &Path, cursor: Option<&str>, limit: usize, now: u64
                 context: None,
                 acknowledgment: None,
                 continuation: "not_recorded",
+                view_key: String::new(),
+                view_token: None,
             };
-            if let Ok((status, context, acknowledgment)) =
+            if let Ok((status, context, acknowledgment, key)) =
                 inspect(&root.join(&incident_id), &incident_id, now)
             {
                 entry.status = status;
                 entry.context = context;
                 entry.acknowledgment = acknowledgment;
+                entry.view_key = key;
             }
             entry
         })
@@ -91,7 +97,7 @@ fn inspect(
     directory: &Path,
     id: &str,
     now: u64,
-) -> Result<(&'static str, Option<Context>, Option<Decision>)> {
+) -> Result<(&'static str, Option<Context>, Option<Decision>, String)> {
     files::existing_private_directory(directory)?;
     let generations = fs::read_dir(directory)
         .map_err(|_| "Retained generations are unavailable.")?
@@ -99,7 +105,7 @@ fn inspect(
         .collect::<std::io::Result<Vec<_>>>()
         .map_err(|_| "Retained generations are unavailable.")?;
     if generations.is_empty() {
-        return Ok(("acknowledgment_unknown", None, None));
+        return Ok(("acknowledgment_unknown", None, None, String::new()));
     }
     if generations.len() > 128 {
         return Err("Retained generation lookup is unavailable.".into());
@@ -107,7 +113,7 @@ fn inspect(
     // A copied UUID is not a generation identity. Do not choose the first or
     // newest matching receipt/context and silently conflate earlier incidents.
     if generations.len() > 1 {
-        return Ok(("ambiguous_generations", None, None));
+        return Ok(("ambiguous_generations", None, None, String::new()));
     }
     let generation = generations[0].file_name().to_string_lossy().into_owned();
     if generation.len() != 64
@@ -123,11 +129,20 @@ fn inspect(
         return Err("Retained evidence is unavailable.".into());
     };
     let context = recovery_context::preserved_context(&original, id, now)?;
+    let mut key = Sha256::new();
+    key.update(generation.as_bytes());
+    key.update(&original);
     let Some(bytes) = optional(&path.join("acknowledged.json"), 4096)? else {
-        return Ok(("acknowledgment_unknown", Some(context), None));
+        return Ok((
+            "acknowledgment_unknown",
+            Some(context),
+            None,
+            format!("{:x}", key.finalize()),
+        ));
     };
     let receipt: Receipt =
         serde_json::from_slice(&bytes).map_err(|_| "Retained decision is invalid.")?;
+    key.update(&bytes);
     let Context::User { incident } = &context else {
         return Err("Invalid retained source.".into());
     };
@@ -150,5 +165,6 @@ fn inspect(
         "acknowledgment_observed",
         Some(context),
         Some(receipt.decision),
+        format!("{:x}", key.finalize()),
     ))
 }

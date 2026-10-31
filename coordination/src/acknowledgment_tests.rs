@@ -41,6 +41,7 @@ fn recovery_archive_history_is_read_only_and_never_infers_private_commit_or_comp
     );
     let page = recovery::history::list_at(&f.path, None, 1).unwrap();
     assert_eq!(page.entries.len(), 1);
+    let partial_key = page.entries[0].view_key.clone();
     assert_eq!(page.entries[0].incident_id, id);
     assert_eq!(
         page.entries[0].status,
@@ -61,6 +62,13 @@ fn recovery_archive_history_is_read_only_and_never_infers_private_commit_or_comp
     acknowledgment::record_at(&f.path, |_| Ok(()))
         .unwrap()
         .unwrap();
+    assert_ne!(
+        recovery::history::list_at(&f.path, None, 1)
+            .unwrap()
+            .entries[0]
+            .view_key,
+        partial_key
+    );
     assert_eq!(
         recovery::history::list_at(&f.path, None, 1)
             .unwrap()
@@ -113,6 +121,44 @@ fn recovery_archive_history_pages_deduplicate_files_without_reading_or_purging_t
         Error::Untrusted
     );
     assert!(invalid.is_dir());
+}
+
+#[test]
+fn history_view_deletion_does_not_clear_machine_journal_receipt_or_gate() {
+    let Some(f) = Fixture::new() else { return };
+    let (original, id) = submitted_ack_fixture(&f);
+    acknowledgment::record_at(&f.path, |_| Ok(()))
+        .unwrap()
+        .unwrap();
+    let row = recovery::history::list_at(&f.path, None, 1)
+        .unwrap()
+        .entries
+        .remove(0);
+    let binding = crate::history_views::Binding {
+        source: "machine".into(),
+        id: id.clone(),
+        fingerprint: row.view_key,
+    };
+    let app_data = f.path.join("cosmetic-account-fixture");
+    std::fs::create_dir(&app_data).unwrap();
+    let receipt_path = archive_path(&f, &id, "receipt.json");
+    let before = std::fs::read(&receipt_path).unwrap();
+    let views = crate::history_views::Store::new(&app_data);
+    views.hide(&binding, 100).unwrap();
+    assert!(views.hidden(&binding).unwrap());
+    assert!(std::fs::read(f.path.join("transaction.json")).unwrap() == original);
+    assert!(std::fs::read(receipt_path).unwrap() == before);
+    assert_eq!(installation_at(&f.path).unwrap_err(), Error::Interrupted);
+    assert_eq!(
+        recovery::history::list_at(&f.path, None, 1)
+            .unwrap()
+            .entries
+            .len(),
+        1
+    );
+    assert!(recovery::acknowledgment::inspect_at(&f.path)
+        .unwrap()
+        .is_some());
 }
 
 #[test]

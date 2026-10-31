@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   listRecoveryIncidents,
+  deleteRecoveryHistoryView,
   type HistorySource,
   type IncidentHistoryEntry,
 } from "./recoveryIncidents";
@@ -18,6 +19,17 @@ function SourceHistory({
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const [unexpected, setUnexpected] = useState(false);
+  const [hidden, setHidden] = useState(0);
+  const [viewStateUnavailable, setViewStateUnavailable] = useState(false);
+  const [confirmation, setConfirmation] = useState<IncidentHistoryEntry | null>(
+    null,
+  );
+  const [notice, setNotice] = useState("");
+  const confirmHeading = useRef<HTMLParagraphElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (confirmation) confirmHeading.current?.focus();
+  }, [confirmation]);
   const active = useRef(false);
   const live = useRef(true);
   async function load(next: string | null = null) {
@@ -44,6 +56,11 @@ function SourceHistory({
       setCursor(page.nextCursor);
       setObserved(result.observedAt);
       setUnexpected(!!page.unexpectedEntries);
+      setViewStateUnavailable(!!result.viewStateUnavailable);
+      setHidden((previous) =>
+        next ? previous + (result.hiddenViews ?? 0) : (result.hiddenViews ?? 0),
+      );
+      setConfirmation(null);
     } catch {
       if (live.current)
         setError(
@@ -63,6 +80,36 @@ function SourceHistory({
   useEffect(() => {
     if (!disabled && observed === null) void load();
   }, [disabled]);
+  async function deleteView() {
+    if (disabled || active.current || !confirmation?.viewToken) return;
+    const selected = confirmation;
+    active.current = true;
+    setWorking(true);
+    setError("");
+    setNotice("");
+    try {
+      await deleteRecoveryHistoryView(selected.viewToken!);
+      if (!live.current) return;
+      setEntries((previous) =>
+        previous.filter((entry) => entry.incidentId !== selected.incidentId),
+      );
+      setHidden((previous) => previous + 1);
+      setConfirmation(null);
+      setNotice(
+        "Selected history view deleted for this account. Minimum operational evidence, acknowledgment, reports and safety gates are unchanged; no operation was authorized.",
+      );
+    } catch {
+      if (live.current) {
+        setConfirmation(null);
+        setError(
+          "History view deletion is unconfirmed or the entry changed. Refresh history before trying again. No incident was acknowledged or cleared.",
+        );
+      }
+    } finally {
+      active.current = false;
+      if (live.current) setWorking(false);
+    }
+  }
   return (
     <div aria-busy={working}>
       <h3>
@@ -77,6 +124,21 @@ function SourceHistory({
         </p>
       )}
       {error && <p role="alert">{error}</p>}
+      {viewStateUnavailable && (
+        <p>
+          Some history-view preferences are unavailable. Affected entries remain
+          visible, but their view deletion is disabled. Operational evidence and
+          safety checks are unchanged.
+        </p>
+      )}
+      {notice && <p role="status">{notice}</p>}
+      {hidden > 0 && (
+        <p>
+          {hidden} deleted history {hidden === 1 ? "view is" : "views are"}{" "}
+          excluded from these pages. Original operational records remain; this
+          is not cleared evidence.
+        </p>
+      )}
       {unexpected && (
         <p>
           Unexpected account-history entries were detected. The list is not a
@@ -92,9 +154,9 @@ function SourceHistory({
       </button>
       {observed && !error && !entries.length && (
         <p>
-          No retained {source} entries were found in this source. Current
-          incidents are shown above; absence here does not establish completion
-          or acknowledgment.
+          No visible {source} entries on these pages. Deleted views may be
+          excluded; current incidents are shown above. Absence here does not
+          establish completion or acknowledgment.
         </p>
       )}
       <ul>
@@ -139,9 +201,60 @@ function SourceHistory({
               </p>
             )}
             <p>Continuation/completion: not recorded.</p>
+            {entry.viewToken ? (
+              <button
+                className="secondary"
+                disabled={disabled || working}
+                onClick={() => {
+                  returnFocus.current = document.activeElement as HTMLElement;
+                  setConfirmation(entry);
+                }}
+              >
+                Delete {source} history view {entry.incidentId}
+              </button>
+            ) : (
+              <p>
+                View deletion is unavailable for this snapshot. Refresh history;
+                do not remove operational files.
+              </p>
+            )}
           </li>
         ))}
       </ul>
+      {confirmation && (
+        <div
+          role="group"
+          aria-label={`Confirm ${source} history view deletion`}
+          className="notice"
+        >
+          <p ref={confirmHeading} tabIndex={-1}>
+            Delete the displayed {source} history view for incident{" "}
+            {confirmation.incidentId} from this account? Minimum evidence and
+            decisions remain, reports and other accounts are unaffected, and a
+            changed incident reappears. This does not acknowledge, repair or
+            authorize changes.
+          </p>
+          <div className="result-actions">
+            <button
+              className="secondary"
+              disabled={disabled || working}
+              onClick={() => {
+                setConfirmation(null);
+                returnFocus.current?.focus();
+              }}
+            >
+              Keep {source} history view
+            </button>
+            <button
+              className="primary"
+              disabled={disabled || working}
+              onClick={() => void deleteView()}
+            >
+              Confirm delete {source} history view
+            </button>
+          </div>
+        </div>
+      )}
       {cursor && (
         <button
           className="secondary"
@@ -168,8 +281,10 @@ export function RecoveryIncidentHistory({
       <p>
         These observations come from minimum operational state, not the saved
         report list. Failed report saving or report deletion does not remove
-        them. History is read-only here: no acknowledgment, deletion, repair or
-        operation is performed.
+        them. You can explicitly delete a displayed history view for this
+        account, but minimum operational records remain. This does not
+        acknowledge, repair, clear evidence or start an operation. Changed
+        incident evidence reappears.
       </p>
       <p>
         Machine archive names do not reveal private journal or receipt contents.

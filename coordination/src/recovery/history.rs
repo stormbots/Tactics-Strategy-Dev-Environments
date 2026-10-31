@@ -1,7 +1,7 @@
 //! Read-only opaque archive discovery. Private receipts/journals are never read
 //! or made public, and an archive filename is not proof of acknowledgment.
 use super::*;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -9,6 +9,9 @@ pub struct Entry {
     pub incident_id: String,
     pub status: &'static str,
     pub continuation: &'static str,
+    #[serde(skip)]
+    pub view_key: String,
+    pub view_token: Option<String>,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,6 +39,7 @@ pub(crate) fn list_at(dir: &Path, cursor: Option<&str>, limit: usize) -> Result<
         Ok(_) => acknowledgment::validate_archive(dir)?,
     }
     let mut ids = BTreeSet::new();
+    let mut keys = BTreeMap::<String, Vec<String>>::new();
     for entry in fs::read_dir(&archive).map_err(|_| Error::Unavailable)? {
         let entry = entry.map_err(|_| Error::Unavailable)?;
         let name = entry.file_name();
@@ -64,16 +68,38 @@ pub(crate) fn list_at(dir: &Path, cursor: Option<&str>, limit: usize) -> Result<
             if ids.len() > limit + 1 {
                 ids.pop_last();
             }
+            // Only public enumeration metadata, never private file contents.
+            if ids.contains(id) {
+                let timestamp = |value: std::io::Result<std::time::SystemTime>| {
+                    value
+                        .ok()
+                        .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|value| value.as_nanos())
+                };
+                keys.entry(id.to_owned()).or_default().push(format!(
+                    "{name}|{}|{:?}|{:?}",
+                    metadata.len(),
+                    timestamp(metadata.modified()),
+                    timestamp(metadata.created())
+                ));
+            }
+            keys.retain(|id, _| ids.contains(id));
         }
     }
     let more = ids.len() > limit;
     let entries: Vec<_> = ids
         .into_iter()
         .take(limit)
-        .map(|incident_id| Entry {
-            incident_id,
-            status: "archive_observed_acknowledgment_unknown",
-            continuation: "not_recorded",
+        .map(|incident_id| {
+            let mut fields = keys.remove(&incident_id).unwrap_or_default();
+            fields.sort();
+            Entry {
+                view_key: format!("{:x}", Sha256::digest(fields.join("\n").as_bytes())),
+                view_token: None,
+                incident_id,
+                status: "archive_observed_acknowledgment_unknown",
+                continuation: "not_recorded",
+            }
         })
         .collect();
     let next_cursor = if more {

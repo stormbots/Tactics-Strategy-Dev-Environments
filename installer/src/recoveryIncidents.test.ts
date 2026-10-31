@@ -1,6 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { listRecoveryIncidents } from "./recoveryIncidents";
+import {
+  listRecoveryIncidents,
+  deleteRecoveryHistoryView,
+} from "./recoveryIncidents";
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
   isTauri: vi.fn(() => true),
@@ -22,4 +25,12 @@ it("preview has no workstation incident records and performs no native call", as
   expect((await listRecoveryIncidents("machine")).machine?.entries).toEqual([]);
   expect((await listRecoveryIncidents("user")).user?.entries).toEqual([]);
   expect(invoke).not.toHaveBeenCalled();
+  await expect(deleteRecoveryHistoryView("id")).rejects.toThrow("Preview");
+});
+it("view deletion passes only the opaque native token and confirmation, not a path or fingerprint", async () => {
+  await deleteRecoveryHistoryView("opaque-view");
+  expect(invoke).toHaveBeenCalledExactlyOnceWith(
+    "delete_recovery_history_view",
+    { viewToken: "opaque-view", confirmed: true },
+  );
 });

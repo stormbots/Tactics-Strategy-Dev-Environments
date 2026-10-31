@@ -9,6 +9,21 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_history_view_deletion_is_native_bound_cosmetic_state_not_recovery_authority(self):
+        source = self.text('installer/src-tauri/src/recovery_summary.rs')
+        deletion = source.split('pub async fn delete_recovery_history_view', 1)[1].split('#[tauri::command]', 1)[0]
+        self.assertIn('view_token: String', deletion)
+        self.assertIn('.resolve(&view_token)?', deletion)
+        self.assertLess(deletion.index('current.as_deref()'), deletion.index('.hide(&binding, now)'))
+        for forbidden in ('record_acknowledgment', 'recovery::submit', 'journal::acknowledge', 'mutation::', 'remove_file', 'path: String', 'fingerprint: String'):
+            self.assertNotIn(forbidden, deletion)
+        store = self.text('installer/src-tauri/src/history_views.rs').split('#[cfg(test)]', 1)[0]
+        self.assertIn('recovery-history-views', store)
+        self.assertNotIn('transaction.json', store)
+        self.assertNotIn('operation-journal.json', store)
+        self.assertNotIn('remove_dir_all', store)
+        self.assertNotIn('history_views', self.text('coordination/src/mutation.rs'))
+        self.assertNotIn('history_views', self.text('installer/src-tauri/src/recovery_state.rs'))
     def test_incident_history_is_read_only_report_independent_and_never_exports_private_generations(self):
         source = self.text('installer/src-tauri/src/recovery_summary.rs').split('pub async fn list_recovery_incidents', 1)[1].split('pub async fn list_recovery_reports', 1)[0]
         self.assertIn('recovery::history::list(', source)

@@ -21,6 +21,7 @@
     "allow-inspect-recovery-state",
     "allow-list-recovery-reports",
     "allow-list-recovery-incidents",
+    "allow-delete-recovery-history-view",
     "allow-read-recovery-report",
     "allow-read-recovery-report-details",
     "allow-export-recovery-report",

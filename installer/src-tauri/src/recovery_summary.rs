@@ -298,17 +298,49 @@ pub async fn list_recovery_incidents(
     tauri::async_runtime::spawn_blocking(move || {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
             .map_err(|_| "History observation time unavailable.")?.as_secs();
+        let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+        let views = crate::history_views::Store::new(&directory);
         match source {
-            Source::Machine => Ok(IncidentHistoryPage {
+            Source::Machine => {
+                let mut page = sde_coordination::recovery::history::list(cursor.as_deref(), limit)
+                    .map_err(|_| "Machine incident history is unavailable; keep the evidence and Check Again.")?;
+                let mut visible = vec![]; let mut hidden_views = 0; let mut view_state_unavailable = false;
+                for mut row in page.entries {
+                    let binding = crate::history_views::Binding { source: "machine".into(), id: row.incident_id.clone(), fingerprint: row.view_key.clone() };
+                    match views.hidden(&binding) {
+                        Ok(true) => { hidden_views += 1; continue; }
+                        Ok(false) => match app.state::<crate::history_views::Views>().bind(binding) {
+                            Ok(token) => row.view_token = Some(token), Err(_) => view_state_unavailable = true,
+                        },
+                        Err(_) => view_state_unavailable = true,
+                    }
+                    visible.push(row);
+                }
+                page.entries = visible;
+                Ok(IncidentHistoryPage {
                 observed_at: now,
-                machine: Some(sde_coordination::recovery::history::list(cursor.as_deref(), limit)
-                    .map_err(|_| "Machine incident history is unavailable; keep the evidence and Check Again.")?),
+                machine: Some(page), hidden_views, view_state_unavailable,
                 user: None,
-            }),
+            })},
             Source::User => {
-                let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+                let mut page = crate::recovery_user::Store::new(directory.clone()).history(cursor.as_deref(), limit, now)?;
+                let mut visible = vec![]; let mut hidden_views = 0; let mut view_state_unavailable = false;
+                for mut row in page.entries {
+                    if !row.view_key.is_empty() {
+                        let binding = crate::history_views::Binding { source: "user".into(), id: row.incident_id.clone(), fingerprint: row.view_key.clone() };
+                        match views.hidden(&binding) {
+                            Ok(true) => { hidden_views += 1; continue; }
+                            Ok(false) => match app.state::<crate::history_views::Views>().bind(binding) {
+                                Ok(token) => row.view_token = Some(token), Err(_) => view_state_unavailable = true,
+                            },
+                            Err(_) => view_state_unavailable = true,
+                        }
+                    }
+                    visible.push(row);
+                }
+                page.entries = visible;
                 Ok(IncidentHistoryPage { observed_at: now, machine: None,
-                    user: Some(crate::recovery_user::Store::new(directory).history(cursor.as_deref(), limit, now)?) })
+                    user: Some(page), hidden_views, view_state_unavailable })
             }
         }
     }).await.map_err(|_| "Incident history observation is unavailable.".to_string())?
@@ -319,6 +351,33 @@ pub struct IncidentHistoryPage {
     pub observed_at: u64,
     pub machine: Option<sde_coordination::recovery::history::Page>,
     pub user: Option<crate::recovery_user::HistoryPage>,
+    pub hidden_views: usize,
+    pub view_state_unavailable: bool,
+}
+
+#[tauri::command]
+pub async fn delete_recovery_history_view(
+    app: tauri::AppHandle, view_token: String, confirmed: bool,
+) -> Result<(), String> {
+    if !confirmed { return Err("Confirm deletion of the selected history view. Operational evidence and decisions remain.".into()); }
+    let guard = app.state::<crate::Busy>().enter()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        let binding = app.state::<crate::history_views::Views>().resolve(&view_token)?;
+        let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|_| "History deletion time unavailable.")?.as_secs();
+        let id = uuid::Uuid::parse_str(&binding.id).map_err(|_| "Invalid history identity.")?;
+        let before = id.as_u128().checked_sub(1).map(|value| uuid::Uuid::from_u128(value).to_string());
+        let current = if binding.source == "machine" {
+            sde_coordination::recovery::history::list(before.as_deref(), 1).map_err(|_| "Machine history is unavailable; refresh before deleting its view.")?
+                .entries.into_iter().find(|row| row.incident_id == binding.id).map(|row| row.view_key)
+        } else {
+            crate::recovery_user::Store::new(directory.clone()).history(before.as_deref(), 1, now)?
+                .entries.into_iter().find(|row| row.incident_id == binding.id).map(|row| row.view_key)
+        };
+        if current.as_deref() != Some(binding.fingerprint.as_str()) { return Err("The displayed history entry changed. Refresh before deleting its view.".into()); }
+        crate::history_views::Store::new(&directory).hide(&binding, now)
+    }).await.map_err(|_| "History view deletion is unconfirmed. Refresh history; no operation was authorized.".to_string())?
 }
 
 #[tauri::command]

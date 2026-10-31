@@ -19,6 +19,7 @@ export type IncidentHistoryEntry = {
   } | null;
   acknowledgment?: { acknowledgedAt: number; reportId: string | null } | null;
   continuation: "not_recorded";
+  viewToken?: string | null;
 };
 type Page = {
   entries: IncidentHistoryEntry[];
@@ -29,7 +30,16 @@ export type IncidentHistoryPage = {
   observedAt: number;
   machine: Page | null;
   user: Page | null;
+  hiddenViews?: number;
+  viewStateUnavailable?: boolean;
 };
+export async function deleteRecoveryHistoryView(
+  viewToken: string,
+): Promise<void> {
+  if (!isTauri())
+    throw new Error("Preview cannot delete workstation history views.");
+  await invoke("delete_recovery_history_view", { viewToken, confirmed: true });
+}
 export async function listRecoveryIncidents(
   source: HistorySource,
   cursor: string | null = null,

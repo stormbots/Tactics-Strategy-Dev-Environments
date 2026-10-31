@@ -428,6 +428,33 @@ mod tests {
     }
 
     #[test]
+    fn history_view_deletion_preserves_account_decision_and_new_generation_remains_visible() {
+        let f = Fixture::new();
+        let store = f.store();
+        let evidence = f.evidence();
+        let decision = store.acknowledge(&evidence, None, 100).unwrap();
+        let old = store.history(None, 25, 101).unwrap().entries.remove(0);
+        let binding = crate::history_views::Binding {
+            source: "user".into(),
+            id: f.id.clone(),
+            fingerprint: old.view_key,
+        };
+        let views = crate::history_views::Store::new(&f.app);
+        views.hide(&binding, 101).unwrap();
+        assert_eq!(store.inspect(&evidence, 102).unwrap(), Some(decision));
+        let original = fs::read(f.path()).unwrap();
+        drop(evidence);
+        fs::rename(f.path(), f.app.join("prior-user-journal.json")).unwrap();
+        fs::write(f.path(), &original).unwrap();
+        let changed = f.evidence();
+        store.acknowledge(&changed, None, 102).unwrap();
+        let row = store.history(None, 25, 103).unwrap().entries.remove(0);
+        assert_eq!(row.status, "ambiguous_generations");
+        assert!(row.view_key.is_empty()); // Listing must not apply an older view marker.
+        assert!(views.hidden(&binding).unwrap());
+        assert!(!store.history(None, 25, 103).unwrap().unexpected_entries);
+    }
+    #[test]
     fn user_incident_history_is_read_only_and_survives_missing_reports_and_current_journal() {
         let f = Fixture::new();
         let store = f.store();
