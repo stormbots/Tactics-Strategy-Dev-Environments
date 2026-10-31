@@ -167,11 +167,13 @@ pub async fn acknowledge_user_recovery_incident(
     tauri::async_runtime::spawn_blocking(move || {
         let _guard = guard;
         let directory = app.path().app_data_dir().map_err(|_| "Application data is unavailable.")?;
+        let _user_lock = crate::user_journal_store::Lock::acquire(&directory)?;
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
             .map_err(|_| "Observation time unavailable.")?.as_secs();
         // Keep this exact opened source while capturing a sanitized report.
         // Raw bytes/native generation never enter IPC or the shareable report.
         let evidence = recovery_context::read_evidence(&directory, &incident_id, now)?;
+        crate::user_journal_store::prepare_incident_session(&directory, &evidence)?;
         let summary = capture(&app, incident_id, validation, Source::User)?;
         if summary.context.as_ref() != Some(&evidence.context) {
             return Err("User evidence changed; Check Again before acknowledging it.".into());

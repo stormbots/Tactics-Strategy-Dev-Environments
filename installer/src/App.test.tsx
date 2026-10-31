@@ -103,7 +103,8 @@ afterEach(() => {
 });
 
 it("keeps an interrupted operation unacknowledged after successful validation", async () => {
-  const acknowledgmentsBefore = vi.mocked(acknowledgeOperationIncident).mock.calls.length;
+  const acknowledgmentsBefore = vi.mocked(acknowledgeOperationIncident).mock
+    .calls.length;
   const id = "256f7aea-bf4d-4d0f-a73a-68c2b74e258b";
   vi.mocked(inspectOperationIncident).mockResolvedValueOnce({
     backendActive: false,
@@ -132,9 +133,14 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
   await screen.findByRole("heading", {
     name: "A previous operation was interrupted",
   });
+  expect(
+    screen.queryByRole("button", { name: "Dismiss recovery notice" }),
+  ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
   await screen.findByRole("heading", { name: "Validation passed." });
-  expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(acknowledgmentsBefore);
+  expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(
+    acknowledgmentsBefore,
+  );
   expect(screen.getByRole("button", { name: "Recovery" })).toBeTruthy();
   expect(
     screen.getByText(/does not acknowledge the interruption/),
@@ -183,9 +189,7 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
   expect(
     screen.queryByRole("button", { name: "Repair environment" }),
   ).toBeNull();
-  expect(
-    screen.getByRole("button", { name: "Recovery" }),
-  ).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Recovery" })).toBeTruthy();
 });
 
 it("retries startup validation without starting Install", async () => {

@@ -42,7 +42,6 @@ import {
   inspect,
   inspectOperationIncident,
   inspectSchedule,
-  acknowledgeOperationIncident,
   native,
   open,
   operate,
@@ -358,11 +357,9 @@ export default function App() {
       dispatch({ type: "complete", report });
       if ((selected === "validate" || selected === "repair") && incident) {
         if (selected === "repair" && report.success && !backendInterrupted) {
-          await acknowledgeOperationIncident(incident.id);
-          setIncident(null);
           setPage("overview");
           setNotice(
-            "Repair and its final validation passed. The interrupted operation is resolved.",
+            "Repair and its final validation passed. Previous incident evidence and its separate acknowledgment remain retained.",
           );
         } else if (selected === "validate" && report.success) {
           setNotice(
@@ -1012,21 +1009,6 @@ export default function App() {
                     automatic repair. Save the support report and ask a mentor
                     to review it.
                   </p>
-                )}
-                {incident && !backendActive && !backendInterrupted && (
-                  <button
-                    className="secondary"
-                    onClick={async () => {
-                      await acknowledgeOperationIncident(incident.id);
-                      setIncident(null);
-                      setPage("overview");
-                      setNotice(
-                        "Recovery notice dismissed. Detailed logs were preserved.",
-                      );
-                    }}
-                  >
-                    Dismiss recovery notice
-                  </button>
                 )}
               </div>
             </div>

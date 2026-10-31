@@ -1,5 +1,7 @@
 //! Read-only, handle-owned gates. A lease grants no elevation or command authority.
 use serde::Serialize;
+#[cfg(test)]
+extern crate self as sde_coordination;
 use std::{
     fs::File,
     path::{Path, PathBuf},
@@ -41,6 +43,10 @@ mod recovery_report_store_tests;
 #[allow(dead_code)]
 mod recovery_user;
 pub mod safety;
+#[cfg(test)]
+#[path = "../../installer/src-tauri/src/user_journal_store.rs"]
+#[allow(dead_code)]
+mod user_journal_store;
 #[cfg(windows)]
 mod windows;
 

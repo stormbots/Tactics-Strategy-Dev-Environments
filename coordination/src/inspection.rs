@@ -50,6 +50,32 @@ pub struct NativeFacts {
     pub(crate) boot_key: Option<String>,
 }
 
+/// Native-only per-account restart provenance. Never an execution capability,
+/// report field or caller-supplied override. The GUI stores it privately.
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RestartMarker {
+    schema: u8,
+    boot_key: Option<String>,
+}
+impl RestartMarker {
+    pub fn missing(&self) -> bool {
+        self.schema == 1 && self.boot_key.is_none()
+    }
+    pub fn capture() -> Self {
+        Self {
+            schema: 1,
+            boot_key: boot_key(),
+        }
+    }
+    pub fn restarted(&self) -> crate::observations::RestartEvidence {
+        if self.schema != 1 {
+            return crate::observations::RestartEvidence::Unavailable;
+        }
+        crate::recovery::restart::compare(self.boot_key.as_deref(), boot_key().as_deref())
+    }
+}
+
 impl NativeFacts {
     pub(crate) fn unavailable() -> Self {
         Self {

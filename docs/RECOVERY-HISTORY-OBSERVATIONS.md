@@ -1,6 +1,11 @@
 # Read-only report acknowledgment observations
 
 Branch: `codex/recovery-history-observations`.
+Accepted at `0a678c08a590ded2df3ac3e2cbb2788cb5f09070` in full successful
+[Build 41210917994](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41210917994):
+Windows trust 92/92, root Linux 107/107 and all inherited native gates passed.
+The [user-journal lifecycle increment](RECOVERY-USER-JOURNAL-LIFECYCLE.md) follows;
+pending-CI language below records this task's original checkpoint.
 Base: #129 at `2d4da242b9f133d9ac42115c34fbdd84bb25a5df`, accepted in
 [Build 41153070913](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41153070913).
 Windows trust passed 84/84; root Linux passed 99/99, including eight per-user

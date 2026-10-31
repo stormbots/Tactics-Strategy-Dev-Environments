@@ -14,6 +14,7 @@ mod recovery_user;
 mod schedule;
 mod support;
 mod updates;
+mod user_journal_store;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -284,10 +285,17 @@ fn run(
         lines.push(line);
     }
     if let Some(record) = journal {
-        if !matches!(
-            sde_coordination::status(),
-            sde_coordination::Status::Interrupted
-        ) {
+        if success
+            && validation_collected_at.is_some()
+            && matches!(sde_coordination::operation_active(), Ok(false))
+            && !matches!(
+                sde_coordination::status(),
+                sde_coordination::Status::Interrupted
+                    | sde_coordination::Status::Unavailable
+                    | sde_coordination::Status::Untrusted
+                    | sde_coordination::Status::NeedsRepair
+            )
+        {
             record.complete()?;
         }
     }

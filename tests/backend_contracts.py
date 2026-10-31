@@ -9,6 +9,29 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 class Backends(unittest.TestCase):
     def text(self,p): return (ROOT/p).read_text(encoding='utf-8-sig')
+    def test_user_journal_lifecycle_does_not_overwrite_or_dismiss_unpreserved_evidence(self):
+        journal = self.text('installer/src-tauri/src/journal.rs')
+        legacy = journal.split('pub fn acknowledge(', 1)[1].split('#[cfg(test)]', 1)[0]
+        self.assertNotIn('remove_file', legacy)
+        self.assertIn('legacy dismiss action cannot delete', legacy)
+        self.assertNotIn('unwrap_or(false)', journal)
+        self.assertIn('Activity::Unknown', journal)
+        self.assertIn('user_journal_store::Active::begin', journal)
+        store = self.text('installer/src-tauri/src/user_journal_store.rs')
+        begin = store.split('pub fn begin(', 1)[1].split('fn current(', 1)[0]
+        self.assertLess(begin.index('Lock::acquire'), begin.index('read_current_evidence'))
+        self.assertLess(begin.index('.inspect(&previous'), begin.index('persist(&directory'))
+        self.assertNotIn('.acknowledge(', begin)
+        self.assertIn('LOCK_EX | libc::LOCK_NB', store)
+        self.assertIn('.share_mode(0)', store)
+        main = self.text('installer/src-tauri/src/main.rs').split('if let Some(record) = journal {', 1)[1].split('Ok(Report', 1)[0]
+        self.assertIn('if success', main)
+        self.assertIn('validation_collected_at.is_some()', main)
+        summary = self.text('installer/src-tauri/src/recovery_summary.rs').split('pub async fn acknowledge_user_recovery_incident', 1)[1].split('pub async fn inspect_user', 1)[0]
+        self.assertLess(summary.index('Lock::acquire'), summary.index('read_evidence'))
+        frontend = self.text('installer/src/App.tsx')
+        self.assertNotIn('acknowledgeOperationIncident(', frontend)
+        self.assertNotIn('Dismiss recovery notice', frontend)
     def test_report_history_is_read_only_scoped_and_not_execution_authority(self):
         source = self.text('installer/src-tauri/src/recovery_summary.rs')
         details = source.split('pub async fn read_recovery_report_details', 1)[1].split('pub async fn delete_recovery_report', 1)[0]

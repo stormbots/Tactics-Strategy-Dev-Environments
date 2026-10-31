@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, OpenOptions},
-    io::Write,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::Manager;
 
+#[cfg(test)]
+use std::fs;
+#[cfg(test)]
 const MAX_JOURNAL_BYTES: u64 = 16 * 1024;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -38,10 +39,19 @@ pub struct Observation {
     pub incident: Option<Incident>,
     pub backend_active: bool,
     pub backend_interrupted: bool,
+    pub backend_activity: Activity,
+}
+
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Activity {
+    Active,
+    Inactive,
+    Unknown,
 }
 
 pub struct Active {
-    path: PathBuf,
+    store: crate::user_journal_store::Active,
     incident: Incident,
 }
 
@@ -57,57 +67,6 @@ fn path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map(|directory| directory.join("operation-journal.json"))
         .map_err(|_| "Recovery information is unavailable.".to_string())
-}
-
-fn persist(path: &Path, incident: &Incident) -> Result<(), String> {
-    let directory = path
-        .parent()
-        .ok_or_else(|| "Recovery information is unavailable.".to_string())?;
-    fs::create_dir_all(directory)
-        .map_err(|_| "Recovery information could not be saved.".to_string())?;
-    let bytes = serde_json::to_vec(incident)
-        .map_err(|_| "Recovery information could not be saved.".to_string())?;
-    let temporary = path.with_extension(format!("tmp-{}", uuid::Uuid::new_v4()));
-    let mut file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(&temporary)
-        .map_err(|_| "Recovery information could not be saved.".to_string())?;
-    file.write_all(&bytes)
-        .and_then(|_| file.sync_all())
-        .map_err(|_| "Recovery information could not be saved.".to_string())?;
-    replace(&temporary, path).map_err(|_| "Recovery information could not be saved.".to_string())
-}
-
-#[cfg(not(windows))]
-fn replace(source: &Path, destination: &Path) -> std::io::Result<()> {
-    fs::rename(source, destination)
-}
-
-#[cfg(windows)]
-fn replace(source: &Path, destination: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
-    };
-    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
-    let destination: Vec<u16> = destination
-        .as_os_str()
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    if unsafe {
-        MoveFileExW(
-            source.as_ptr(),
-            destination.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-        )
-    } == 0
-    {
-        Err(std::io::Error::last_os_error())
-    } else {
-        Ok(())
-    }
 }
 
 impl Active {
@@ -129,48 +88,51 @@ impl Active {
             acknowledged: false,
         };
         let path = path(app)?;
-        persist(&path, &incident)?;
-        Ok(Self { path, incident })
+        let directory = path
+            .parent()
+            .ok_or("Recovery information is unavailable.")?
+            .to_path_buf();
+        let bytes = serde_json::to_vec(&incident)
+            .map_err(|_| "Recovery information could not be encoded.")?;
+        let store = crate::user_journal_store::Active::begin(directory, id, bytes, timestamp)?;
+        Ok(Self { store, incident })
     }
 
     pub fn stage(&mut self, stage: Stage) -> Result<(), String> {
         self.incident.stage = stage;
         self.incident.observed_at = now();
-        persist(&self.path, &self.incident)
+        let bytes = serde_json::to_vec(&self.incident)
+            .map_err(|_| "Recovery information could not be encoded.")?;
+        self.store.stage(bytes, now())
     }
 
     pub fn complete(self) -> Result<(), String> {
-        match fs::remove_file(self.path) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(_) => Err("Recovery information could not be cleared.".into()),
-        }
+        self.store.finish_known(now())
     }
 }
 
 fn read(path: &Path) -> Result<Option<Incident>, String> {
-    let metadata = match fs::metadata(path) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => return Err("Recovery information could not be read.".into()),
+    let directory = path
+        .parent()
+        .ok_or("Recovery information is unavailable.")?;
+    let Some(evidence) = crate::recovery_context::read_current_evidence(directory, now())? else {
+        return Ok(None);
     };
-    if metadata.len() > MAX_JOURNAL_BYTES {
-        return Err("Recovery information is invalid.".into());
-    }
-    let bytes = fs::read(path).map_err(|_| "Recovery information could not be read.")?;
-    let incident: Incident =
-        serde_json::from_slice(&bytes).map_err(|_| "Recovery information is invalid.")?;
-    if !valid(&incident) {
-        return Err("Recovery information is invalid.".into());
-    }
+    let mut incident: Incident =
+        serde_json::from_slice(&evidence.bytes).map_err(|_| "Recovery information is invalid.")?;
+    incident.acknowledged = crate::recovery_user::Store::new(directory.to_path_buf())
+        .inspect(&evidence, now())?
+        .is_some();
     Ok(Some(incident))
 }
 
+#[cfg(test)]
 fn valid(incident: &Incident) -> bool {
     let future_limit = now().saturating_add(24 * 60 * 60);
-    let invalid_log_path = incident.log_path.as_ref().is_some_and(|value| {
-        value.len() > 4096 || value.contains('\r') || value.contains('\n')
-    });
+    let invalid_log_path = incident
+        .log_path
+        .as_ref()
+        .is_some_and(|value| value.len() > 4096 || value.contains('\r') || value.contains('\n'));
     !(incident.schema != 1
         || uuid::Uuid::parse_str(&incident.id).is_err()
         || matches!(incident.operation, crate::Operation::Validate)
@@ -182,9 +144,17 @@ fn valid(incident: &Incident) -> bool {
 }
 
 pub fn inspect(app: &tauri::AppHandle) -> Result<Observation, String> {
+    let activity = match sde_coordination::operation_active() {
+        Ok(true) => Activity::Active,
+        Ok(false) => Activity::Inactive,
+        Err(_) => Activity::Unknown,
+    };
     Ok(Observation {
         incident: read(&path(app)?)?,
-        backend_active: sde_coordination::operation_active().unwrap_or(false),
+        // Conservative legacy compatibility until the final UI consumes the
+        // explicit tri-state field. Unknown is never presented as inactive.
+        backend_active: !matches!(activity, Activity::Inactive),
+        backend_activity: activity,
         backend_interrupted: matches!(
             sde_coordination::status(),
             sde_coordination::Status::Interrupted
@@ -192,14 +162,8 @@ pub fn inspect(app: &tauri::AppHandle) -> Result<Observation, String> {
     })
 }
 
-pub fn acknowledge(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
-    let path = path(app)?;
-    let incident = read(&path)?
-        .ok_or_else(|| "There is no interrupted operation to acknowledge.".to_string())?;
-    if incident.id != id {
-        return Err("The interrupted operation changed. Refresh and try again.".into());
-    }
-    fs::remove_file(path).map_err(|_| "Recovery information could not be dismissed.".into())
+pub fn acknowledge(_app: &tauri::AppHandle, _id: &str) -> Result<(), String> {
+    Err("Use evidence-preserving acknowledgment in Recovery. The legacy dismiss action cannot delete an incident.".into())
 }
 
 #[cfg(test)]
@@ -221,7 +185,7 @@ mod tests {
             log_path: None,
             acknowledged: false,
         };
-        persist(&file, &incident).unwrap();
+        fs::write(&file, serde_json::to_vec(&incident).unwrap()).unwrap();
         assert!(matches!(read(&file).unwrap().unwrap().stage, Stage::System));
         fs::write(&file, vec![b'x'; MAX_JOURNAL_BYTES as usize + 1]).unwrap();
         assert!(read(&file).is_err());

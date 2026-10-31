@@ -95,7 +95,28 @@ pub(crate) fn read_evidence(
     expected: &str,
     captured_at: u64,
 ) -> Result<Evidence> {
-    if !canonical(expected) || !directory.is_absolute() {
+    if !canonical(expected) {
+        return Err("Invalid user incident request.".into());
+    }
+    read_evidence_inner(directory, Some(expected), captured_at)
+}
+pub(crate) fn read_current_evidence(
+    directory: &Path,
+    captured_at: u64,
+) -> Result<Option<Evidence>> {
+    match fs::symlink_metadata(directory.join("operation-journal.json")) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("User evidence is unavailable.".into()),
+        Ok(_) => (),
+    }
+    read_evidence_inner(directory, None, captured_at).map(Some)
+}
+fn read_evidence_inner(
+    directory: &Path,
+    expected: Option<&str>,
+    captured_at: u64,
+) -> Result<Evidence> {
+    if !directory.is_absolute() {
         return Err("Invalid user incident request.".into());
     }
     for parent in directory.ancestors() {
@@ -165,7 +186,7 @@ pub(crate) fn read_evidence(
     if self::identity(&file)? != identity {
         return Err("User evidence changed while being read; Check Again.".into());
     }
-    let context = preserved_context(&bytes, expected, captured_at)?;
+    let context = parse_context(&bytes, expected, captured_at)?;
     let mut digest = Sha256::new();
     digest.update(identity.as_bytes());
     digest.update([0]);
@@ -180,6 +201,9 @@ pub(crate) fn read_evidence(
 
 // Decode a retained diagnostic copy, not a current file identity or permit.
 pub(crate) fn preserved_context(bytes: &[u8], expected: &str, captured_at: u64) -> Result<Context> {
+    parse_context(bytes, Some(expected), captured_at)
+}
+fn parse_context(bytes: &[u8], expected: Option<&str>, captured_at: u64) -> Result<Context> {
     if bytes.len() as u64 > MAX_RECORD {
         return Err("User evidence is oversized.".into());
     }
@@ -202,7 +226,10 @@ pub(crate) fn preserved_context(bytes: &[u8], expected: &str, captured_at: u64) 
             observed_at: record.observed_at,
         },
     };
-    context.validate(expected, captured_at)?;
+    let Context::User { incident } = &context else {
+        unreachable!()
+    };
+    context.validate(expected.unwrap_or(&incident.id), captured_at)?;
     Ok(context)
 }
 
