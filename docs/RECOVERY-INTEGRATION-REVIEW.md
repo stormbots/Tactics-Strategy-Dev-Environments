@@ -1,8 +1,14 @@
 # Recovery: final integration review and consolidation gate
 
-Branch `codex/recovery-integration-review`. This is the final bounded T9 review
-increment, not another recovery architecture phase. Its UI changes require
-exact-head CI before consolidation. The focused owner sheet is
+Branch `codex/recovery-integration-review`. This final bounded T9 review passed
+at `d4bb9953f2ea064f50c9cd2088dd8ebe17d9a408` in
+[Build 41259004375](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41259004375):
+175 frontend/105 browser checks, root Linux 151/151, Windows trust 136/136,
+native Tauri Windows 106/106 / Linux 104/104 and all inherited gates passed.
+The complete stack was consolidated through #139 as main `f6befee` with the same
+tree. Continue with the [v1.2.20 preparation ledger](RECOVERY-CANDIDATE-1.2.20.md);
+the historical correction and review below remain the audit trail. This is not
+another recovery architecture phase or owner UAT acceptance. The focused owner sheet is
 [RECOVERY-FOCUSED-UAT.md](RECOVERY-FOCUSED-UAT.md); historical UAT results and the
 old v1.2.19 diagnosis-only guide are not rewritten.
 
