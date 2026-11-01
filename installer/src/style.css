@@ -1318,6 +1318,37 @@ progress::-moz-progress-bar {
 .recovery-page .result-actions {
   margin-top: 22px;
 }
+.recovery-page .result-actions .primary {
+  width: auto;
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+  font-size: 13px;
+  padding: 10px 16px;
+}
+.recovery-page .result-actions .primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+.recovery-page ol {
+  padding-inline-start: 24px;
+}
+.recovery-page ol li {
+  margin-block: 10px;
+}
+.recovery-support,
+.recovery-disclosure {
+  margin-top: 24px;
+}
+.recovery-disclosure > summary {
+  cursor: pointer;
+  color: var(--link);
+  font-weight: 650;
+  padding-block: 12px;
+}
+.recovery-disclosure > summary:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 4px;
+}
 .recovery-history {
   margin-top: 22px;
 }

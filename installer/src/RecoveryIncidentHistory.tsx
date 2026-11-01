@@ -64,7 +64,7 @@ function SourceHistory({
     } catch {
       if (live.current)
         setError(
-          `${source === "machine" ? "Machine" : "Account"} incident history is unavailable. This is not an empty or cleared history. Refresh when the current operation finishes; keep the original evidence.`,
+          `${source === "machine" ? "Computer" : "Account"} history is unavailable. Try Refresh after setup finishes. Nothing was cleared.`,
         );
     } finally {
       active.current = false;
@@ -112,16 +112,9 @@ function SourceHistory({
   }
   return (
     <div aria-busy={working}>
-      <h3>
-        {source === "machine"
-          ? "Machine archive observations"
-          : "This account’s retained incidents"}
-      </h3>
+      <h3>{source === "machine" ? "This computer" : "Your account"}</h3>
       {observed && (
-        <p>
-          Last observed {new Date(observed * 1000).toLocaleString()}. Refresh to
-          check current retained state.
-        </p>
+        <p>Last checked: {new Date(observed * 1000).toLocaleString()}.</p>
       )}
       {error && <p role="alert">{error}</p>}
       {viewStateUnavailable && (
@@ -154,73 +147,76 @@ function SourceHistory({
       </button>
       {observed && !error && !entries.length && (
         <p>
-          No visible {source} entries on these pages. Deleted views may be
-          excluded; current incidents are shown above. Absence here does not
-          establish completion or acknowledgment.
+          No earlier events are shown for{" "}
+          {source === "machine" ? "this computer" : "your account"}. Hidden
+          views are not listed. Current problems appear above; an empty history
+          does not mean setup finished.
         </p>
       )}
-      <ul>
-        {entries.map((entry) => (
-          <li key={entry.incidentId}>
-            <p>Incident {entry.incidentId}</p>
-            <p>
-              {entry.status === "archive_observed_acknowledgment_unknown"
-                ? "Protected archive filename observed. Private contents were not read; acknowledgment status is unknown."
-                : entry.status === "acknowledgment_observed"
-                  ? "Matching retained account acknowledgment observed. This is not an execution permit."
-                  : entry.status === "ambiguous_generations"
-                    ? "Multiple retained generations share this incident ID. They have not been combined into one acknowledgment; details are ambiguous."
-                    : entry.status === "unavailable"
-                      ? "Retained evidence or acknowledgment could not be verified. No cleared state is inferred."
-                      : "Acknowledgment status is unknown, not proven absent."}
-            </p>
-            {entry.context && (
+      {entries.length > 0 && (
+        <ul>
+          {entries.map((entry) => (
+            <li key={entry.incidentId}>
+              <p>Incident {entry.incidentId}</p>
               <p>
-                Recorded {entry.context.incident.operation} /{" "}
-                {entry.context.incident.stage}; started{" "}
-                {new Date(
-                  entry.context.incident.startedAt * 1000,
-                ).toLocaleString()}
-                ; last recorded{" "}
-                {new Date(
-                  entry.context.incident.observedAt * 1000,
-                ).toLocaleString()}
-                .
+                {entry.status === "archive_observed_acknowledgment_unknown"
+                  ? "Protected archive filename observed. Private contents were not read; acknowledgment status is unknown."
+                  : entry.status === "acknowledgment_observed"
+                    ? "Matching retained account acknowledgment observed. This is not an execution permit."
+                    : entry.status === "ambiguous_generations"
+                      ? "Multiple retained generations share this incident ID. They have not been combined into one acknowledgment; details are ambiguous."
+                      : entry.status === "unavailable"
+                        ? "Retained evidence or acknowledgment could not be verified. No cleared state is inferred."
+                        : "Acknowledgment status is unknown, not proven absent."}
               </p>
-            )}
-            {entry.acknowledgment && (
-              <p>
-                Acknowledged{" "}
-                {new Date(
-                  entry.acknowledgment.acknowledgedAt * 1000,
-                ).toLocaleString()}
-                .{" "}
-                {entry.acknowledgment.reportId
-                  ? `Original report reference ${entry.acknowledgment.reportId}; the report may no longer exist.`
-                  : "No saved report reference. The operational decision exists independently."}
-              </p>
-            )}
-            <p>Continuation/completion: not recorded.</p>
-            {entry.viewToken ? (
-              <button
-                className="secondary"
-                disabled={disabled || working}
-                onClick={() => {
-                  returnFocus.current = document.activeElement as HTMLElement;
-                  setConfirmation(entry);
-                }}
-              >
-                Delete {source} history view {entry.incidentId}
-              </button>
-            ) : (
-              <p>
-                View deletion is unavailable for this snapshot. Refresh history;
-                do not remove operational files.
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
+              {entry.context && (
+                <p>
+                  Recorded {entry.context.incident.operation} /{" "}
+                  {entry.context.incident.stage}; started{" "}
+                  {new Date(
+                    entry.context.incident.startedAt * 1000,
+                  ).toLocaleString()}
+                  ; last recorded{" "}
+                  {new Date(
+                    entry.context.incident.observedAt * 1000,
+                  ).toLocaleString()}
+                  .
+                </p>
+              )}
+              {entry.acknowledgment && (
+                <p>
+                  Acknowledged{" "}
+                  {new Date(
+                    entry.acknowledgment.acknowledgedAt * 1000,
+                  ).toLocaleString()}
+                  .{" "}
+                  {entry.acknowledgment.reportId
+                    ? `Original report reference ${entry.acknowledgment.reportId}; the report may no longer exist.`
+                    : "No saved report reference. The operational decision exists independently."}
+                </p>
+              )}
+              <p>Continuation/completion: not recorded.</p>
+              {entry.viewToken ? (
+                <button
+                  className="secondary"
+                  disabled={disabled || working}
+                  onClick={() => {
+                    returnFocus.current = document.activeElement as HTMLElement;
+                    setConfirmation(entry);
+                  }}
+                >
+                  Delete {source} history view {entry.incidentId}
+                </button>
+              ) : (
+                <p>
+                  View deletion is unavailable for this snapshot. Refresh
+                  history; do not remove operational files.
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       {confirmation && (
         <div
           role="group"
@@ -277,19 +273,15 @@ export function RecoveryIncidentHistory({
       className="validation-card recovery-history"
       aria-labelledby="incident-history-heading"
     >
-      <h2 id="incident-history-heading">Retained incident observations</h2>
+      <h2 id="incident-history-heading">Recovery event history</h2>
       <p>
-        These observations come from minimum operational state, not the saved
-        report list. Failed report saving or report deletion does not remove
-        them. You can explicitly delete a displayed history view for this
-        account, but minimum operational records remain. This does not
-        acknowledge, repair, clear evidence or start an operation. Changed
-        incident evidence reappears.
+        These are earlier setup records for this computer and your account. They
+        can remain even if a report was not saved or was deleted.
       </p>
       <p>
-        Machine archive names do not reveal private journal or receipt contents.
-        Partial publication, multiple generations or unavailable state cannot be
-        treated as proof of completion or permission to proceed.
+        Deleting a history view hides it for your account. It does not fix a
+        problem, delete SDE’s safety records or unlock changes. A changed record
+        will show again.
       </p>
       <SourceHistory source="machine" disabled={disabled} />
       <SourceHistory source="user" disabled={disabled} />

@@ -60,7 +60,7 @@ it("shows separate unavailable versus empty history and never implies completion
   vi.mocked(listRecoveryReports).mockRejectedValueOnce(new Error("private"));
   render(<RecoveryReportHistory />);
   await screen.findByRole("alert");
-  expect(screen.queryByText(/No retained reports were found/)).toBeNull();
+  expect(screen.queryByText(/No saved reports were found/)).toBeNull();
   expect(screen.getByRole("alert").textContent).not.toContain("private");
   vi.mocked(listRecoveryReports).mockResolvedValue({
     entries: [],
@@ -69,7 +69,7 @@ it("shows separate unavailable versus empty history and never implies completion
   fireEvent.click(
     screen.getByRole("button", { name: "Refresh report history" }),
   );
-  await screen.findByText(/No retained reports were found/);
+  await screen.findByText(/No saved reports were found/);
   expect(readRecoveryReport).not.toHaveBeenCalled();
 });
 it("loads bounded pages without purging and deduplicates overlapping results", async () => {

@@ -140,9 +140,10 @@ it("a page containing only deleted views is not reported as absent evidence and 
   expect(
     screen.getByRole("button", { name: "Load more user incidents" }),
   ).toBeTruthy();
-  expect(screen.getByText(/No visible user entries/).textContent).toContain(
-    "Deleted views may be excluded",
-  );
+  expect(
+    screen.getByText(/No earlier events are shown for your account/)
+      .textContent,
+  ).toContain("Hidden views are not listed");
 });
 it("unavailable cosmetic preferences leave operational observations visible without a delete action", async () => {
   vi.mocked(listRecoveryIncidents).mockImplementation(async (source) => ({
@@ -183,9 +184,7 @@ it("a failed source does not hide the other source or imply empty history", asyn
   });
   render(<RecoveryIncidentHistory />);
   const error = await screen.findByRole("alert");
-  expect(error.textContent).toContain(
-    "Machine incident history is unavailable",
-  );
+  expect(error.textContent).toContain("Computer history is unavailable");
   expect(error.textContent).not.toContain("private native detail");
   expect(screen.queryByText(/No retained machine entries/)).toBeNull();
   await screen.findByText(/Matching retained account acknowledgment observed/);
