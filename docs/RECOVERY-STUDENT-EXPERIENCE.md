@@ -4,6 +4,13 @@ Branch: `codex/student-recovery-page`, based on main `a72ae62`.
 Scope: presentation, action visibility and tests only. No native recovery,
 journal, acknowledgment, packaging or release behavior changes.
 
+Accepted at `8879f9b607f60fdd2a99ac05bd40d8a583dff5a8` in
+[Build 41278626292](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41278626292):
+188 frontend/109 browser checks and every applicable native/trust/signed-upgrade
+gate passed. Merged as main `75a7da2`; the historical correction below remains
+the audit trail. Continue with [v1.2.21 preparation](RECOVERY-CANDIDATE-1.2.21.md);
+published v1.2.20 assets remain unchanged.
+
 ## Acceptance criteria
 
 - Lead with **Let’s get setup working again**, a short explanation and **What to

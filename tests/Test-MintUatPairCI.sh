@@ -65,11 +65,14 @@ fi
 if [[ -f /work/uat/1.2.20/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
   versions=(1.2.19 1.2.20)
 fi
+if [[ -f /work/uat/1.2.21/Skyview-Dev-Setup-LinuxMint-amd64.deb ]]; then
+  versions=(1.2.20 1.2.21)
+fi
 for version in "${versions[@]}"; do
   if [[ "$version" = "${versions[1]}" ]]; then
     printf '# legacy maintenance UAT sentinel\n' > "$legacy"
     chmod 0755 "$legacy"
-    if [[ "$version" == 1.2.16 || "$version" == 1.2.17 || "$version" == 1.2.18 || "$version" == 1.2.19 || "$version" == 1.2.20 ]]; then
+    if [[ "$version" == 1.2.16 || "$version" == 1.2.17 || "$version" == 1.2.18 || "$version" == 1.2.19 || "$version" == 1.2.20 || "$version" == 1.2.21 ]]; then
       '/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust' pause
     fi
   fi
@@ -99,7 +102,7 @@ assert json.loads((root / 'active.json').read_text())['version'] == sys.argv[1]
 PY
   [[ "$(cat "$student/project.txt")" == 'student project sentinel' ]]
   [[ "$(cat "$student/.config/Code/User/settings.json")" == '{"editor.fontSize":17}' ]]
-  if [[ "$version" == 1.2.16 || "$version" == 1.2.17 || "$version" == 1.2.18 || "$version" == 1.2.19 || "$version" == 1.2.20 ]]; then
+  if [[ "$version" == 1.2.16 || "$version" == 1.2.17 || "$version" == 1.2.18 || "$version" == 1.2.19 || "$version" == 1.2.20 || "$version" == 1.2.21 ]]; then
     worker='/usr/lib/Skyview Dev Setup/backend/linux/self-update/sde-update-trust'
     for verb in pause resume; do
       "$worker" "$verb"

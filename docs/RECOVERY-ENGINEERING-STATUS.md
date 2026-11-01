@@ -1,6 +1,18 @@
 # Interrupted-operation recovery: engineering status
 
-Current phase: [v1.2.20 candidate preparation](RECOVERY-CANDIDATE-1.2.20.md),
+Current phase: [v1.2.21 student Recovery candidate preparation](RECOVERY-CANDIDATE-1.2.21.md),
+branch `codex/student-recovery-uat-1.2.21`, pending exact-head preparation/native CI.
+Student Recovery #141 passed at `8879f9b607f60fdd2a99ac05bd40d8a583dff5a8`
+in Build 41278626292 (188 frontend/109 browser, root Linux 151/151, Windows trust
+136/136, native Tauri Windows 106/106 / Linux 104/104, all inherited gates) and
+was squash-merged as main `75a7da2bebed0e8e6750a1f4b61d7b5871c0fdd9` with the
+same tree. Main Build 41281411205 started automatically. Existing v1.2.20 is
+published; only unused 1.2.21 will be eligible for the next protected candidate
+after preparation-head and exact final combined-main validation. See the ledger
+and [focused UI UAT sheet](RECOVERY-STUDENT-UAT-1.2.21.md). No signing approval yet.
+
+Historical v1.2.20 preparation checkpoint:
+[v1.2.20 candidate preparation](RECOVERY-CANDIDATE-1.2.20.md),
 branch `codex/recovery-uat-1.2.20`, pending exact-head preparation/native CI.
 The final integration review (#139) passed at
 `d4bb9953f2ea064f50c9cd2088dd8ebe17d9a408` in
