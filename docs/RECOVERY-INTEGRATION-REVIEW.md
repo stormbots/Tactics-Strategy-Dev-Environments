@@ -84,6 +84,23 @@ workflow requirements or privileged permissions change in this increment.
   checks passed. Native/browser reruns remain CI work; local Playwright browser
   binaries are known absent and were not repeatedly probed.
 
+### Initial CI correction
+
+Initial head `5ae004e31c084e8c58962bbaf050202313620d1d` failed
+[Build 41256546151](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41256546151).
+Four Recovery browser cases expected yellow while using the default partially
+installed preview with actual failed Validation rows. The correct red status
+must take precedence; this was a fixture/assertion mismatch, not a production
+severity defect. The other 97 browser checks, both native/trust jobs and both
+signed upgrades passed, but the incomplete full workflow is not accepted.
+
+The correction requires red in those existing cases and separately overrides
+only the browser fixture's `inspect()` result with successful Validation to prove
+unknown-health-only yellow/Ready! and keyboard access to its reason on both
+themes and widths. Every other bridge export remains the original preview.
+No production behavior, package/coordination state or inherited gate changes.
+Replacement-head complete CI is required; no blind retry or waived assertion.
+
 Fetched `main` at `3b0e8d7ec05d1b6d62535cb5b1368056abe3ac04` is an ancestor
 of the cumulative branch with no additional main-only commits at review time.
 Recheck live ancestry during consolidation; this is not permission to overwrite

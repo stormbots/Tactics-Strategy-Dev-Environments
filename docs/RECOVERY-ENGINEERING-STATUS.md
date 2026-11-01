@@ -2,6 +2,14 @@
 
 Current increment: [final integration review](RECOVERY-INTEGRATION-REVIEW.md),
 branch `codex/recovery-integration-review`, pending exact-head native/browser CI.
+Initial #139 head `5ae004e31c084e8c58962bbaf050202313620d1d` failed
+[Build 41256546151](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41256546151):
+four Recovery browser cases expected yellow from a preview containing failed
+Validation rows; the actual red severity was correct. The other 97 browser checks,
+both native/trust jobs and both signed upgrades passed, but the head is not
+accepted. Corrected tests require red precedence with failed Validation and add
+four clean-Validation/unknown-health-only yellow cases. Production code and every
+required gate are unchanged; replacement-head CI is required before consolidation.
 This closes the bounded UI findings (nonblocking warning reason in the existing
 status card; startup acknowledgment returns to Overview without launching work;
 obsolete mentor-service guidance in application-update status/download diagnostics)
