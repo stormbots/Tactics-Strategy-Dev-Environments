@@ -2,6 +2,36 @@ import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
 import { chooseTheme, closeAppearance } from "./appearance-helpers";
 const require = createRequire(import.meta.url);
+async function checkPrimaryStyles(page: Page) {
+  const primary = page
+    .getByRole("region", {
+      name: "Let’s get setup working again",
+    })
+    .locator(".result-actions button.primary");
+  const colors = await page.evaluate(() => {
+    const theme = getComputedStyle(document.documentElement);
+    const style = document.createElement("span").style;
+    const color = (token: string) => {
+      style.color = theme.getPropertyValue(token).trim();
+      return style.color;
+    };
+    return {
+      text: color("--primary-text"),
+      normal: color("--primary"),
+      hover: color("--primary-hover"),
+    };
+  });
+  // Check actual cascaded styles, not just the palette's contrast ratios.
+  await page.mouse.move(0, 0);
+  await expect(primary).toHaveCSS("color", colors.text);
+  await expect(primary).toHaveCSS("background-color", colors.normal);
+  await primary.focus();
+  await expect(primary).toBeFocused();
+  await expect(primary).toHaveCSS("color", colors.text);
+  await primary.hover();
+  await expect(primary).toHaveCSS("background-color", colors.hover);
+  await expect(primary).toHaveCSS("color", colors.text);
+}
 async function audit(page: Page) {
   await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
   const violations = await page.evaluate(
@@ -65,6 +95,7 @@ for (const theme of ["Light", "Dark"])
         page.getByText("No current machine incident recorded."),
       ).toBeVisible();
       await expect(page.getByRole("progressbar")).toHaveCount(0);
+      await checkPrimaryStyles(page);
       await audit(page);
       expect(
         await page.evaluate(
@@ -207,6 +238,7 @@ for (const theme of ["Light", "Dark"])
       await expect(
         page.getByText("Saved reports", { exact: true }),
       ).toBeVisible();
+      await checkPrimaryStyles(page);
       await audit(page);
       expect(
         await page.evaluate(

@@ -1318,6 +1318,17 @@ progress::-moz-progress-bar {
 .recovery-page .result-actions {
   margin-top: 22px;
 }
+.recovery-page .result-actions .primary {
+  width: auto;
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+  font-size: 13px;
+  padding: 10px 16px;
+}
+.recovery-page .result-actions .primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
 .recovery-page ol {
   padding-inline-start: 24px;
 }

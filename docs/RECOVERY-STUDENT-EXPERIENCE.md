@@ -67,6 +67,25 @@ Local results:
 
 ## Handoff
 
+### Initial CI correction
+
+Head `dcb6e96e7201cb73319bc007a79af0066f77b40a` failed
+[Build 41275567651](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41275567651)
+in browser accessibility checks: four Light/Dark 640/1140px cases found poor
+contrast on hovered Check again (1.19:1 Light, 1.28:1 Dark; required 4.5:1).
+The later, more-specific `.result-actions button` rule overrode the primary
+button foreground with the link color while hover used a primary background.
+The other 105 browser cases and both native/trust jobs passed, but the full
+initial head is not accepted.
+
+A Recovery-scoped primary rule now restores the existing theme's primary text,
+normal/hover background and border tokens, matching the preflight hierarchy.
+It affects all primary Recovery actions, not native behavior or unrelated cards.
+Browser regressions now check actual computed normal/focus/hover styles in both
+themes and widths, plus the original full axe audit while hovered. No contrast
+assertion, threshold or required CI gate was disabled. Complete replacement-head
+CI remains required before integration or a future candidate.
+
 Use the exact PR head and its Build URL in the tracker checkpoint. Require full
 applicable browser/native/trust and inherited recovery/signed-upgrade checks;
 stop while CI is pending, with no continuous polling. No native tests or owner
