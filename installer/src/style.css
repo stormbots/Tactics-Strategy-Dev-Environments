@@ -1296,8 +1296,14 @@ progress::-moz-progress-bar {
   border-radius: 9px;
   background: var(--warning-surface);
 }
+.recovery-page-clear {
+  border-color: var(--line);
+  background: var(--surface);
+}
 .recovery-page p,
-.recovery-page li {
+.recovery-page li,
+.recovery-diagnostics p,
+.recovery-diagnostics li {
   overflow-wrap: anywhere;
 }
 .recovery-findings {
