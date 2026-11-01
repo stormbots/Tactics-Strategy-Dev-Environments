@@ -151,11 +151,11 @@ fn action(outcome: Outcome, phase: Phase) -> &'static str {
         Outcome::Unavailable | Outcome::Failed => match phase {
             Phase::Download => "Download or staging did not complete. Check network and disk space; no installer was launched in this phase.",
             Phase::Discovery => "The release check was unavailable. Check the network and try the next scheduled run; this does not mean SDE is current.",
-            Phase::Verification => "Release authentication or identity checks failed. Keep SDE paused and ask a mentor to inspect protected logs.",
-            Phase::Packagehealth => "The package-manager health check failed. Ask a mentor to inspect DPKG state before retrying; do not delete package locks.",
-            Phase::Installer | Phase::Postcheck => "Native installation or its postchecks did not complete reliably. Pause SDE updates and ask a mentor to inspect the transaction and native package state before retrying.",
+            Phase::Verification => "Release authentication or identity checks failed. Keep SDE paused, inspect protected logs and collect a support report. Do not bypass authentication or use an alternate payload.",
+            Phase::Packagehealth => "The package-manager health check failed. Review current package findings and platform-specific guidance in Recovery before retrying; do not delete package locks.",
+            Phase::Installer | Phase::Postcheck => "Native installation or its postchecks did not complete reliably. Pause SDE updates, review current findings in Recovery and inspect native package logs before retrying. Acknowledgment does not repair packages or certify completion.",
             Phase::Tools => "Development-tool maintenance did not complete. Inspect its logs separately before retrying SDE installation.",
-            _ => "Status is missing, unreadable or requires mentor review. Refresh and consult protected logs; do not infer a successful update.",
+            _ => "Status is missing or unreadable. Refresh, review Recovery and collect a support report; do not infer a successful update.",
         }
     }
 }
@@ -216,7 +216,7 @@ fn summarize(
     }
     result
 }
-/// Manual mentor inspection only; never executes an installer or clears intent.
+/// Manual authenticated inspection only; never executes an installer or clears intent.
 pub fn verify_recovery() -> Result<()> {
     let platform = if cfg!(windows) {
         "windows-x86_64"
@@ -262,7 +262,7 @@ pub fn verify_recovery() -> Result<()> {
                 .map_err(|_| "Invalid recovery signature")?;
         let manifest = crate::authenticate(&metadata, &signature, &format!("v{}", r.version))?;
         crate::verify_installer(&manifest, platform, &dir.join(filename))?;
-        println!("{name}: authenticated version {} at {}. Manual recovery still requires mentor assessment.", r.version, dir.join(filename).display());
+        println!("{name}: authenticated version {} at {}. Review current Recovery findings and native package state before any manual installation; this inspection grants no execution permission.", r.version, dir.join(filename).display());
         found = true;
     }
     if !found {
@@ -320,5 +320,35 @@ mod tests {
             action(Outcome::Failed, Phase::Download),
             action(Outcome::Failed, Phase::Installer)
         );
+    }
+    #[test]
+    fn recovery_guidance_is_self_service_without_waiving_authentication_or_repairs() {
+        for phase in [
+            Phase::Identity,
+            Phase::Policy,
+            Phase::Download,
+            Phase::Discovery,
+            Phase::Verification,
+            Phase::Packagehealth,
+            Phase::Installer,
+            Phase::Postcheck,
+            Phase::Tools,
+            Phase::Unknown,
+        ] {
+            let message = action(Outcome::Failed, phase);
+            assert!(!message.to_ascii_lowercase().contains("mentor"));
+            assert!(!message.is_empty());
+        }
+        assert!(
+            action(Outcome::Failed, Phase::Verification).contains("Do not bypass authentication")
+        );
+        assert!(
+            action(Outcome::Failed, Phase::Packagehealth).contains("do not delete package locks")
+        );
+        assert!(
+            action(Outcome::Failed, Phase::Installer).contains("Acknowledgment does not repair")
+        );
+        assert!(action(Outcome::Unavailable, Phase::Unknown)
+            .contains("do not infer a successful update"));
     }
 }

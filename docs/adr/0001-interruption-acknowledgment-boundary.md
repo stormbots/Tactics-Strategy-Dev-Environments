@@ -7,11 +7,15 @@ foundation is described separately in [ADR 0002](0002-lease-bound-recovery-trans
 Implements the T1 checkpoint in
 [the recovery plan](../INTERRUPTED-OPERATION-RECOVERY-PLAN.md).
 
-Current implementation note: the [bootstrap increment](../RECOVERY-BOOTSTRAP-INTEGRATION.md)
-now connects incident preparation to the existing normally privileged installation
-hook. Preparation defers when a live supervisor holds the gate. It never commits
-consent, archives/retires a journal or enables execution. Earlier milestone-scope
-descriptions below are historical; full deployment/integration remains incomplete.
+Current implementation note: the cumulative stack now connects bootstrap,
+manual/scheduled/updater consumers, generation-bound GUI acknowledgment, retained
+reports/history and read-only diagnosis. See the
+[final integration review](../RECOVERY-INTEGRATION-REVIEW.md) and its remaining
+consolidation/signing/UAT gates. Bootstrap itself still only prepares incident
+metadata under its normal authorization; a live supervisor defers preparation,
+and bootstrap grants no consent or execution permit. Implementation-stage
+statements below (including consumers not yet connected) describe their historical
+checkpoint, not the current cumulative stack.
 
 ## Context
 

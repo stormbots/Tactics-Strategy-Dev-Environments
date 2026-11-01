@@ -1,7 +1,12 @@
 # Unavailable-source diagnosis and shareable support findings
 
 Branch `codex/recovery-unavailable-diagnostics`; bounded completeness increment,
-native/browser CI pending. Base #137 `f1e4941b07b248d7ec39e87afcb5511b48797c14`
+accepted at `bc778cda49287c9f8e07aaac9ac6eb322c27540f` in
+[Build 41252483028](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41252483028).
+All 172 frontend/101 browser, root Linux 151/151, Windows trust 136/136 and native
+Tauri Windows 106/106 / Linux 104/104 passed, with both signed upgrades and all
+inherited gates. Continue with the [final integration review](RECOVERY-INTEGRATION-REVIEW.md).
+Base #137 `f1e4941b07b248d7ec39e87afcb5511b48797c14`
 passed Build 41247275524, including the repaired root-owned test isolation.
 
 ## Finding and acceptance criteria

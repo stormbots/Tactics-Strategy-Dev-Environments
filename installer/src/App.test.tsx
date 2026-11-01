@@ -301,6 +301,92 @@ it("does not resume a partially acknowledged pair and keeps its saved report ref
   ).toBeNull();
 });
 
+it.each(["machine", "user"] as const)(
+  "returns to Overview after a safe startup %s acknowledgment without starting a change",
+  async (source) => {
+    const state = interrupted(source);
+    vi.mocked(inspectRecovery).mockResolvedValue(state);
+    const acknowledge =
+      source === "machine" ? acknowledgeMachine : acknowledgeUser;
+    vi.mocked(acknowledge).mockImplementation(async () => {
+      vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
+      return {
+        incidentId: (state.machine.incidentId ?? state.user.incident?.id)!,
+        reportId: null,
+        reportWarning: "Summary could not be saved; original evidence remains.",
+        ...(source === "machine"
+          ? { intentStatus: "submitted" as const }
+          : {
+              acknowledgment: {
+                incidentId: state.user.incident!.id,
+                acknowledgedAt: 50,
+                reportId: null,
+              },
+            }),
+      };
+    });
+    const before = vi.mocked(operate).mock.calls.length;
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Acknowledge interruption" }),
+    );
+    await screen.findByRole("heading", { name: "Ready!" });
+    expect(
+      screen
+        .getByRole("button", { name: "Overview" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    expect(
+      screen.queryByRole("heading", { name: "Before Install begins" }),
+    ).toBeNull();
+    expect(
+      screen.getByText(/Summary could not be saved; original evidence remains/),
+    ).toBeTruthy();
+    expect(vi.mocked(operate).mock.calls.length).toBe(before);
+    expect(acknowledge).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
+    await screen.findByRole("heading", { name: "Recovery findings" });
+    expect(
+      screen.getByText(/Summary could not be saved; original evidence remains/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+  },
+);
+
+it.each([false, true])(
+  "explains a nonblocking health warning without reviving the interruption (protected receipt: %s)",
+  async (committed) => {
+    const state = previewRecovery();
+    state.machine.incidentId = interrupted().machine.incidentId;
+    state.machine.intentSubmitted = true;
+    state.machine.acknowledgedAt = committed ? 50 : null;
+    state.nativeSafety.interrupted = true;
+    state.nativeSafety.acknowledged = committed;
+    if (!committed) {
+      // Matching submitted intent admits only the next native recheck. It is not
+      // a protected receipt, even though another consent click is unnecessary.
+      state.decision = state.nativeSafety.decision = "needs_acknowledgment";
+      state.guidance = interrupted().guidance;
+    }
+    vi.mocked(inspectRecovery).mockResolvedValue(state);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Ready!" });
+    const card = screen.getByRole("region", { name: "Workstation status" });
+    expect(card.className).toContain("tone-yellow");
+    const reason = screen.getByRole("button", {
+      name: /Package health remains unverified.*Review Recovery/,
+    });
+    expect(card.contains(reason)).toBe(true);
+    expect(
+      screen.queryByRole("heading", { name: "Needs attention" }),
+    ).toBeNull();
+    expect(screen.queryByText(/Review the interrupted operation/)).toBeNull();
+    fireEvent.click(reason);
+    await screen.findByRole("heading", { name: "Recovery findings" });
+    expect(screen.queryByRole("button", { name: /Acknowledge/ })).toBeNull();
+  },
+);
+
 it("unknown activity permits acknowledgment but not continuation; Check Again does not replay work", async () => {
   const state = interrupted("user");
   state.effectiveActivity = "unknown";

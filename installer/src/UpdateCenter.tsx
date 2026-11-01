@@ -201,9 +201,10 @@ export function ApplicationUpdates({
             </button>
           )}
           <p className="muted">
-            Download opens your browser. Follow the mentor verification
-            procedure before installing; release discovery alone does not
-            authenticate downloaded files.
+            Download opens your browser. Follow the authenticated installation
+            instructions and verify the published signatures and hashes before
+            installing; release discovery alone does not authenticate downloaded
+            files.
           </p>
         </>
       )}

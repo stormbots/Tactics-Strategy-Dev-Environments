@@ -220,6 +220,8 @@ export default function App() {
   const busy =
     s.stage === "running" || s.stage === "checking" || recoveryLoading;
   const recoveryAttention = recoveryNeedsAttention(recovery);
+  const recoveryWarning =
+    recoveryAttention || recovery?.nativeSafety.packageHealth === "unknown";
   const status =
     !s.validationComplete &&
     s.checks.length > 0 &&
@@ -263,8 +265,7 @@ export default function App() {
     readinessFailures.length > 0 ||
       recovery?.decision === "block_incomplete" ||
       recovery?.decision === "block_untrusted",
-    recoveryAttention ||
-      recovery?.nativeSafety.packageHealth === "unknown" ||
+    recoveryWarning ||
       validationWarning ||
       (!validationObserved && s.stage !== "checking"),
     maintenanceState,
@@ -454,7 +455,11 @@ export default function App() {
       actionInFlight.current = false;
       setRecoveryLoading(false);
     }
-    if (resume && pendingOperation) {
+    if (resume && !pendingOperation) {
+      // Startup acknowledgment is not a request to change the workstation.
+      // Saved-summary references and failures remain visible on Overview.
+      setPage("overview");
+    } else if (resume && pendingOperation) {
       // Re-enter ordinary review, never reuse a pre-acknowledgment confirmation.
       if (pendingOperation === "repair") {
         setMode("repair");
@@ -658,13 +663,15 @@ export default function App() {
                     </div>
                   </div>
                   <div className="status-counts">
-                    {recoveryAttention && (
+                    {recoveryWarning && (
                       <button
                         className="text-button"
                         onClick={() => setPage("recovery")}
                       >
-                        {recovery?.guidance.title ??
-                          "Recovery findings unavailable"}{" "}
+                        {recoveryAttention
+                          ? (recovery?.guidance.title ??
+                            "Recovery findings unavailable")
+                          : "Package health remains unverified"}{" "}
                         — Review Recovery
                       </button>
                     )}

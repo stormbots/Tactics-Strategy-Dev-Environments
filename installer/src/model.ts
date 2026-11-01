@@ -141,7 +141,8 @@ export type Report = {
   log_path: string;
   platform: { label: string; supported: boolean };
   validation_collected_at?: number | null;
-  mutation_outcome?: "not_requested" | "not_started" | "completed" | "uncertain";
+  mutation_outcome?:
+    "not_requested" | "not_started" | "completed" | "uncertain";
 };
 export function collectionTime(value: unknown): number | null {
   return typeof value === "number" &&
@@ -330,7 +331,7 @@ export function reducer(s: State, a: Action): State {
       error: valid
         ? ""
         : errors.at(-1)?.message ||
-          "Some checks need attention. Review the validation results for recommended next steps and ask a mentor about unrecognized failures.",
+          "Some checks need attention. Review the validation results for recommended next steps and collect a support report for unrecognized failures.",
       updates:
         toolsFrom(a.report.lines).some((t) => t.updateAvailable) ||
         a.report.lines.some((l) => parseEvent(l)?.kind === "update"),

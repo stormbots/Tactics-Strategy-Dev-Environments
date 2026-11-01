@@ -1,7 +1,26 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [unavailable-source diagnostics](RECOVERY-UNAVAILABLE-DIAGNOSTICS.md),
-branch `codex/recovery-unavailable-diagnostics`, pending native/browser CI.
+Current increment: [final integration review](RECOVERY-INTEGRATION-REVIEW.md),
+branch `codex/recovery-integration-review`, pending exact-head native/browser CI.
+This closes the bounded UI findings (nonblocking warning reason in the existing
+status card; startup acknowledgment returns to Overview without launching work;
+obsolete mentor-service guidance in application-update status/download diagnostics)
+and prepares the [focused UAT sheet](RECOVERY-FOCUSED-UAT.md). No UAT candidate yet.
+#138 is accepted at `bc778cda49287c9f8e07aaac9ac6eb322c27540f` in
+[Build 41252483028](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41252483028):
+172 frontend/101 browser tests, root Linux 151/151, Windows trust 136/136,
+native Tauri Windows 106/106 and Linux 104/104 passed. Both signed upgrades,
+actual Mint 22.3 and every inherited recovery/installed/trust gate passed. The
+separate policy/helper workflows succeeded; scoped helper skips were not used
+instead of native proof. All current blockers remain fail-closed.
+
+Next after this increment's exact-head acceptance: consolidate the complete
+verified stack (no partial merge), require full Build on combined main, inspect
+unused version/candidate state, prepare via the existing protected workflow, and
+stop for human signing approval. Real dialogs/restart/workstation acceptance
+remain focused owner UAT. No further architecture phase is planned absent an
+evidenced defect or unmet acceptance criterion.
+
 #137 is accepted at `f1e4941b07b248d7ec39e87afcb5511b48797c14` in
 [Build 41247275524](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41247275524):
 170 frontend/101 browser tests, root Linux 149/149, Windows trust 134/134,

@@ -61,24 +61,6 @@ export type OperationIncident = {
   acknowledged: boolean;
 };
 
-export type ValidationDisposition = "notRun" | "passed" | "repair" | "mentor";
-
-export type RecoveryAction =
-  "wait" | "validate" | "resolved" | "repair" | "mentor";
-
-export function recoveryAction(
-  incident: OperationIncident | null,
-  backendActive: boolean,
-  validation: ValidationDisposition,
-): RecoveryAction {
-  if (backendActive) return "wait";
-  if (!incident || incident.acknowledged || validation === "passed")
-    return "resolved";
-  if (validation === "repair") return "repair";
-  if (validation === "mentor") return "mentor";
-  return "validate";
-}
-
 export type MaintenanceHealth =
   | "healthy"
   | "failed"

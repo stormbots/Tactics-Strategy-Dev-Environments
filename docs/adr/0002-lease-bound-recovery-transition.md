@@ -16,6 +16,12 @@ authentication and fresh native/incident checks. Interrupted staging preserves
 old inputs and recovery receipts. The historical foundation scope below remains
 unchanged; native integration validation is a separate gate.
 
+The cumulative stack now includes manual/scheduled/updater consumers and Recovery
+interaction. See the [final integration review](../RECOVERY-INTEGRATION-REVIEW.md)
+for accepted evidence, compatibility limits and consolidation/UAT gates. Statements
+below that consumers are not connected refer to this ADR's foundation checkpoint;
+the lease-bound authority and fail-closed contract remain unchanged.
+
 ## Decision
 
 An unlocked SDE operation gate cannot establish that a previous installer or its

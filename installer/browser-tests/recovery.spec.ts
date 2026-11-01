@@ -14,7 +14,14 @@ for (const theme of ["Light", "Dark"])
       ).toBeVisible();
       await chooseTheme(page, theme);
       await closeAppearance(page);
-      await page.getByRole("button", { name: "Recovery", exact: true }).click();
+      const card = page.getByRole("region", { name: "Workstation status" });
+      await expect(card).toHaveCount(1);
+      await expect(card).toHaveClass(/tone-yellow/);
+      await card
+        .getByRole("button", {
+          name: /Package health remains unverified.*Review Recovery/,
+        })
+        .click();
       await expect(
         page.getByRole("heading", { name: "Recovery findings" }),
       ).toBeVisible();
