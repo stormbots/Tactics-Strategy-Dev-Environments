@@ -23,6 +23,7 @@ class CandidateIdentity(unittest.TestCase):
             npm_before = json.loads((root / "installer/package-lock.json").read_text())
             self.assertIn("1.2.19", VERSIONS)
             self.assertIn("1.2.20", VERSIONS)
+            self.assertIn("1.2.21", VERSIONS)
             for version in VERSIONS:
                 prepare(root, version)
                 for name in ("package.json", "src-tauri/tauri.conf.json"):
@@ -38,15 +39,15 @@ class CandidateIdentity(unittest.TestCase):
                 self.assertEqual({k: v for k, v in npm["packages"].items() if k},
                                  {k: v for k, v in npm_before["packages"].items() if k})
             with self.assertRaises(ValueError):
-                prepare(root, "1.2.21")
+                prepare(root, "1.2.22")
 
     def test_recovery_candidate_publishes_only_new_version_after_protected_checks(self):
         workflow = (ROOT / ".github/workflows/prepare-self-update-uat.yml").read_text()
-        self.assertIn("BUILD_VERSIONS: 1.2.19 1.2.20\n", workflow)
-        self.assertIn("CANDIDATE_VERSIONS: 1.2.20\n", workflow)
-        self.assertNotIn("CANDIDATE_VERSIONS: 1.2.19", workflow)
-        self.assertIn("CANDIDATE_NOTES: docs/RELEASE-NOTES-1.2.20.md", workflow)
-        self.assertIn("git/matching-refs/tags/v1.2.20", workflow)
+        self.assertIn("BUILD_VERSIONS: 1.2.20 1.2.21\n", workflow)
+        self.assertIn("CANDIDATE_VERSIONS: 1.2.21\n", workflow)
+        self.assertNotIn("CANDIDATE_VERSIONS: 1.2.20", workflow)
+        self.assertIn("CANDIDATE_NOTES: docs/RELEASE-NOTES-1.2.21.md", workflow)
+        self.assertIn("git/matching-refs/tags/v1.2.21", workflow)
         self.assertIn("environment: sde-release-signing", workflow)
         self.assertIn("needs: [source, build-pair]", workflow)
         self.assertIn("Successful exact-main CI required", workflow)
@@ -56,13 +57,15 @@ class CandidateIdentity(unittest.TestCase):
         release = (ROOT / ".github/workflows/build-dev-setup.yml").read_text()
         self.assertIn("'!v1.2.20'", release)
         self.assertIn("github.ref != 'refs/tags/v1.2.20'", release)
+        self.assertIn("'!v1.2.21'", release)
+        self.assertIn("github.ref != 'refs/tags/v1.2.21'", release)
 
     def test_native_pair_probes_include_new_candidate_and_enabled_policy_checks(self):
         windows = (ROOT / "tests/Probe-NativeUpgrade.ps1").read_text()
         mint = (ROOT / "tests/Test-MintUatPairCI.sh").read_text()
-        self.assertIn("1.2.20/Skyview-Dev-Setup-Windows-x64.exe", windows)
-        self.assertIn("$versions = @('1.2.19', '1.2.20')", windows)
-        self.assertEqual(windows.count("'1.2.18','1.2.19','1.2.20'"), 2)
-        self.assertIn("1.2.20/Skyview-Dev-Setup-LinuxMint-amd64.deb", mint)
-        self.assertIn("versions=(1.2.19 1.2.20)", mint)
-        self.assertEqual(mint.count('"$version" == 1.2.19 || "$version" == 1.2.20'), 2)
+        self.assertIn("1.2.21/Skyview-Dev-Setup-Windows-x64.exe", windows)
+        self.assertIn("$versions = @('1.2.20', '1.2.21')", windows)
+        self.assertEqual(windows.count("'1.2.19','1.2.20','1.2.21'"), 2)
+        self.assertIn("1.2.21/Skyview-Dev-Setup-LinuxMint-amd64.deb", mint)
+        self.assertIn("versions=(1.2.20 1.2.21)", mint)
+        self.assertEqual(mint.count('"$version" == 1.2.20 || "$version" == 1.2.21'), 2)
