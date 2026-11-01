@@ -1,5 +1,54 @@
 import { expect, it, vi } from "vitest";
 import { supportHtml, supportSnapshot } from "./supportReport";
+it("shares unavailable recovery categories without exporting unknown provider fields or implying no incident", () => {
+  const recovery = {
+    observedAt: 100,
+    machineEvidence: "unavailable",
+    accountEvidence: "unavailable",
+    accountDecision: "unavailable",
+    machineActivity: "unknown",
+    machineActivityReason: "native_inspection_unavailable",
+    machinePackageHealth: "unknown",
+    machineTrust: "unknown",
+    machineRestart: "unavailable",
+    machineSafetyDecision: "block_trust_unknown",
+    rawJournal: "synthetic-private-secret",
+    generation: "private-generation",
+  };
+  const report = supportSnapshot({
+    context: { deviceName: "TEST", logs: null, recovery },
+    platform: "Windows",
+    applicationVersion: "1",
+    checks: [],
+    validationComplete: false,
+    incident: null,
+    maintenance: null,
+    includeLogs: false,
+  });
+  const html = supportHtml(report);
+  expect(html).toContain("Read-only recovery findings");
+  expect(html).toContain("Account evidence</dt><dd>unavailable");
+  expect(html).toContain("does not establish absence");
+  expect(html).not.toContain("No interrupted operation was recorded");
+  expect(JSON.stringify(report)).not.toMatch(
+    /synthetic-private-secret|private-generation|rawJournal/,
+  );
+  recovery.machineEvidence = "<script>unsafe</script>";
+  expect(
+    supportHtml(
+      supportSnapshot({
+        context: { deviceName: "TEST", logs: null, recovery },
+        platform: "Mint",
+        applicationVersion: "1",
+        checks: [],
+        validationComplete: false,
+        incident: null,
+        maintenance: null,
+        includeLogs: false,
+      }),
+    ),
+  ).toContain("&lt;script&gt;unsafe&lt;/script&gt;");
+});
 
 it("produces a self-contained script-free report and omits logs by default", () => {
   vi.useFakeTimers();
@@ -10,6 +59,7 @@ it("produces a self-contained script-free report and omits logs by default", () 
     applicationVersion: "1.2.1",
     checks: [{ status: "FAIL", message: "Git <missing>" }],
     validationComplete: true,
+    validationCollectedAt: 1792929600,
     incident: null,
     maintenance: null,
     includeLogs: false,
@@ -25,7 +75,50 @@ it("produces a self-contained script-free report and omits logs by default", () 
   expect(html).toContain("Outcome: Needs attention");
   expect(html).not.toContain("secret path");
   expect(html).not.toMatch(/<script|https?:\/\//i);
+  expect(snapshot.validation.collectedAt).toBe(
+    new Date(1792929600 * 1000).toISOString(),
+  );
+  expect(snapshot.validation.collectedAt).not.toBe(snapshot.createdAt);
   vi.useRealTimers();
+});
+
+it("does not substitute report time for missing Validation time, even after a pass", () => {
+  const input = {
+    context: { deviceName: "TEST", logs: null },
+    platform: "Windows 11",
+    applicationVersion: "1",
+    checks: [{ status: "PASS" as const, message: "Git" }],
+    validationComplete: true,
+    incident: null,
+    maintenance: null,
+    includeLogs: false,
+  };
+  for (const validationCollectedAt of [
+    undefined,
+    null,
+    0,
+    NaN,
+    Infinity,
+    -1,
+    1.5,
+    1e15,
+  ]) {
+    expect(
+      supportSnapshot({ ...input, validationCollectedAt }).validation
+        .collectedAt,
+    ).toBeNull();
+  }
+  expect(
+    supportSnapshot({ ...input, checks: [], validationCollectedAt: 50 })
+      .validation.collectedAt,
+  ).toBeNull();
+  const failed = supportSnapshot({
+    ...input,
+    validationComplete: false,
+    checks: [{ status: "FAIL", message: "Git" }],
+    validationCollectedAt: 50,
+  });
+  expect(failed.validation.collectedAt).toBe(new Date(50000).toISOString());
 });
 
 it("includes only explicitly requested log content", () => {

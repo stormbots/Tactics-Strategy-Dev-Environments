@@ -263,7 +263,9 @@ fn install_selected(
     authenticate: impl FnOnce(&[u8], &str, &str) -> Result<AuthenticatedManifest>,
 ) -> Result<()> {
     report.phase = crate::observation::Phase::Verification;
-    let lease = sde_coordination::installation().map_err(|e| coordination_error(report, e))?;
+    let preparation =
+        sde_coordination::mutation::prepare(sde_coordination::mutation::Scope::Installation)
+            .map_err(|e| coordination_error(report, e))?;
     if paused()? {
         report.outcome = "paused".into();
         return Ok(());
@@ -286,33 +288,32 @@ fn install_selected(
         return Ok(());
     }
     report.phase = crate::observation::Phase::Packagehealth;
-    let audit = command("/usr/bin/dpkg")
-        .arg("--audit")
-        .output()
-        .map_err(|_| "Package health check unavailable")?;
-    if !audit.status.success() || !audit.stdout.is_empty() || !audit.stderr.is_empty() {
-        return Err("Existing package state needs mentor repair before self-installation".into());
-    }
-    let journal = lease.begin_transaction().map_err(|e| e.to_string())?;
+    // The shared bounded native inspection distinguishes positive damage from
+    // unavailable health. Unknown health alone may warn, never unknown activity.
+    let mut guard = preparation.begin().map_err(|error| {
+        report.outcome = crate::installation_coordination::outcome(&error).into();
+        crate::installation_coordination::detail(&error)
+    })?;
     atomic(
         &Path::new(ROOT).join("installation.json"),
         &serde_json::json!({"schemaVersion":1,"stage":"installing","previousVersion":before,"candidateVersion":candidate.version,"sha256":manifest.metadata().platforms["linux-amd64"].sha256,"transaction":directory.file_name().and_then(|s|s.to_str()),"startedAt":report.checked_at}),
         false,
     )?;
     if paused()? {
-        journal.complete().map_err(|e| e.to_string())?;
+        guard.finish_known().map_err(|e| e.to_string())?;
         report.outcome = "paused".into();
         return Ok(());
     }
     report.phase = crate::observation::Phase::Installer;
     report.outcome = "failed".into();
     // Wait for actual completion; never kill APT/DPKG, remove locks or force reboot.
-    let status = apt_command(directory)
-        .status()
-        .map_err(|_| "Native completion unknown; mentor review required")?;
+    let status = guard.run(apt_command(directory)).map_err(|error| {
+        report.outcome = crate::installation_coordination::outcome(&error).into();
+        crate::installation_coordination::detail(&error)
+    })?;
     let code = status
         .code()
-        .ok_or("Native completion unknown; mentor review required")?;
+        .ok_or("Native completion unknown; review Recovery and Check Again")?;
     report.native_exit = Some(code);
     atomic(
         &Path::new(ROOT).join("installation.json"),
@@ -321,7 +322,7 @@ fn install_selected(
     )?;
     if code != 0 {
         return Err(format!(
-            "APT returned {code}; mentor review required before retry"
+            "APT returned {code}; review Recovery and package guidance before retry"
         ));
     }
     report.phase = crate::observation::Phase::Postcheck;
@@ -343,7 +344,7 @@ fn install_selected(
         &serde_json::json!({"schemaVersion":1,"stage":"complete","previousVersion":before,"candidateVersion":candidate.version,"nativeExit":code}),
         false,
     )?;
-    journal.complete().map_err(|e| e.to_string())?;
+    crate::installation_coordination::finish(guard)?;
     report.application_version = candidate.version.clone();
     report.outcome = "updated".into();
     if !report.recovery_available {
@@ -470,13 +471,14 @@ fn tool_maintenance() -> Result<Option<i32>> {
             .and_then(|_| file.sync_all())
             .map_err(|_| "Supervisor write failed")?;
     }
-    command("/usr/bin/python3")
-        .arg("-I")
-        .arg("-B")
+    let mut supervisor = command("/usr/bin/python3");
+    supervisor
+        .args(["-I", "-B"])
         .arg(run.join("applied.py"))
-        .status()
-        .map(|s| Some(s.code().unwrap_or(1)))
-        .map_err(|_| "Tool maintenance could not start".into())
+        .arg("--leased");
+    // Rust now owns the transaction; --leased still requires the existing real
+    // descriptor checks before the child reads any deployed baseline content.
+    crate::tool_coordination::run(supervisor).map(Some)
 }
 pub fn maintain_linux() -> Result<i32> {
     if unsafe { libc::geteuid() } != 0 {
@@ -536,13 +538,8 @@ pub fn maintain_linux() -> Result<i32> {
     };
     let result = (|| {
         report.tool_exit = tool_maintenance()?;
-        if report.tool_exit.is_some_and(|c| c != 0) {
-            report.outcome = if report.tool_exit == Some(75) {
-                "deferred"
-            } else {
-                "failed"
-            }
-            .into();
+        if let Some(outcome) = crate::tool_coordination::incomplete_outcome(report.tool_exit) {
+            report.outcome = outcome.into();
             return Err(
                 "Tool maintenance did not complete successfully; application installation deferred"
                     .into(),
@@ -560,10 +557,18 @@ pub fn maintain_linux() -> Result<i32> {
         let mut github = GitHub::new().map_err(|_| "GitHub unavailable")?;
         let root = host::store().map_err(|_| "Protected staging unavailable")?;
         let operation =
-            sde_coordination::operation().map_err(|e| coordination_error(&mut report, e))?;
-        prune(&root)?;
-        report.recovery_available =
-            recovery(&mut github, &root, &installed.version).unwrap_or(false);
+            sde_coordination::mutation::prepare(sde_coordination::mutation::Scope::System)
+                .map_err(|e| coordination_error(&mut report, e))?;
+        if !operation.interrupted() {
+            prune(&root)?;
+        }
+        report.recovery_available = if operation.interrupted() {
+            // Do not replace an uncertain installation's recovery receipt or
+            // inputs merely to prepare a different authenticated candidate.
+            crate::observation::verify_recovery().is_ok()
+        } else {
+            recovery(&mut github, &root, &installed.version).unwrap_or(false)
+        };
         report.phase = crate::observation::Phase::Discovery;
         let candidate = discovery::discover_with(&mut github, &installed.version, "linux-amd64")
             .map_err(|e| format!("Release check unavailable: {e:?}"))?;
@@ -793,10 +798,14 @@ mod tests {
         assert!(!sde_coordination::root().join("transaction.json").exists());
         drop(blocker.stdin.take());
         assert!(blocker.wait().unwrap().success());
-        install_selected(&directory, &candidate, &mut report, |b, s, t| {
-            crate::authenticate_with_key(b, s, t, &keys.pk)
-        })
-        .unwrap();
+        crate::installation_coordination::native_contracts(|authorized| {
+            install_selected(&directory, &candidate, &mut report, |b, s, t| {
+                if !authorized {
+                    return Err("Fixture candidate authentication rejected".into());
+                }
+                crate::authenticate_with_key(b, s, t, &keys.pk)
+            })
+        });
         assert_eq!(report.outcome, "updated");
         assert_eq!(report.native_exit, Some(0));
         report.completed_at = Some(101);
@@ -828,6 +837,7 @@ mod tests {
         let old_engine = read_receipt("previous-engine.json").unwrap();
         assert_eq!(old_engine["version"], "1.2.1");
         set_linux_pause(true).unwrap();
+        crate::tool_coordination::native_contracts();
         let next = command("/usr/bin/python3")
             .args(["-I", "/usr/local/libexec/skyview-self-update.py"])
             .status()

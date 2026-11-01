@@ -201,6 +201,8 @@ test("support report shows exact content and keeps logs off by default", async (
   await expect(
     preview.getByRole("heading", { name: "Skyview SDE Support Report" }),
   ).toBeVisible();
+  await expect(preview.getByRole("heading", { name: "Read-only recovery findings" })).toBeVisible();
+  await expect(preview.getByText(/Structured recovery findings were unavailable/)).toBeVisible();
   await expect(
     preview.getByText("STUDENT-LAPTOP", { exact: true }),
   ).toBeVisible();

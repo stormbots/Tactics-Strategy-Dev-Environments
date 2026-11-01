@@ -4,7 +4,7 @@ export type Guidance = {
   title: string;
   impact: string;
   next: string;
-  category: "Repair" | "Update" | "Manual step" | "Mentor assistance";
+  category: "Repair" | "Update" | "Manual step" | "Diagnostic review";
   operation?: "repair" | "update";
   destination?: "schedule";
 };
@@ -17,15 +17,15 @@ export const operationScope = {
 const repair = (title: string, impact: string): Guidance => ({
   title,
   impact,
-  next: "Review Repair to restore the managed setup, then run validation again. If the check still fails, share the details with a mentor.",
+  next: "Review Repair to restore the managed setup, then run validation again. If the check still fails, keep the diagnostic details and create a support report.",
   category: "Repair",
   operation: "repair",
 });
-const mentor = (title: string, impact: string, next: string): Guidance => ({
+const diagnostics = (title: string, impact: string, next: string): Guidance => ({
   title,
   impact,
   next,
-  category: "Mentor assistance",
+  category: "Diagnostic review",
 });
 const manual = (title: string, impact: string, next: string): Guidance => ({
   title,
@@ -50,7 +50,7 @@ const runtimeFailure = new RegExp(
   `^(${tools}): expected runtime family or usable command; detected `,
 );
 
-/** Recognize backend validation messages narrowly; new/unknown checks fail to mentor guidance. */
+/** Recognize messages narrowly; unknown checks offer diagnostics, not inferred repairs. */
 export function validationGuidance(
   check: Check,
   record?: ToolRecord,
@@ -76,10 +76,10 @@ export function validationGuidance(
     return;
   }
   if (!supported)
-    return mentor(
-      "This platform needs a mentor's review",
+    return diagnostics(
+      "This platform needs verification",
       "SDE has not confirmed a supported workstation platform.",
-      "Ask a mentor to confirm the operating system before running setup or maintenance.",
+      "Check the operating-system information against SDE's supported platforms before setup or maintenance. Keep the details in a support report if it cannot be verified.",
     );
   const message = check.message;
   const match = missingTool.exec(message);
@@ -99,10 +99,10 @@ export function validationGuidance(
       /^Node\.js must remain on 24\.x; detected /.test(message) ||
       /^Expected Python 3\.14\.x; detected /.test(message))
   ) {
-    return mentor(
+    return diagnostics(
       "A required command or runtime could not be verified",
       "The command did not run as expected or the required runtime family was not detected. Managed projects may not run correctly.",
-      "Ask a mentor to review the detected version and command path in the details. Keep Linux system Python and existing project environments intact.",
+      "Review the detected version and command path in Technical details. Preserve Linux system Python and existing project environments. Keep a support report before choosing a repair; do not infer a package change from this message alone.",
     );
   }
   if (
@@ -186,14 +186,14 @@ export function validationGuidance(
     return manual(
       "A Git default differs from the baseline",
       "The standard Git workflow settings were not verified. Repository operations may behave differently from course instructions.",
-      `${gitDefaults[message]} Review the global setting with your mentor before changing an intentional customization, then validate again. Git identity remains optional.`,
+      `${gitDefaults[message]} Review the global setting before changing an intentional customization, then validate again. Git identity remains optional.`,
     );
   if (/^Weekly maintenance/.test(message))
     return {
-      ...mentor(
+      ...diagnostics(
         "Weekly maintenance needs review",
         "SDE could not confirm that the managed maintenance schedule is available and enabled. Automatic tool maintenance may be affected.",
-        "Open Schedule to review the task or timer and its last result. Ask a mentor to check whether it was intentionally disabled before choosing Repair or changing the schedule.",
+        "Open Schedule to review the task or timer and its last result. Check whether it was intentionally disabled before choosing Repair or changing the schedule.",
       ),
       destination: "schedule",
     };
@@ -203,19 +203,19 @@ export function validationGuidance(
     ) &&
     check.status === "FAIL"
   )
-    return mentor(
+    return diagnostics(
       "A configured project could not be verified",
       "The configured project folder was not recognized as a Git repository. This check does not establish whether your work is missing.",
-      "Ask your mentor to confirm the configured repository, its location, and your access. Preserve existing folders and use the approved project setup instructions.",
+      "Confirm the configured repository, its location, and your access against the project setup instructions. Preserve existing folders and keep the diagnostic details if access remains unavailable.",
     );
   if (
     message.startsWith("Expected Linux Mint; detected ") ||
     message === "/etc/os-release is unavailable"
   )
-    return mentor(
+    return diagnostics(
       "The supported Linux platform could not be confirmed",
       "SDE could not verify Linux Mint. Provisioning on an unsupported system may be unsafe.",
-      "Ask a mentor to confirm the operating system and installation before changing packages or system settings.",
+      "Confirm the operating system against SDE's supported-platform requirements before changing packages or system settings. Save a support report if it cannot be verified.",
     );
   if (
     check.status === "WARNING" &&
@@ -224,7 +224,7 @@ export function validationGuidance(
     return manual(
       "The desktop session could not be confirmed",
       "This warning does not count as a failed check. Desktop-specific behavior has not been verified in this session.",
-      "Open SDE from your Cinnamon desktop and validate again. If you are already using Cinnamon, show the details to a mentor.",
+      "Open SDE from your Cinnamon desktop and validate again. If you are already using Cinnamon, keep the session details in a support report.",
     );
   if (
     check.status === "WARNING" &&
@@ -234,7 +234,7 @@ export function validationGuidance(
     return manual(
       "Some editor defaults could not be verified",
       "Existing editor customizations or comments may prevent this check. Your preferences have been preserved.",
-      "Review the editor settings with a mentor and compare them with the installed baseline. Preserve intentional customizations, then validate again.",
+      "Compare the editor settings with the installed baseline. Preserve intentional customizations, then validate again.",
     );
   if (
     check.status === "WARNING" &&
@@ -243,13 +243,13 @@ export function validationGuidance(
     return manual(
       "Tool update availability could not be checked",
       "Installed-tool checks still apply, but this attempt did not establish which managed updates are available.",
-      "Check your connection and try validation with managed package update inspection enabled under Advanced. Contact a mentor if the warning persists.",
+      "Check your connection and try validation with managed package update inspection enabled under Advanced. Keep the details in a support report if the warning persists.",
     );
-  return mentor(
-    "This check needs a mentor's review",
+  return diagnostics(
+    "This check needs diagnostic review",
     check.status === "FAIL"
       ? "SDE could not confirm this requirement. Workstation readiness cannot be fully verified."
       : "A validation warning needs review. It does not count as a failed check.",
-    "Expand Technical details and share the result with a mentor. Use their diagnosis before attempting a repair or changing system settings.",
+    "Expand Technical details and save a support report. Do not treat unknown diagnostic text as a command or infer a repair from it. Recheck after reviewing the documented setup requirements.",
   );
 }

@@ -61,24 +61,6 @@ export type OperationIncident = {
   acknowledged: boolean;
 };
 
-export type ValidationDisposition = "notRun" | "passed" | "repair" | "mentor";
-
-export type RecoveryAction =
-  "wait" | "validate" | "resolved" | "repair" | "mentor";
-
-export function recoveryAction(
-  incident: OperationIncident | null,
-  backendActive: boolean,
-  validation: ValidationDisposition,
-): RecoveryAction {
-  if (backendActive) return "wait";
-  if (!incident || incident.acknowledged || validation === "passed")
-    return "resolved";
-  if (validation === "repair") return "repair";
-  if (validation === "mentor") return "mentor";
-  return "validate";
-}
-
 export type MaintenanceHealth =
   | "healthy"
   | "failed"
@@ -136,12 +118,25 @@ export function overviewTone(
   return "green";
 }
 
+export type RecoverySupportSnapshot = {
+  observedAt: number | null;
+  machineEvidence: string;
+  accountEvidence: string;
+  accountDecision: string;
+  machineActivity: string;
+  machineActivityReason: string;
+  machinePackageHealth: string;
+  machineTrust: string;
+  machineRestart: string;
+  machineSafetyDecision: string;
+};
 export type SupportReportSnapshot = {
   schema: 1;
   createdAt: string;
   deviceName: string;
   platform: string;
   applicationVersion: string;
+  recovery?: RecoverySupportSnapshot | null;
   validation: {
     collectedAt: string | null;
     outcome: "ready" | "needsAttention" | "unavailable";

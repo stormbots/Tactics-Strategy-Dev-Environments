@@ -69,7 +69,7 @@ export function SchedulePage({
       .catch(() => {
         if (id === request.current)
           setSelfUpdateError(
-            "SDE update status unavailable. Refresh or ask a mentor to inspect protected logs.",
+            "SDE update status unavailable. Refresh, then review Recovery and collect a support report if it remains unavailable.",
           );
       });
     try {
@@ -251,10 +251,11 @@ const updateResults: Record<SelfUpdate["outcome"], string> = {
 const coordinationLabels: Record<SelfUpdate["coordination"], string> = {
   idle: "Idle",
   busy: "SDE or maintenance is active",
-  interrupted: "Interrupted operation — mentor recovery required",
+  interrupted: "Interrupted operation — review Recovery",
   unavailable: "Coordination information unavailable",
-  untrusted: "Untrusted coordination state — mentor review required",
-  needs_repair: "Maintenance baseline needs mentor repair",
+  untrusted: "Untrusted coordination state — changes remain blocked",
+  needs_repair:
+    "Maintenance baseline needs repair — review diagnostic findings",
 };
 function receiptTime(value: number | null): string {
   const date = value === null ? null : new Date(value * 1000);
@@ -307,7 +308,7 @@ export function SelfUpdatePanel({
       if (active.current) {
         setData({ ...data, paused: null });
         setSaveError(
-          "Couldn’t confirm the saved setting. Refresh to read its current state, or ask a mentor if it remains unavailable.",
+          "Couldn’t confirm the saved setting. Refresh to read its current state; collect a support report if it remains unavailable. No setting or successful update is inferred.",
         );
       }
     } finally {
@@ -363,7 +364,7 @@ export function SelfUpdatePanel({
           </div>
           <p className="notice" role="status">
             {data.paused === null
-              ? "Installation setting unavailable — refresh or ask a mentor."
+              ? "Installation setting unavailable — refresh and review diagnostic findings."
               : data.paused
                 ? "SDE application installation is paused."
                 : "SDE can update during scheduled maintenance when this app is closed."}{" "}
@@ -430,7 +431,7 @@ export function SelfUpdatePanel({
               <dd>
                 {data.nativeExit === null
                   ? "No result recorded"
-                  : `Exit ${data.nativeExit}${data.rebootRequired ? " — reboot indicated; mentor review required" : ""}`}
+                  : `Exit ${data.nativeExit}${data.rebootRequired ? " — restart requested; save work and use normal Restart, then recheck" : ""}`}
               </dd>
             </div>
             <div>
@@ -445,7 +446,7 @@ export function SelfUpdatePanel({
               <dt>Signed recovery installer</dt>
               <dd>
                 {data.recoveryAvailable
-                  ? "Retained at this attempt; mentor must reverify before use"
+                  ? "Retained at this attempt; authentication must be reverified before use"
                   : "Not confirmed — reduced recovery capability"}
               </dd>
             </div>
@@ -454,14 +455,14 @@ export function SelfUpdatePanel({
             data.coordination,
           ) && (
             <p className="notice">
-              Keep SDE installation paused and ask a mentor to assess recovery
-              before retrying. A previous successful result does not resolve the
-              current coordination problem.
+              Review current findings in Recovery before retrying. A previous
+              successful result does not resolve the current coordination
+              problem.
             </p>
           )}
           <p>{data.action}</p>
           <p className="log-path">
-            Protected mentor logs: {data.logFolder}
+            Protected maintenance logs: {data.logFolder}
             {data.logReference ? ` · ${data.logReference}` : ""}
           </p>
           <p className="muted">

@@ -11,11 +11,52 @@ import App from "./App";
 import {
   acknowledgeOperationIncident,
   inspect,
-  inspectOperationIncident,
   operate,
   inspectSchedule,
   open,
 } from "./bridge";
+import {
+  inspectRecovery,
+  previewRecovery,
+  acknowledgeMachine,
+  acknowledgeUser,
+  type RecoveryState,
+} from "./recovery";
+vi.mock("./recovery", async () => {
+  const actual =
+    await vi.importActual<typeof import("./recovery")>("./recovery");
+  return {
+    ...actual,
+    inspectRecovery: vi.fn(async () => actual.previewRecovery()),
+    acknowledgeMachine: vi.fn(),
+    acknowledgeUser: vi.fn(),
+  };
+});
+function interrupted(source: "machine" | "user" = "machine"): RecoveryState {
+  const state = previewRecovery();
+  state.decision = "needs_acknowledgment";
+  state.readiness = "needs_acknowledgment";
+  state.guidance = {
+    code: "review_interruption",
+    title: "Review the interrupted operation",
+    steps: ["Passing Validation does not acknowledge an incident."],
+  };
+  if (source === "machine") {
+    state.machine.incidentId = "256f7aea-bf4d-4d0f-a73a-68c2b74e258b";
+    state.canAcknowledgeMachine = true;
+  } else {
+    state.user.incident = {
+      id: "b564efb0-e4b1-42b4-8c17-e794011bd734",
+      operation: "update",
+      stage: "system",
+      startedAt: 1,
+      observedAt: 2,
+    };
+    state.user.viewToken = "display-bound-nonce";
+    state.canAcknowledgeUser = true;
+  }
+  return state;
+}
 vi.mock("./bridge", () => ({
   native: false,
   appVersion: "1.2.0",
@@ -89,6 +130,11 @@ vi.mock("./bridge", () => ({
   open: vi.fn(async () => {}),
 }));
 beforeEach(() => {
+  vi.mocked(inspectRecovery)
+    .mockReset()
+    .mockImplementation(async () => previewRecovery());
+  vi.mocked(acknowledgeMachine).mockReset();
+  vi.mocked(acknowledgeUser).mockReset();
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -102,21 +148,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("directs an interrupted operation through fresh validation", async () => {
-  const id = "256f7aea-bf4d-4d0f-a73a-68c2b74e258b";
-  vi.mocked(inspectOperationIncident).mockResolvedValueOnce({
-    backendActive: false,
-    incident: {
-      schema: 1,
-      id,
-      operation: "update",
-      stage: "system",
-      startedAt: 1,
-      observedAt: 2,
-      logPath: "/logs/update.log",
-      acknowledged: false,
-    },
-  });
+it("keeps an interrupted operation unacknowledged after successful validation", async () => {
+  const acknowledgmentsBefore = vi.mocked(acknowledgeOperationIncident).mock
+    .calls.length;
+  vi.mocked(inspectRecovery).mockResolvedValue(interrupted("user"));
   vi.mocked(operate).mockResolvedValueOnce({
     code: 0,
     success: true,
@@ -129,22 +164,25 @@ it("directs an interrupted operation through fresh validation", async () => {
   });
   render(<App />);
   await screen.findByRole("heading", {
-    name: "A previous operation was interrupted",
+    name: "Recovery findings",
   });
-  fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
-  await screen.findByRole("heading", { name: "Ready!" });
-  expect(acknowledgeOperationIncident).toHaveBeenCalledWith(id);
   expect(
-    screen.getByText(/does not mean that operation completed/),
+    screen.queryByRole("button", { name: "Dismiss recovery notice" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
+  await screen.findByRole("heading", { name: "Validation passed." });
+  expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(
+    acknowledgmentsBefore,
+  );
+  expect(acknowledgeUser).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Recovery" })).toBeTruthy();
+  expect(
+    screen.getByText(/does not acknowledge the interruption/),
   ).toBeTruthy();
 });
 
 it("shows machine-only interruptions and keeps changes blocked after passing validation", async () => {
-  vi.mocked(inspectOperationIncident).mockResolvedValueOnce({
-    incident: null,
-    backendActive: false,
-    backendInterrupted: true,
-  });
+  vi.mocked(inspectRecovery).mockResolvedValue(interrupted());
   vi.mocked(operate).mockResolvedValueOnce({
     code: 0,
     success: true,
@@ -158,7 +196,7 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
   await screen.findByRole("heading", {
-    name: "A previous operation was interrupted",
+    name: "Recovery findings",
   });
   expect(
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
@@ -170,7 +208,7 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
     screen.getByRole("button", { name: "Install Development Environment" }),
   );
   await screen.findByRole("heading", {
-    name: "A previous operation was interrupted",
+    name: "Recovery findings",
   });
   expect(
     vi
@@ -181,9 +219,313 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
   expect(
     screen.queryByRole("button", { name: "Repair environment" }),
   ).toBeNull();
+  expect(screen.getByRole("button", { name: "Recovery" })).toBeTruthy();
+});
+
+it("acknowledges both sources in one action and returns to ordinary Install preflight without launching", async () => {
+  const state = interrupted();
+  Object.assign(state.user, interrupted("user").user);
+  state.canAcknowledgeUser = true;
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  vi.mocked(acknowledgeMachine).mockResolvedValue({
+    incidentId: state.machine.incidentId!,
+    reportId: "machine-report",
+    reportWarning: null,
+    intentStatus: "submitted",
+  });
+  vi.mocked(acknowledgeUser).mockImplementation(async () => {
+    vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
+    return {
+      incidentId: state.user.incident!.id,
+      reportId: null,
+      reportWarning: "Summary could not be saved; original evidence remains.",
+      acknowledgment: {
+        incidentId: state.user.incident!.id,
+        acknowledgedAt: 50,
+        reportId: null,
+      },
+    };
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Recovery findings" });
+  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  const acknowledge = await screen.findByRole("button", {
+    name: "Acknowledge and continue",
+  });
+  fireEvent.click(acknowledge);
+  fireEvent.click(acknowledge);
+  await screen.findByRole("heading", { name: "Before Install begins" });
+  expect(acknowledgeMachine).toHaveBeenCalledTimes(1);
+  expect(acknowledgeUser).toHaveBeenCalledTimes(1);
+  expect(acknowledgeUser).toHaveBeenCalledWith(
+    state,
+    expect.objectContaining({ collectedAt: null }),
+  );
   expect(
-    screen.getByRole("button", { name: "Recovery" }),
+    screen.getByText(/Summary could not be saved; original evidence remains/),
   ).toBeTruthy();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it("does not resume a partially acknowledged pair and keeps its saved report reference", async () => {
+  const state = interrupted();
+  Object.assign(state.user, interrupted("user").user);
+  state.canAcknowledgeUser = true;
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  vi.mocked(acknowledgeMachine).mockResolvedValue({
+    incidentId: state.machine.incidentId!,
+    reportId: "saved-first-report",
+    reportWarning: null,
+    intentStatus: "submitted",
+  });
+  vi.mocked(acknowledgeUser).mockRejectedValue(
+    new Error("The displayed user incident is stale. Check Again."),
+  );
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Acknowledge interruption" }),
+  );
+  await screen.findByRole("alert");
+  expect(
+    screen.getByText("Local summary saved: saved-first-report."),
+  ).toBeTruthy();
+  expect(screen.getByRole("alert").textContent).toContain("stale");
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(
+    screen.queryByRole("button", { name: "Acknowledge interruption" }),
+  ).toBeNull();
+});
+
+it.each(["machine", "user"] as const)(
+  "returns to Overview after a safe startup %s acknowledgment without starting a change",
+  async (source) => {
+    const state = interrupted(source);
+    vi.mocked(inspectRecovery).mockResolvedValue(state);
+    const acknowledge =
+      source === "machine" ? acknowledgeMachine : acknowledgeUser;
+    vi.mocked(acknowledge).mockImplementation(async () => {
+      vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
+      return {
+        incidentId: (state.machine.incidentId ?? state.user.incident?.id)!,
+        reportId: null,
+        reportWarning: "Summary could not be saved; original evidence remains.",
+        ...(source === "machine"
+          ? { intentStatus: "submitted" as const }
+          : {
+              acknowledgment: {
+                incidentId: state.user.incident!.id,
+                acknowledgedAt: 50,
+                reportId: null,
+              },
+            }),
+      };
+    });
+    const before = vi.mocked(operate).mock.calls.length;
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Acknowledge interruption" }),
+    );
+    await screen.findByRole("heading", { name: "Ready!" });
+    expect(
+      screen
+        .getByRole("button", { name: "Overview" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    expect(
+      screen.queryByRole("heading", { name: "Before Install begins" }),
+    ).toBeNull();
+    expect(
+      screen.getByText(/Summary could not be saved; original evidence remains/),
+    ).toBeTruthy();
+    expect(vi.mocked(operate).mock.calls.length).toBe(before);
+    expect(acknowledge).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
+    await screen.findByRole("heading", { name: "Recovery findings" });
+    expect(
+      screen.getByText(/Summary could not be saved; original evidence remains/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+  },
+);
+
+it.each([false, true])(
+  "explains a nonblocking health warning without reviving the interruption (protected receipt: %s)",
+  async (committed) => {
+    const state = previewRecovery();
+    state.machine.incidentId = interrupted().machine.incidentId;
+    state.machine.intentSubmitted = true;
+    state.machine.acknowledgedAt = committed ? 50 : null;
+    state.nativeSafety.interrupted = true;
+    state.nativeSafety.acknowledged = committed;
+    if (!committed) {
+      // Matching submitted intent admits only the next native recheck. It is not
+      // a protected receipt, even though another consent click is unnecessary.
+      state.decision = state.nativeSafety.decision = "needs_acknowledgment";
+      state.guidance = interrupted().guidance;
+    }
+    vi.mocked(inspectRecovery).mockResolvedValue(state);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Ready!" });
+    const card = screen.getByRole("region", { name: "Workstation status" });
+    expect(card.className).toContain("tone-yellow");
+    const reason = screen.getByRole("button", {
+      name: /Package health remains unverified.*Review Recovery/,
+    });
+    expect(card.contains(reason)).toBe(true);
+    expect(
+      screen.queryByRole("heading", { name: "Needs attention" }),
+    ).toBeNull();
+    expect(screen.queryByText(/Review the interrupted operation/)).toBeNull();
+    fireEvent.click(reason);
+    await screen.findByRole("heading", { name: "Recovery findings" });
+    expect(screen.queryByRole("button", { name: /Acknowledge/ })).toBeNull();
+  },
+);
+
+it("unknown activity permits acknowledgment but not continuation; Check Again does not replay work", async () => {
+  const state = interrupted("user");
+  state.effectiveActivity = "unknown";
+  state.readiness = "blocked";
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  vi.mocked(acknowledgeUser).mockResolvedValue({
+    incidentId: state.user.incident!.id,
+    reportId: "saved-report",
+    reportWarning: null,
+    acknowledgment: {
+      incidentId: state.user.incident!.id,
+      acknowledgedAt: 22,
+      reportId: "saved-report",
+    },
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Acknowledge interruption" }),
+  );
+  await waitFor(() => expect(acknowledgeUser).toHaveBeenCalledTimes(1));
+  vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
+  const check = screen.getByRole("button", { name: "Check Again" });
+  await waitFor(() =>
+    expect((check as HTMLButtonElement).disabled).toBe(false),
+  );
+  fireEvent.click(check);
+  await screen.findByText("No current account incident recorded.");
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it("unconfirmed machine submission cannot resume or silently retry consent", async () => {
+  const state = interrupted();
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  vi.mocked(acknowledgeMachine).mockResolvedValue({
+    incidentId: state.machine.incidentId!,
+    reportId: "retained-report",
+    reportWarning: null,
+    intentStatus: "unconfirmed",
+    intentWarning: "Submission could not be confirmed.",
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Acknowledge interruption" }),
+  );
+  await screen.findByRole("alert");
+  expect(
+    screen.getByText("Local summary saved: retained-report."),
+  ).toBeTruthy();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(acknowledgeMachine).toHaveBeenCalledTimes(1);
+});
+
+it("cancel forgets the pending request and a later Check Again does not launch it", async () => {
+  vi.mocked(inspectRecovery).mockResolvedValue(interrupted());
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Recovery findings" });
+  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  await screen.findByRole("button", { name: "Acknowledge and continue" });
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check Again" }));
+  await screen.findByText("No current machine incident recorded.");
+  expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(acknowledgeMachine).not.toHaveBeenCalled();
+});
+
+it("refreshes safety after Install confirmation rather than using stale ready findings", async () => {
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install Development Environment" }),
+  );
+  const proceed = await screen.findByRole("button", {
+    name: "Continue with Install",
+  });
+  await waitFor(() =>
+    expect((proceed as HTMLButtonElement).disabled).toBe(false),
+  );
+  const active = interrupted();
+  active.effectiveActivity = "active";
+  active.readiness = "blocked";
+  active.canAcknowledgeMachine = false;
+  vi.mocked(inspectRecovery).mockResolvedValue(active);
+  fireEvent.click(proceed);
+  await screen.findByRole("heading", { name: "An operation is still active" });
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(
+    screen.queryByRole("button", { name: "Acknowledge and continue" }),
+  ).toBeNull();
+});
+
+it("shows unavailable findings as blocked, with diagnostics still accessible", async () => {
+  vi.mocked(inspectRecovery).mockRejectedValue(new Error("Unavailable"));
+  const before = vi.mocked(operate).mock.calls.length;
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { name: "Recovery findings" });
+  expect(screen.getByRole("alert").textContent).toContain("could not be read");
+  expect(screen.getByRole("button", { name: "Open logs" })).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Create support report" }),
+  ).toBeTruthy();
+  expect(
+    (
+      await axe.run(container, {
+        rules: { "color-contrast": { enabled: false } },
+      })
+    ).violations,
+  ).toEqual([]);
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it("unreadable account evidence receives source-specific guidance rather than a false machine repair instruction", async () => {
+  const state = interrupted("user");
+  state.user.available = false;
+  state.canAcknowledgeUser = false;
+  state.readiness = "blocked";
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "Account recovery evidence unavailable",
+  });
+  expect(
+    screen.getByText(
+      /Create support report includes structured source-availability/,
+    ),
+  ).toBeTruthy();
+  expect(screen.getByText(/cannot repair malformed evidence/)).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Acknowledge interruption" }),
+  ).toBeNull();
 });
 
 it("retries startup validation without starting Install", async () => {
@@ -245,6 +587,7 @@ it("keeps readiness green/yellow when only maintenance needs attention", async (
   expect(screen.getByText("Maintenance is not installed")).toBeTruthy();
 });
 async function startInstall() {
+  const before = vi.mocked(operate).mock.calls.length;
   fireEvent.click(
     screen.getByRole("button", { name: "Install Development Environment" }),
   );
@@ -256,6 +599,9 @@ async function startInstall() {
     expect((continueButton as HTMLButtonElement).disabled).toBe(false),
   );
   fireEvent.click(continueButton);
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBe(before + 1),
+  );
 }
 it("shows a prominent busy indicator while startup validation is pending", async () => {
   vi.mocked(inspect).mockReturnValueOnce(new Promise(() => {}));
@@ -462,9 +808,13 @@ it("reviews Update for an available managed update without starting it", async (
     screen.getByRole("button", { name: "Update Development Tools" }),
   );
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Continue with Update" }),
+  const continueUpdate = await screen.findByRole("button", {
+    name: "Continue with Update",
+  });
+  await waitFor(() =>
+    expect((continueUpdate as HTMLButtonElement).disabled).toBe(false),
   );
+  fireEvent.click(continueUpdate);
   await waitFor(() =>
     expect(vi.mocked(operate)).toHaveBeenCalledWith(
       "update",
@@ -475,7 +825,7 @@ it("reviews Update for an available managed update without starting it", async (
     ),
   );
 });
-it("retains unknown diagnostics as plain text and offers mentor guidance", async () => {
+it("retains unknown diagnostics as plain text and offers diagnostic review", async () => {
   const message = "Unknown check <script>alert('example')</script>";
   vi.mocked(operate).mockClear();
   vi.mocked(inspect).mockResolvedValueOnce({
@@ -491,7 +841,7 @@ it("retains unknown diagnostics as plain text and offers mentor guidance", async
   const { container } = render(<App />);
   await screen.findByRole("heading", { name: "Needs attention" });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
-  expect(screen.getByText("This check needs a mentor's review")).toBeTruthy();
+  expect(screen.getByText("This check needs diagnostic review")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /Review Repair/ })).toBeNull();
   const details = container.querySelector(
     ".check-diagnostics",
@@ -523,7 +873,7 @@ it("blocks guidance actions while an operation is streaming checks", async () =>
   expect(vi.mocked(operate)).toHaveBeenCalledTimes(1);
 });
 
-it("keeps command diagnostics ending in not found on the mentor path", async () => {
+it("keeps command diagnostics ending in not found on the diagnostic-review path", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
     code: 1,
     success: false,

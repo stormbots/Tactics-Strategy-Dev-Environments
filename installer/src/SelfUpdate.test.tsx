@@ -35,7 +35,7 @@ function fixture(outcome: SelfUpdate["outcome"]): SelfUpdate {
     recoveryAvailable: false,
     logReference: null,
     logFolder: "/protected/logs",
-    action: "Ask a mentor.",
+    action: "Review current findings in Recovery before retrying.",
     coordination: "interrupted",
   };
 }
@@ -77,6 +77,37 @@ it("missing history and policy do not mean current or enabled", () => {
   expect(screen.queryByText("Current at last check")).toBeNull();
   expect(screen.queryByText("Enabled", { exact: true })).toBeNull();
 });
+it.each(["interrupted", "untrusted", "needs_repair"] as const)(
+  "uses self-service guidance for %s without claiming repair or dropping authentication",
+  (coordination) => {
+    const data = fixture("failed");
+    data.coordination = coordination;
+    data.recoveryAvailable = true;
+    data.rebootRequired = true;
+    const { container } = render(<SelfUpdatePanel data={data} error="" />);
+    expect(container.textContent?.toLowerCase()).not.toContain("mentor");
+    expect(
+      screen.getAllByText(/Review current findings in Recovery before retrying/)
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/authentication must be reverified before use/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /restart requested; save work and use normal Restart, then recheck/,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/previous successful result does not resolve/),
+    ).toBeTruthy();
+    expect(screen.getByText("Failed (exit 1)")).toBeTruthy();
+    expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe(
+      "false",
+    );
+    expect(setSelfUpdatePaused).not.toHaveBeenCalled();
+  },
+);
 it("saves only one boolean request while pending and keeps last-attempt history", async () => {
   const previous = fixture("paused");
   let finish!: (value: SelfUpdate) => void;

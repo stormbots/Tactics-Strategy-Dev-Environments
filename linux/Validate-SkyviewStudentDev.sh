@@ -9,7 +9,7 @@ else
   # shellcheck source=/usr/local/lib/skyview-student-dev/coordination.sh
   source /usr/local/lib/skyview-student-dev/coordination.sh
 fi
-skyview_coordinate operation "$@"
+skyview_coordinate readonly "$@"
 if [[ -f "$SCRIPT_DIR/lib/common.sh" ]]; then
   # shellcheck source=lib/common.sh
   source "$SCRIPT_DIR/lib/common.sh"

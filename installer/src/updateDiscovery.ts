@@ -82,24 +82,24 @@ export const failureText: Record<string, string> = {
   incomplete:
     "The release listing is incomplete or the newest release lacks compatible assets. View the official releases or try again later.",
   malformed:
-    "GitHub release information could not be understood. Try again later or ask a mentor.",
+    "GitHub release information could not be understood. Try again later; collect a support report if it persists.",
   untrusted:
-    "Release information does not match the official download policy. Ask a mentor; do not use an alternate download.",
+    "Release information does not match the official download policy. Collect a support report; do not use an alternate download or bypass authentication.",
   unsupported:
     "SDE update checks support Windows 11 x64 and Linux Mint Cinnamon 22.x amd64.",
   invalidInstalled:
-    "The running SDE version could not be compared. Ask a mentor.",
+    "The running SDE version could not be compared. Check About and collect a support report; no newer release is inferred.",
 };
 export function toolExplanation(t: ToolRecord): string {
   if (t.updateReason === "metadataMismatch")
-    return "Executable and package versions disagree. Package ownership was not changed; ask a mentor if this persists.";
+    return "Executable and package versions disagree. Package ownership was not changed; collect a support report if this persists.";
   if (t.updateCheck === "native")
     return "Managed separately by the application or its runtime.";
   if (t.updateCheck === "notChecked") return "Not checked.";
   if (t.updateCheck === "unavailable")
     return t.updateReason === "timeout"
       ? "Source check timed out. Retry later."
-      : "Available version could not be confirmed. Check your connection or ask a mentor; local package metadata may be incomplete.";
+      : "Available version could not be confirmed. Check your connection and retry; local package metadata may be incomplete. Collect a support report if it persists.";
   return t.updateAvailable
     ? "Confirmed newer version in the checked source."
     : "No newer version found in the checked source.";

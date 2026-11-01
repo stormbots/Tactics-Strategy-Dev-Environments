@@ -247,6 +247,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn read_only_child_deadline_is_enforced() {
+        let _isolation = crate::test_processes::isolate();
         let mut command = Command::new("/bin/sh");
         command.args(["-c", "while :; do :; done"]);
         let started = Instant::now();

@@ -15,6 +15,7 @@ import {
 export function SupportReportDialog({
   checks,
   validationComplete,
+  validationCollectedAt,
   platform,
   incident,
   maintenance,
@@ -22,6 +23,7 @@ export function SupportReportDialog({
 }: {
   checks: Check[];
   validationComplete: boolean;
+  validationCollectedAt: number | null;
   platform: string;
   incident: OperationIncident | null;
   maintenance: MaintenanceObservation | null;
@@ -79,6 +81,7 @@ export function SupportReportDialog({
         applicationVersion: appVersion,
         checks,
         validationComplete,
+        validationCollectedAt,
         incident,
         maintenance,
         includeLogs,
@@ -92,6 +95,7 @@ export function SupportReportDialog({
     maintenance,
     platform,
     validationComplete,
+    validationCollectedAt,
   ]);
   return (
     <section

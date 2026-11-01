@@ -16,9 +16,10 @@ const MAX_REPORT_BYTES: usize = 512 * 1024;
 pub struct Context {
     device_name: String,
     logs: Option<String>,
+    recovery: crate::recovery_diagnostics::Snapshot,
 }
 
-fn device_name() -> String {
+pub(crate) fn device_name() -> String {
     #[cfg(windows)]
     let candidate = std::env::var("COMPUTERNAME").ok();
     #[cfg(not(windows))]
@@ -52,7 +53,7 @@ fn newest_log(directory: &Path) -> Option<PathBuf> {
     candidates.pop().map(|(_, path)| path)
 }
 
-fn redact_home(app: &tauri::AppHandle, value: &str) -> String {
+pub(crate) fn redact_home(app: &tauri::AppHandle, value: &str) -> String {
     let redacted = crate::protocol::redact(value);
     let Ok(home) = app.path().home_dir() else {
         return redacted;
@@ -72,6 +73,10 @@ fn redact_personal_path(value: &str, home: &str, case_insensitive: bool) -> Stri
 }
 
 pub fn context(app: &tauri::AppHandle, include_logs: bool) -> Result<Context, String> {
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok().map(|time| time.as_secs()).filter(|time| *time > 0);
+    let directory = app.path().app_data_dir().ok();
+    let recovery = crate::recovery_diagnostics::capture(directory.as_deref(), now,
+        sde_coordination::observations::inspect(), sde_coordination::recovery::inspect_public_state());
     let logs = if include_logs {
         let directory = app
             .path()
@@ -93,6 +98,7 @@ pub fn context(app: &tauri::AppHandle, include_logs: bool) -> Result<Context, St
     Ok(Context {
         device_name: device_name(),
         logs,
+        recovery,
     })
 }
 
@@ -183,6 +189,24 @@ pub fn save(app: &tauri::AppHandle, html: &str) -> Result<Option<String>, String
     file.write_all(html.as_bytes())
         .and_then(|_| file.sync_all())
         .map_err(|_| "The support report could not be saved.".to_string())?;
+    Ok(Some(path.display().to_string()))
+}
+
+pub fn save_recovery_copy(
+    app: &tauri::AppHandle,
+    summary: &crate::recovery_reports::Summary,
+) -> Result<Option<String>, String> {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "Export time is unavailable.")?
+        .as_secs();
+    let filename = format!("skyview-sde-recovery-{}-{timestamp}.html", summary.report_id);
+    let Some(path) = choose_path(app, &filename)? else {
+        return Ok(None);
+    };
+    let directory = app.path().app_data_dir()
+        .map_err(|_| "Application data is unavailable.")?;
+    crate::recovery_reports::export_copy(summary, &path, &directory)?;
     Ok(Some(path.display().to_string()))
 }
 

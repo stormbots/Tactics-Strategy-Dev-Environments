@@ -11,15 +11,16 @@ Optional Git identity/authentication checks remain informational.
 Guidance is derived from the existing Windows and Mint validation messages. Only
 recognized missing-tool/setup checks offer Repair. Known runtime/command failures,
 platform uncertainty, repository problems and maintenance scheduling issues direct
-students to a mentor. Unknown messages get a neutral explanation and mentor
-fallback. No commands or repair diagnoses are inferred from arbitrary error text.
+students to diagnostic review and self-service setup requirements. Unknown messages
+get a neutral explanation and support-report fallback, not a servicing requirement.
+No commands or repair diagnoses are inferred from arbitrary error text.
 
 | Class | Examples | Suggested action |
 | --- | --- | --- |
 | Repair | Missing managed tool, Python venv/pip support, workspace or editor setup, standard extension, Windows development settings | Review the full Repair operation |
 | Update | A passing tool check with matching, verified available-update metadata | Review the managed-tool Update operation |
 | Manual step | Git defaults, File Explorer extensions, unverifiable editor customizations or desktop session | Review the specific setting/session and validate again |
-| Mentor assistance | Runtime or command failure, unsupported/unverified platform, repository or schedule uncertainty, unknown failure | Review diagnostics; Schedule navigation is available for maintenance checks |
+| Diagnostic review | Runtime or command failure, unsupported/unverified platform, repository or schedule uncertainty, unknown failure | Review/preserve diagnostics without inferring a repair; Schedule navigation is available for maintenance checks |
 
 Review Repair/Update selects the operation on Overview and explains its scope.
 It does not invoke a native command. The student must explicitly start the chosen
@@ -53,7 +54,7 @@ do not imply that a tool is absent. The generic failure result points to validat
   operations in browser preview are simulated. Formatting and diff checks passed.
 
 The recognition catalog is intentionally conservative. New backend message forms
-need matching guidance/tests; until then, unknown checks retain mentor guidance.
+need matching guidance/tests; until then, unknown checks retain diagnostic guidance.
 No backend protocol, privileged operations, dependencies or release workflows change.
 
 ## Native UAT pending

@@ -44,10 +44,10 @@ describe("backend validation guidance", () => {
     "Weekly maintenance timer is not active",
     "Weekly maintenance task cannot be read by this account. Run Repair to restore read access.",
   ])(
-    "directs runtime/platform/schedule/project uncertainty to a mentor: %s",
+    "directs runtime/platform/schedule/project uncertainty to diagnostic review: %s",
     (message) => {
       const result = validationGuidance(fail(message));
-      expect(result?.category).toBe("Mentor assistance");
+      expect(result?.category).toBe("Diagnostic review");
       expect(result?.operation).toBeUndefined();
     },
   );
@@ -112,10 +112,10 @@ describe("backend validation guidance", () => {
     "Future check: unknown failure",
     "<script>alert('example')</script>",
   ])(
-    "fails safely to mentor assistance for unknown diagnostics: %s",
+    "fails safely to diagnostic review for unknown diagnostics: %s",
     (message) => {
       const result = validationGuidance(fail(message));
-      expect(result?.category).toBe("Mentor assistance");
+      expect(result?.category).toBe("Diagnostic review");
       expect(result?.operation).toBeUndefined();
       expect(result?.next).toContain("Technical details");
     },

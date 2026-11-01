@@ -1,13 +1,29 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #[cfg(windows)]
 mod desktop_icon;
+#[cfg(windows)]
+mod elevation_windows;
+mod launch_outcome;
 mod journal;
 mod preflight;
 mod process;
 mod protocol;
+mod recovery_acknowledgment;
+mod recovery_context;
+mod recovery_history;
+mod recovery_diagnostics;
+mod history_views;
+mod recovery_reports;
+mod recovery_preflight;
+mod recovery_state;
+mod recovery_summary;
+mod recovery_user;
 mod schedule;
 mod support;
 mod updates;
+mod user_journal_store;
+#[cfg(test)]
+mod test_processes;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -66,6 +82,8 @@ struct Report {
     lines: Vec<String>,
     log_path: String,
     platform: Platform,
+    validation_collected_at: Option<u64>,
+    mutation_outcome: &'static str,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -166,14 +184,20 @@ fn run(
         .write(true)
         .open(&log)
         .map_err(|e| e.to_string())?;
-    let mut journal = if matches!(op, Operation::Validate) {
-        None
-    } else {
-        Some(journal::Active::begin(&app, &run_id, op, &log)?)
-    };
+    let mut journal: Option<journal::Active> = None;
+    let mut proven_not_started = false;
     let mut lines: Vec<String> = Vec::new();
+    let mut validation_collected_at = None;
     let mut emit = |line: String| {
         let line = protocol::redact(&line);
+        validation_collected_at = protocol::validation_time(
+            validation_collected_at,
+            &line,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|time| time.as_secs())
+                .unwrap_or_default(),
+        );
         let _ = writeln!(file, "{line}");
         let _ = file.flush();
         let _ = app.emit(
@@ -204,24 +228,33 @@ fn run(
             return Ok(75);
         }
         if !matches!(op, Operation::Validate) {
+            // Read-only preflight denial above must not replace an earlier
+            // incident or create a new recovery/restart requirement.
+            journal = Some(journal::Active::begin(&app, &run_id, op, &log)?);
             if let Some(record) = journal.as_mut() {
                 record.stage(journal::Stage::System)?;
             }
             emit("SKYVIEW_EVENT|progress|2|Approve administrator privileges to continue".into());
-            let code = process::elevated(
+            let code = match process::elevated(
                 op.name(),
                 &run_id,
                 acknowledged_uncertainty,
                 &mut emit,
-            )?;
+            ) {
+                Ok(code) => code,
+                Err(error) => {
+                    proven_not_started = error.proven_not_started();
+                    return Err(error.message().to_string());
+                }
+            };
             if code != 0 {
                 if code == 75 {
-                    emit("SKYVIEW_EVENT|warning|deferred|Another SDE operation is running. Please retry when it finishes.".into());
+                    emit("SKYVIEW_EVENT|warning|deferred|Setup was deferred by current safety checks. Review Recovery findings and Check Again; no completion or acknowledgment is inferred.".into());
                 } else if matches!(
                     sde_coordination::status(),
                     sde_coordination::Status::Interrupted
                 ) {
-                    emit("SKYVIEW_EVENT|error|system|System setup stopped. An interrupted operation needs mentor review before another change.".into());
+                    emit("SKYVIEW_EVENT|error|system|System setup stopped. Review the retained interruption and current safety findings in Recovery, then Check Again.".into());
                 } else {
                     emit(format!("SKYVIEW_EVENT|error|system|System setup stopped (exit {code}). Review the last package error in Show details, then retry."));
                 }
@@ -267,12 +300,25 @@ fn run(
         );
         lines.push(line);
     }
+    let mut mutation_outcome = if matches!(op, Operation::Validate) { "not_requested" }
+        else if journal.is_none() { "not_started" } else { "uncertain" };
     if let Some(record) = journal {
-        if !matches!(
-            sde_coordination::status(),
-            sde_coordination::Status::Interrupted
-        ) {
+        if proven_not_started {
+            record.not_started()?;
+            mutation_outcome = "not_started";
+        } else if success
+            && validation_collected_at.is_some()
+            && matches!(sde_coordination::operation_active(), Ok(false))
+            && !matches!(
+                sde_coordination::status(),
+                sde_coordination::Status::Interrupted
+                    | sde_coordination::Status::Unavailable
+                    | sde_coordination::Status::Untrusted
+                    | sde_coordination::Status::NeedsRepair
+            )
+        {
             record.complete()?;
+            mutation_outcome = "completed";
         }
     }
     Ok(Report {
@@ -281,6 +327,8 @@ fn run(
         lines,
         log_path: log.display().to_string(),
         platform,
+        validation_collected_at,
+        mutation_outcome,
     })
 }
 #[tauri::command]
@@ -297,8 +345,9 @@ fn acknowledge_operation_incident(app: tauri::AppHandle, id: String) -> Result<(
 }
 
 #[tauri::command]
-fn support_context(app: tauri::AppHandle, include_logs: bool) -> Result<support::Context, String> {
-    support::context(&app, include_logs)
+async fn support_context(app: tauri::AppHandle, include_logs: bool) -> Result<support::Context, String> {
+    tauri::async_runtime::spawn_blocking(move || support::context(&app, include_logs))
+        .await.map_err(|_| "Support diagnostics task is unavailable.".to_string())?
 }
 
 #[tauri::command]
@@ -443,6 +492,48 @@ fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(
 }
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    #[cfg(windows)]
+    if args.get(1).map(String::as_str) == Some("--supervise-windows-maintenance") {
+        let native_args: Vec<std::ffi::OsString> = std::env::args_os().skip(2).collect();
+        let result = native_args
+            .first()
+            .ok_or(sde_coordination::manual::Failure::InvalidInvocation)
+            .and_then(|script| {
+                sde_update_trust::manual_windows::run(std::path::Path::new(script), &native_args[1..])
+            });
+        let code = match result {
+            Ok(code) => code,
+            Err(error) => {
+                eprintln!(
+                    "SKYVIEW_EVENT|error|coordination|{}",
+                    serde_json::to_string(&error).unwrap()
+                );
+                error.exit_code()
+            }
+        };
+        std::process::exit(code);
+    }
+    #[cfg(target_os = "linux")]
+    if args.get(1).map(String::as_str) == Some("--supervise-linux-system") {
+        let native_args: Vec<std::ffi::OsString> = std::env::args_os().skip(2).collect();
+        let result = native_args
+            .first()
+            .ok_or(sde_coordination::manual::Failure::InvalidInvocation)
+            .and_then(|script| {
+                sde_coordination::manual::run(std::path::Path::new(script), &native_args[1..])
+            });
+        let code = match result {
+            Ok(code) => code,
+            Err(error) => {
+                eprintln!(
+                    "SKYVIEW_EVENT|error|coordination|{}",
+                    serde_json::to_string(&error).unwrap()
+                );
+                error.exit_code()
+            }
+        };
+        std::process::exit(code);
+    }
     if args.get(1).map(String::as_str) == Some("--privileged") {
         let acknowledgement = args.get(4).map(String::as_str);
         let code = if args.len() == 5
@@ -464,7 +555,16 @@ fn main() {
     }
     if args.get(1).map(String::as_str) == Some("--coordination-init") && args.len() == 2 {
         match sde_coordination::initialize() {
-            Ok(()) => return,
+            Ok(()) => {
+                // Existing safe non-GUI mode lets old/new shell wrappers
+                // negotiate support without sending an unknown flag to an old
+                // app (which would otherwise open a GUI). Not an execution permit.
+                #[cfg(target_os = "linux")]
+                println!("SDE_LINUX_SYSTEM_SUPERVISOR_V1");
+                #[cfg(windows)]
+                let _ = writeln!(std::io::stdout(), "SDE_WINDOWS_MAINTENANCE_SUPERVISOR_V1");
+                return;
+            }
             Err(e) => {
                 eprintln!("{e}");
                 std::process::exit(1);
@@ -493,6 +593,8 @@ fn main() {
     });
     builder
         .manage(Busy::default())
+        .manage(recovery_state::Views::default())
+        .manage(history_views::Views::default())
         .manage(updates::Checks::default())
         .manage(session)
         .invoke_handler(tauri::generate_handler![
@@ -502,6 +604,18 @@ fn main() {
             acknowledge_operation_incident,
             support_context,
             save_support_report,
+            recovery_summary::save_recovery_summary,
+            recovery_summary::acknowledge_recovery_incident,
+            recovery_summary::acknowledge_user_recovery_incident,
+            recovery_summary::inspect_user_recovery_acknowledgment,
+            recovery_summary::inspect_recovery_state,
+            recovery_summary::list_recovery_reports,
+            recovery_summary::list_recovery_incidents,
+            recovery_summary::delete_recovery_history_view,
+            recovery_summary::read_recovery_report,
+            recovery_summary::read_recovery_report_details,
+            recovery_summary::export_recovery_report,
+            recovery_summary::delete_recovery_report,
             inspect_self_update,
             set_self_update_paused,
             run_operation,

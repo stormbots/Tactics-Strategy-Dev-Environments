@@ -199,10 +199,20 @@ app/resources/engine activation. Busy locks are contention, not proof of a damag
 database. Never remove lock files, use database-force options, or start a second
 APT while one is active. If all package children have completed, assess the normal
 native recovery proposal (`sudo apt-get --simulate --fix-broken install`), review
-its proposed package changes, then have a mentor perform the appropriate native
-repair (for example `sudo dpkg --configure -a`). Those are system-wide operations,
+its proposed package changes, then use the appropriate native
+repair (for example `sudo dpkg --configure -a` when the audit identifies unfinished
+configuration), with normal administrator authentication. Student accounts have
+sudo access; no mentor servicing is required. Those are system-wide operations,
 not a universal SDE recovery script. Recheck `dpkg --audit`, app package version,
 resources and engine receipt. Keep app updates paused during repair.
+
+Validation is available for diagnosis while an interrupted SDE journal remains.
+It retains the operation gate and original evidence; even a passing result is
+neither acknowledgment nor proof that native package work completed. Wait for
+known package activity to finish before relying on a readiness snapshot or making
+package changes. Native repair does not delete the SDE journal or authorize an
+automatic retry; use Recovery and fresh safety checks afterward. See
+[read-only diagnosis and self-service guidance](RECOVERY-READONLY-DIAGNOSIS.md).
 
 ## Retained-installer recovery
 

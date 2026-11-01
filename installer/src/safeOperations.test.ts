@@ -3,9 +3,7 @@ import {
   maintenanceHealth,
   overviewTone,
   preflightDecision,
-  recoveryAction,
   type MaintenanceObservation,
-  type OperationIncident,
 } from "./safeOperations";
 
 describe("preflight contract", () => {
@@ -59,34 +57,6 @@ describe("preflight contract", () => {
       canContinue: false,
       unavailable: 1,
     }));
-});
-
-const incident: OperationIncident = {
-  schema: 1,
-  id: "6b65c565-7f96-4a21-b1ed-34d196930793",
-  operation: "update",
-  stage: "system",
-  startedAt: 100,
-  observedAt: 120,
-  logPath: "update.log",
-  acknowledged: false,
-};
-
-describe("recovery contract", () => {
-  it("distinguishes active work from an interruption", () =>
-    expect(recoveryAction(incident, true, "notRun")).toBe("wait"));
-  it("requires validation before offering Repair", () => {
-    expect(recoveryAction(incident, false, "notRun")).toBe("validate");
-    expect(recoveryAction(incident, false, "repair")).toBe("repair");
-  });
-  it("resolves on passing validation or explicit acknowledgement", () => {
-    expect(recoveryAction(incident, false, "passed")).toBe("resolved");
-    expect(
-      recoveryAction({ ...incident, acknowledged: true }, false, "notRun"),
-    ).toBe("resolved");
-  });
-  it("routes unsafe recovery state to a mentor", () =>
-    expect(recoveryAction(incident, false, "mentor")).toBe("mentor"));
 });
 
 const schedule = (overrides = {}): MaintenanceObservation => ({

@@ -1,5 +1,5 @@
 use crate::protocol::redact;
-#[cfg(windows)]
+use sde_coordination::safety::known_backend_completion as backend_finished;
 use std::io::Write;
 use std::{
     io::{BufRead, BufReader},
@@ -79,55 +79,250 @@ pub fn script(root: &Path, name: &str) -> Command {
     }
 }
 
-pub fn stream(mut cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, String> {
+pub fn stream(cmd: Command, on_line: impl FnMut(String)) -> Result<i32, String> {
+    stream_status(cmd, on_line)
+        .map(|status| status.code().unwrap_or(1))
+        .map_err(|error| error.to_string())
+}
+
+fn stream_status(
+    cmd: Command,
+    on_line: impl FnMut(String),
+) -> std::io::Result<std::process::ExitStatus> {
+    stream_status_detailed(cmd, on_line)
+        .map(|result| result.status)
+        .map_err(|error| match error {
+            StreamFailure::Spawn(error) | StreamFailure::AfterSpawn(error) => error,
+        })
+}
+#[derive(Debug)]
+struct StreamResult {
+    status: std::process::ExitStatus,
+    capture_complete: bool,
+}
+#[derive(Debug)]
+enum StreamFailure {
+    Spawn(std::io::Error),
+    AfterSpawn(std::io::Error),
+}
+fn stream_status_detailed(
+    mut cmd: Command,
+    mut on_line: impl FnMut(String),
+) -> Result<StreamResult, StreamFailure> {
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = hidden(&mut cmd)
-        .spawn()
-        .map_err(|e| format!("Could not start the provisioning process: {e}"))?;
+    let mut child = hidden(&mut cmd).spawn().map_err(|error| {
+        StreamFailure::Spawn(std::io::Error::new(
+            error.kind(),
+            format!("Could not start the provisioning process: {error}"),
+        ))
+    })?;
     let (tx, rx) = mpsc::channel();
     let out = child.stdout.take().unwrap();
     let err = child.stderr.take().unwrap();
     let a = tx.clone();
     let first = std::thread::spawn(move || {
+        let mut complete = true;
         for line in BufReader::new(out).split(b'\n') {
             if let Ok(bytes) = line {
+                if std::str::from_utf8(&bytes).is_err() {
+                    complete = false;
+                }
                 let s = String::from_utf8_lossy(&bytes)
                     .trim_end_matches('\r')
                     .to_owned();
                 if a.send(s).is_err() {
-                    break;
+                    return false;
                 }
+            } else {
+                return false;
             }
         }
+        complete
     });
     let second = std::thread::spawn(move || {
+        let mut complete = true;
         for line in BufReader::new(err).split(b'\n') {
             if let Ok(bytes) = line {
+                if std::str::from_utf8(&bytes).is_err() {
+                    complete = false;
+                }
                 let s = String::from_utf8_lossy(&bytes)
                     .trim_end_matches('\r')
                     .to_owned();
                 if tx.send(s).is_err() {
-                    break;
+                    return false;
                 }
+            } else {
+                return false;
             }
         }
+        complete
     });
     for line in rx {
         on_line(redact(&line));
     }
-    let _ = first.join();
-    let _ = second.join();
+    let first_complete = first.join().unwrap_or(false);
+    let second_complete = second.join().unwrap_or(false);
     child
         .wait()
-        .map(|s| s.code().unwrap_or(1))
-        .map_err(|e| e.to_string())
+        .map(|status| StreamResult {
+            status,
+            capture_complete: first_complete && second_complete,
+        })
+        .map_err(|error| {
+            StreamFailure::AfterSpawn(std::io::Error::new(
+                error.kind(),
+                format!("Could not confirm provisioning process completion: {error}"),
+            ))
+        })
+}
+
+fn coordinated_stream(cmd: Command, mut on_line: impl FnMut(String)) -> Result<i32, String> {
+    let describe = |error: sde_coordination::mutation::BeginError| {
+        serde_json::to_string(&error).unwrap_or_else(|_| "Coordination unavailable".into())
+    };
+    let mut guard = sde_coordination::mutation::begin(sde_coordination::mutation::Scope::System)
+        .map_err(|error| {
+            let detail = describe(error);
+            on_line(format!("SKYVIEW_EVENT|error|coordination|{detail}"));
+            detail
+        })?;
+    let status = guard
+        .run_supervised(cmd, |command| stream_status(command, &mut on_line))
+        .map_err(|error| {
+            let detail = describe(error);
+            on_line(format!("SKYVIEW_EVENT|error|coordination|{detail}"));
+            detail
+        })?;
+    let facts = sde_coordination::inspection::collect();
+    if backend_finished(status.success(), facts.activity, facts.health) {
+        guard.finish_known().map_err(|error| error.to_string())?;
+    } else {
+        on_line("SKYVIEW_EVENT|warning|coordination|The system transaction was retained because completion or native inactivity could not be confirmed. No package process was terminated. Review Recovery and Check Again.".into());
+        if status.success() {
+            return Err("Native completion requires a fresh recovery check; original evidence was retained.".into());
+        }
+    }
+    Ok(status.code().unwrap_or(1))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn authorization_capture_probe() {
+        let Ok(mode) = std::env::var("SDE_TEST_AUTH_CAPTURE") else {
+            return;
+        };
+        if mode == "entered" {
+            println!("SDE_HELPER_ENTERED|fixture-session");
+        }
+        if mode == "wrong" {
+            println!("SDE_HELPER_ENTERED|wrong-session");
+        }
+        if mode == "invalid" {
+            std::io::stdout().write_all(&[255, b'\n']).unwrap();
+        }
+        std::io::stdout().flush().unwrap();
+        std::process::exit(126);
+    }
+    #[test]
+    fn authorization_capture_disambiguates_real_helper_exit_and_incomplete_output() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
+        for mode in ["cancel", "entered", "wrong", "invalid"] {
+            let mut command = Command::new(std::env::current_exe().unwrap());
+            command
+                .args([
+                    "--exact",
+                    "process::tests::authorization_capture_probe",
+                    "--nocapture",
+                ])
+                .env("SDE_TEST_AUTH_CAPTURE", mode);
+            let mut capture = crate::launch_outcome::HelperCapture::new("fixture-session");
+            let result = stream_status_detailed(command, |line| {
+                capture.observe(&line);
+            })
+            .unwrap();
+            assert_eq!(result.status.code(), Some(126));
+            let failure = crate::launch_outcome::polkit_failure(
+                126,
+                capture.entered,
+                result.capture_complete && capture.valid,
+            );
+            assert_eq!(
+                failure.proven_not_started(),
+                mode == "cancel",
+                "mode {mode}"
+            );
+        }
+    }
+    #[test]
+    fn authorization_spawn_failure_is_typed_and_has_no_child_output() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
+        let command = Command::new(
+            std::env::temp_dir().join(format!("sde-missing-launcher-{}", uuid::Uuid::new_v4())),
+        );
+        let mut emitted = false;
+        let result = stream_status_detailed(command, |_| emitted = true);
+        assert!(matches!(result, Err(StreamFailure::Spawn(_))));
+        assert!(!emitted);
+    }
+    #[test]
+    fn helper_completion_requires_controlled_success_and_fresh_native_inactivity() {
+        use sde_coordination::safety::{Activity, PackageHealth};
+        for success in [true, false] {
+            for activity in [Activity::Active, Activity::Inactive, Activity::Unknown] {
+                for health in [
+                    PackageHealth::Healthy,
+                    PackageHealth::Incomplete,
+                    PackageHealth::Unknown,
+                ] {
+                    assert_eq!(
+                        backend_finished(success, activity, health),
+                        success
+                            && activity == Activity::Inactive
+                            && health != PackageHealth::Incomplete
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn stream_child_probe() {
+        if std::env::var("SDE_TEST_STREAM_PROBE").as_deref() != Ok("1") {
+            return;
+        }
+        println!("token=synthetic-stream-secret");
+        eprintln!("SDE_STREAM_STDERR_OK");
+        std::process::exit(7);
+    }
+
+    #[test]
+    fn streamed_runner_preserves_exit_status_and_existing_redaction() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command
+            .args([
+                "--exact",
+                "process::tests::stream_child_probe",
+                "--nocapture",
+            ])
+            .env("SDE_TEST_STREAM_PROBE", "1");
+        let mut lines = Vec::new();
+        let status = stream_status(command, |line| lines.push(line)).unwrap();
+        assert_eq!(status.code(), Some(7));
+        assert!(lines.iter().any(|line| line == "SDE_STREAM_STDERR_OK"));
+        assert!(lines.iter().any(|line| line.contains("[REDACTED]")));
+        assert!(!lines
+            .iter()
+            .any(|line| line.contains("synthetic-stream-secret")));
+    }
     #[cfg(windows)]
     static CHOCOLATEY_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
     #[cfg(windows)]
@@ -208,6 +403,8 @@ mod tests {
     }
     #[test]
     fn drains_both_streams_and_reports_child_failure() {
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
         #[cfg(windows)]
         let mut command = Command::new(r"C:\Windows\System32\cmd.exe");
         #[cfg(windows)]
@@ -308,9 +505,19 @@ mod tests {
     }
     #[test]
     fn child_start_errors_are_actionable() {
-        let error =
-            stream(Command::new("skyview-missing-executable-for-test"), |_| {}).unwrap_err();
-        assert!(error.contains("Could not start"));
+        #[cfg(unix)]
+        let _isolation = crate::test_processes::isolate();
+        let mut emitted = false;
+        let error = stream(Command::new("skyview-missing-executable-for-test"), |_| {
+            emitted = true;
+        })
+        .unwrap_err();
+        assert!(error.contains("Could not start the provisioning process"));
+        assert!(!error.contains("Could not confirm"));
+        assert!(!emitted, "A failed spawn must not emit child output");
+        let typed =
+            stream_status(Command::new("skyview-missing-executable-for-test"), |_| {}).unwrap_err();
+        assert_eq!(typed.kind(), std::io::ErrorKind::NotFound);
     }
 }
 
@@ -350,6 +557,17 @@ pub fn helper(
     // Never elevate a development checkout or accept frontend script paths.
     if cfg!(debug_assertions) {
         return Err("Privileged operations require an installed release build.".into());
+    }
+    #[cfg(not(windows))]
+    {
+        // This must flush before *any* backend/session work. Missing marker is
+        // useful only with reliable drained capture and a terminated pkexec.
+        let mut output = std::io::stdout().lock();
+        writeln!(output, "SDE_HELPER_ENTERED|{session}")
+            .and_then(|_| output.flush())
+            .map_err(|_| {
+                "Helper entry could not be reported; no backend was entered.".to_string()
+            })?;
     }
     let _session = sde_coordination::session().map_err(|e| e.to_string())?;
     let backend = resource_backend()?;
@@ -431,7 +649,7 @@ pub fn helper(
             .open(log_dir.join(format!("{session}.log")))
             .map_err(|e| e.to_string())?;
         if ["install", "update"].contains(&operation)
-            && !crate::preflight::before_operation(
+            && !crate::preflight::before_privileged_operation(
                 &backend,
                 if operation == "install" {
                     crate::Operation::Install
@@ -449,7 +667,7 @@ pub fn helper(
             file.flush().map_err(|e| e.to_string())?;
             return Ok(75);
         }
-        let code = stream(cmd, |line| {
+        let code = coordinated_stream(cmd, |line| {
             let _ = writeln!(file, "{line}");
             let _ = file.flush();
         })?;
@@ -459,7 +677,7 @@ pub fn helper(
     #[cfg(not(windows))]
     {
         if ["install", "update"].contains(&operation)
-            && !crate::preflight::before_operation(
+            && !crate::preflight::before_privileged_operation(
                 &backend,
                 if operation == "install" {
                     crate::Operation::Install
@@ -472,7 +690,7 @@ pub fn helper(
         {
             return Ok(75);
         }
-        stream(cmd, |line| println!("{line}"))
+        coordinated_stream(cmd, |line| println!("{line}"))
     }
 }
 
@@ -481,7 +699,15 @@ pub fn elevated(
     session: &str,
     acknowledged_uncertainty: bool,
     on_line: impl FnMut(String),
-) -> Result<i32, String> {
+) -> Result<i32, crate::launch_outcome::Failure> {
+    use crate::launch_outcome::Failure;
+    if !["install", "repair", "update"].contains(&operation)
+        || uuid::Uuid::parse_str(session).is_err()
+    {
+        return Err(Failure::NotStarted(
+            "Invalid privileged invocation; nothing was launched.".into(),
+        ));
+    }
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     #[cfg(not(windows))]
     {
@@ -496,37 +722,66 @@ pub fn elevated(
                 "clean"
             },
         ]);
-        let code = stream(cmd, on_line)?;
+        let mut on_line = on_line;
+        let mut capture = crate::launch_outcome::HelperCapture::new(session);
+        let result = stream_status_detailed(cmd, |line| {
+            if !capture.observe(&line) {
+                on_line(line);
+            }
+        })
+        .map_err(|error| match error {
+            StreamFailure::Spawn(_) => Failure::NotStarted(
+                "Administrator authentication could not be launched; no helper started.".into(),
+            ),
+            StreamFailure::AfterSpawn(_) => {
+                Failure::Uncertain("Administrator helper completion could not be confirmed.".into())
+            }
+        })?;
+        let code = result.status.code().ok_or_else(|| {
+            Failure::Uncertain(
+                "The authorization process ended without a normal exit; keep recovery evidence."
+                    .into(),
+            )
+        })?;
         if [126, 127].contains(&code) {
-            return Err("Administrator authentication was cancelled or denied. Click Retry when you are ready.".into());
+            return Err(crate::launch_outcome::polkit_failure(
+                code,
+                capture.entered,
+                result.capture_complete && capture.valid,
+            ));
+        }
+        if !capture.entered || !capture.valid || !result.capture_complete {
+            return Err(Failure::Uncertain("The installed helper entry/capture contract could not be confirmed. Keep recovery evidence.".into()));
         }
         Ok(code)
     }
     #[cfg(windows)]
     {
-        use base64::Engine;
         use std::io::{Read, Seek, SeekFrom};
         let mut on_line = on_line;
-        let literal = exe.to_string_lossy().replace('\'', "''");
         let acknowledgement = if acknowledged_uncertainty {
             "acknowledged"
         } else {
             "clean"
         };
-        let command=format!("$ErrorActionPreference='Stop'; try {{ $p=Start-Process -FilePath '{literal}' -ArgumentList '--privileged {operation} {session} {acknowledgement}' -Verb RunAs -WindowStyle Hidden -PassThru; $h=$p.Handle; $p.WaitForExit(); exit $p.ExitCode }} catch {{ exit 1223 }}");
-        let bytes: Vec<u8> = command.encode_utf16().flat_map(u16::to_le_bytes).collect();
-        let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
-        let mut cmd = Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
-        cmd.args(["-NoProfile", "-NonInteractive", "-EncodedCommand", &encoded])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        let mut launcher = hidden(&mut cmd).spawn().map_err(|e| e.to_string())?;
         let log = resource_backend()?
             .parent()
             .unwrap()
             .join("operation-logs")
             .join(format!("{session}.log"));
+        match std::fs::symlink_metadata(&log) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            _ => {
+                return Err(Failure::NotStarted(
+                    "A fresh protected helper log is required before launch; nothing was launched."
+                        .into(),
+                ))
+            }
+        }
+        let launcher = crate::elevation_windows::launch(
+            powershell_path(&exe),
+            format!("--privileged {operation} {session} {acknowledgement}"),
+        )?;
         let mut offset = 0;
         let mut pending = Vec::new();
         let mut helper_exit = None;
@@ -550,14 +805,7 @@ pub fn elevated(
                     }
                 }
             }
-            if let Some(status) = launcher.try_wait().map_err(|e| e.to_string())? {
-                // Process completion happens after the protected log is flushed.
-                if let Some(code) = helper_exit {
-                    return Ok(code);
-                }
-                if status.code() == Some(1223) {
-                    return Err("Administrator approval was cancelled or denied. Click Retry when you are ready.".into());
-                }
+            if let Some(actual_exit) = launcher.try_exit()? {
                 // One final iteration drains data written between the read and exit.
                 if log.exists() {
                     let text = std::fs::read_to_string(&log).map_err(|e| e.to_string())?;
@@ -570,7 +818,10 @@ pub fn elevated(
                         }
                     }
                 }
-                return helper_exit.ok_or_else(||"The privileged helper stopped before reporting a result. Review details and retry.".into());
+                return match helper_exit {
+                    Some(code) if code == actual_exit => Ok(code),
+                    _ => Err(Failure::Uncertain("The helper process exit and protected completion record could not be matched. Keep recovery evidence and Check Again.".into())),
+                };
             }
             std::thread::sleep(std::time::Duration::from_millis(150));
         }

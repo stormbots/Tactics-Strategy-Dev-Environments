@@ -2,7 +2,7 @@
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Coordination.ps1')
 try {
-Invoke-SkyviewCoordinated -Mutation -Action {
+Invoke-SkyviewCoordinated -Mutation -EntryPoint $PSCommandPath -Action {
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 $ErrorActionPreference = 'Stop'
