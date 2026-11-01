@@ -68,7 +68,8 @@ If added runner time or complexity outweighs savings, revise/revert this experim
 
 ## Local validation and handoff
 
-25 scope/gate/timing tests and 35 backend contracts pass; changed Rust file passes
+25 scope/gate/timing tests, eight Mint inventory policy tests, three UAT-version
+tests, four command-permission tests and 35 backend contracts pass; changed Rust file passes
 rustfmt and whitespace checks. Full-crate formatting reports unrelated existing
 differences; none were applied. No local native Windows or browser pass is claimed.
 The existing Build workflow owns exact-head Windows/Mint execution and performance

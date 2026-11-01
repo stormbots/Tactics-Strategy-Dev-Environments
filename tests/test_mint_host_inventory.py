@@ -108,8 +108,15 @@ class InventoryPolicy(unittest.TestCase):
     def test_actual_installer_jobs_require_positive_scope_result(self):
         w = load('build-dev-setup.yml')
         for name in APPLICATION_JOBS:
-            self.assertEqual(w['jobs'][name]['needs'], 'scope')
-            self.assertEqual(w['jobs'][name]['if'], GATE)
+            if name == 'checks':
+                self.assertEqual(w['jobs'][name]['needs'], ['scope', 'windows-migration'])
+                self.assertEqual(w['jobs'][name]['if'], 'always() && ' + GATE)
+                first = w['jobs'][name]['steps'][0]
+                self.assertEqual(first['env']['MIGRATION_RESULT'], '${{ needs.windows-migration.result }}')
+                self.assertEqual(first['run'], 'test "$MIGRATION_RESULT" = success')
+            else:
+                self.assertEqual(w['jobs'][name]['needs'], 'scope')
+                self.assertEqual(w['jobs'][name]['if'], GATE)
         self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'release'})
         self.assertEqual(set(w['jobs']['release']['needs']), set(APPLICATION_JOBS))
         self.assertNotIn('always()', w['jobs']['release']['if'])
