@@ -164,7 +164,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
   });
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Recovery findings",
+    name: "Let’s get setup working again",
   });
   expect(
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
@@ -196,7 +196,7 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Recovery findings",
+    name: "Let’s get setup working again",
   });
   expect(
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
@@ -208,7 +208,7 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
     screen.getByRole("button", { name: "Install Development Environment" }),
   );
   await screen.findByRole("heading", {
-    name: "Recovery findings",
+    name: "Let’s get setup working again",
   });
   expect(
     vi
@@ -248,7 +248,7 @@ it("acknowledges both sources in one action and returns to ordinary Install pref
   });
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
-  await screen.findByRole("heading", { name: "Recovery findings" });
+  await screen.findByRole("heading", { name: "Let’s get setup working again" });
   fireEvent.click(screen.getByRole("button", { name: "Overview" }));
   fireEvent.click(
     screen.getByRole("button", { name: "Install Development Environment" }),
@@ -345,7 +345,9 @@ it.each(["machine", "user"] as const)(
     expect(vi.mocked(operate).mock.calls.length).toBe(before);
     expect(acknowledge).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
-    await screen.findByRole("heading", { name: "Recovery findings" });
+    await screen.findByRole("heading", {
+      name: "Let’s get setup working again",
+    });
     expect(
       screen.getByText(/Summary could not be saved; original evidence remains/),
     ).toBeTruthy();
@@ -382,7 +384,9 @@ it.each([false, true])(
     ).toBeNull();
     expect(screen.queryByText(/Review the interrupted operation/)).toBeNull();
     fireEvent.click(reason);
-    await screen.findByRole("heading", { name: "Recovery findings" });
+    await screen.findByRole("heading", {
+      name: "Let’s get setup working again",
+    });
     expect(screen.queryByRole("button", { name: /Acknowledge/ })).toBeNull();
   },
 );
@@ -409,7 +413,7 @@ it("unknown activity permits acknowledgment but not continuation; Check Again do
   );
   await waitFor(() => expect(acknowledgeUser).toHaveBeenCalledTimes(1));
   vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
-  const check = screen.getByRole("button", { name: "Check Again" });
+  const check = screen.getByRole("button", { name: "Check again" });
   await waitFor(() =>
     expect((check as HTMLButtonElement).disabled).toBe(false),
   );
@@ -445,16 +449,16 @@ it("cancel forgets the pending request and a later Check Again does not launch i
   vi.mocked(inspectRecovery).mockResolvedValue(interrupted());
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
-  await screen.findByRole("heading", { name: "Recovery findings" });
+  await screen.findByRole("heading", { name: "Let’s get setup working again" });
   fireEvent.click(screen.getByRole("button", { name: "Overview" }));
   fireEvent.click(
     screen.getByRole("button", { name: "Install Development Environment" }),
   );
   await screen.findByRole("button", { name: "Acknowledge and continue" });
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  fireEvent.click(screen.getByRole("button", { name: "Back to Overview" }));
   vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
   fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
-  fireEvent.click(screen.getByRole("button", { name: "Check Again" }));
+  fireEvent.click(screen.getByRole("button", { name: "Check again" }));
   await screen.findByText("No current machine incident recorded.");
   expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
@@ -480,7 +484,8 @@ it("refreshes safety after Install confirmation rather than using stale ready fi
   active.canAcknowledgeMachine = false;
   vi.mocked(inspectRecovery).mockResolvedValue(active);
   fireEvent.click(proceed);
-  await screen.findByRole("heading", { name: "An operation is still active" });
+  await screen.findByRole("heading", { name: "Let’s get setup working again" });
+  expect(screen.getByText(/A setup or update is still running/)).toBeTruthy();
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
   expect(
     screen.queryByRole("button", { name: "Acknowledge and continue" }),
@@ -491,8 +496,16 @@ it("shows unavailable findings as blocked, with diagnostics still accessible", a
   vi.mocked(inspectRecovery).mockRejectedValue(new Error("Unavailable"));
   const before = vi.mocked(operate).mock.calls.length;
   const { container } = render(<App />);
-  await screen.findByRole("heading", { name: "Recovery findings" });
+  await screen.findByRole("heading", { name: "Let’s get setup working again" });
   expect(screen.getByRole("alert").textContent).toContain("could not be read");
+  expect(
+    (
+      screen
+        .getByRole("button", { name: "Open logs" })
+        .closest("details") as HTMLDetailsElement
+    ).open,
+  ).toBe(false);
+  fireEvent.click(screen.getByText("Technical details", { exact: true }));
   expect(screen.getByRole("button", { name: "Open logs" })).toBeTruthy();
   expect(
     screen.getByRole("button", { name: "Create support report" }),
@@ -515,14 +528,16 @@ it("unreadable account evidence receives source-specific guidance rather than a 
   vi.mocked(inspectRecovery).mockResolvedValue(state);
   render(<App />);
   await screen.findByRole("heading", {
-    name: "Account recovery evidence unavailable",
+    name: "Let’s get setup working again",
   });
   expect(
-    screen.getByText(
-      /Create support report includes structured source-availability/,
-    ),
+    screen.getByText(/SDE couldn’t read or verify its safety records/),
   ).toBeTruthy();
-  expect(screen.getByText(/cannot repair malformed evidence/)).toBeTruthy();
+  expect(
+    screen.getByText(/does not guarantee those records can be read/),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByText("Technical details", { exact: true }));
+  expect(screen.getByText(/Account records could not be read/)).toBeTruthy();
   expect(
     screen.queryByRole("button", { name: "Acknowledge interruption" }),
   ).toBeNull();

@@ -36,8 +36,9 @@ for (const theme of ["Light", "Dark"])
       await chooseTheme(page, theme);
       await closeAppearance(page);
       await page.getByRole("button", { name: "Recovery", exact: true }).click();
+      await page.getByText("Earlier recovery events", { exact: true }).click();
       const history = page.getByRole("region", {
-        name: "Retained incident observations",
+        name: "Recovery event history",
       });
       const remove = history.getByRole("button", {
         name: `Delete user history view ${id}`,

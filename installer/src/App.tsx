@@ -579,7 +579,7 @@ export default function App() {
                 : page === "validation"
                   ? "Environment validation"
                   : page === "recovery"
-                    ? "Recover your environment"
+                    ? "Recovery"
                     : page === "schedule"
                       ? "Maintenance schedule"
                       : "About Skyview Dev Setup"}
@@ -1022,6 +1022,7 @@ export default function App() {
           <>
             <RecoveryPage
               state={recovery}
+              platformLabel={s.platform.label}
               loading={busy}
               error={recoveryError}
               pending={pendingOperation}
@@ -1039,13 +1040,19 @@ export default function App() {
               onLogs={() => void openTarget("logs")}
               onSupport={() => setReportOpen(true)}
             />
-            <RecoveryIncidentHistory disabled={busy} />
-            <RecoveryReportHistory
-              disabled={busy}
-              recentReports={acknowledgmentOutcomes.flatMap((result) =>
-                result.reportId ? [result.reportId] : [],
-              )}
-            />
+            <details className="recovery-disclosure recovery-history">
+              <summary>Earlier recovery events</summary>
+              <RecoveryIncidentHistory disabled={busy} />
+            </details>
+            <details className="recovery-disclosure recovery-history">
+              <summary>Saved reports</summary>
+              <RecoveryReportHistory
+                disabled={busy}
+                recentReports={acknowledgmentOutcomes.flatMap((result) =>
+                  result.reportId ? [result.reportId] : [],
+                )}
+              />
+            </details>
           </>
         ) : page === "validation" ? (
           <section className="validation-card">

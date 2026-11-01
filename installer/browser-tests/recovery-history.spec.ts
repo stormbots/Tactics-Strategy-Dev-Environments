@@ -39,6 +39,7 @@ for (const theme of ["Light", "Dark"])
       await chooseTheme(page, theme);
       await closeAppearance(page);
       await page.getByRole("button", { name: "Recovery", exact: true }).click();
+      await page.getByText("Saved reports", { exact: true }).click();
       await page
         .getByRole("button", { name: `View report ${id}`, exact: true })
         .click();
@@ -103,8 +104,6 @@ for (const theme of ["Light", "Dark"])
       await page
         .getByRole("button", { name: "Refresh report history" })
         .click();
-      await expect(
-        page.getByText(/No retained reports were found/),
-      ).toBeVisible();
+      await expect(page.getByText(/No saved reports were found/)).toBeVisible();
     });
   }

@@ -131,18 +131,15 @@ export function RecoveryReportHistory({
       aria-labelledby="recovery-history-heading"
       aria-busy={working}
     >
-      <h2 id="recovery-history-heading">Saved recovery reports</h2>
+      <h2 id="recovery-history-heading">Report history</h2>
       <p>
-        Reports belong to this account and remain until you explicitly delete
-        them. This is report history, not a complete list of operational
-        incidents. Reports that could not be saved or were deleted are not
-        listed; protected evidence and minimal decisions remain separate.
+        Reports stay in this account until you delete them. They help explain a
+        problem but do not fix it or unlock changes. Sharing is optional.
       </p>
       <p>
-        Viewing, exporting or deleting a report never acknowledges an incident
-        or starts an operation. Sharing is optional. Summaries exclude detailed
-        logs and private transaction bytes; use Create support report separately
-        if detailed logs are needed.
+        Viewing or deleting a report does not acknowledge an interruption or
+        start setup. Saved summaries do not include detailed logs; use Create
+        support report if you want to include those.
       </p>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
@@ -165,36 +162,39 @@ export function RecoveryReportHistory({
       )}
       {loaded && !entries.length && (
         <p>
-          No retained reports were found in this account. This does not mean
-          there were no interruptions or that work completed.
+          No saved reports were found for this account. Reports may be missing
+          or deleted; this list does not show every interruption or prove setup
+          finished.
         </p>
       )}
-      <ul className="recovery-report-list">
-        {entries.map((entry) => (
-          <li key={entry.reportId}>
-            <p>
-              Report {entry.reportId} —{" "}
-              {entry.status === "saved"
-                ? `captured ${when(entry.capturedAt)}; incident ${entry.incidentId}`
-                : "incomplete or unreadable; not a saved summary"}
-            </p>
-            <button
-              className="secondary"
-              disabled={busy || entry.status !== "saved"}
-              onClick={() => void view(entry.reportId)}
-            >
-              View report {entry.reportId}
-            </button>
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => setConfirmDelete(entry.reportId)}
-            >
-              Delete local report {entry.reportId}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {entries.length > 0 && (
+        <ul className="recovery-report-list">
+          {entries.map((entry) => (
+            <li key={entry.reportId}>
+              <p>
+                Report {entry.reportId} —{" "}
+                {entry.status === "saved"
+                  ? `captured ${when(entry.capturedAt)}; incident ${entry.incidentId}`
+                  : "incomplete or unreadable; not a saved summary"}
+              </p>
+              <button
+                className="secondary"
+                disabled={busy || entry.status !== "saved"}
+                onClick={() => void view(entry.reportId)}
+              >
+                View report {entry.reportId}
+              </button>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => setConfirmDelete(entry.reportId)}
+              >
+                Delete local report {entry.reportId}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {cursor && (
         <button
           className="secondary"
