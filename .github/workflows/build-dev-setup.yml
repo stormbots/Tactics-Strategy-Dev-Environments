@@ -27,7 +27,9 @@ jobs:
       - name: Install CI scope parser
         run: python3 -m pip install 'PyYAML==6.0.2'
       - name: Verify CI scope policy
-        run: python3 -m unittest discover -s tests -p test_ci_scope.py -v
+        run: |
+          python3 -m unittest discover -s tests -p test_ci_scope.py -v
+          python3 -m unittest discover -s tests -p test_ci_timings.py -v
       - name: Classify application versus fixture-only changes
         id: scope
         env:
@@ -36,10 +38,16 @@ jobs:
           CI_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python3 tests/ci_scope.py
   checks:
-    needs: scope
-    if: needs.scope.outputs.application_required == 'true'
+    # Keep the existing checks status fail-closed for the relocated regression,
+    # including a failed/cancelled/unexpectedly skipped dependency.
+    needs: [scope, windows-migration]
+    if: always() && needs.scope.outputs.application_required == 'true'
     runs-on: ubuntu-24.04
     steps:
+      - name: Require Windows migration acceptance
+        env:
+          MIGRATION_RESULT: ${{ needs.windows-migration.result }}
+        run: test "$MIGRATION_RESULT" = success
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -142,6 +150,56 @@ jobs:
             updater/target/release/sde-update-trust
             updater/target/release/sde-update-trust.exe
           if-no-files-found: error
+  windows-migration:
+    needs: scope
+    if: needs.scope.outputs.application_required == 'true'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Reuse the existing native job's compiled dependency cache. Cargo
+          # still checks source fingerprints; no installed machine state is cached.
+          shared-key: native
+          workspaces: |
+            installer/src-tauri -> target
+            updater -> target
+          cache-on-failure: true
+      - run: npm ci && npm run build
+        working-directory: installer
+      - name: Prepare disposable Windows migration runner
+        shell: pwsh
+        run: |
+          cargo build --release --locked --manifest-path coordination/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Migration coordinator build failed.' }
+          ./coordination/target/release/sde-coordination.exe init
+          if ($LASTEXITCODE -ne 0) { throw 'Migration coordination initialization failed.' }
+          cargo build --release --locked --manifest-path updater/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { throw 'Migration worker build failed.' }
+          Copy-Item updater/target/release/sde-update-trust.exe windows/self-update/sde-update-trust.exe
+      - name: Required real Node migration and system setup
+        shell: pwsh
+        run: |
+          $test = 'process::tests::github_runner_migrates_real_node26_to_node24_with_clean_environment'
+          cargo test --locked --manifest-path installer/src-tauri/Cargo.toml $test -- --exact --nocapture 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/windows-migration.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'Real Windows migration regression failed.' }
+          $output = Get-Content "$env:RUNNER_TEMP/windows-migration.txt"
+          foreach ($marker in @('SKYVIEW_NODE_MIGRATION_OK','SKYVIEW_SYSTEM_SETUP_OK')) {
+            if ($output -cnotcontains $marker) { throw "Required migration evidence missing: $marker" }
+          }
+      - name: Retain Windows migration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-migration-evidence
+          path: ${{ runner.temp }}/windows-migration.txt
+          if-no-files-found: warn
   native:
     needs: scope
     if: needs.scope.outputs.application_required == 'true'
@@ -339,7 +397,9 @@ jobs:
           if ($probeExit -ne 0 -or $output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_MAINTENANCE_OK') { throw 'Required Windows manual maintenance evidence missing.' }
           if ($output -cnotcontains 'SDE_RECOVERY_WINDOWS_MANUAL_INSTALL_REPAIR_OK') { throw 'Required Windows manual Install/Repair evidence missing.' }
       - name: Rust tests
-        run: cargo test --locked -- --nocapture
+        # Only the full Node-conflict regression moves to its required job.
+        # Real baseline provisioning still runs here before signed SYSTEM upgrade.
+        run: cargo test --locked -- --nocapture --skip process::tests::github_runner_migrates_real_node26_to_node24_with_clean_environment
         working-directory: installer/src-tauri
       - name: Build unpublished newer Windows fixture and verify signed SYSTEM upgrade
         if: runner.os == 'Windows'
@@ -428,7 +488,7 @@ jobs:
             dist/${{ matrix.asset }}.sha256
           if-no-files-found: error
   release:
-    needs: [checks, native, update-trust]
+    needs: [checks, native, update-trust, windows-migration]
     if: github.ref != 'refs/heads/release/v1.2.uat' && github.ref != 'refs/tags/v1.2.2' && github.ref != 'refs/tags/v1.2.3' && github.ref != 'refs/tags/v1.2.15' && github.ref != 'refs/tags/v1.2.16' && github.ref != 'refs/tags/v1.2.17' && github.ref != 'refs/tags/v1.2.18' && github.ref != 'refs/tags/v1.2.19' && github.ref != 'refs/tags/v1.2.20' && github.ref != 'refs/tags/v1.2.21' && (startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.') || startsWith(github.ref, 'refs/tags/v1.2.') || startsWith(github.ref, 'refs/heads/release/v1.2.'))
     runs-on: ubuntu-24.04
     environment: sde-release-signing

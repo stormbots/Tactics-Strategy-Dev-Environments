@@ -10,7 +10,7 @@ import yaml
 
 WORKFLOW = ".github/workflows/build-dev-setup.yml"
 GATE = "needs.scope.outputs.application_required == 'true'"
-APPLICATION_JOBS = ("checks", "native", "update-trust")
+APPLICATION_JOBS = ("checks", "native", "update-trust", "windows-migration")
 # Narrow infrastructure exception: never broaden to arbitrary workflows/tests.
 MINT_INFRA_PATHS = {
     '.github/actionlint.yaml',

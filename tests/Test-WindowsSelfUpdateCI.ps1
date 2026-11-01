@@ -10,7 +10,7 @@ Copy-Item -LiteralPath (Join-Path $FixtureRoot 'Skyview-Dev-Setup-Windows-x64.ex
 Copy-Item -LiteralPath (Join-Path $FixtureRoot 'sde-synthetic-failure.exe') -Destination $root
 Copy-Item -LiteralPath $TestExecutable -Destination (Join-Path $root 'native-tests.exe')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../dist/Skyview-Dev-Setup-Windows-x64.exe') -Destination (Join-Path $root 'legacy-parent-installer.exe')
-# The preceding real Node migration test runs system baseline provisioning.
+# The preceding clean-environment system setup test provisions the real baseline.
 # Preserve that actual baseline/package record; do not substitute synthetic
 # scripts or infer app-only state from the earlier installer bootstrap check.
 $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
