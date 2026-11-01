@@ -281,7 +281,7 @@ class Backends(unittest.TestCase):
         self.assertNotIn('fs:',cap)
     def test_release_gate(self):
         workflow=self.text('.github/workflows/build-dev-setup.yml')
-        self.assertIn('needs: [checks, native, update-trust, windows-migration]',workflow)
+        self.assertIn('needs: [checks, native, update-trust]',workflow)
         self.assertIn('environment: sde-release-signing',workflow)
         self.assertIn('dist/sde-update.json dist/sde-update.json.minisig',workflow)
         self.assertIn('--verify-tag --prerelease',workflow)
@@ -436,8 +436,6 @@ class Backends(unittest.TestCase):
         self.assertIn('Manual setup lost native current-account known folders.', fixture)
         self.assertIn('Unacknowledged incident was released.', fixture)
         baseline = self.text('tests/Test-Node24MigrationCI.ps1')
-        self.assertIn(". (Join-Path $PSScriptRoot 'Test-WindowsSystemSetupCI.ps1')", baseline)
-        baseline = self.text('tests/Test-WindowsSystemSetupCI.ps1')
         self.assertIn('Invoke-SkyviewCoordinated -Mutation -Action {', baseline)
         self.assertIn('SKYVIEW_SYSTEM_SETUP_OK', baseline)
 

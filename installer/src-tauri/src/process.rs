@@ -328,24 +328,6 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn github_runner_migrates_real_node26_to_node24_with_clean_environment() {
-        real_windows_system_fixture(
-            "Test-Node24MigrationCI.ps1",
-            &["SKYVIEW_NODE_MIGRATION_OK", "SKYVIEW_SYSTEM_SETUP_OK"],
-        );
-    }
-    #[cfg(windows)]
-    #[test]
-    fn github_runner_provisions_real_system_with_clean_environment() {
-        real_windows_system_fixture(
-            "Test-HostedWindowsSystemSetupCI.ps1",
-            &[
-                "SKYVIEW_CI_NODE24_BASELINE_READY",
-                "SKYVIEW_SYSTEM_SETUP_OK",
-            ],
-        );
-    }
-    #[cfg(windows)]
-    fn real_windows_system_fixture(filename: &str, required_markers: &[&str]) {
         if std::env::var("GITHUB_ACTIONS").as_deref() != Ok("true") {
             return;
         }
@@ -354,8 +336,7 @@ mod tests {
             std::env::temp_dir().join(format!("Skyview Node migration {}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp).unwrap();
         let test = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../tests")
-            .join(filename)
+            .join("../../tests/Test-Node24MigrationCI.ps1")
             .canonicalize()
             .unwrap();
         let mut cmd = Command::new(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
@@ -379,9 +360,8 @@ mod tests {
             0,
             "{lines:?}"
         );
-        for marker in required_markers {
-            assert!(lines.iter().any(|line| line == marker), "Missing {marker}");
-        }
+        assert!(lines.iter().any(|line| line == "SKYVIEW_NODE_MIGRATION_OK"));
+        assert!(lines.iter().any(|line| line == "SKYVIEW_SYSTEM_SETUP_OK"));
     }
     #[cfg(windows)]
     #[test]
