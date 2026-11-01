@@ -337,8 +337,11 @@ mod tests {
     #[test]
     fn github_runner_provisions_real_system_with_clean_environment() {
         real_windows_system_fixture(
-            "Test-WindowsSystemSetupCI.ps1",
-            &["SKYVIEW_SYSTEM_SETUP_OK"],
+            "Test-HostedWindowsSystemSetupCI.ps1",
+            &[
+                "SKYVIEW_CI_NODE24_BASELINE_READY",
+                "SKYVIEW_SYSTEM_SETUP_OK",
+            ],
         );
     }
     #[cfg(windows)]

@@ -74,3 +74,26 @@ rustfmt and whitespace checks. Full-crate formatting reports unrelated existing
 differences; none were applied. No local native Windows or browser pass is claimed.
 The existing Build workflow owns exact-head Windows/Mint execution and performance
 measurement. Do not merge while that validation is pending.
+
+### First native run: missing fixture prerequisites
+
+Build `41325149143` at `126e2d9` failed; it is not timing acceptance:
+
+- The standalone migration regression reached the real system backend, but its
+  local `skyview-student-dev` 1.2.1 package had not been built on that runner.
+  Restore `choco pack` from the reviewed nuspec there and require the expected
+  `.nupkg` file before running the regression. No external package substitution.
+- The native baseline test correctly refused GitHub's untracked Node 22.23.4
+  installation. Previously the real Node 26 regression replaced that MSI before
+  baseline provisioning. A separate disposable-runner wrapper now explicitly
+  installs Node 24.21.0 via ordinary Chocolatey/MSI, verifies both its package
+  record and actual runtime, emits `SKYVIEW_CI_NODE24_BASELINE_READY`, then runs
+  the unchanged real baseline fixture. The Rust test requires both that marker
+  and `SKYVIEW_SYSTEM_SETUP_OK`. No force/checksum bypass, fabricated records,
+  package removal or production policy change is introduced.
+- The existing `checks` gate correctly failed on migration failure. Both trust
+  jobs and Linux native/Mint validation passed, but Windows signed upgrade did
+  not execute after the baseline failure. All remain required on the fixed head.
+
+26 scope/gate/timing, 35 backend and eight Mint policy tests pass locally after
+the correction. Windows runner/package execution and final timing remain pending.

@@ -173,6 +173,14 @@ jobs:
           cache-on-failure: true
       - run: npm ci && npm run build
         working-directory: installer
+      - name: Package migration backend fixture
+        shell: pwsh
+        run: |
+          choco pack windows/chocolatey/skyview-student-dev.nuspec --outputdirectory windows
+          if ($LASTEXITCODE -ne 0) { throw 'Migration backend packaging failed.' }
+          [xml]$manifest = Get-Content windows/chocolatey/skyview-student-dev.nuspec
+          $package = 'windows/{0}.{1}.nupkg' -f $manifest.package.metadata.id,$manifest.package.metadata.version
+          if (-not (Test-Path -LiteralPath $package -PathType Leaf)) { throw 'Required local migration backend package is missing.' }
       - name: Prepare disposable Windows migration runner
         shell: pwsh
         run: |

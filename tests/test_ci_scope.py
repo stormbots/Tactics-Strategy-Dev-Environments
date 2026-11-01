@@ -25,6 +25,11 @@ class WindowsMigrationGate(unittest.TestCase):
         self.assertIn("if ($LASTEXITCODE -ne 0)", step["run"])
         for marker in ("SKYVIEW_NODE_MIGRATION_OK", "SKYVIEW_SYSTEM_SETUP_OK"):
             self.assertIn(marker, step["run"])
+        package = next(s for s in migration["steps"] if s.get("name") == "Package migration backend fixture")
+        self.assertIn('choco pack windows/chocolatey/skyview-student-dev.nuspec --outputdirectory windows', package['run'])
+        self.assertIn('if ($LASTEXITCODE -ne 0)', package['run'])
+        self.assertIn('Test-Path -LiteralPath $package -PathType Leaf', package['run'])
+        self.assertLess(migration['steps'].index(package), migration['steps'].index(step))
         checks = jobs["checks"]
         self.assertIn("windows-migration", checks["needs"])
         self.assertEqual(checks["if"], "always() && " + GATE)
@@ -36,10 +41,25 @@ class WindowsMigrationGate(unittest.TestCase):
         self.assertIn("--skip process::tests::github_runner_migrates_real_node26_to_node24_with_clean_environment", native["run"])
         source = (root / 'installer/src-tauri/src/process.rs').read_text()
         self.assertIn('fn github_runner_provisions_real_system_with_clean_environment()', source)
-        self.assertIn('"Test-WindowsSystemSetupCI.ps1",\n            &["SKYVIEW_SYSTEM_SETUP_OK"]', source)
+        self.assertIn('"Test-HostedWindowsSystemSetupCI.ps1",', source)
+        self.assertIn('&["SKYVIEW_CI_NODE24_BASELINE_READY","SKYVIEW_SYSTEM_SETUP_OK",]', ''.join(source.split()))
         baseline = (root / 'tests/Test-WindowsSystemSetupCI.ps1').read_text()
         for required in ('Invoke-SkyviewCoordinated -Mutation -Action {', '-SystemOnly', 'Test-MaintenanceCI.ps1', 'status -ne \'idle\'', 'SKYVIEW_SYSTEM_SETUP_OK'):
             self.assertIn(required, baseline)
+
+    def test_native_baseline_prepares_real_hosted_runtime_without_weakening_production(self):
+        root = Path(__file__).resolve().parents[1]
+        fixture = (root / 'tests/Test-HostedWindowsSystemSetupCI.ps1').read_text()
+        self.assertIn("$env:GITHUB_ACTIONS -ne 'true'", fixture)
+        self.assertIn('& $choco install nodejs-lts --version 24.21.0 -y --no-progress', fixture)
+        self.assertIn("$LASTEXITCODE -notin @(0,3010)", fixture)
+        self.assertIn("'^nodejs-lts\\|24\\.21\\.0$'", fixture)
+        self.assertIn("$actual -ne 'v24.21.0'", fixture)
+        self.assertIn(". (Join-Path $PSScriptRoot 'Test-WindowsSystemSetupCI.ps1')", fixture)
+        for unsafe in ('--force', '--ignore-checksums', 'Remove-Item', 'Set-ItemProperty'):
+            self.assertNotIn(unsafe, fixture)
+        policy = (root / 'windows/chocolatey/tools/Node24.ps1').read_text()
+        self.assertIn('is not tracked by Chocolatey. Remove or switch that runtime to Node 24', policy)
 
     def test_existing_checks_status_rejects_missing_or_failed_migration(self):
         import subprocess
