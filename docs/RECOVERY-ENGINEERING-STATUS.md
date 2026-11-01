@@ -1,7 +1,20 @@
 # Interrupted-operation recovery: engineering status
 
-Current increment: [final integration review](RECOVERY-INTEGRATION-REVIEW.md),
-branch `codex/recovery-integration-review`, pending exact-head native/browser CI.
+Current phase: [v1.2.20 candidate preparation](RECOVERY-CANDIDATE-1.2.20.md),
+branch `codex/recovery-uat-1.2.20`, pending exact-head preparation/native CI.
+The final integration review (#139) passed at
+`d4bb9953f2ea064f50c9cd2088dd8ebe17d9a408` in
+[Build 41259004375](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41259004375):
+175 frontend/105 browser checks, root Linux 151/151, Windows trust 136/136,
+native Tauri Windows 106/106 and Linux 104/104, both signed upgrades and every
+inherited gate passed. The complete stack was squash-consolidated into main at
+`f6befee68ce38ed07b99ccb1093f7b2e45d08b79`; its tree matches the verified head.
+Full main Build 41266416577 started automatically. Published v1.2.19 already
+exists, so the protected recipe must target unused v1.2.20, with a same-source
+rebuilt unpublished 1.2.19 fixture. Final preparation-head and combined-main CI
+are required before release-branch advancement/dispatch; no signing approval yet.
+
+Historical final-review correction:
 Initial #139 head `5ae004e31c084e8c58962bbaf050202313620d1d` failed
 [Build 41256546151](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/41256546151):
 four Recovery browser cases expected yellow from a preview containing failed
@@ -9,7 +22,7 @@ Validation rows; the actual red severity was correct. The other 97 browser check
 both native/trust jobs and both signed upgrades passed, but the head is not
 accepted. Corrected tests require red precedence with failed Validation and add
 four clean-Validation/unknown-health-only yellow cases. Production code and every
-required gate are unchanged; replacement-head CI is required before consolidation.
+required gate were unchanged; replacement-head CI passed as recorded above.
 This closes the bounded UI findings (nonblocking warning reason in the existing
 status card; startup acknowledgment returns to Overview without launching work;
 obsolete mentor-service guidance in application-update status/download diagnostics)
@@ -22,9 +35,9 @@ actual Mint 22.3 and every inherited recovery/installed/trust gate passed. The
 separate policy/helper workflows succeeded; scoped helper skips were not used
 instead of native proof. All current blockers remain fail-closed.
 
-Next after this increment's exact-head acceptance: consolidate the complete
-verified stack (no partial merge), require full Build on combined main, inspect
-unused version/candidate state, prepare via the existing protected workflow, and
+Next after the preparation increment's exact-head acceptance: merge its verified
+recipe, require full Build on combined main, recheck unused version/candidate
+state, prepare via the existing protected workflow, and
 stop for human signing approval. Real dialogs/restart/workstation acceptance
 remain focused owner UAT. No further architecture phase is planned absent an
 evidenced defect or unmet acceptance criterion.
