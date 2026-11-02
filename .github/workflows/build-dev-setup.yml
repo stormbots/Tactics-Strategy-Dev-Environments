@@ -27,7 +27,9 @@ jobs:
       - name: Install CI scope parser
         run: python3 -m pip install 'PyYAML==6.0.2'
       - name: Verify CI scope policy
-        run: python3 -m unittest discover -s tests -p test_ci_scope.py -v
+        run: |
+          python3 -m unittest discover -s tests -p test_ci_scope.py -v
+          python3 -m unittest discover -s tests -p test_ci_timings.py -v
       - name: Classify application versus fixture-only changes
         id: scope
         env:
@@ -94,7 +96,9 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: updater -> target
+          workspaces: |
+            updater -> target
+            coordination -> target
       - name: Native cross-process coordination contracts
         # Explicit bash -e/pipefail semantics on both platforms: PowerShell's
         # default native-command behavior can mask a failed test with later fmt.
@@ -169,6 +173,7 @@ jobs:
           workspaces: |
             installer/src-tauri -> target
             updater -> target
+            coordination -> target
           cache-on-failure: true
       - name: Linux build dependencies
         if: runner.os == 'Linux'
