@@ -1,5 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { RecoveryPage } from "./RecoveryPage";
 import { previewRecovery, type RecoveryState } from "./recovery";
 
@@ -32,6 +38,100 @@ function props(state: RecoveryState | null = unknownActivity()) {
   };
 }
 afterEach(cleanup);
+
+it.each(["unknown", "healthy"] as const)(
+  "shows the requested neutral card with %s package health",
+  (health) => {
+    const state = previewRecovery();
+    state.nativeSafety.packageHealth = health;
+    const callbacks = props(state);
+    render(<RecoveryPage {...callbacks} />);
+    const card = screen.getByRole("region", {
+      name: "There is nothing to recover from right now",
+    });
+    expect(card.className).toContain("recovery-page-clear");
+    expect(
+      within(card).getByText(
+        "No current safety blocker was found. You can return to Overview and choose what to do next.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(card).getByText(
+        "If you need, you can still create a support report to collect information you can share if you choose. Review it before sharing; it may identify your computer or account.",
+      ),
+    ).toBeTruthy();
+    expect(within(card).getAllByRole("button")).toHaveLength(1);
+    expect(screen.queryByText("What to do now")).toBeNull();
+    expect(card.contains(screen.getByText("Technical details"))).toBe(false);
+    expect(callbacks.onCheck).not.toHaveBeenCalled();
+    expect(callbacks.onAcknowledge).not.toHaveBeenCalled();
+    expect(callbacks.onContinue).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(card).getByRole("button", { name: "Create support report" }),
+    );
+    expect(callbacks.onSupport).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each([
+  "active",
+  "unknown",
+  "untrusted",
+  "machine-unavailable",
+  "user-unavailable",
+  "incomplete",
+  "acknowledgment",
+  "pending",
+  "error",
+])("does not show the clear card for %s findings or work", (kind) => {
+  const state = previewRecovery();
+  if (kind === "active" || kind === "unknown") state.effectiveActivity = kind;
+  if (kind === "untrusted") state.nativeSafety.trust = "untrusted";
+  if (kind === "machine-unavailable") state.machine.available = false;
+  if (kind === "user-unavailable") state.user.available = false;
+  if (kind === "incomplete") state.nativeSafety.packageHealth = "incomplete";
+  if (kind === "acknowledgment") state.canAcknowledgeMachine = true;
+  render(
+    <RecoveryPage
+      {...props(state)}
+      pending={kind === "pending" ? "repair" : null}
+      error={kind === "error" ? "Findings unavailable" : ""}
+    />,
+  );
+  expect(
+    screen.queryByRole("heading", {
+      name: "There is nothing to recover from right now",
+    }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("heading", { name: "Let’s get setup working again" }),
+  ).toBeTruthy();
+});
+
+it("keeps acknowledgment report failures outside the clear card and disables support while busy", () => {
+  render(
+    <RecoveryPage
+      {...props(previewRecovery())}
+      loading
+      outcomes={[
+        {
+          incidentId: id,
+          reportId: null,
+          reportWarning: "Report save failed; evidence retained.",
+        },
+      ]}
+    />,
+  );
+  const card = screen.getByRole("region", {
+    name: "There is nothing to recover from right now",
+  });
+  expect(
+    card.contains(screen.getByText("Report save failed; evidence retained.")),
+  ).toBe(false);
+  expect((within(card).getByRole("button") as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+});
 
 it("leads the submitted Windows interruption with one next action and keeps precise evidence collapsed", () => {
   const callbacks = props();

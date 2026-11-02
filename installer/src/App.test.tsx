@@ -346,7 +346,7 @@ it.each(["machine", "user"] as const)(
     expect(acknowledge).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
     await screen.findByRole("heading", {
-      name: "Let’s get setup working again",
+      name: "There is nothing to recover from right now",
     });
     expect(
       screen.getByText(/Summary could not be saved; original evidence remains/),
@@ -385,7 +385,7 @@ it.each([false, true])(
     expect(screen.queryByText(/Review the interrupted operation/)).toBeNull();
     fireEvent.click(reason);
     await screen.findByRole("heading", {
-      name: "Let’s get setup working again",
+      name: "There is nothing to recover from right now",
     });
     expect(screen.queryByRole("button", { name: /Acknowledge/ })).toBeNull();
   },

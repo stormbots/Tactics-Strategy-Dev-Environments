@@ -76,7 +76,9 @@ for (const theme of ["Light", "Dark"])
         })
         .click();
       await expect(
-        page.getByRole("heading", { name: "Let’s get setup working again" }),
+        page.getByRole("heading", {
+          name: "There is nothing to recover from right now",
+        }),
       ).toBeVisible();
       await expect(
         page.getByText("Open logs", { exact: true }),
@@ -88,14 +90,18 @@ for (const theme of ["Light", "Dark"])
       await expect(
         page.getByRole("button", { name: /Acknowledge/ }),
       ).toHaveCount(0);
-      await page
-        .getByRole("button", { name: "Check again", exact: true })
-        .click();
+      const clearCard = page.getByRole("region", {
+        name: "There is nothing to recover from right now",
+      });
+      await expect(clearCard).toHaveClass(/recovery-page-clear/);
+      await expect(clearCard.getByRole("button")).toHaveCount(1);
+      await expect(
+        clearCard.getByRole("button", { name: "Create support report" }),
+      ).toBeVisible();
       await expect(
         page.getByText("No current machine incident recorded."),
       ).toBeVisible();
       await expect(page.getByRole("progressbar")).toHaveCount(0);
-      await checkPrimaryStyles(page);
       await audit(page);
       expect(
         await page.evaluate(
@@ -152,7 +158,9 @@ for (const theme of ["Light", "Dark"])
       await reason.focus();
       await reason.press("Enter");
       await expect(
-        page.getByRole("heading", { name: "Let’s get setup working again" }),
+        page.getByRole("heading", {
+          name: "There is nothing to recover from right now",
+        }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: /Acknowledge/ }),
