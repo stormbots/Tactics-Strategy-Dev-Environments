@@ -281,7 +281,11 @@ class Backends(unittest.TestCase):
         self.assertNotIn('fs:',cap)
     def test_release_gate(self):
         workflow=self.text('.github/workflows/build-dev-setup.yml')
-        self.assertIn('needs: [checks, native, update-trust]',workflow)
+        release=workflow.split('\n  release:\n',1)[1]
+        needs=re.search(r'^    needs: \[([^\]\n]+)\]$',release,re.MULTILINE)
+        self.assertIsNotNone(needs, 'Release must declare its validation dependencies')
+        self.assertEqual({name.strip() for name in needs.group(1).split(',')},
+                         {'checks', 'native', 'update-trust', 'acceptance'})
         self.assertIn('environment: sde-release-signing',workflow)
         self.assertIn('dist/sde-update.json dist/sde-update.json.minisig',workflow)
         self.assertIn('--verify-tag --prerelease',workflow)
