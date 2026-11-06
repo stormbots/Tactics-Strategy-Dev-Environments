@@ -1,7 +1,8 @@
 # Overview: one clear next step
 
-Status: initial design proposal for owner review. No application changes approved
-or implemented by this document.
+Status: owner-reviewed workflow baseline with failure/lifecycle refinements for
+implementation planning. No application changes authorized or implemented by
+this document. The owner reviewed the prototype journeys; that is not release UAT.
 
 Prepared November 6, 2026. Reference: the v1.2.22 interface, the owner's screenshot
 and feedback, and the existing frontend/recovery contracts. Release source:
@@ -322,6 +323,30 @@ just because an incident was acknowledged or a safety observation improved.
 
 ## 9. Busy, failure, cancel and restart behavior
 
+### Required result and escape paths
+
+The card must explain the actual outcome and offer one useful next action, not
+simply return to its original recommendation. These are presentation rules over
+existing native outcomes, not new native success or cancellation definitions.
+
+| Observed outcome | Required presentation / next action | UAT coverage |
+| --- | --- | --- |
+| Review abandoned; execution definitely never started | Return to the current recommendation; no mutation or invented incident | WF03, WF08, WF23 |
+| OS approval denied; native outcome proves nothing started | Explain that no change started; allow deliberate return/review without another automatic approval prompt | WF23 |
+| Child launch or mutation outcome uncertain | Show uncertainty and the applicable native safety finding; inspect fresh state, preserve evidence, never call it successful cancellation | WF13, WF23–WF26 |
+| Operation completed; required verification incomplete | Explain completion separately from the incomplete check; recommend a read-only check, not reinstall/repair | WF06–WF07 |
+| Repair finished; finding still present | Explain the unresolved issue with specific supported guidance or support access; no automatic repair/recheck loop | WF09–WF10 |
+| Update/download failed or only part completed | Show known progress and remaining uncertainty; distinguish network failure from application failure and retain the normal safe retry boundary | WF13, WF24 |
+| Operation and required verification succeeded | Recompute from fresh findings; Ready only if supported, with Review updates if optional updates remain | WF05, WF12 |
+
+If an explicit recheck leaves the same finding, say that it is unchanged and keep
+supported guidance/support reachable. Do not repeatedly reset the screen to an
+invitation that implies the same repair or restart is guaranteed to work. No
+timer-driven retries, repeated elevation prompts or automatic follow-on mutations.
+Existing legitimate bounded read-only startup checks are not an operation retry.
+
+### Navigation, reopen and persistence
+
 - One operation at a time; disable duplicate submissions and competing mutations.
 - Cancelling a review cancels only the pending request and returns to Overview.
 - Navigating away does not stop a running installer or erase progress/evidence.
@@ -337,6 +362,13 @@ just because an incident was acknowledged or a safety observation improved.
 - Read-only diagnostic failure does not imply damage. Unknown mutation outcome
   does not imply cancellation or success.
 - Support sharing stays optional and includes the existing privacy reminder.
+
+Reopening reconstructs the recommendation from current native observations and
+current readiness checks. UI storage, an old success screen or a saved review is
+not evidence that work finished or that another operation is authorized. When
+the operation is still running, reconnect to its supported status path; when its
+outcome cannot be established, retain that uncertainty rather than fabricating
+progress. Do not require an owner to manufacture interruptions for these tests.
 
 ## 10. Recommendation logic and evidence limits
 
@@ -362,6 +394,36 @@ invent a new “fresh machine” flag that authorizes changes or clears a blocke
 
 Persist only harmless presentation preferences, if necessary. Every operation
 keeps its current preflight, source-bound consent, native recheck and OS approval.
+
+### Freshness, combined findings and action binding
+
+- Model readiness and change safety independently. Do not convert absent tool
+  validation into unknown native activity, or unknown native activity into a
+  harmless unchecked setup. Missing backend distinctions are evidence gaps.
+- Use section 5's priority once for both cards. In-progress tasks stay visible;
+  newly discovered blockers prevent any competing/new mutation and remain
+  explained. Preserve lesser findings in Details instead of discarding them.
+- A completed installer process is not sufficient for Ready. Required tool and
+  configuration observations must be complete and current for the applicable
+  environment; partial passes, stale results and optional update discovery are
+  not substitutes. Existing final validation may be reused only when suitable.
+- Bind each asynchronous result to its request/operation context. A late response
+  must not replace newer applicable findings. Invalidate superseded results after
+  changes; do not reuse a pre-operation pass as post-operation verification.
+- Keep the reviewed action and scope stable while the user reads it. If relevant
+  evidence or scope changes, explain it and require the appropriate fresh review;
+  do not silently repurpose the focused button or execute an obsolete request.
+- Native admission remains the final authority immediately before execution,
+  including changes between review, confirmation and child launch. A clear UI
+  snapshot is never a lease, a consent receipt or permission to bypass admission.
+- Other actions uses the same command dispatch, busy guards, supported scopes,
+  review and native admission as the primary action. Navigation, logs and support
+  cannot acknowledge an incident or start/replay an operation as a side effect.
+
+Before implementation, map real typed observations and their available freshness
+semantics into this decision. Do not invent backend fields or timing thresholds.
+Test delayed/out-of-order responses, simultaneous findings, stale confirmation,
+repeated clicks and return from secondary pages, not only isolated static states.
 
 ## 11. Accessibility and responsive behavior
 
@@ -405,7 +467,8 @@ secondary-update-link recommendation; the demo is intentionally not updated yet.
 1. A fresh app launch does not select or imply Install by default. Checking and
    unchecked states do not claim an interruption or successful setup.
 2. A complete passing startup check skips redundant validation steps and leads
-   to Start building. Opening the editor does not trigger setup or elevation.
+   to Start building, or Install updates when optional tool updates are available,
+   provided no safety blocker applies. Editor access never triggers setup/elevation.
 3. Missing tools, an identified repair need and an unreadable check each produce
    appropriate guidance. No unsupported finding is blindly mapped to Repair.
 4. Each main-content state has at most one filled primary action; old tabs and
@@ -427,6 +490,21 @@ secondary-update-link recommendation; the demo is intentionally not updated yet.
 12. Windows interruption evidence and Mint v1.2.18's accepted 35/0/0 result stay
     untouched. UAT does not require manufacturing an incident or reprovisioning
     a healthy laptop merely to test this interface.
+13. Every operation has explicit not-started, uncertain, failed/partial and
+    verified-success result paths as applicable. Useful escape/support paths
+    exist without automatic retries, repeated approval prompts or repair loops.
+14. Reopen/navigation preserves an actual running task or honestly reconstructs
+    unknown outcomes; no saved UI state replays or authorizes work.
+15. Combined findings select one consistent recommendation. Late results cannot
+    overwrite current observations, and changed review scope cannot execute via
+    an old focused action. Secondary actions obey identical safety/busy guards.
+
+The [UAT matrix](OVERVIEW-NEXT-STEP-UAT-DRAFT.md#5-workflow-coverage-matrix)
+is the detailed acceptance checklist: WF01–WF14 cover readiness and operation
+outcomes; WF15–WF22 cover combined safety/incident states; WF23–WF27 cover
+cancellation, reopen and races; WF28–WF31 cover secondary access, accessibility
+and installed-candidate preservation. Every row starts unexecuted; prototype
+coverage does not satisfy production acceptance.
 
 ## 14. Suggested implementation and review sequence
 

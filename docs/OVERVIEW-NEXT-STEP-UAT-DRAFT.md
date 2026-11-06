@@ -25,6 +25,13 @@ The owner followed every demo scenario and reported no unnatural workflows,
 loops or undesirable destinations. Treat that as design review, **not production
 UAT or native execution evidence**. The demo intentionally remains unchanged.
 
+The design now makes these acceptance paths explicit in sections 9, 10 and 13:
+failed/incomplete results without retry loops; proven-not-started versus uncertain
+cancellation; fresh reconstruction after reopen; changed evidence before execution;
+combined-finding precedence; verified readiness rather than installer-exit success;
+and secondary actions with the same admission/busy guards. The matrix below is
+the traceable checklist for those rules, not a claim that tests already exist.
+
 The owner's later correction controls the ready-with-updates state:
 
 - Top Development environment card: prominent **Ready!**.
