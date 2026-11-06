@@ -432,6 +432,10 @@ secondary-update-link recommendation; the demo is intentionally not updated yet.
 
 This is a future plan, not authorization to begin coding.
 
+The [draft workflow validation and UAT plan](OVERVIEW-NEXT-STEP-UAT-DRAFT.md)
+records the reviewed demo scenarios, failure/escape paths, responsible testers
+and release evidence gates. Prototype walkthrough approval is not native UAT.
+
 1. Owner reviews this document's layout, default actions and uncertainty handling.
 2. Implement/test the presentation decision table separately, including unknown,
    stale, partial and contradictory observations. Keep the backend authoritative.
