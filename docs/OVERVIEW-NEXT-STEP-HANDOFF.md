@@ -6,17 +6,40 @@ demo edits, CI runs, signing requests or release actions were made for this upda
 ## Starting point
 
 - Repository: `stormbots/Tactics-Strategy-Dev-Environments`.
-- Workspace: `/workspace/Tactics-Strategy-Dev-Environments`.
-- Planning branch: `codex/overview-next-step-design`.
+- Cloud workspace: use the repository root selected by Codex; do not assume a
+  particular local path. All file paths below are repository-relative.
+- GitHub planning branch: `codex/overview-next-step-design`. Fetch/select this
+  branch in Codex Cloud before reading the design or beginning implementation.
 - Existing planning commits: `c692a19` (design), `af0a231` (offline prototype),
   `58d349b` (owner's update-state correction), `69b4651` (31-workflow UAT draft).
-- This handoff and the lifecycle refinements are in the subsequent documentation
-  commit; resolve its exact SHA with `git log -1` rather than guessing it.
-- Planning commits are local at this handoff; verify availability before coding.
-  A new cloud workspace may not contain them. If missing, obtain this branch/docs
-  from the owner/source workspace; do not recreate the design from memory.
+- Lifecycle refinements and the initial handoff: `a44cfd4`. This cloud handoff is
+  a subsequent documentation commit; resolve the remote head rather than guessing
+  its SHA. The publishing chat records the verified exact remote SHA on #146.
+- The branch contains the design, prototype, UAT draft and this handoff. If the
+  initial cloud checkout is main, fetch the planning branch normally. If access
+  fails, diagnose configured GitHub access; do not recreate the design from memory
+  or assume this chat's filesystem is available in a new cloud environment.
 - Stable v1.2.22 source: `2320297d5048d627124ff64dd907889e1abccad6`.
   It has separate accepted UAT; that acceptance does not cover this new interface.
+
+## GitHub work queue
+
+[Refine UX milestone #8](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/milestone/8)
+and [tracking issue #146](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/146)
+are the durable project entry points. Native sub-issue/dependency links are set.
+
+| Ticket | Work | Required predecessors |
+| --- | --- | --- |
+| [#147](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/147) | Shared observation/recommendation logic | None; start here |
+| [#148](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/148) | Guided Overview UI | #147 |
+| [#149](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/149) | Operation lifecycle and return paths | #147, #148 |
+| [#150](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/150) | Full workflow/native evidence | #147, #148, #149 for final acceptance |
+| [#151](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/151) | Authenticated candidate and owner UAT | #150 plus human signing/UAT gates |
+
+Read live ticket bodies/comments and dependencies before claiming work. Existing
+related issues #7, #8, #10 and #87 are references, not permission to reopen their
+whole backlogs or override current ADR/released safety contracts. No engineering
+ticket was started, assigned or closed by this housekeeping handoff.
 
 ## Read first
 
@@ -30,12 +53,22 @@ demo edits, CI runs, signing requests or release actions were made for this upda
 ## Copy into the new chat to authorize implementation
 
 ```text
-Begin engineering and DevOps work on the guided “Your next step” Overview for
-stormbots/Tactics-Strategy-Dev-Environments. Use the existing planning branch
-codex/overview-next-step-design and docs/OVERVIEW-NEXT-STEP-HANDOFF.md as the
-handoff. First verify repository status and that the full planning documents and
-prototype exist. Preserve unrelated changes. If the local planning branch/docs
-are absent, stop and request their transfer rather than reconstructing them.
+Begin engineering and DevOps work on the Refine UX milestone (#8), tracking issue
+#146, for stormbots/Tactics-Strategy-Dev-Environments. Start with #147, then follow
+the native dependencies through #148–#151 in bounded, verifiable increments.
+
+Use the GitHub branch codex/overview-next-step-design and read
+docs/OVERVIEW-NEXT-STEP-HANDOFF.md. Work from the actual repository root, not a
+hard-coded workspace path. Verify repository status, configured GitHub read/write
+and workflow access, and the remote planning head. Fetch/select the branch if the
+initial checkout is main. Preserve unrelated changes; no reset, force push or
+invented credentials. If access is missing, report the concrete blocker.
+
+Read AGENTS.md and issue-tracker instructions before reading/claiming live tickets.
+Keep the published planning baseline intact; use a scoped implementation branch
+based on it, checking current main for relevant intervening changes. Record the
+base and any integration decisions. Do not drop planning docs or overwrite newer
+work to recover the old baseline. Claim #147 only when actually beginning work.
 
 Read AGENTS.md and applicable instructions, then the complete
 docs/OVERVIEW-NEXT-STEP-DESIGN.md and
@@ -70,6 +103,10 @@ evidence/fixture gaps; then implement/test the shared presentation decision; the
 integrate the real UI and operation lifecycle. Use all WF01–WF31 as the acceptance
 checklist. Keep native safety authoritative. Report any missing observation that
 requires a materially broader backend change before expanding scope.
+Keep issue acceptance criteria, native dependencies and evidence up to date; do
+not close blocked tickets or the milestone because a prototype or partial test
+passes. Fixture planning may proceed early, but #150 final acceptance requires
+all integrated predecessors and #151 requires the full validation evidence.
 
 Own engineering and DevOps: run targeted tests, push scoped changes/open a PR and
 run existing authoritative CI; diagnose failures and retry justified transient
