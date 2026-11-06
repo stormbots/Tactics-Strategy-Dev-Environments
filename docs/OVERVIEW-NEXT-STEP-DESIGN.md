@@ -125,7 +125,7 @@ can replace the next action without erasing tool-readiness findings.
 | Existing setup has an identified SDE-repairable problem | Setup needs a fix | Fix your setup | Review fixes |
 | Finding cannot be fixed by an existing supported operation | Setup needs attention | Follow the recommended fix | Review the issue |
 | Required checks pass; no safety blocker | Ready! | Start building | Open VSCodium |
-| Ready with optional tool updates | Ready! | Start building | Open VSCodium |
+| Ready with optional tool updates | Ready! | Install updates | Review updates |
 | A package operation is known active | Changes are paused | Let setup finish | Check again |
 | Activity is unknown | Changes are paused | Check whether setup has finished | Check again, with safe guidance |
 | Safety records are unreadable/untrusted | Safety check unavailable | SDE couldn’t verify that changes are safe | Check again |
@@ -237,14 +237,33 @@ The main status is **Ready!**. The next-step card says:
 > [Open VSCodium]
 
 Open Development remains available under Other actions. No Install button appears
-in the default ready view. Optional updates do not take over the primary action.
+in the default ready view. When optional tool updates are available, use the
+owner-reviewed update presentation below instead. The environment remains Ready.
 
 ### E. Updating tools
 
-Offer a quiet, contextual **Review updates** link when applicable. It opens the
+Owner feedback recorded November 6, 2026; this revises the initial proposal,
+not the existing HTML demo.
+
+Keep the top **Development environment** card and its prominent **Ready!**
+headline. Available updates do not imply that the working setup is broken.
+
+In **Your next step**, show exactly:
+
+> Install updates
+> Your setup works, but there are updates available if you would like to install them.
+> [Review updates]
+
+Replace the Open VSCodium primary button with the existing Review updates action;
+do not also repeat Review updates as a separate link below it. Review opens the
 existing tool-update preview in the task area, not a second dashboard of buttons.
 Identify what updates and the approved runtime boundaries before **Update tools**.
 Never present an app update and a development-tool update as the same operation.
+
+Updates remain optional. The heading and primary action recommend a review, not
+automatic installation or a prerequisite for using the editor. Keep Open VSCodium
+and other alternatives available in **Other actions**. If no updates are available,
+retain the normal Start building / Open VSCodium presentation.
 
 App-update discovery/notification and pause policy remain functional. Avoid
 duplicating the notice in multiple cards. Do not invent urgency or silently hide
@@ -259,6 +278,10 @@ an existing important notice to maintain the one-button aesthetic.
 - Repair setup: existing repair review, with its actual scope.
 - Review tool updates: existing preview and confirmation.
 - Open Development: workspace shortcut, when its destination is available.
+- Open VSCodium: editor shortcut when it is not already the primary action.
+
+The owner explicitly endorsed this grouping: alternatives in **Other actions**;
+results, logs and reports under **Details**. Retain that separation.
 
 Do not duplicate the current primary action here. Mutating choices are disabled
 or routed to an explanation while safety blocks them. They are not an escape
@@ -371,8 +394,11 @@ knows which operation will succeed. Recommendations may be conservative; safety
 cannot be simplified away.
 
 Proposed defaults for owner review: Overview always opens first; startup checks
-remain automatic/read-only; ready users see Open VSCodium; optional updates are
-secondary; existing sidebar labels and accepted Recovery page are retained.
+remain automatic/read-only; ready users without updates see Open VSCodium; ready
+users with updates see Install updates / Review updates while keeping editor
+access under Other actions. Existing sidebar labels and accepted Recovery page
+are retained. The November 6 update-state feedback supersedes the original
+secondary-update-link recommendation; the demo is intentionally not updated yet.
 
 ## 13. Acceptance criteria
 
