@@ -7,12 +7,12 @@ from ci_timings import summarize
 
 
 class Timings(unittest.TestCase):
-    def test_caching_keeps_original_jobs_and_full_native_regression(self):
+    def test_staged_validation_keeps_caches_and_full_native_regression(self):
         root = Path(__file__).resolve().parents[1]
         jobs = yaml.safe_load((root / '.github/workflows/build-dev-setup.yml').read_text())['jobs']
-        self.assertEqual(set(jobs), {'scope', 'checks', 'native', 'update-trust', 'release'})
+        self.assertEqual(set(jobs), {'scope', 'checks', 'native', 'update-trust', 'acceptance', 'release'})
         self.assertEqual(jobs['checks']['needs'], 'scope')
-        self.assertEqual(jobs['release']['needs'], ['checks', 'native', 'update-trust'])
+        self.assertEqual(jobs['release']['needs'], ['checks', 'native', 'update-trust', 'acceptance'])
         native_test = next(s for s in jobs['native']['steps'] if s.get('name') == 'Rust tests')
         self.assertEqual(native_test['run'], 'cargo test --locked -- --nocapture')
         for name in ('native', 'update-trust'):

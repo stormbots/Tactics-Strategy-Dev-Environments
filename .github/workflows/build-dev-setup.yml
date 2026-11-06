@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       application_required: ${{ steps.scope.outputs.application_required }}
+      native_required: ${{ steps.scope.outputs.native_required }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,8 +83,8 @@ jobs:
           path: installer/test-results/
           if-no-files-found: error
   update-trust:
-    needs: scope
-    if: needs.scope.outputs.application_required == 'true'
+    needs: [scope, checks]
+    if: needs.scope.outputs.native_required == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -147,8 +148,8 @@ jobs:
             updater/target/release/sde-update-trust.exe
           if-no-files-found: error
   native:
-    needs: scope
-    if: needs.scope.outputs.application_required == 'true'
+    needs: [scope, checks]
+    if: needs.scope.outputs.native_required == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -432,8 +433,31 @@ jobs:
             dist/${{ matrix.asset }}
             dist/${{ matrix.asset }}.sha256
           if-no-files-found: error
+  acceptance:
+    if: always()
+    needs: [scope, checks, native, update-trust]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every applicable validation result
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+          TRUST_RESULT: ${{ needs.update-trust.result }}
+          APPLICATION_REQUIRED: ${{ needs.scope.outputs.application_required }}
+          NATIVE_REQUIRED: ${{ needs.scope.outputs.native_required }}
+        run: |
+          python3 - <<'PY'
+          import os
+          assert os.environ['SCOPE_RESULT'] == 'success', 'Scope classification must succeed'
+          for name in ('APPLICATION_REQUIRED', 'NATIVE_REQUIRED'):
+              assert os.environ[name] in ('true', 'false'), 'Missing scope output'
+          assert os.environ['CHECKS_RESULT'] == ('success' if os.environ['APPLICATION_REQUIRED'] == 'true' else 'skipped'), 'Required checks did not pass'
+          for name in ('NATIVE_RESULT', 'TRUST_RESULT'):
+              assert os.environ[name] == ('success' if os.environ['NATIVE_REQUIRED'] == 'true' else 'skipped'), 'Required native/trust validation did not pass'
+          PY
   release:
-    needs: [checks, native, update-trust]
+    needs: [checks, native, update-trust, acceptance]
     if: github.ref != 'refs/heads/release/v1.2.uat' && github.ref != 'refs/tags/v1.2.2' && github.ref != 'refs/tags/v1.2.3' && github.ref != 'refs/tags/v1.2.15' && github.ref != 'refs/tags/v1.2.16' && github.ref != 'refs/tags/v1.2.17' && github.ref != 'refs/tags/v1.2.18' && github.ref != 'refs/tags/v1.2.19' && github.ref != 'refs/tags/v1.2.20' && github.ref != 'refs/tags/v1.2.21' && github.ref != 'refs/tags/v1.2.22' && (startsWith(github.ref, 'refs/tags/v1.1.') || startsWith(github.ref, 'refs/heads/release/v1.1.') || startsWith(github.ref, 'refs/tags/v1.2.') || startsWith(github.ref, 'refs/heads/release/v1.2.'))
     runs-on: ubuntu-24.04
     environment: sde-release-signing
