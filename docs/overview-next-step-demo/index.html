@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>SDE · Your next step — interactive prototype</title>
+  <style>
+    :root{color-scheme:dark;--text:#e8eef5;--canvas:#101c2e;--surface:#18283f;--sidebar:#142238;--muted:#b9c7d8;--line:#435771;--selected:#314967;--subtle:#21344e;--link:#b3d5fa;--success:#8bd9b0;--warning:#f4bc88;--primary:#c9d9ed;--primary-text:#142238;--hover:#e4edf9;--focus:#9cd3ff;font-family:"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.6;color:var(--text);background:var(--canvas)}
+    :root[data-theme=light]{color-scheme:light;--text:#172b4d;--canvas:#f4f6f8;--surface:#fff;--sidebar:#eaf0f5;--muted:#4b5f76;--line:#d6dfe7;--selected:#d9e3ee;--subtle:#edf2f7;--link:#234f7c;--success:#246249;--warning:#8e501e;--primary:#172b4d;--primary-text:#fff;--hover:#264366;--focus:#1476bd}
+    *{box-sizing:border-box}body{margin:0}button,select{font:inherit}button,summary,select{cursor:pointer}button{border:1px solid var(--line);background:transparent;color:var(--link);border-radius:5px;padding:10px 16px}button:hover:not(:disabled){background:var(--subtle)}button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible,summary:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--focus);outline-offset:4px}.primary{background:var(--primary);color:var(--primary-text);border-color:var(--primary);font-weight:650;min-height:48px;padding:12px 22px}.primary:hover:not(:disabled){background:var(--hover)}
+    .demo-bar{position:relative;background:var(--subtle);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px}.demo-bar strong{letter-spacing:.08em;font-size:11px}.demo-bar label{margin-left:auto}.demo-bar select{max-width:100%;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--text);padding:6px}.demo-bar button{font-size:12px;padding:5px 12px}.demo-note{color:var(--muted)}
+    .layout{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:calc(100vh - 68px)}aside{background:var(--sidebar);border-right:1px solid var(--line);padding:42px 24px;display:flex;flex-direction:column;gap:32px}.brand{display:flex;align-items:center;gap:13px;letter-spacing:3px;line-height:1.35}.brand-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:8px;background:#d9e3ee;color:#172b4d;font-size:34px;font-weight:800;font-style:italic;flex-shrink:0}.brand small{display:block;font-size:10px;letter-spacing:4px;margin-top:5px}.subtitle{font-size:14px;max-width:180px;color:var(--muted)}nav{display:grid;gap:9px;margin-top:8px}nav button{text-align:left;border-color:transparent;padding:13px 12px;color:var(--muted);font-weight:650}nav button[aria-current=page]{background:var(--selected);color:var(--text)}.nav-icon{display:inline-block;width:30px;font-size:19px;font-weight:400}.aside-foot{margin-top:auto;padding-top:28px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}.aside-foot strong{color:var(--text)}
+    main{padding:48px clamp(24px,4.5vw,76px);max-width:1370px;width:100%;margin:0 auto}.eyebrow{font-size:11px;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;color:var(--muted);margin:0 0 12px}header{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:34px}h1{font-size:clamp(26px,3vw,36px);line-height:1.2;margin:0 0 14px;letter-spacing:-.7px}.platform{font-size:13px;color:var(--muted);margin:0}.theme{flex-shrink:0;font-size:13px}h2{font-size:27px;line-height:1.3;margin:10px 0 14px;letter-spacing:-.4px}h3{font-size:16px;margin:0 0 7px}p{margin:0 0 16px;overflow-wrap:anywhere}.status{display:flex;gap:20px;align-items:center;padding:24px 28px;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:9px;margin-bottom:20px}.status[data-tone=success]{border-left-color:var(--success)}.status[data-tone=warning]{border-left-color:var(--warning)}.status-icon{width:46px;height:46px;display:grid;place-items:center;border-radius:8px;background:var(--subtle);font-size:25px;flex-shrink:0}.status .eyebrow{font-size:10px;letter-spacing:1.7px;margin:0}.status h2{font-size:25px;margin:3px 0}.status p:last-child{margin:0;color:var(--muted);font-size:14px}.status[data-tone=success] .status-icon{color:var(--success)}
+    .task{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:32px}.task> .eyebrow{margin-bottom:18px}.lead{max-width:690px;color:var(--muted);font-size:16px}.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:26px 0 12px}.text-button{border-color:transparent;padding-left:0;padding-right:0;text-align:left}.text-button:hover:not(:disabled){background:transparent;text-decoration:underline}.context-link{font-size:13px;margin-top:18px;color:var(--muted)}.context-link button{font-size:13px;margin-left:6px}.step-label{color:var(--muted);font-size:12px;margin-bottom:14px}.review{margin:22px 0;padding:20px 22px;background:var(--subtle);border-radius:6px;max-width:710px}.review ul{padding-left:20px;margin:8px 0}.review p{font-size:13px;color:var(--muted);margin:14px 0 0}.hint{color:var(--muted);font-size:13px;max-width:710px}.progress-area{max-width:690px;margin-top:28px}progress{width:100%;height:10px;accent-color:var(--primary);display:block;margin:12px 0}.progress-caption{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+    .disclosures{border-top:1px solid var(--line);margin-top:30px;padding-top:6px}details{padding:13px 0;border-bottom:1px solid var(--line)}details:last-child{border-bottom:0}summary{color:var(--link);font-size:14px;font-weight:600;padding:4px 0}details>div{padding:16px 0 3px}.other-actions{display:flex;flex-wrap:wrap;gap:10px}.other-actions button{font-size:13px}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;font-size:13px}.detail-grid p{color:var(--muted);margin:0}.detail-grid strong{display:block;color:var(--text);margin-bottom:4px}.check-row{display:flex;gap:14px;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}.check-row:last-child{border:0}.muted{color:var(--muted)}.fine-print{font-size:12px;color:var(--muted);margin:22px 0}.notice{font-size:14px;border-left:3px solid var(--warning);padding:12px 16px;background:var(--subtle);margin:20px 0}.notice p{margin:0}.sr-only{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+    dialog{max-width:540px;width:calc(100% - 32px);padding:30px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:10px}dialog::backdrop{background:rgba(3,10,22,.75)}dialog h2{font-size:23px}dialog p{color:var(--muted)}dialog .actions{margin-bottom:0}.skip{position:absolute;left:12px;top:-100px;background:var(--surface);color:var(--text);padding:10px;z-index:5}.skip:focus{top:12px}
+    @media(max-width:850px){.layout{grid-template-columns:190px minmax(0,1fr)}aside{padding:32px 16px}.brand{letter-spacing:1px;font-size:13px}.brand-mark{width:36px;height:36px;font-size:27px}.brand small{letter-spacing:2px}main{padding:34px 24px}.task{padding:25px}.demo-bar label{margin-left:0}}
+    @media(max-width:620px){.layout{display:block}aside{padding:15px 18px;border-right:0;border-bottom:1px solid var(--line);gap:12px}.brand-mark{width:32px;height:32px;font-size:25px}.brand{font-size:15px}.brand small,.subtitle,.aside-foot{display:none}nav{display:flex;gap:5px;overflow-x:auto;margin:0}nav button{padding:7px 9px;font-size:12px;white-space:nowrap}.nav-icon{display:none}main{padding:27px 18px}.demo-bar{padding:12px 18px;gap:8px}.demo-bar .demo-note{display:none}.demo-bar label{width:100%;margin-top:3px}.demo-bar select{flex:1;min-width:0}.status{padding:19px;gap:14px}.task{padding:23px}.detail-grid{grid-template-columns:1fr}header{margin-bottom:24px;gap:12px}h1{font-size:27px}.actions .primary{width:100%}.theme{padding:7px 10px}.status h2{font-size:23px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip">Skip to main content</a>
+  <div class="demo-bar" aria-label="Prototype controls">
+    <strong>INTERACTIVE PROTOTYPE</strong><span class="demo-note">All findings and actions are simulated.</span>
+    <label for="scenario">Show a scenario</label>
+    <select id="scenario">
+      <option value="setup">Setup needed</option><option value="unchecked">Not checked yet</option>
+      <option value="ready">Ready to build</option><option value="repair">Repair needed</option>
+      <option value="updates">Ready · updates available</option><option value="check-failed">Check could not finish</option>
+      <option value="unknown">Safety pause · activity unknown</option><option value="active">Safety pause · installer running</option>
+      <option value="untrusted">Safety records unavailable</option><option value="incident">Interruption to review</option>
+    </select><button id="reset">Reset scenario</button>
+  </div>
+  <div class="layout">
+    <aside aria-label="Application sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">S</span><strong>SKYVIEW<small>ROBOTICS</small></strong></div>
+      <p class="subtitle">Student Development Environment</p>
+      <nav aria-label="Main navigation">
+        <button aria-current="page" data-nav="Overview"><span class="nav-icon" aria-hidden="true">▦</span>Overview</button>
+        <button data-nav="Recovery"><span class="nav-icon" aria-hidden="true">△</span>Recovery</button>
+        <button data-nav="Validation"><span class="nav-icon" aria-hidden="true">☑</span>Validation</button>
+        <button data-nav="Schedule"><span class="nav-icon" aria-hidden="true">◷</span>Schedule</button>
+        <button data-nav="About"><span class="nav-icon" aria-hidden="true">ⓘ</span>About</button>
+      </nav>
+      <div class="aside-foot">Bureau of<br><strong>Tactics &amp; Strategy</strong><br><br>Design preview · not the installed app</div>
+    </aside>
+    <main id="main" tabindex="-1">
+      <header><div><p class="eyebrow">Your development workstation</p><h1>Are you ready to build?</h1><p class="platform">▱ &nbsp;Windows 11 · x64 <span class="muted">(demo)</span></p></div><button class="theme" id="theme">Use light theme</button></header>
+      <section class="status" id="status" aria-labelledby="status-heading"><div class="status-icon" id="status-icon" aria-hidden="true">▱</div><div><p class="eyebrow">Development environment</p><h2 id="status-heading"></h2><p id="status-copy"></p></div></section>
+      <section class="task" aria-labelledby="task-heading">
+        <p class="eyebrow">Your next step</p>
+        <div id="task-content"></div>
+        <div id="disclosures" class="disclosures">
+          <details id="other"><summary>Other actions</summary><div id="other-content"></div></details>
+          <details id="details"><summary>Details</summary><div id="detail-content"></div></details>
+        </div>
+      </section>
+      <details style="margin-top:20px"><summary>Development tools</summary><div id="tools"></div></details>
+      <p class="fine-print">Design preview only. No tools are installed, no files are read, and no real administrator approval is requested.</p>
+      <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
+    </main>
+  </div>
+  <dialog id="dialog" aria-labelledby="dialog-heading"><h2 id="dialog-heading"></h2><div id="dialog-copy"></div><div class="actions" id="dialog-actions"></div></dialog>
+  <script>
+    'use strict';
+    const $ = id => document.getElementById(id);
+    let state='setup', workspace='setup', returnState='setup', action=null, timers=[], feedback='', acknowledged=false;
+    const blocked = () => ['unknown','active','untrusted','incident','incident-review'].includes(state);
+    const busy = () => ['checking','working','verifying'].includes(state);
+    const messages={
+      setup:['Setup needed','Some development tools still need to be installed.','Set up this computer','SDE will show you what is needed before making changes.','Review setup','review-install','warning'],
+      unchecked:['Not checked yet','SDE needs a complete check before recommending a change.','Let’s check your setup','This checks your tools and configuration. It does not install or update anything.','Check my setup','check','neutral'],
+      ready:['Ready!','Your required tools and configuration passed the latest check.','Start building','Your setup is ready. Open your editor and get to work.','Open VSCodium','editor','success'],
+      updates:['Ready!','Your required tools and configuration passed the latest check.','Start building','Your setup works. Optional tool updates can wait until you’re ready.','Open VSCodium','editor','success'],
+      repair:['Setup needs a fix','Python needs attention. Your other tools passed their checks.','Fix your setup','Review what SDE can restore before starting a repair.','Review fixes','review-repair','warning'],
+      'check-failed':['Check not finished','SDE couldn’t complete the check. This does not mean your setup is broken.','Try checking again','Your partial results are still available in Details. No changes have started.','Check again','check','neutral'],
+      unknown:['Changes are paused','SDE couldn’t tell whether an earlier setup is still running.','Check whether setup has finished','Save your work. Use Start → Power → Restart, reopen SDE, then check again. Don’t force an installer to close.','Check again','recheck','warning'],
+      active:['Changes are paused','A setup or update is still running.','Let setup finish','Wait for the current operation to finish, then check again. Don’t restart or force an installer to close.','Check again','recheck','warning'],
+      untrusted:['Safety check unavailable','SDE couldn’t read or verify its safety records.','Check again before making changes','You can still review diagnostic information or prepare a support report. Restarting is not a guaranteed fix.','Check again','recheck','warning'],
+      incident:['Review an interruption','An earlier operation stopped before SDE could confirm its result.','Review what happened','SDE has kept the original record. Review the finding before deciding what to do next.','Review interruption','review-incident','warning']
+    };
+    function stopTimers(){timers.forEach(clearTimeout);timers=[];}
+    function later(fn,ms){timers.push(setTimeout(fn,ms));}
+    function announce(text){$('announcement').textContent=text;}
+    function choose(){stopTimers();state=$('scenario').value;workspace=['ready','updates','unknown','active','untrusted','incident'].includes(state)?'ready':state==='repair'?'repair':'setup';action=null;feedback='';acknowledged=false;render();}
+    function button(label,id,primary=false){return '<button '+(primary?'class="primary" ':'')+'data-action="'+id+'">'+label+'</button>';}
+    function showModal(title,copy,approve){$('dialog-heading').textContent=title;$('dialog-copy').innerHTML=copy;$('dialog-actions').innerHTML=approve?button('Approve demo','approve',true)+button('Cancel','close'):button('Close','close');$('dialog').showModal();}
+    function render(focus=false){
+      document.body.dataset.state=state;
+      let m=messages[state];
+      if(state.startsWith('review-')){const op=state.slice(7);m=[op==='install'?'Setup needed':op==='repair'?'Setup needs a fix':'Ready!','No changes have started.','', '', '', '',op==='update'?'success':'warning'];}
+      if(state==='checking')m=['Checking your setup…','Reading tools and configuration. No changes are being made.','','','','','neutral'];
+      if(state==='working'||state==='verifying')m=['Setup in progress','This demonstration is not changing your computer.','','','','','neutral'];
+      if(state==='incident-review')m=['Review an interruption','Changes remain paused while this finding is unresolved.','','','','','warning'];
+      $('status-heading').textContent=m[0];$('status-copy').textContent=m[1];$('status').dataset.tone=m[6];$('status-icon').textContent=m[6]==='success'?'✓':m[6]==='warning'?'△':'▱';
+      let html='';
+      if(state.startsWith('review-')){
+        const op=state.slice(7); action=op;
+        const title=op==='install'?'Review your setup':op==='repair'?'Review your fixes':'Review tool updates';
+        const items=op==='install'?['Install development tools that are missing.','Apply standard editor and workspace configuration.','Set up weekly maintenance.']:op==='repair'?['Restore missing tools and standard configuration.','Preserve projects and existing editor settings.','Check the environment after repair.']:['Update the selected Skyview-managed tools.','Keep Node on 24.x and Python on 3.14.x.','Leave the SDE application update separate.'];
+        html='<p class="step-label">Review → '+(op==='update'?'Update':op==='repair'?'Repair':'Install')+' → Check</p><h2 id="task-heading" tabindex="-1">'+title+'</h2><p class="lead">'+(op==='repair'?'Python is missing from this simulated setup. Review the full repair scope below.':op==='update'?'These are sample available updates, not findings from your computer.':'Some tools are already present. SDE’s normal setup may reapply more than just the missing items.')+'</p><div class="review"><h3>What SDE will do</h3><ul>'+items.map(x=>'<li>'+x+'</li>').join('')+'</ul><p>No change starts until you continue and approve the operating-system prompt.</p></div><div class="actions">'+button(op==='install'?'Install development tools':op==='repair'?'Repair setup':'Update tools','request-approval',true)+button('Back','back')+'</div><p class="hint">Administrator approval is simulated in this prototype.</p>';
+      }else if(state==='checking'){
+        html='<h2 id="task-heading" tabindex="-1">Finding your next step</h2><p class="lead">Checking your tools and configuration…</p><div class="progress-area"><label for="progress">Read-only check</label><progress id="progress"></progress></div><p class="hint">This demo will show the result in a moment.</p>';
+      }else if(state==='working'||state==='verifying'){
+        const verifying=state==='verifying';html='<p class="step-label">Review ✓ → '+(action==='repair'?'Repair':action==='update'?'Update':'Install')+(verifying?' ✓':'')+' → Check</p><h2 id="task-heading" tabindex="-1">'+(verifying?'Checking the result…':action==='repair'?'Repairing your setup…':action==='update'?'Updating development tools…':'Installing development tools…')+'</h2><p class="lead">'+(verifying?'SDE checks the result before marking the environment ready.':'Keep this window open while SDE works. Detailed output stays out of the way.')+'</p><div class="progress-area"><div class="progress-caption"><label for="progress">Simulated progress</label><span>'+(verifying?'85%':'45%')+'</span></div><progress id="progress" max="100" value="'+(verifying?'85':'45')+'"></progress></div><p class="hint">No installer is running. Use Reset scenario in the demo controls to start over.</p>';
+      }else if(state==='incident-review'){
+        html='<h2 id="task-heading" tabindex="-1">An earlier setup was interrupted</h2><p class="lead">SDE can keep your acknowledgment and automatically try to save a summary. This does not prove that the earlier operation finished or allow unsafe changes.</p><div class="review"><h3>What was detected</h3><p>This simulated machine incident has an unknown outcome. No private journal or real computer information was read.</p></div><div class="actions">'+button('Acknowledge interruption','acknowledge',true)+button('Back','back')+'</div><p class="hint">No separate report-save step. Original evidence stays protected.</p>';
+      }else{
+        html='<h2 id="task-heading" tabindex="-1">'+m[2]+'</h2><p class="lead">'+m[3]+'</p><div class="actions">'+button(m[4],m[5],true)+'</div>';
+        if(state==='updates')html+='<div class="context-link">Sample: 3 tool updates available.'+ '<button class="text-button" data-action="review-update">Review updates</button></div>';
+        if(acknowledged)html+='<div class="notice" role="status"><p>Acknowledgment recorded and summary saved automatically (demo). Changes remain paused until fresh safety checks permit them.</p></div>';
+        if(['unknown','active','untrusted'].includes(state))html+='<p class="hint">A check or restart does not acknowledge an interruption, repair packages or bypass safety checks.</p>';
+      }
+      if(feedback)html+='<div class="notice" role="status"><p>'+feedback+'</p></div>';
+      $('task-content').innerHTML=html;
+      $('other').hidden=busy();
+      const primaryId=m[5];
+      const opts=[['Check my setup','check'],['Install development tools','review-install'],['Repair setup','review-repair'],['Review tool updates','review-update'],['Open Development','workspace']].filter(x=>x[1]!==primaryId&&x[1]!==state);
+      $('other-content').innerHTML=(blocked()?'<p class="hint">Changes are paused. These controls do not bypass the current safety finding.</p>':'')+'<div class="other-actions">'+opts.map(([label,id])=>'<button data-action="'+id+'" '+(blocked()&&id!=='workspace'?'disabled':'')+'>'+label+'</button>').join('')+'</div>';
+      $('detail-content').innerHTML='<div class="detail-grid"><div><strong>Latest tool check</strong><p>'+(workspace==='ready'?'Required tools passed (sample).':workspace==='repair'?'Python needs attention (sample).':'Some tools have not been set up (sample).')+'</p></div><div><strong>Safety observations</strong><p>'+(blocked()?'Changes remain paused. See the specific finding above.':'No current blocker in this simulated scenario. Real operations always recheck.')+'</p></div><div><strong>Maintenance</strong><p>No history is loaded in this demo. This alone is not an installation failure.</p></div><div><strong>Package health</strong><p>Not fully verified. This alone does not establish an interruption or authorize a change.</p></div></div><div class="actions">'+button('View validation results','validation')+button('Open logs','logs')+button('Create support report','support')+'</div><p class="hint">All findings are sample data. No real logs, checks or package records are accessed.</p>';
+      $('tools').innerHTML=[['Git','Ready'],['Node.js','Ready'],['Python',workspace==='ready'?'Ready':'Needs setup'],['VSCodium','Ready']].map(([name,value])=>'<div class="check-row"><span>'+name+'</span><span class="muted">'+value+' · sample</span></div>').join('');
+      announce(m[0]);
+      if(focus)$('task-heading').focus();
+    }
+    function handle(id){
+      if(id==='close'){$('dialog').close();return;}
+      if(id==='approve'){$('dialog').close();stopTimers();state='working';feedback='';render(true);later(()=>{state='verifying';render();},2200);later(()=>{state='ready';workspace='ready';action=null;render();announce('Your setup passed the simulated check. Ready to build.');},4400);return;}
+      if(busy()&&!['logs','support','validation'].includes(id))return;
+      if(id.startsWith('review-')||id==='review-incident'){
+        if(blocked()&&id!=='review-incident')return;
+        returnState=state;state=id==='review-incident'?'incident-review':id;feedback='';render(true);return;
+      }
+      if(id==='back'){state=returnState;action=null;feedback='';render(true);return;}
+      if(id==='request-approval'){showModal('Administrator approval — demo','<p>The real application would request operating-system approval before making this change.</p><p><strong>This dialog cannot grant real permission or run an installer.</strong></p>',true);return;}
+      if(id==='check'){
+        if(blocked())return;stopTimers();state='checking';feedback='';render(true);later(()=>{state=workspace==='ready'?'ready':workspace==='repair'?'repair':'setup';render();},1500);return;
+      }
+      if(id==='recheck'){feedback='Demo recheck complete. The simulated finding is unchanged. Use the scenario selector to explore a different result.';render();return;}
+      if(id==='acknowledge'){acknowledged=true;state='unknown';feedback='';render(true);return;}
+      const content={editor:['Open VSCodium','<p>In SDE, this opens your installed editor. Nothing is launched by this prototype.</p>'],workspace:['Open Development','<p>In SDE, this opens your workspace folder. This demo cannot browse or change your files.</p>'],support:['Support report — demo','<p>The real application lets you review collected information before choosing whether to share it.</p><p>This prototype collects nothing, creates no file and sends no report.</p>'],logs:['Operation details — demo','<p>In the application, logs show the actual operation output. No real log was read here.</p>'],validation:['Validation results — demo','<p>The detailed Validation page remains available in SDE. Here, the sample tool list and Details disclosure illustrate the same information hierarchy.</p>']};
+      if(content[id])showModal(content[id][0],content[id][1]);
+    }
+    document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b&&!b.disabled)handle(b.dataset.action);});
+    $('dialog').addEventListener('close',()=>{if(state.startsWith('review-'))$('task-heading').focus();});
+    $('scenario').addEventListener('change',choose);$('reset').addEventListener('click',choose);
+    $('theme').addEventListener('click',()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'light':'dark';$('theme').textContent=dark?'Use dark theme':'Use light theme';});
+    document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{const name=b.dataset.nav;if(name==='Overview'){$('main').focus();return;}if(name==='Validation'){handle('validation');return;}const copy=name==='Recovery'?(blocked()?'<p>The application opens the current interruption and its diagnostic details here. The current safety finding remains enforced.</p>':'<p><strong>There is nothing to recover from right now.</strong></p><p>Technical details and retained history remain available in SDE. This prototype does not include those secondary screens.</p>'):name==='Schedule'?'<p>Scheduling and maintenance history stay on their existing page. This prototype focuses on the Overview workflow.</p>':'<p>Standalone Overview design prototype. All checks, permissions and progress are simulated. No SDE or device integration is included.</p>';showModal(name+' — preview',copy);}));
+    choose();
+  </script>
+</body>
+</html>
