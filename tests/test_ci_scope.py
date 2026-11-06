@@ -36,21 +36,22 @@ class CiScope(unittest.TestCase):
                 with patch.dict(os.environ, {"CI_EVENT_NAME": event, "GITHUB_OUTPUT": str(output)}, clear=True), patch.object(ci_scope, "git") as git:
                     ci_scope.main()
                 git.assert_not_called()
-                self.assertEqual(output.read_text(), "application_required=true\n")
+                self.assertEqual(output.read_text(), "application_required=true\nnative_required=true\n")
 
     def test_pr_checks_mergebase_without_filename_truncation(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output"
             with patch.dict(os.environ, {"CI_EVENT_NAME": "pull_request", "CI_BASE_SHA": "base", "CI_HEAD_SHA": "head", "GITHUB_OUTPUT": str(output)}), patch.object(ci_scope, "git", side_effect=[b"ancestor\n", b"tests/native_uat_fixtures.py\0"]) as git:
                 ci_scope.main()
-            self.assertEqual(output.read_text(), "application_required=false\n")
+            self.assertEqual(output.read_text(), "application_required=false\nnative_required=false\n")
             self.assertEqual(git.call_args_list[1].args, ("diff", "--no-renames", "--name-only", "-z", "ancestor", "head"))
 
     def test_main_push_skips_only_exact_infrastructure_changes(self):
         import json
         import subprocess
         from ci_scope import MINT_INFRA_PATHS
-        for paths, expected in [(sorted(MINT_INFRA_PATHS), False),
+        for paths, expected in [(sorted(MINT_INFRA_PATHS - ci_scope.POLICY_PATHS), False),
+                                (sorted(ci_scope.POLICY_PATHS), True),
                                 (['installer/src/App.tsx'], True),
                                 (['tests/test_mint_host_inventory.py', 'updater/src/main.rs'], True),
                                 (['tests/native_uat_fixtures.py'], True),
@@ -65,7 +66,7 @@ class CiScope(unittest.TestCase):
                 with patch.dict(os.environ, env), patch.object(ci_scope, 'git', return_value=raw) as git:
                     ci_scope.main()
                 git.assert_called_once_with('diff', '--no-renames', '--name-only', '-z', 'a'*40, 'b'*40)
-                self.assertEqual(output.read_text(), f'application_required={str(expected).lower()}\n')
+                self.assertEqual(output.read_text(), f'application_required={str(expected).lower()}\nnative_required={str(expected).lower()}\n')
 
     def test_main_push_invalid_payload_refs_and_diff_fail_closed(self):
         import json
@@ -117,6 +118,72 @@ class CiScope(unittest.TestCase):
                 else:
                     after["jobs"]["checks"]["needs"] = ["scope", "other"]
                 self.assertTrue(application_required([WORKFLOW], before, after))
+
+
+class PresentationScope(unittest.TestCase):
+    def test_every_explicit_presentation_path_is_pr_only(self):
+        for path in ci_scope.PRESENTATION_PATHS:
+            with self.subTest(path=path):
+                self.assertFalse(ci_scope.native_required([path], 'pull_request'))
+                for event in ('push', 'workflow_dispatch', 'merge_group', 'unknown', None):
+                    self.assertTrue(ci_scope.native_required([path], event))
+
+    def test_unknown_mixed_native_dependencies_and_policy_changes_fail_closed(self):
+        for path in ('installer/src/bridge.ts', 'installer/src/recovery.ts',
+                     'installer/src/updateDiscovery.ts', 'installer/src/safeOperations.ts',
+                     'installer/src/newUnknown.ts', 'installer/src-tauri/src/main.rs',
+                     'installer/package-lock.json', 'installer/package.json',
+                     'installer/playwright.config.ts', 'tests/ci_scope.py',
+                     'tests/test_ci_scope.py', WORKFLOW, 'updater/src/main.rs',
+                     'coordination/src/safety.rs', 'linux/lib/schedule.py',
+                     'windows/Install-SkyviewStudentDev.ps1', '../installer/src/App.tsx'):
+            with self.subTest(path=path):
+                self.assertTrue(ci_scope.native_required(['installer/src/App.tsx', path], 'pull_request'))
+        self.assertTrue(ci_scope.native_required([], 'pull_request'))
+        for path in ci_scope.POLICY_PATHS:
+            self.assertTrue(application_required([path]))
+
+    def test_removed_and_renamed_unknown_paths_require_native_checks(self):
+        self.assertTrue(ci_scope.native_required(['old-name.ts', 'installer/src/App.tsx'], 'pull_request'))
+
+    def test_real_presentation_pr_emits_checks_true_native_false(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'output'
+            with patch.dict(os.environ, {'CI_EVENT_NAME': 'pull_request', 'CI_BASE_SHA': 'base',
+                                         'CI_HEAD_SHA': 'head', 'GITHUB_OUTPUT': str(output)}), \
+                 patch.object(ci_scope, 'git', side_effect=[b'ancestor\n', b'installer/src/App.tsx\0']):
+                ci_scope.main()
+            self.assertEqual(output.read_text(), 'application_required=true\nnative_required=false\n')
+
+    def test_native_and_trust_wait_for_checks_without_changing_native_steps(self):
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        jobs = yaml.safe_load((root / WORKFLOW).read_text())['jobs']
+        for name in ('native', 'update-trust'):
+            self.assertEqual(jobs[name]['needs'], ['scope', 'checks'])
+            self.assertEqual(jobs[name]['if'], "needs.scope.outputs.native_required == 'true'")
+        self.assertEqual(jobs['acceptance']['if'], 'always()')
+        self.assertEqual(jobs['acceptance']['needs'], ['scope', 'checks', 'native', 'update-trust'])
+
+    def test_acceptance_fails_for_required_missing_failed_cancelled_jobs_or_scope(self):
+        import subprocess
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        script = yaml.safe_load((root / WORKFLOW).read_text())['jobs']['acceptance']['steps'][0]['run']
+        full = dict(SCOPE_RESULT='success', CHECKS_RESULT='success', NATIVE_RESULT='success',
+                    TRUST_RESULT='success', APPLICATION_REQUIRED='true', NATIVE_REQUIRED='true')
+        presentation = dict(full, NATIVE_REQUIRED='false', NATIVE_RESULT='skipped', TRUST_RESULT='skipped')
+        fixture = dict(presentation, APPLICATION_REQUIRED='false', CHECKS_RESULT='skipped')
+        for env in (full, presentation, fixture):
+            self.assertEqual(subprocess.run(['bash', '-e', '-c', script], env=dict(os.environ, **env), capture_output=True).returncode, 0)
+        for key in ('SCOPE_RESULT', 'CHECKS_RESULT', 'NATIVE_RESULT', 'TRUST_RESULT'):
+            for value in ('failure', 'cancelled', 'skipped', ''):
+                env = dict(full, **{key: value})
+                with self.subTest(key=key, value=value):
+                    self.assertNotEqual(subprocess.run(['bash', '-e', '-c', script], env=dict(os.environ, **env), capture_output=True).returncode, 0)
+        for key in ('APPLICATION_REQUIRED', 'NATIVE_REQUIRED'):
+            env = dict(full, **{key: ''})
+            self.assertNotEqual(subprocess.run(['bash', '-e', '-c', script], env=dict(os.environ, **env), capture_output=True).returncode, 0)
 
 
 class RecoveryFeasibilityWorkflow(unittest.TestCase):

@@ -1,4 +1,4 @@
-"""Fail closed to normal application CI unless a PR changes only fixture support."""
+"""Classify bounded PR validation; unknown changes retain full native CI."""
 import copy
 import json
 import os
@@ -39,17 +39,15 @@ MINT_INFRA_PATHS = {
 
 
     'docs/MINT-HOST-INVENTORY.md',
-    'tests/ci_scope.py',
-    'tests/test_ci_scope.py',
 }
+POLICY_PATHS = {"tests/ci_scope.py", "tests/test_ci_scope.py"}
+MINT_INFRA_PATHS |= POLICY_PATHS
 FIXTURE_PATHS = {
     ".github/workflows/native-uat-fixtures.yml",
     "tests/native_uat_fixtures.py",
     "tests/test_native_uat_fixtures.py",
     "tests/verify_native_uat_cli.py",
     "tests/run_native_uat_tests.py",
-    "tests/ci_scope.py",
-    "tests/test_ci_scope.py",
     "docs/UI-MILESTONE-UAT.md",
     "docs/UI-NATIVE-UAT-FIXTURES.md",
     "docs/UI-NATIVE-UAT-EVIDENCE.md",
@@ -71,6 +69,8 @@ def unchanged_application_workflow(before, after):
 
 
 def application_required(paths, before=None, after=None):
+    if set(paths) & POLICY_PATHS:
+        return True
     if not paths:
         return True
     if any(path not in FIXTURE_PATHS | MINT_INFRA_PATHS | {WORKFLOW} for path in paths):
@@ -84,6 +84,36 @@ def application_required(paths, before=None, after=None):
         except (KeyError, TypeError, AttributeError):
             return True
     return False
+
+
+# Deliberately explicit: new files need a reviewed classification. Native bridge,
+# recovery/consent APIs, dependencies, packaging and workflows are not included.
+PRESENTATION_PATHS = {
+    "installer/src/App.tsx", "installer/src/model.ts", "installer/src/style.css",
+    "installer/src/main.tsx", "installer/src/overviewDecision.ts",
+    "installer/src/validationGuidance.ts", "installer/src/ValidationCheck.tsx",
+    "installer/src/PreflightReview.tsx", "installer/src/UpdateCenter.tsx",
+    "installer/src/RecoveryPage.tsx", "installer/src/DetailsPages.tsx",
+    "installer/src/AppearanceControls.tsx", "installer/src/ThemeControl.tsx",
+    "installer/src/ZoomControl.tsx", "installer/src/SupportReportDialog.tsx",
+    "installer/src/RecoveryReportHistory.tsx", "installer/src/RecoveryIncidentHistory.tsx",
+    "docs/OVERVIEW-NEXT-STEP-DESIGN.md", "docs/OVERVIEW-NEXT-STEP-HANDOFF.md",
+    "docs/OVERVIEW-NEXT-STEP-UAT-DRAFT.md", "docs/OVERVIEW-OBSERVATION-MAPPING.md",
+    "docs/overview-next-step-demo/README.md", "docs/overview-next-step-demo/index.html",
+    "docs/overview-next-step-demo/verify.cjs",
+}
+PRESENTATION_PATHS |= {
+    p.removesuffix(".tsx") + ".test.tsx" if p.endswith(".tsx")
+    else p.removesuffix(".ts") + ".test.ts"
+    for p in tuple(PRESENTATION_PATHS) if p.endswith((".ts", ".tsx"))
+}
+
+
+def native_required(paths, event):
+    # This exception is PR-only. Main, release, manual and unknown events retain
+    # their full application gate; fixture-only behavior is separately unchanged.
+    return not (event == "pull_request" and bool(paths)
+                and all(path in PRESENTATION_PATHS for path in paths))
 
 
 def git(*args):
@@ -104,13 +134,15 @@ def infrastructure_only_push():
                        or v == '0'*40 for v in (before, after))):
             return False
         paths = git('diff', '--no-renames', '--name-only', '-z', before, after).decode().rstrip('\0').split('\0')
-        return bool(paths) and all(p in MINT_INFRA_PATHS for p in paths)
+        return bool(paths) and not (set(paths) & POLICY_PATHS) and all(p in MINT_INFRA_PATHS for p in paths)
     except (KeyError, OSError, ValueError, TypeError, subprocess.SubprocessError):
         return False
 
 
 def main():
     required = True
+    paths = []
+    event = os.environ.get("CI_EVENT_NAME")
     if os.environ.get("CI_EVENT_NAME") == "pull_request":
         base = os.environ["CI_BASE_SHA"]
         head = os.environ["CI_HEAD_SHA"]
@@ -124,10 +156,12 @@ def main():
         required = application_required(paths, before, after)
     elif os.environ.get('CI_EVENT_NAME') == 'push':
         required = not infrastructure_only_push()
+    native = required and native_required(paths, event)
     value = str(required).lower()
-    print(f"Application CI required: {value}")
+    print(f"Application CI required: {value}; native CI required: {str(native).lower()}")
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
         output.write(f"application_required={value}\n")
+        output.write(f"native_required={str(native).lower()}\n")
 
 
 if __name__ == "__main__":

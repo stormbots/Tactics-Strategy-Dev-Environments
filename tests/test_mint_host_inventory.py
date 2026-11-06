@@ -3,7 +3,7 @@ import ast
 from pathlib import Path
 import unittest
 import yaml
-from ci_scope import APPLICATION_JOBS, GATE, MINT_INFRA_PATHS, application_required
+from ci_scope import APPLICATION_JOBS, GATE, MINT_INFRA_PATHS, POLICY_PATHS, application_required
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -71,7 +71,7 @@ class InventoryPolicy(unittest.TestCase):
             self.assertNotIn('secrets.', str(step))
             self.assertNotIn('workflow run', str(step))
         for path in MINT_INFRA_PATHS:
-            self.assertFalse(application_required([path]))
+            self.assertEqual(application_required([path]), path in POLICY_PATHS)
             self.assertTrue(application_required([path, 'installer/src/App.tsx']))
 
     def test_preparation_checks_are_automatic_mocked_only(self):
@@ -108,10 +108,10 @@ class InventoryPolicy(unittest.TestCase):
     def test_actual_installer_jobs_require_positive_scope_result(self):
         w = load('build-dev-setup.yml')
         for name in APPLICATION_JOBS:
-            self.assertEqual(w['jobs'][name]['needs'], 'scope')
-            self.assertEqual(w['jobs'][name]['if'], GATE)
-        self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'release'})
-        self.assertEqual(set(w['jobs']['release']['needs']), set(APPLICATION_JOBS))
+            self.assertEqual(w['jobs'][name]['needs'], 'scope' if name == 'checks' else ['scope', 'checks'])
+            self.assertEqual(w['jobs'][name]['if'], GATE if name == 'checks' else "needs.scope.outputs.native_required == 'true'")
+        self.assertEqual(set(w['jobs']), {'scope', *APPLICATION_JOBS, 'acceptance', 'release'})
+        self.assertEqual(set(w['jobs']['release']['needs']), set(APPLICATION_JOBS) | {'acceptance'})
         self.assertNotIn('always()', w['jobs']['release']['if'])
         scope = w['jobs']['scope']
         self.assertEqual(scope['outputs']['application_required'],
