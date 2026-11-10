@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import { chooseTheme, chooseZoom, closeAppearance } from "./appearance-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
@@ -36,7 +37,10 @@ for (const theme of ["Light", "Dark"])
       await page.setViewportSize({ width, height: 820 });
       await page.goto("/");
       await expect(
-        page.getByRole("heading", { name: "Partially installed", exact: true }),
+        page.getByRole("heading", {
+          name: "Setup needs attention",
+          exact: true,
+        }),
       ).toBeVisible();
       await chooseTheme(page, theme);
       if (width === 640) await chooseZoom(page, 4);
@@ -82,7 +86,7 @@ for (const theme of ["Light", "Dark"])
         .click();
       await expect(
         page.getByRole("button", {
-          name: "Update Development Tools",
+          name: "Continue with Update",
           exact: true,
         }),
       ).toBeVisible();
@@ -90,17 +94,15 @@ for (const theme of ["Light", "Dark"])
       await page.getByRole("button", { name: /^Validation/ }).click();
       await row.getByRole("button", { name: /Review Repair/ }).click();
       await expect(
-        page.getByRole("button", { name: "Repair", exact: true }),
-      ).toHaveAttribute("aria-pressed", "true");
-      await expect(page.getByRole("status")).toContainText("full workflow");
-      await expect(page.getByRole("progressbar")).toHaveCount(0);
-      await page
-        .getByRole("button", { name: "Repair Development Environment" })
-        .click();
-      await expect(page.getByRole("progressbar")).toBeVisible();
+        page.getByRole("heading", { name: "Review your fixes" }),
+      ).toBeFocused();
       await expect(
-        page.getByRole("heading", { name: "Development environment ready." }),
+        page.getByText(/Repair runs the full workflow/),
       ).toBeVisible();
+      await expect(page.getByRole("progressbar")).toHaveCount(0);
+      await page.getByRole("button", { name: "Repair setup" }).click();
+      await expect(page.getByRole("progressbar")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ready!" })).toBeVisible();
       await audit(page);
     });
   }

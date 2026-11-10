@@ -56,7 +56,9 @@ const previewTools = [
 const metadata = previewTools.map(
   (t) => `SKYVIEW_EVENT|tool|${t.tool}|${JSON.stringify(t)}`,
 );
+// Synthetic browser fixture only; native times come from the validator.
 const previewReport: Report = {
+  validation_collected_at: Math.floor(Date.now() / 1000),
   code: 1,
   success: false,
   lines: [...sample, ...metadata],
@@ -126,6 +128,7 @@ export async function operate(
   });
   return {
     ...previewReport,
+    validation_collected_at: Math.floor(Date.now() / 1000),
     lines,
     code: mode === "validate" ? 1 : 0,
     success: mode !== "validate",

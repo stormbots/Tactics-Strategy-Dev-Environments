@@ -61,13 +61,14 @@ For #148/#149:
   validator contract plus caller request/epoch identity; arbitrary fabricated
   rows are not a completeness oracle. A future manifest would require a separately
   specified read-only backend change, not a guessed count here.
-- Browser preview Reports currently omit collection timestamps. They must remain
-  incomplete under this model until #148 supplies explicitly synthetic timestamped
-  fixtures; do not weaken real readiness for the demo. The offline prototype is
-  unchanged and is not an acceptance oracle.
-- These helpers are not yet connected to App's async requests or controls. #148
-  and #149 must test actual dispatch, focus, duplicate clicks, changed evidence,
-  reopen and navigation. Native races/admission remain #150 evidence obligations.
+- #148 supplies explicitly synthetic collection times in the browser preview
+  Reports. Native collection semantics are unchanged. The offline prototype
+  remains unchanged and is not an acceptance oracle.
+- #148 connects the shared presentation decision to retained Reports and existing
+  observations in App. Validation and safety queries use request/operation-context
+  guards; focused action IDs are held until blur or explicit re-review. Generic
+  helper contracts above remain guidance for #149's fuller lifecycle/review binding.
+  Native races/admission and integrated reopen remain #149/#150 evidence obligations.
 - No new backend observations are needed for this bounded decision module.
 
 ## Acceptance and evidence ownership
@@ -76,8 +77,9 @@ Decision tests cover WF01–WF02, WF06–WF07, WF09–WF10, WF14–WF17, WF20–
 WF27 at the synthetic decision layer only. In particular: missing/failed/stale
 checks, current required verification, combined blockers, safe unknown health,
 unsupported guidance, exact optional-update copy, late responses and changed
-review bindings. All WF01–WF31 integrated/native/owner execution results remain
-Not run for this milestone; these tests do not satisfy them by themselves.
+review bindings. Production-component browser evidence added in #148 is recorded separately in
+OVERVIEW-GUIDED-UI.md. Complete WF01–WF31 integrated/native/owner acceptance
+remains #150/#151; these decision tests do not satisfy it by themselves.
 
 Keep every existing Build/native/trust/Windows SYSTEM/Mint 22.3 upgrade gate.
 Human signing approval, authenticated candidate owner UAT and separately
