@@ -71,6 +71,7 @@ import {
   type MaintenanceHealth,
   type MaintenanceObservation,
   type OperationIncident,
+  type OperationKind,
 } from "./safeOperations";
 import {
   overviewDecision,
@@ -78,6 +79,13 @@ import {
   type OverviewInput,
   type OverviewDecision,
 } from "./overviewDecision";
+import {
+  operationResult,
+  reviewFingerprint,
+  checkingResult,
+  type OperationOutcome,
+  type ReviewContext,
+} from "./operationLifecycle";
 const modes: Record<
   Mode,
   { name: string; button: string; description: string; icon: typeof Download }
@@ -190,6 +198,11 @@ export default function App() {
   const [focusedPrimary, setFocusedPrimary] =
     useState<OverviewDecision["primary"]>(null);
   const [observedReport, setObservedReport] = useState<Report | null>(null);
+  const [outcome, setOutcome] = useState<OperationOutcome | null>(null);
+  const reviewed = useRef<{ mode: OperationKind; fingerprint: string } | null>(
+    null,
+  );
+  const [reviewGeneration, setReviewGeneration] = useState(0);
   const validationRequest = useRef(0);
   const recoveryRequest = useRef(0);
   const maintenanceRequest = useRef(0);
@@ -198,6 +211,11 @@ export default function App() {
   const [page, setPage] = useState<
     "overview" | "validation" | "recovery" | "schedule" | "about"
   >("overview");
+  const navigationVersion = useRef(0);
+  function navigate(next: typeof page) {
+    navigationVersion.current++;
+    setPage(next);
+  }
   const [checkUpdates, setCheckUpdates] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [installPreflightOpen, setInstallPreflightOpen] = useState(false);
@@ -225,6 +243,7 @@ export default function App() {
     : null;
   const [reportOpen, setReportOpen] = useState(false);
   const runId = useRef("");
+  const acceptingLines = useRef(false);
   const started = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const progressHeading = useRef<HTMLHeadingElement>(null);
@@ -237,7 +256,7 @@ export default function App() {
   const discovery = useUpdateDiscovery(
     s.tools,
     generation,
-    !busy && s.stage !== "checking",
+    s.stage !== "running" && s.stage !== "checking",
   );
   const displayTools =
     discovery.preview?.tools ??
@@ -292,17 +311,54 @@ export default function App() {
     },
     task,
   };
+  const latestReviewContext = useRef<ReviewContext>({
+    validationRequest: 0,
+    checkUpdates: false,
+    platformSupported: false,
+    tools: [],
+    recovery: null,
+  });
+  latestReviewContext.current = {
+    validationRequest: validationRequest.current,
+    checkUpdates,
+    platformSupported: s.platform.supported,
+    tools: displayTools,
+    recovery,
+  };
+  const result = operationResult(outcome);
   const decision = overviewDecision(overviewInput);
   const recommendation = overviewDecision({ ...overviewInput, task: null });
-  const status = recommendation.headline;
+  const resultSafetyAction =
+    result &&
+    [
+      "active",
+      "unknown",
+      "untrusted",
+      "incident",
+      "native-incomplete",
+    ].includes(recommendation.state)
+      ? recommendation.primary
+      : null;
+  const status = resultSafetyAction
+    ? recommendation.headline
+    : result
+      ? result.kind === "not-started"
+        ? "Operation not started"
+        : "Result needs review"
+      : recommendation.headline;
   const displayedPrimary = focusedPrimary ?? decision.primary;
-  const tone = ["ready", "updates"].includes(recommendation.state)
-    ? "green"
-    : ["checking", "unchecked", "check-incomplete", "untrusted"].includes(
-          recommendation.state,
-        )
-      ? "neutral"
-      : "yellow";
+  const tone =
+    result && !resultSafetyAction
+      ? result.kind === "not-started"
+        ? "neutral"
+        : "yellow"
+      : ["ready", "updates"].includes(recommendation.state)
+        ? "green"
+        : ["checking", "unchecked", "check-incomplete", "untrusted"].includes(
+              recommendation.state,
+            )
+          ? "neutral"
+          : "yellow";
   async function refreshMaintenance() {
     const id = ++maintenanceRequest.current;
     setMaintenanceLoading(true);
@@ -395,7 +451,7 @@ export default function App() {
     const cleanups: Array<() => void> = [];
     const add = (f: () => void) => (disposed ? f() : cleanups.push(f));
     listen<{ runId: string; line: string }>("skyview-line", ({ payload }) => {
-      if (payload.runId === runId.current)
+      if (acceptingLines.current && payload.runId === runId.current)
         dispatch({ type: "line", line: payload.line });
     }).then(add);
     listen("skyview-close-blocked", () =>
@@ -413,6 +469,20 @@ export default function App() {
     if (s.stage === "success" || s.stage === "failure")
       resultHeading.current?.focus();
   }, [s.stage]);
+  function openReview(mode: OperationKind, safety: RecoveryState | null) {
+    reviewed.current = {
+      mode,
+      fingerprint: reviewFingerprint(mode, {
+        ...latestReviewContext.current,
+        recovery: safety,
+      }),
+    };
+    setReviewGeneration((value) => value + 1);
+    setInstallPreflightOpen(mode === "install");
+    setPreviewOpen(mode === "update");
+    setReviewRepair(mode === "repair");
+    setPage("overview");
+  }
   async function start(
     selected: Mode,
     confirmed = false,
@@ -420,10 +490,24 @@ export default function App() {
   ) {
     if (busy || actionInFlight.current) return;
     actionInFlight.current = true;
+    const navigation = navigationVersion.current;
     setFocusedPrimary(null);
     try {
       const fresh = await refreshRecovery();
+      if (!mounted.current) return;
+      if (navigation !== navigationVersion.current) {
+        reviewed.current = null;
+        setInstallPreflightOpen(false);
+        setPreviewOpen(false);
+        setReviewRepair(false);
+        setPendingOperation(null);
+        setNotice(
+          "The pending request was not submitted. Review again when you are ready; no operation was started from this request.",
+        );
+        return;
+      }
       if (selected !== "validate" && recoveryNeedsAttention(fresh)) {
+        reviewed.current = null;
         setPendingOperation(selected);
         setPreviewOpen(false);
         setInstallPreflightOpen(false);
@@ -437,16 +521,30 @@ export default function App() {
         setNotice("Wait for the active operation to finish, then Check Again.");
         return;
       }
-      if (selected === "install" && !confirmed) {
-        setInstallPreflightOpen(true);
-        setPage("overview");
-        return;
+      if (selected !== "validate") {
+        if (
+          !confirmed ||
+          !reviewed.current ||
+          reviewed.current.mode !== selected
+        ) {
+          openReview(selected, fresh);
+          return;
+        }
+        const current = reviewFingerprint(selected, {
+          ...latestReviewContext.current,
+          recovery: fresh,
+        });
+        if (reviewed.current.fingerprint !== current) {
+          openReview(selected, fresh);
+          setNotice(
+            "The reviewed findings or scope changed. Review the current details and confirm again; no operation has started.",
+          );
+          return;
+        }
       }
-      if (selected === "update" && !confirmed) {
-        setPreviewOpen(true);
-        setPage("overview");
-        return;
-      }
+      const before = [...s.checks];
+      reviewed.current = null;
+      setOutcome(null);
       setPreviewOpen(false);
       setInstallPreflightOpen(false);
       setReviewRepair(false);
@@ -458,6 +556,7 @@ export default function App() {
       setNotice("");
       setPage("overview");
       runId.current = crypto.randomUUID();
+      acceptingLines.current = true;
       dispatch({ type: "start", mode: selected });
       try {
         const report = await operate(
@@ -465,10 +564,29 @@ export default function App() {
           runId.current,
           checkUpdates,
           acknowledgedUncertainty,
-          (line) => dispatch({ type: "line", line }),
+          (line) => {
+            if (
+              mounted.current &&
+              acceptingLines.current &&
+              request === validationRequest.current
+            )
+              dispatch({ type: "line", line });
+          },
         );
         if (!mounted.current || request !== validationRequest.current) return;
+        acceptingLines.current = false;
         setObservedReport(report);
+        if (selected !== "validate")
+          setOutcome({
+            mode: selected,
+            report,
+            error:
+              report.lines
+                .map(parseEvent)
+                .filter((event) => event?.kind === "error")
+                .at(-1)?.message ?? "",
+            before,
+          });
         dispatch({ type: "complete", report });
         if (
           selected === "validate" &&
@@ -480,12 +598,23 @@ export default function App() {
         }
         const observation = await refreshRecovery();
         if (selected !== "validate" && recoveryNeedsAttention(observation))
-          setPage("recovery");
+          setNotice(
+            "Current safety findings require review before another change. Original evidence remains available in Recovery.",
+          );
         void refreshMaintenance();
       } catch (e) {
         if (!mounted.current || request !== validationRequest.current) return;
+        acceptingLines.current = false;
         setObservedReport(null);
+        if (selected !== "validate")
+          setOutcome({
+            mode: selected,
+            report: null,
+            error: String(e),
+            before,
+          });
         dispatch({ type: "error", message: String(e) });
+        await refreshRecovery();
       }
     } finally {
       actionInFlight.current = false;
@@ -496,6 +625,7 @@ export default function App() {
     actionInFlight.current = true;
     setRecoveryLoading(true);
     setRecoveryError("");
+    const navigation = navigationVersion.current;
     let resume = false;
     try {
       const validation = s.checks.length
@@ -513,6 +643,7 @@ export default function App() {
       ];
       for (const operation of operations) {
         const result = await operation();
+        if (!mounted.current) return;
         setAcknowledgmentOutcomes((previous) => [...previous, result]);
         if (
           result.intentStatus === "unconfirmed" ||
@@ -537,38 +668,22 @@ export default function App() {
       actionInFlight.current = false;
       setRecoveryLoading(false);
     }
+    if (navigation !== navigationVersion.current) {
+      setPendingOperation(null);
+      return;
+    }
     if (resume && !pendingOperation) {
       // Startup acknowledgment is not a request to change the workstation.
       // Saved-summary references and failures remain visible on Overview.
       setPage("overview");
     } else if (resume && pendingOperation) {
       // Re-enter ordinary review, never reuse a pre-acknowledgment confirmation.
-      if (pendingOperation === "repair") {
-        setReviewRepair(true);
-        setPage("overview");
-        setPendingOperation(null);
-      } else {
-        await start(pendingOperation);
-      }
+      await start(pendingOperation);
     }
   }
   function reviewOperation(operation: "repair" | "update") {
     if (busy || actionInFlight.current) return;
-    if (operation === "update") {
-      void start("update");
-      return;
-    }
-    if (recoveryNeedsAttention(recovery)) {
-      setPage("recovery");
-      setNotice("Review the Recovery findings before starting this change.");
-      return;
-    }
-    setFocusedPrimary(null);
-    setPreviewOpen(false);
-    setInstallPreflightOpen(false);
-    setReviewRepair(true);
-    setPage("overview");
-    setNotice("");
+    void start(operation);
   }
   async function openTarget(target: Destination) {
     try {
@@ -581,6 +696,8 @@ export default function App() {
     if (reviewRepair) document.getElementById("next-step-heading")?.focus();
   }, [reviewRepair]);
   function cancelReview() {
+    navigationVersion.current++;
+    reviewed.current = null;
     setFocusedPrimary(null);
     setInstallPreflightOpen(false);
     setPreviewOpen(false);
@@ -592,11 +709,11 @@ export default function App() {
   }
   function overviewAction(action: OverviewAction) {
     if (action === "review-interruption") {
-      setPage("recovery");
+      navigate("recovery");
       return;
     }
     if (action === "review-issue") {
-      setPage("validation");
+      navigate("validation");
       return;
     }
     if (action === "open-editor") {
@@ -647,7 +764,7 @@ export default function App() {
         <nav aria-label="Application">
           <button
             aria-current={page === "overview" ? "page" : undefined}
-            onClick={() => setPage("overview")}
+            onClick={() => navigate("overview")}
           >
             <LayoutDashboard size={18} />
             Overview
@@ -655,7 +772,7 @@ export default function App() {
           {
             <button
               aria-current={page === "recovery" ? "page" : undefined}
-              onClick={() => setPage("recovery")}
+              onClick={() => navigate("recovery")}
             >
               <TriangleAlert size={18} />
               Recovery
@@ -663,7 +780,7 @@ export default function App() {
           }
           <button
             aria-current={page === "validation" ? "page" : undefined}
-            onClick={() => setPage("validation")}
+            onClick={() => navigate("validation")}
           >
             <ClipboardCheck size={18} />
             Validation
@@ -675,14 +792,14 @@ export default function App() {
           </button>
           <button
             aria-current={page === "schedule" ? "page" : undefined}
-            onClick={() => setPage("schedule")}
+            onClick={() => navigate("schedule")}
           >
             <CalendarClock size={18} />
             Schedule
           </button>
           <button
             aria-current={page === "about" ? "page" : undefined}
-            onClick={() => setPage("about")}
+            onClick={() => navigate("about")}
           >
             <Info size={18} />
             About
@@ -736,7 +853,7 @@ export default function App() {
         {s.stage === "running" && page !== "overview" && (
           <p role="status">
             Setup in progress: {s.phase}{" "}
-            <button onClick={() => setPage("overview")}>
+            <button onClick={() => navigate("overview")}>
               Return to current task
             </button>
           </p>
@@ -752,7 +869,10 @@ export default function App() {
                 {result.acknowledgmentWarning}
               </p>
             ))}
-            <button className="text-button" onClick={() => setPage("recovery")}>
+            <button
+              className="text-button"
+              onClick={() => navigate("recovery")}
+            >
               Review Recovery
             </button>
           </div>
@@ -792,9 +912,7 @@ export default function App() {
                 <div>
                   <p>DEVELOPMENT ENVIRONMENT</p>
                   <h2>
-                    {s.stage === "running"
-                      ? "Setup in progress"
-                      : recommendation.headline}
+                    {s.stage === "running" ? "Setup in progress" : status}
                   </h2>
                 </div>
               </div>
@@ -818,7 +936,11 @@ export default function App() {
                       size={20}
                       aria-hidden="true"
                     />
-                    {s.mode === "validate" ? "Checking your setup…" : s.phase}
+                    {checkingResult(s.mode, s.phase)
+                      ? s.mode === "validate"
+                        ? "Checking your setup…"
+                        : "Checking the result…"
+                      : s.phase}
                   </h2>
                   <progress
                     value={s.progress || undefined}
@@ -851,6 +973,7 @@ export default function App() {
                       ))}
                   </ul>
                   <PreflightReview
+                    key={reviewGeneration}
                     operation="install"
                     platformSupported={s.platform.supported}
                     onContinue={(acknowledged) =>
@@ -861,6 +984,7 @@ export default function App() {
                 </>
               ) : previewOpen ? (
                 <ToolUpdatePreview
+                  key={reviewGeneration}
                   data={discovery}
                   snapshot={s.tools}
                   platformSupported={s.platform.supported}
@@ -892,7 +1016,7 @@ export default function App() {
                   <button
                     className="primary"
                     disabled={busy}
-                    onClick={() => void start("repair")}
+                    onClick={() => void start("repair", true)}
                   >
                     Repair setup
                   </button>
@@ -903,6 +1027,33 @@ export default function App() {
                     Your system will ask for administrator approval when needed.
                     Native safety checks still apply.
                   </p>
+                </>
+              ) : result ? (
+                <>
+                  <h2 id="next-step-heading" tabIndex={-1} ref={resultHeading}>
+                    {result.heading}
+                  </h2>
+                  <p>{result.body}</p>
+                  {result.error && (
+                    <p role="status">Reported error: {result.error}</p>
+                  )}
+                  {resultSafetyAction && <p>{recommendation.body}</p>}
+                  <button
+                    className="primary"
+                    disabled={busy}
+                    onClick={() => {
+                      if (resultSafetyAction)
+                        overviewAction(resultSafetyAction.id);
+                      else if (result.next === "dismiss") {
+                        setOutcome(null);
+                        setNotice(
+                          "No new change has started. Choose your next step when ready.",
+                        );
+                      } else overviewAction(result.next);
+                    }}
+                  >
+                    {resultSafetyAction?.label ?? result.label}
+                  </button>
                 </>
               ) : (
                 <>
@@ -946,7 +1097,11 @@ export default function App() {
                       .filter(
                         (action) =>
                           action !== displayedPrimary?.id &&
-                          action !== "review-issue",
+                          action !== "review-issue" &&
+                          (!result ||
+                            (action === "check" &&
+                              (resultSafetyAction?.id ?? result.next) !==
+                                "check")),
                       )
                       .map((action) => (
                         <button
@@ -1025,13 +1180,13 @@ export default function App() {
                   )}
                   {recoveryError && <p>{recoveryError}</p>}
                   <div className="result-actions">
-                    <button onClick={() => setPage("validation")}>
+                    <button onClick={() => navigate("validation")}>
                       View validation results
                     </button>
-                    <button onClick={() => setPage("recovery")}>
+                    <button onClick={() => navigate("recovery")}>
                       Review Recovery
                     </button>
-                    <button onClick={() => setPage("schedule")}>
+                    <button onClick={() => navigate("schedule")}>
                       View schedule
                     </button>
                     {maintenanceState === "failed" && (
@@ -1073,7 +1228,7 @@ export default function App() {
               </div>
               <button
                 className="text-button"
-                onClick={() => setPage("validation")}
+                onClick={() => navigate("validation")}
               >
                 See all checks
               </button>
@@ -1170,7 +1325,7 @@ export default function App() {
                           supported={s.platform.supported}
                           busy={busy}
                           onReview={reviewOperation}
-                          onSchedule={() => setPage("schedule")}
+                          onSchedule={() => navigate("schedule")}
                         />
                       </td>
                       <td>
@@ -1257,9 +1412,13 @@ export default function App() {
             : s.stage === "running"
               ? s.phase
               : s.stage === "success"
-                ? "Operation complete. Validation passed."
+                ? result
+                  ? result.heading
+                  : status
                 : s.stage === "failure"
-                  ? `Operation needs attention. ${s.error}`
+                  ? result
+                    ? result.heading
+                    : `Check needs attention. ${s.error}`
                   : status}
         </div>
       </main>

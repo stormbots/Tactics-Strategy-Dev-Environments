@@ -1,3 +1,4 @@
+import type { Report } from "./model";
 import * as updateApi from "./updateDiscovery";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import {
@@ -6,6 +7,7 @@ import {
   fireEvent,
   waitFor,
   cleanup,
+  act,
 } from "@testing-library/react";
 import axe from "axe-core";
 import App from "./App";
@@ -714,11 +716,13 @@ it("offers a retry and focuses the result after a child failure", async () => {
   render(<App />);
   await screen.findByRole("heading", { name: "Ready!" });
   await startInstall();
-  await screen.findByText("A test package failed");
-  expect(screen.getByRole("button", { name: "Check again" })).toBeTruthy();
+  await screen.findByText(/Reported error: A test package failed/);
+  expect(screen.getByRole("button", { name: "Check my setup" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Retry install" })).toBeNull();
   await waitFor(() =>
-    expect(document.activeElement?.textContent).toBe("Try checking again"),
+    expect(document.activeElement?.textContent).toBe(
+      "Setup outcome is unconfirmed",
+    ),
   );
 });
 it("shows updates separately from successful validation, including both versions", async () => {
@@ -815,7 +819,7 @@ it("reviews Repair without starting it and retains the explicit start action", a
     screen.getByRole("button", { name: /Review Repair for Git/ }),
   );
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
-  const start = screen.getByRole("button", {
+  const start = await screen.findByRole("button", {
     name: "Repair setup",
   });
   expect(start).toBeTruthy();
@@ -1084,4 +1088,421 @@ it("keeps a focused editor action stable when delayed update discovery changes t
   expect(vi.mocked(open).mock.calls.length).toBe(before);
   expect(screen.getByRole("button", { name: "Review updates" })).toBeTruthy();
   spy.mockRestore();
+});
+
+function lifecycleReport(
+  mutation_outcome: Report["mutation_outcome"],
+  good = false,
+): Report {
+  return {
+    mutation_outcome,
+    code: good ? 0 : 1,
+    success: good,
+    validation_collected_at: good ? 1793990000 : null,
+    lines: good
+      ? [
+          "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+          "SKYVIEW_EVENT|summary|0|Done",
+        ]
+      : ["SKYVIEW_EVENT|error|operation|Synthetic reported failure"],
+    log_path: "fixture.log",
+    platform: { supported: true, label: "Fixture" },
+  };
+}
+async function openSetupReview() {
+  openDisclosure("Other actions");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install development tools" }),
+  );
+  const button = await screen.findByRole("button", {
+    name: "Continue with Install",
+  });
+  await waitFor(() =>
+    expect((button as HTMLButtonElement).disabled).toBe(false),
+  );
+  return button;
+}
+
+it("shows a proven native non-start without inventing an incident or re-prompting", async () => {
+  vi.mocked(operate).mockResolvedValueOnce(lifecycleReport("not_started"));
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(await openSetupReview());
+  await screen.findByRole("heading", { name: "No changes were started" });
+  expect(
+    screen.queryByRole("heading", { name: "Review an interruption" }),
+  ).toBeNull();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before + 1);
+  const back = screen.getByRole("button", { name: "Back to Overview" });
+  await waitFor(() => expect((back as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(back);
+  await screen.findByRole("heading", { name: "Try checking again" });
+  expect(vi.mocked(operate).mock.calls.length).toBe(before + 1);
+});
+
+it("cancelled error text without native non-start evidence stays uncertain", async () => {
+  vi.mocked(operate).mockRejectedValueOnce(
+    new Error("Administrator authentication was cancelled"),
+  );
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(await openSetupReview());
+  await screen.findByRole("heading", { name: "Setup outcome is unconfirmed" });
+  expect(
+    screen.queryByRole("heading", { name: "No changes were started" }),
+  ).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Ready!" })).toBeNull();
+  expect(
+    screen.getByText(/not a confirmed cancellation or rollback/),
+  ).toBeTruthy();
+});
+
+it("keeps passed checks separate from an uncertain native mutation outcome", async () => {
+  vi.mocked(operate).mockResolvedValueOnce(lifecycleReport("uncertain", true));
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(await openSetupReview());
+  await screen.findByRole("heading", { name: "Setup outcome is unconfirmed" });
+  expect(screen.queryByRole("heading", { name: "Ready!" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Retry install" })).toBeNull();
+});
+
+it("checks incomplete verification explicitly after reported completion without reinstalling", async () => {
+  vi.mocked(operate).mockResolvedValueOnce(lifecycleReport("completed"));
+  vi.mocked(operate).mockResolvedValueOnce(
+    lifecycleReport("not_requested", true),
+  );
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(await openSetupReview());
+  await screen.findByRole("heading", {
+    name: "Setup finished, but checking did not finish",
+  });
+  expect(vi.mocked(operate).mock.calls.length).toBe(before + 1);
+  const check = screen.getByRole("button", { name: "Check my setup" });
+  await waitFor(() =>
+    expect((check as HTMLButtonElement).disabled).toBe(false),
+  );
+  fireEvent.click(check);
+  await screen.findByRole("heading", { name: "Ready!" });
+  expect(
+    vi
+      .mocked(operate)
+      .mock.calls.slice(before)
+      .map((c) => c[0]),
+  ).toEqual(["install", "validate"]);
+});
+
+it("Back from an unstarted review submits no operation", async () => {
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  await openSetupReview();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await screen.findByRole("heading", { name: "Start building" });
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it("requires review again when options change before confirmation", async () => {
+  vi.mocked(operate).mockResolvedValueOnce(lifecycleReport("completed", true));
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  await openSetupReview();
+  fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
+  fireEvent.click(screen.getByText("Advanced", { exact: true }));
+  fireEvent.click(
+    screen.getByLabelText(
+      "Check for managed package updates during validation",
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  let proceed = await screen.findByRole("button", {
+    name: "Continue with Install",
+  });
+  await waitFor(() =>
+    expect((proceed as HTMLButtonElement).disabled).toBe(false),
+  );
+  fireEvent.click(proceed);
+  await screen.findByText(/The reviewed findings or scope changed/);
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  proceed = await screen.findByRole("button", {
+    name: "Continue with Install",
+  });
+  await waitFor(() =>
+    expect((proceed as HTMLButtonElement).disabled).toBe(false),
+  );
+  fireEvent.click(proceed);
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBe(before + 1),
+  );
+  expect(vi.mocked(operate).mock.calls.at(-1)?.[2]).toBe(true);
+});
+
+it("navigation during a delayed review inspection does not submit or redirect later", async () => {
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  let finish!: (s: RecoveryState) => void;
+  vi.mocked(inspectRecovery).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  openDisclosure("Other actions");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Install development tools" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "About" }));
+  finish(previewRecovery());
+  await screen.findByText(/The pending request was not submitted/);
+  expect(
+    screen.getByRole("button", { name: "About" }).getAttribute("aria-current"),
+  ).toBe("page");
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(
+    screen.queryByRole("heading", { name: "Before Install begins" }),
+  ).toBeNull();
+});
+
+it("rapid confirmation and navigation preserve one actual operation and its verification", async () => {
+  let finish!: (r: Report) => void;
+  let emit!: (line: string) => void;
+  vi.mocked(operate).mockImplementationOnce(async (_m, _id, _u, _a, onLine) => {
+    emit = onLine;
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  const proceed = await openSetupReview();
+  fireEvent.click(proceed);
+  fireEvent.click(proceed);
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBe(before + 1),
+  );
+  emit("SKYVIEW_EVENT|progress|95|Validating your development environment");
+  await screen.findByRole("heading", { name: "Checking the result…" });
+  fireEvent.click(screen.getByRole("button", { name: "About" }));
+  expect(
+    screen.getByRole("button", { name: "Return to current task" }),
+  ).toBeTruthy();
+  finish(lifecycleReport("completed", true));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: "Return to current task" }),
+    ).toBeNull(),
+  );
+  expect(
+    screen.getByRole("button", { name: "About" }).getAttribute("aria-current"),
+  ).toBe("page");
+  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  await screen.findByRole("heading", { name: "Ready!" });
+  expect(vi.mocked(operate).mock.calls.length).toBe(before + 1);
+});
+
+it("reopen forgets an unstarted review and queries current observations", async () => {
+  const before = vi.mocked(operate).mock.calls.length,
+    inspections = vi.mocked(inspect).mock.calls.length;
+  const first = render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  await openSetupReview();
+  first.unmount();
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  expect(
+    screen.queryByRole("heading", { name: "Before Install begins" }),
+  ).toBeNull();
+  expect(vi.mocked(inspect).mock.calls.length).toBe(inspections + 2);
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it("reopen reconstructs active work honestly without saved progress or replay", async () => {
+  let finish!: (r: Report) => void;
+  vi.mocked(operate).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const before = vi.mocked(operate).mock.calls.length;
+  const first = render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(await openSetupReview());
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBe(before + 1),
+  );
+  first.unmount();
+  const active = previewRecovery();
+  active.effectiveActivity = "active";
+  active.readiness = "blocked";
+  active.decision = "block_active";
+  vi.mocked(inspectRecovery).mockResolvedValue(active);
+  render(<App />);
+  await screen.findByRole("heading", { name: "Let setup finish" });
+  finish(lifecycleReport("completed", true));
+  expect(screen.queryByRole("progressbar")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before + 1);
+});
+
+it("retains an unresolved repair and download diagnostics without an automatic repair loop", async () => {
+  const failed = {
+    ...lifecycleReport("uncertain"),
+    validation_collected_at: 1793990000,
+    lines: [
+      "SKYVIEW_EVENT|validation|FAIL|Python 3.14 not found",
+      "SKYVIEW_EVENT|error|provisioning|Download failed; network unavailable",
+      "SKYVIEW_EVENT|summary|1|Failed",
+    ],
+  };
+  vi.mocked(inspect).mockResolvedValueOnce(failed);
+  vi.mocked(operate).mockResolvedValueOnce(failed);
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Setup needed" });
+  openDisclosure("Other actions");
+  fireEvent.click(screen.getByRole("button", { name: "Repair setup" }));
+  await screen.findByRole("heading", { name: "Review your fixes" });
+  fireEvent.click(screen.getByRole("button", { name: "Repair setup" }));
+  await screen.findByRole("heading", {
+    name: "The repair has not confirmed a resolution",
+  });
+  expect(
+    screen.getByText(/Reported error: Download failed; network unavailable/),
+  ).toBeTruthy();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before + 1);
+  expect(screen.queryByRole("button", { name: "Retry repair" })).toBeNull();
+  openDisclosure("Details");
+  expect(
+    screen.getByRole("button", { name: "Create support report" }),
+  ).toBeTruthy();
+});
+
+it("finishing acknowledgment after navigation retains the receipt without replay or redirection", async () => {
+  const state = interrupted("user");
+  vi.mocked(inspectRecovery).mockResolvedValue(state);
+  let finish!: (value: Awaited<ReturnType<typeof acknowledgeUser>>) => void;
+  vi.mocked(acknowledgeUser).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Review an interruption" });
+  fireEvent.click(screen.getByRole("button", { name: "Review interruption" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Acknowledge interruption" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "About" }));
+  vi.mocked(inspectRecovery).mockResolvedValue(previewRecovery());
+  finish({
+    incidentId: state.user.incident!.id,
+    reportId: "receipt",
+    reportWarning: null,
+    acknowledgment: {
+      incidentId: state.user.incident!.id,
+      acknowledgedAt: 22,
+      reportId: "receipt",
+    },
+  });
+  await screen.findByText(/Recovery summary saved: receipt/);
+  expect(
+    screen.getByRole("button", { name: "About" }).getAttribute("aria-current"),
+  ).toBe("page");
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(acknowledgeUser).toHaveBeenCalledTimes(1);
+});
+
+it("drops late stream output after completion and while a newer request is active", async () => {
+  let oldEmit!: (line: string) => void;
+  let finish!: (report: Report) => void;
+  vi.mocked(operate).mockImplementationOnce(async (_m, _id, _u, _a, emit) => {
+    oldEmit = emit;
+    return lifecycleReport("completed", true);
+  });
+  vi.mocked(operate).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(await openSetupReview());
+  await screen.findByRole("heading", { name: "Ready!" });
+  oldEmit("SKYVIEW_EVENT|validation|FAIL|Late completed-request finding");
+  openDisclosure("Details");
+  expect(
+    screen.getByRole("region", { name: "Provisioning log" }).textContent,
+  ).not.toContain("Late completed-request");
+  openDisclosure("Other actions");
+  fireEvent.click(screen.getByRole("button", { name: "Check my setup" }));
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBe(before + 2),
+  );
+  oldEmit("SKYVIEW_EVENT|validation|FAIL|Late superseded-request finding");
+  expect(
+    screen.getByRole("region", { name: "Provisioning log" }).textContent,
+  ).not.toContain("Late superseded-request");
+  finish(lifecycleReport("not_requested", true));
+  await screen.findByRole("heading", { name: "Ready!" });
+});
+
+it("Cancel during fresh confirmation inspection abandons the request without reopening review", async () => {
+  const before = vi.mocked(operate).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  const proceed = await openSetupReview();
+  let finish!: (state: RecoveryState) => void;
+  vi.mocked(inspectRecovery).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  fireEvent.click(proceed);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  finish(previewRecovery());
+  await screen.findByText(/The pending request was not submitted/);
+  expect(
+    screen.queryByRole("heading", { name: "Before Install begins" }),
+  ).toBeNull();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  expect(
+    screen
+      .getByRole("button", { name: "Overview" })
+      .getAttribute("aria-current"),
+  ).toBe("page");
+});
+
+it("unmount during admission discards even a pending read-only operation request", async () => {
+  const before = vi.mocked(operate).mock.calls.length;
+  const first = render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  let finish!: (state: RecoveryState) => void;
+  vi.mocked(inspectRecovery).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  openDisclosure("Other actions");
+  fireEvent.click(screen.getByRole("button", { name: "Check my setup" }));
+  first.unmount();
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  await act(async () => {
+    finish(previewRecovery());
+    await Promise.resolve();
+  });
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
 });

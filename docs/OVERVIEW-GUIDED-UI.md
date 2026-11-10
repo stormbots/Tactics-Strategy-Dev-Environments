@@ -73,7 +73,8 @@ required CI evidence is passing; do not close #150/#151 from UI tests.
 
 ## Remaining dependent work
 
-#149 owns explicit operation-result distinctions (known not started versus
+#149 implements the follow-up documented in [Operation lifecycle](OVERVIEW-OPERATION-LIFECYCLE.md):
+explicit operation-result distinctions (known not started versus
 uncertain launch, partial outcomes and verification failure), fuller reviewed
 scope binding and fresh reconstruction after reopen. The UI currently retains
 native error details and recomputes supported next actions without automatic
