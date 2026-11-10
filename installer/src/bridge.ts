@@ -130,6 +130,7 @@ export async function operate(
     ...previewReport,
     validation_collected_at: Math.floor(Date.now() / 1000),
     lines,
+    mutation_outcome: mode === "validate" ? "not_requested" : "completed",
     code: mode === "validate" ? 1 : 0,
     success: mode !== "validate",
   };
