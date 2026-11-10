@@ -1451,3 +1451,53 @@ progress::-moz-progress-bar {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Guided Overview keeps status, review and progress in one readable column. */
+.guided-status {
+  display: block;
+}
+.guided-status.tone-neutral {
+  border-left-color: var(--line);
+}
+.guided-task .eyebrow {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.guided-task > h2 {
+  margin: 16px 0;
+  font-size: 1.6rem;
+}
+.guided-task .operation-description {
+  max-width: 48rem;
+}
+.guided-task .information-card {
+  margin: 16px 0 0;
+}
+.guided-disclosures {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.guided-disclosures > details {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.guided-disclosures summary,
+details.tools-preview > summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+}
+.guided-disclosures .result-actions {
+  margin-top: 16px;
+}
+.guided-disclosures .log-output {
+  margin-top: 20px;
+}
+.guided-task button,
+.guided-task p {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}

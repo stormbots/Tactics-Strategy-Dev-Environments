@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import {
   openAppearance,
   chooseTheme,
@@ -39,7 +40,10 @@ for (const theme of ["Light", "Dark"] as const) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/");
       await expect(
-        page.getByRole("heading", { name: "Partially installed", exact: true }),
+        page.getByRole("heading", {
+          name: "Setup needs attention",
+          exact: true,
+        }),
       ).toBeVisible();
       await chooseTheme(page, theme);
       await expect(page.locator("html")).toHaveAttribute(
@@ -61,7 +65,7 @@ for (const theme of ["Light", "Dark"] as const) {
         path: `test-results/theme-${theme}-${width}-overview.png`,
         fullPage: true,
       });
-      await page.getByRole("button", { name: "Update", exact: true }).click();
+      await page.getByRole("button", { name: /^Validation/ }).click();
       await page.getByText("Advanced", { exact: true }).click();
       const option = page.getByLabel(
         "Check for managed package updates during validation",
@@ -69,8 +73,8 @@ for (const theme of ["Light", "Dark"] as const) {
       await option.click();
       await chooseTheme(page, theme === "Light" ? "Dark" : "Light");
       await expect(
-        page.getByRole("button", { name: "Update", exact: true }),
-      ).toHaveAttribute("aria-pressed", "true");
+        page.getByRole("button", { name: /^Validation/ }),
+      ).toHaveAttribute("aria-current", "page");
       await expect(option).toBeChecked();
       await chooseTheme(page, theme);
       for (const name of ["Validation", "Schedule", "About"]) {
@@ -126,23 +130,18 @@ test("switching theme preserves an active operation and expanded log", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Partially installed", exact: true }),
+    page.getByRole("heading", { name: "Setup needs attention", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Install Development Environment" })
-    .click();
+  await otherAction(page, "Install development tools");
   await page.getByRole("button", { name: "Continue with Install" }).click();
+  await disclosure(page, "Details");
   const log = page.getByRole("region", { name: "Provisioning log" });
   await expect(log).toContainText("Checking system");
   await chooseTheme(page, "Dark");
   await expect(log).toContainText("Checking system");
-  await expect(
-    page.getByRole("heading", { name: "Live details" }),
-  ).toBeVisible();
+  await expect(page.getByText("Details", { exact: true })).toBeVisible();
   await audit(page);
-  await expect(
-    page.getByRole("heading", { name: "Development environment ready." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready!" })).toBeVisible();
   await audit(page);
 });
 

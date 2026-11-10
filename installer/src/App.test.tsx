@@ -1,3 +1,4 @@
+import * as updateApi from "./updateDiscovery";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import {
   render,
@@ -108,6 +109,7 @@ vi.mock("./bridge", () => ({
   })),
   saveSupportReport: vi.fn(async () => "/downloads/support.html"),
   inspect: vi.fn(async () => ({
+    validation_collected_at: 1793990000,
     code: 0,
     success: true,
     lines: [
@@ -118,6 +120,7 @@ vi.mock("./bridge", () => ({
     platform: { label: "Windows 11 x64", supported: true },
   })),
   operate: vi.fn(async () => ({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -153,6 +156,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
     .calls.length;
   vi.mocked(inspectRecovery).mockResolvedValue(interrupted("user"));
   vi.mocked(operate).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 0,
     success: true,
     lines: [
@@ -163,6 +167,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
     platform: { label: "Windows 11 x64", supported: true },
   });
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   await screen.findByRole("heading", {
     name: "Let’s get setup working again",
   });
@@ -170,7 +175,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
-  await screen.findByRole("heading", { name: "Validation passed." });
+  await screen.findByRole("heading", { name: "Review an interruption" });
   expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(
     acknowledgmentsBefore,
   );
@@ -184,6 +189,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
 it("shows machine-only interruptions and keeps changes blocked after passing validation", async () => {
   vi.mocked(inspectRecovery).mockResolvedValue(interrupted());
   vi.mocked(operate).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 0,
     success: true,
     lines: [
@@ -195,6 +201,7 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
   });
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   await screen.findByRole("heading", {
     name: "Let’s get setup working again",
   });
@@ -202,11 +209,14 @@ it("shows machine-only interruptions and keeps changes blocked after passing val
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
-  await screen.findByRole("heading", { name: "Validation passed." });
-  fireEvent.click(screen.getByRole("button", { name: "Install" }));
-  fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
-  );
+  await screen.findByRole("heading", { name: "Review an interruption" });
+  openDisclosure("Other actions");
+  expect(
+    screen.queryByRole("button", {
+      name: "Install development tools",
+    }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Review interruption" }));
   await screen.findByRole("heading", {
     name: "Let’s get setup working again",
   });
@@ -247,11 +257,14 @@ it("acknowledges both sources in one action and returns to ordinary Install pref
     };
   });
   const before = vi.mocked(operate).mock.calls.length;
+  vi.mocked(inspectRecovery).mockResolvedValueOnce(previewRecovery());
   render(<App />);
-  await screen.findByRole("heading", { name: "Let’s get setup working again" });
-  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  await screen.findByRole("heading", { name: "Ready!" });
+  openDisclosure("Other actions");
   fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
+    screen.getByRole("button", {
+      name: "Install development tools",
+    }),
   );
   const acknowledge = await screen.findByRole("button", {
     name: "Acknowledge and continue",
@@ -263,7 +276,7 @@ it("acknowledges both sources in one action and returns to ordinary Install pref
   expect(acknowledgeUser).toHaveBeenCalledTimes(1);
   expect(acknowledgeUser).toHaveBeenCalledWith(
     state,
-    expect.objectContaining({ collectedAt: null }),
+    expect.objectContaining({ collectedAt: 1793990000 }),
   );
   expect(
     screen.getByText(/Summary could not be saved; original evidence remains/),
@@ -287,6 +300,7 @@ it("does not resume a partially acknowledged pair and keeps its saved report ref
   );
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Acknowledge interruption" }),
   );
@@ -327,6 +341,7 @@ it.each(["machine", "user"] as const)(
     });
     const before = vi.mocked(operate).mock.calls.length;
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Acknowledge interruption" }),
     );
@@ -374,13 +389,14 @@ it.each([false, true])(
     render(<App />);
     await screen.findByRole("heading", { name: "Ready!" });
     const card = screen.getByRole("region", { name: "Workstation status" });
-    expect(card.className).toContain("tone-yellow");
+    expect(card.className).toContain("tone-green");
+    openDisclosure("Details");
     const reason = screen.getByRole("button", {
-      name: /Package health remains unverified.*Review Recovery/,
+      name: "Review Recovery",
     });
-    expect(card.contains(reason)).toBe(true);
+    expect(card.contains(reason)).toBe(false);
     expect(
-      screen.queryByRole("heading", { name: "Needs attention" }),
+      screen.queryByRole("heading", { name: "Setup needs attention" }),
     ).toBeNull();
     expect(screen.queryByText(/Review the interrupted operation/)).toBeNull();
     fireEvent.click(reason);
@@ -408,6 +424,7 @@ it("unknown activity permits acknowledgment but not continuation; Check Again do
   });
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Acknowledge interruption" }),
   );
@@ -434,6 +451,7 @@ it("unconfirmed machine submission cannot resume or silently retry consent", asy
   });
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Acknowledge interruption" }),
   );
@@ -448,11 +466,14 @@ it("unconfirmed machine submission cannot resume or silently retry consent", asy
 it("cancel forgets the pending request and a later Check Again does not launch it", async () => {
   vi.mocked(inspectRecovery).mockResolvedValue(interrupted());
   const before = vi.mocked(operate).mock.calls.length;
+  vi.mocked(inspectRecovery).mockResolvedValueOnce(previewRecovery());
   render(<App />);
-  await screen.findByRole("heading", { name: "Let’s get setup working again" });
-  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  await screen.findByRole("heading", { name: "Ready!" });
+  openDisclosure("Other actions");
   fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
+    screen.getByRole("button", {
+      name: "Install development tools",
+    }),
   );
   await screen.findByRole("button", { name: "Acknowledge and continue" });
   fireEvent.click(screen.getByRole("button", { name: "Back to Overview" }));
@@ -469,8 +490,11 @@ it("refreshes safety after Install confirmation rather than using stale ready fi
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
   await screen.findByRole("heading", { name: "Ready!" });
+  openDisclosure("Other actions");
   fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
+    screen.getByRole("button", {
+      name: "Install development tools",
+    }),
   );
   const proceed = await screen.findByRole("button", {
     name: "Continue with Install",
@@ -496,6 +520,7 @@ it("shows unavailable findings as blocked, with diagnostics still accessible", a
   vi.mocked(inspectRecovery).mockRejectedValue(new Error("Unavailable"));
   const before = vi.mocked(operate).mock.calls.length;
   const { container } = render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   await screen.findByRole("heading", { name: "Let’s get setup working again" });
   expect(screen.getByRole("alert").textContent).toContain("could not be read");
   expect(
@@ -505,7 +530,7 @@ it("shows unavailable findings as blocked, with diagnostics still accessible", a
         .closest("details") as HTMLDetailsElement
     ).open,
   ).toBe(false);
-  fireEvent.click(screen.getByText("Technical details", { exact: true }));
+  fireEvent.click(screen.getByText("Technical details", {}));
   expect(screen.getByRole("button", { name: "Open logs" })).toBeTruthy();
   expect(
     screen.getByRole("button", { name: "Create support report" }),
@@ -527,6 +552,7 @@ it("unreadable account evidence receives source-specific guidance rather than a 
   state.readiness = "blocked";
   vi.mocked(inspectRecovery).mockResolvedValue(state);
   render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Recovery" }));
   await screen.findByRole("heading", {
     name: "Let’s get setup working again",
   });
@@ -536,7 +562,7 @@ it("unreadable account evidence receives source-specific guidance rather than a 
   expect(
     screen.getByText(/does not guarantee those records can be read/),
   ).toBeTruthy();
-  fireEvent.click(screen.getByText("Technical details", { exact: true }));
+  fireEvent.click(screen.getByText("Technical details", {}));
   expect(screen.getByText(/Account records could not be read/)).toBeTruthy();
   expect(
     screen.queryByRole("button", { name: "Acknowledge interruption" }),
@@ -545,6 +571,7 @@ it("unreadable account evidence receives source-specific guidance rather than a 
 
 it("retries startup validation without starting Install", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -555,9 +582,7 @@ it("retries startup validation without starting Install", async () => {
   });
   const before = vi.mocked(operate).mock.calls.length;
   render(<App />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Retry validation" }),
-  );
+  fireEvent.click(await screen.findByRole("button", { name: "Check again" }));
   await waitFor(() =>
     expect(vi.mocked(operate).mock.calls.length).toBeGreaterThan(before),
   );
@@ -565,8 +590,9 @@ it("retries startup validation without starting Install", async () => {
   expect(screen.queryByRole("button", { name: "Retry install" })).toBeNull();
 });
 
-it("keeps readiness green/yellow when only maintenance needs attention", async () => {
+it("retains a required schedule failure and its details without inventing an incident", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -595,16 +621,24 @@ it("keeps readiness green/yellow when only maintenance needs attention", async (
     lastSuccess: null,
   });
   const { container } = render(<App />);
-  await screen.findByRole("heading", { name: "Ready!" });
+  await screen.findByRole("heading", { name: "Setup needs attention" });
   const card = container.querySelector(".status-card");
   expect(card?.classList.contains("tone-yellow")).toBe(true);
   expect(card?.classList.contains("tone-red")).toBe(false);
-  expect(screen.getByText("Maintenance is not installed")).toBeTruthy();
+  openDisclosure("Details");
+  expect(screen.getByText("Maintenance: missing")).toBeTruthy();
 });
+function openDisclosure(name: string) {
+  const summary = screen.getByText(name, {});
+  if (!summary.closest("details")?.open) fireEvent.click(summary);
+}
 async function startInstall() {
   const before = vi.mocked(operate).mock.calls.length;
+  openDisclosure("Other actions");
   fireEvent.click(
-    screen.getByRole("button", { name: "Install Development Environment" }),
+    screen.getByRole("button", {
+      name: "Install development tools",
+    }),
   );
   await screen.findByRole("heading", { name: "Before Install begins" });
   const continueButton = await screen.findByRole("button", {
@@ -623,13 +657,15 @@ it("shows a prominent busy indicator while startup validation is pending", async
   const { container } = render(<App />);
   expect(
     screen
-      .getByRole("region", { name: "Workstation check" })
+      .getByRole("region", { name: "Finding your next step" })
       .getAttribute("aria-busy"),
   ).toBe("true");
   expect(
-    screen.getByRole("heading", { name: "Checking your workstation…" }),
+    screen.getByRole("heading", { name: "Checking your setup…" }),
   ).toBeTruthy();
-  expect(container.querySelector(".checking-panel .spinner")).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Finding your next step" }),
+  ).toBeTruthy();
   expect(
     (
       await axe.run(container, {
@@ -648,12 +684,13 @@ it("puts streaming installation output beside progress without expanding details
   render(<App />);
   await screen.findByRole("heading", { name: "Ready!" });
   await startInstall();
+  openDisclosure("Details");
   expect(
     screen.getByRole("region", { name: "Provisioning log" }).textContent,
   ).toBe("Installing Git…");
-  expect(screen.getByRole("heading", { name: "Live details" })).toBeTruthy();
+  expect(screen.getByText("Details", {}).closest("details")?.open).toBe(true);
   expect(screen.queryByText("Show details")).toBeNull();
-  expect(document.activeElement?.getAttribute("role")).toBe("status");
+  expect(document.activeElement?.id).toBe("next-step-heading");
 });
 it("shows a keyboard-accessible UI with no detected axe violations", async () => {
   const { container } = render(<App />);
@@ -663,7 +700,7 @@ it("shows a keyboard-accessible UI with no detected axe violations", async () =>
   });
   expect(results.violations).toEqual([]);
   expect(
-    screen.getByRole("button", { name: "Install Development Environment" }),
+    screen.getByRole("button", { name: "Install development tools" }),
   ).toBeTruthy();
 });
 it("shows graphical validation and labels optional statuses", async () => {
@@ -678,15 +715,15 @@ it("offers a retry and focuses the result after a child failure", async () => {
   await screen.findByRole("heading", { name: "Ready!" });
   await startInstall();
   await screen.findByText("A test package failed");
-  expect(screen.getByRole("button", { name: "Retry install" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Check again" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Retry install" })).toBeNull();
   await waitFor(() =>
-    expect(document.activeElement?.textContent).toBe(
-      "Your environment needs attention.",
-    ),
+    expect(document.activeElement?.textContent).toBe("Try checking again"),
   );
 });
 it("shows updates separately from successful validation, including both versions", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 0,
     success: true,
     lines: [
@@ -701,19 +738,20 @@ it("shows updates separately from successful validation, including both versions
   await screen.findByRole("heading", {
     name: "Ready!",
   });
+  openDisclosure("Development tools");
+  openDisclosure("Details");
   expect(screen.getByText("Update available · 2.43.0 → 2.44.0")).toBeTruthy();
   expect(screen.getByText(/need attention/).textContent).toContain("0");
   expect(
-    screen.getByText(/update available$/, { selector: ".update-count" })
-      .textContent,
-  ).toContain("1");
+    screen.getByText(/1 confirmed managed-tool updates available/),
+  ).toBeTruthy();
 });
 it("reads and refreshes Schedule, displays never-run history, and recovers from errors", async () => {
   render(<App />);
   await screen.findByRole("heading", { name: "Ready!" });
   fireEvent.click(screen.getByRole("button", { name: "Schedule" }));
   await screen.findByText("Test timer");
-  await screen.findByText("Paused", { exact: true });
+  await screen.findByText("Paused", {});
   expect(screen.getByRole("heading", { name: "Maintenance schedule" })).toBe(
     document.activeElement,
   );
@@ -756,6 +794,7 @@ it("shows the version and approved external links on About", async () => {
 it("reviews Repair without starting it and retains the explicit start action", async () => {
   vi.mocked(operate).mockClear();
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -767,7 +806,7 @@ it("reviews Repair without starting it and retains the explicit start action", a
     platform: { label: "Windows 11", supported: true },
   });
   render(<App />);
-  await screen.findByRole("heading", { name: "Not installed" });
+  await screen.findByRole("heading", { name: "Setup needed" });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
   expect(screen.getByText("Git could not be found")).toBeTruthy();
   expect(screen.getByText("INFORMATION")).toBeTruthy();
@@ -777,12 +816,10 @@ it("reviews Repair without starting it and retains the explicit start action", a
   );
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
   const start = screen.getByRole("button", {
-    name: "Repair Development Environment",
+    name: "Repair setup",
   });
   expect(start).toBeTruthy();
-  expect(screen.getByRole("status").textContent).toContain(
-    "choose whether to start",
-  );
+  expect(screen.getByText(/Repair runs the full workflow/)).toBeTruthy();
   fireEvent.click(start);
   await waitFor(() =>
     expect(vi.mocked(operate)).toHaveBeenCalledWith(
@@ -797,6 +834,7 @@ it("reviews Repair without starting it and retains the explicit start action", a
 it("reviews Update for an available managed update without starting it", async () => {
   vi.mocked(operate).mockClear();
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 0,
     success: true,
     lines: [
@@ -819,9 +857,6 @@ it("reviews Update for an available managed update without starting it", async (
     }),
   );
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Update Development Tools" }),
-  );
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
   const continueUpdate = await screen.findByRole("button", {
     name: "Continue with Update",
@@ -844,6 +879,7 @@ it("retains unknown diagnostics as plain text and offers diagnostic review", asy
   const message = "Unknown check <script>alert('example')</script>";
   vi.mocked(operate).mockClear();
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -854,7 +890,7 @@ it("retains unknown diagnostics as plain text and offers diagnostic review", asy
     platform: { label: "Linux Mint 22.3", supported: true },
   });
   const { container } = render(<App />);
-  await screen.findByRole("heading", { name: "Needs attention" });
+  await screen.findByRole("heading", { name: "Setup needs attention" });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
   expect(screen.getByText("This check needs diagnostic review")).toBeTruthy();
   expect(screen.queryByRole("button", { name: /Review Repair/ })).toBeNull();
@@ -862,7 +898,7 @@ it("retains unknown diagnostics as plain text and offers diagnostic review", asy
     ".check-diagnostics",
   ) as HTMLDetailsElement;
   expect(details.open).toBe(false);
-  fireEvent.click(screen.getByText("Technical details", { exact: true }));
+  fireEvent.click(screen.getByText("Technical details", {}));
   expect(screen.getByText(message)).toBeTruthy();
   expect(container.querySelector("script")).toBeNull();
   expect(vi.mocked(operate)).not.toHaveBeenCalled();
@@ -890,6 +926,7 @@ it("blocks guidance actions while an operation is streaming checks", async () =>
 
 it("keeps command diagnostics ending in not found on the diagnostic-review path", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -900,7 +937,7 @@ it("keeps command diagnostics ending in not found on the diagnostic-review path"
     platform: { label: "Windows 11", supported: true },
   });
   render(<App />);
-  await screen.findByRole("heading", { name: "Needs attention" });
+  await screen.findByRole("heading", { name: "Setup needs attention" });
   fireEvent.click(screen.getByRole("button", { name: /^Validation/ }));
   expect(
     screen.getByText("A required command or runtime could not be verified"),
@@ -909,6 +946,7 @@ it("keeps command diagnostics ending in not found on the diagnostic-review path"
 });
 it("never reports ready from partial validation without a successful summary", async () => {
   vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
     code: 1,
     success: false,
     lines: [
@@ -919,11 +957,131 @@ it("never reports ready from partial validation without a successful summary", a
     platform: { label: "Windows 11", supported: true },
   });
   render(<App />);
-  await screen.findByRole("heading", { name: "Validation incomplete" });
+  await screen.findByRole("heading", { name: "Check not finished" });
   expect(screen.queryByRole("heading", { name: "Ready!" })).toBeNull();
   expect(
+    screen.getByText(/Partial results remain available in Details/),
+  ).toBeTruthy();
+});
+
+it("keeps one optional-update action and editor access under Other actions", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      'SKYVIEW_EVENT|tool|Git|{"tool":"Git","installedVersion":"2.49","availableVersion":"2.50","updateAvailable":true,"updateCheck":"current"}',
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "fixture",
+    platform: { supported: true, label: "Fixture" },
+  });
+  const before = vi.mocked(operate).mock.calls.length;
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { name: "Install updates" });
+  expect(screen.getByRole("heading", { name: "Ready!" })).toBeTruthy();
+  expect(
     screen.getByText(
-      /passing individual checks does not establish full readiness/,
+      "Your setup works, but there are updates available if you would like to install them.",
     ),
   ).toBeTruthy();
+  expect(
+    container.querySelectorAll(".guided-task button.primary"),
+  ).toHaveLength(1);
+  expect(
+    screen.getAllByRole("button", { name: "Review updates" }),
+  ).toHaveLength(1);
+  expect(
+    screen.getByRole("button", { name: "Open VSCodium" }).closest("details")
+      ?.open,
+  ).toBe(false);
+  openDisclosure("Other actions");
+  fireEvent.click(screen.getByRole("button", { name: "Open VSCodium" }));
+  await waitFor(() => expect(open).toHaveBeenCalledWith("editor"));
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it.each(["active", "unknown", "untrusted", "incident"] as const)(
+  "opens Overview with %s safety and no competing mutation",
+  async (state) => {
+    const observation = interrupted();
+    observation.readiness =
+      state === "incident" ? "needs_acknowledgment" : "blocked";
+    if (state === "active" || state === "unknown")
+      observation.effectiveActivity = state;
+    if (state === "untrusted") observation.nativeSafety.trust = "untrusted";
+    vi.mocked(inspectRecovery).mockResolvedValueOnce(observation);
+    const before = vi.mocked(operate).mock.calls.length;
+    render(<App />);
+    const title =
+      state === "incident"
+        ? "Review an interruption"
+        : state === "untrusted"
+          ? "Safety check unavailable"
+          : "Changes are paused";
+    await screen.findByRole("heading", { name: title });
+    expect(
+      screen
+        .getByRole("button", { name: "Overview" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    openDisclosure("Other actions");
+    expect(
+      screen.queryByRole("button", {
+        name: "Install development tools",
+      }),
+    ).toBeNull();
+    expect(vi.mocked(operate).mock.calls.length).toBe(before);
+    expect(screen.getByRole("button", { name: "Recovery" })).toBeTruthy();
+  },
+);
+
+it("keeps a focused editor action stable when delayed update discovery changes the next step", async () => {
+  let resolve!: (
+    value: Awaited<ReturnType<typeof updateApi.checkTools>>,
+  ) => void;
+  const spy = vi.spyOn(updateApi, "checkTools").mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      'SKYVIEW_EVENT|tool|Git|{"tool":"Git","installedVersion":"2.49","availableVersion":null,"updateAvailable":false,"updateCheck":"notChecked"}',
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "fixture",
+    platform: { supported: true, label: "Fixture" },
+  });
+  const before = vi.mocked(open).mock.calls.length;
+  render(<App />);
+  const editor = await screen.findByRole("button", { name: "Open VSCodium" });
+  fireEvent.focus(editor);
+  resolve({
+    checkedAt: 1793990100,
+    tools: [
+      {
+        tool: "Git",
+        installedVersion: "2.49",
+        availableVersion: "2.50",
+        updateAvailable: true,
+        updateCheck: "current",
+      },
+    ],
+  });
+  await screen.findByRole("heading", { name: "Install updates" });
+  expect(screen.getByRole("button", { name: "Open VSCodium" })).toBe(editor);
+  fireEvent.click(editor);
+  await screen.findByText(
+    "The findings changed. Review your current next step before continuing.",
+  );
+  expect(vi.mocked(open).mock.calls.length).toBe(before);
+  expect(screen.getByRole("button", { name: "Review updates" })).toBeTruthy();
+  spy.mockRestore();
 });

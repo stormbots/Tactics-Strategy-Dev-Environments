@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import {
   openAppearance,
   chooseTheme,
@@ -45,7 +46,7 @@ for (const theme of ["Light", "Dark"]) {
         await page.goto("/");
         await expect(
           page.getByRole("heading", {
-            name: "Partially installed",
+            name: "Setup needs attention",
             exact: true,
           }),
         ).toBeVisible();
@@ -53,7 +54,7 @@ for (const theme of ["Light", "Dark"]) {
         await chooseZoom(page, position);
         const sizes = await page.evaluate(() => {
           const el = document.querySelector(".operation-description")!;
-          const svg = document.querySelector(".mode-tabs button svg")!;
+          const svg = document.querySelector(".guided-task .primary svg")!;
           return {
             font:
               parseFloat(getComputedStyle(el).fontSize) *
@@ -67,7 +68,7 @@ for (const theme of ["Light", "Dark"]) {
           };
         });
         expect(sizes.font).toBeCloseTo((12 * zoom) / 100, 2);
-        expect(sizes.icon).toBeCloseTo((17 * zoom) / 100, 1);
+        expect(sizes.icon).toBeCloseTo((18 * zoom) / 100, 1);
         if (sizes.sidePosition === "fixed")
           expect(sizes.sideHeight).toBeLessThanOrEqual(601);
         await audit(page);
@@ -76,7 +77,7 @@ for (const theme of ["Light", "Dark"]) {
             path: `test-results/zoom-${theme}-${width}-150.png`,
             fullPage: true,
           });
-        await page.getByRole("button", { name: "Update", exact: true }).click();
+        await page.getByRole("button", { name: /^Validation/ }).click();
         await page.getByText("Advanced", { exact: true }).click();
         const option = page.getByLabel(
           "Check for managed package updates during validation",
@@ -85,8 +86,8 @@ for (const theme of ["Light", "Dark"]) {
         await chooseZoom(page, (position + 1) % 5);
         await expect(option).toBeChecked();
         await expect(
-          page.getByRole("button", { name: "Update", exact: true }),
-        ).toHaveAttribute("aria-pressed", "true");
+          page.getByRole("button", { name: /^Validation/ }),
+        ).toHaveAttribute("aria-current", "page");
         await chooseZoom(page, position);
         for (const name of ["Validation", "Schedule", "About"]) {
           await closeAppearance(page);
@@ -140,23 +141,18 @@ test("zoom and theme changes preserve an active operation and log", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Partially installed", exact: true }),
+    page.getByRole("heading", { name: "Setup needs attention", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Install Development Environment" })
-    .click();
+  await otherAction(page, "Install development tools");
   await page.getByRole("button", { name: "Continue with Install" }).click();
+  await disclosure(page, "Details");
   const log = page.getByRole("region", { name: "Provisioning log" });
   await expect(log).toContainText("Checking system");
   await chooseZoom(page, 4);
   await chooseTheme(page, "Dark");
   await expect(log).toContainText("Checking system");
-  await expect(
-    page.getByRole("heading", { name: "Live details" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Development environment ready." }),
-  ).toBeVisible();
+  await expect(page.getByText("Details", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready!" })).toBeVisible();
   await audit(page);
 });
 

@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import { expect, test } from "@playwright/test";
 import axe from "axe-core";
 import { chooseTheme, chooseZoom, closeAppearance } from "./appearance-helpers";
@@ -8,15 +9,13 @@ for (const theme of ["Light", "Dark"]) {
     await page.setViewportSize({ width: 1040, height: 820 });
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { name: "Partially installed", exact: true }),
+      page.getByRole("heading", { name: "Setup needs attention", exact: true }),
     ).toBeVisible();
     await chooseTheme(page, theme);
     await chooseZoom(page, 4);
     await closeAppearance(page);
-    await page.getByRole("button", { name: "Update", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Update Development Tools", exact: true })
-      .click();
+    await otherAction(page, "Review tool updates");
+
     const preview = page.getByRole("heading", {
       name: "Preview development-tool update",
     });

@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import { test, expect } from "@playwright/test";
 import {
   chooseTheme,
@@ -149,7 +150,10 @@ for (const theme of ["Light", "Dark"])
       await page.setViewportSize({ width, height: 820 });
       await page.goto("/");
       await expect(
-        page.getByRole("heading", { name: "Partially installed", exact: true }),
+        page.getByRole("heading", {
+          name: "Setup needs attention",
+          exact: true,
+        }),
       ).toBeVisible();
       await chooseTheme(page, theme);
       await openAppearance(page);
@@ -198,15 +202,16 @@ test("appearance changes preserve an active validation and its completed log", a
   await page.setViewportSize({ width: 640, height: 820 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Partially installed", exact: true }),
+    page.getByRole("heading", { name: "Setup needs attention", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Validate", exact: true }).click();
+  await disclosure(page, "Other actions");
   await page
     .getByRole("button", {
-      name: "Validate Development Environment",
+      name: "Check my setup",
       exact: true,
     })
     .click();
+  await disclosure(page, "Details");
   const log = page.getByRole("region", { name: "Provisioning log" });
   await expect(log).toContainText("Checking system");
   await chooseTheme(page, "Dark");
@@ -215,8 +220,8 @@ test("appearance changes preserve an active validation and its completed log", a
   await expect(page.getByRole("progressbar")).toHaveCount(0);
   await expect(log).toContainText("Validating environment");
   await expect(
-    page.getByRole("button", { name: "Validate", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("button", { name: "Overview", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 });
 
 test("compact popover stays above navigation and page content", async ({

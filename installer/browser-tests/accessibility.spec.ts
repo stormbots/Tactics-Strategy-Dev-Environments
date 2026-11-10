@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import { test, expect } from "@playwright/test";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
@@ -21,9 +22,7 @@ async function audit(page: import("@playwright/test").Page) {
   expect(violations).toEqual([]);
 }
 async function beginInstall(page: import("@playwright/test").Page) {
-  await page
-    .getByRole("button", { name: "Install Development Environment" })
-    .click();
+  await otherAction(page, "Install development tools");
   await expect(
     page.getByRole("heading", { name: "Before Install begins" }),
   ).toBeVisible();
@@ -36,7 +35,7 @@ test("desktop contrast, keyboard access, progress and completion", async ({
   await page.setViewportSize({ width: 1140, height: 1000 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Partially installed", exact: true }),
+    page.getByRole("heading", { name: "Setup needs attention", exact: true }),
   ).toBeVisible();
   await audit(page);
   await page.screenshot({
@@ -46,26 +45,28 @@ test("desktop contrast, keyboard access, progress and completion", async ({
   await page.keyboard.press("Tab");
   await expect(page.getByText("Skip to main content")).toBeFocused();
   await beginInstall(page);
+  await disclosure(page, "Details");
   await expect(page.getByRole("progressbar")).toBeVisible();
+  await page
+    .getByRole("region", { name: "Provisioning log" })
+    .scrollIntoViewIfNeeded();
   await expect(
     page.getByRole("region", { name: "Provisioning log" }),
   ).toBeInViewport();
-  await expect(
-    page.getByRole("heading", { name: "Live details" }),
-  ).toBeVisible();
+  await expect(page.getByText("Details", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Provisioning log" }),
   ).toContainText("Checking system");
   await audit(page);
   await page.screenshot({ path: "test-results/installation-desktop.png" });
+  await expect(page.getByRole("heading", { name: "Ready!" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Development environment ready." }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Development environment ready." }),
+    page.getByRole("heading", { name: "Start building" }),
   ).toBeFocused();
   await audit(page);
-  await page.getByRole("button", { name: "View validation results" }).click();
+  await page
+    .getByRole("button", { name: "View validation results", exact: true })
+    .click();
   await expect(page.getByRole("table")).toBeVisible();
   await audit(page);
   await page.screenshot({
@@ -78,7 +79,7 @@ test("mobile layout and labels", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Partially installed", exact: true }),
+    page.getByRole("heading", { name: "Setup needs attention", exact: true }),
   ).toBeVisible();
   await audit(page);
   expect(
@@ -91,14 +92,20 @@ test("mobile layout and labels", async ({ page }) => {
     fullPage: true,
   });
   await beginInstall(page);
-  await expect(
-    page.getByRole("region", { name: "Provisioning log" }),
-  ).toBeInViewport();
+  await expect(page.locator(".progress-panel .spinner")).toBeVisible();
   expect(
     await page
       .locator(".progress-panel .spinner")
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
+
+  await disclosure(page, "Details");
+  await page
+    .getByRole("region", { name: "Provisioning log" })
+    .scrollIntoViewIfNeeded();
+  await expect(
+    page.getByRole("region", { name: "Provisioning log" }),
+  ).toBeInViewport();
   await audit(page);
   await page.screenshot({ path: "test-results/installation-mobile.png" });
 });
@@ -201,8 +208,12 @@ test("support report shows exact content and keeps logs off by default", async (
   await expect(
     preview.getByRole("heading", { name: "Skyview SDE Support Report" }),
   ).toBeVisible();
-  await expect(preview.getByRole("heading", { name: "Read-only recovery findings" })).toBeVisible();
-  await expect(preview.getByText(/Structured recovery findings were unavailable/)).toBeVisible();
+  await expect(
+    preview.getByRole("heading", { name: "Read-only recovery findings" }),
+  ).toBeVisible();
+  await expect(
+    preview.getByText(/Structured recovery findings were unavailable/),
+  ).toBeVisible();
   await expect(
     preview.getByText("STUDENT-LAPTOP", { exact: true }),
   ).toBeVisible();

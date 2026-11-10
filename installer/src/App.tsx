@@ -22,7 +22,6 @@ import {
   XCircle,
 } from "lucide-react";
 import {
-  environmentStatus,
   initialState,
   reducer,
   toolForCheck,
@@ -34,6 +33,7 @@ import {
   type Mode,
   type State,
   type ToolRecord,
+  type Report,
 } from "./model";
 import {
   appVersion,
@@ -68,11 +68,16 @@ import {
 } from "./recovery";
 import {
   maintenanceHealth,
-  overviewTone,
   type MaintenanceHealth,
   type MaintenanceObservation,
   type OperationIncident,
 } from "./safeOperations";
+import {
+  overviewDecision,
+  type OverviewAction,
+  type OverviewInput,
+  type OverviewDecision,
+} from "./overviewDecision";
 const modes: Record<
   Mode,
   { name: string; button: string; description: string; icon: typeof Download }
@@ -181,7 +186,15 @@ function LogOutput({ s, openLogs }: { s: State; openLogs: () => void }) {
 }
 export default function App() {
   const [s, dispatch] = useReducer(reducer, initialState);
-  const [mode, setMode] = useState<Mode>("install");
+  const [reviewRepair, setReviewRepair] = useState(false);
+  const [focusedPrimary, setFocusedPrimary] =
+    useState<OverviewDecision["primary"]>(null);
+  const [observedReport, setObservedReport] = useState<Report | null>(null);
+  const validationRequest = useRef(0);
+  const recoveryRequest = useRef(0);
+  const maintenanceRequest = useRef(0);
+  const contextEpoch = useRef(0);
+  const mounted = useRef(true);
   const [page, setPage] = useState<
     "overview" | "validation" | "recovery" | "schedule" | "about"
   >("overview");
@@ -214,20 +227,11 @@ export default function App() {
   const runId = useRef("");
   const started = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
-  const progressHeading = useRef<HTMLDivElement>(null);
+  const progressHeading = useRef<HTMLHeadingElement>(null);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const previousPage = useRef(page);
   const busy =
     s.stage === "running" || s.stage === "checking" || recoveryLoading;
-  const recoveryAttention = recoveryNeedsAttention(recovery);
-  const recoveryWarning =
-    recoveryAttention || recovery?.nativeSafety.packageHealth === "unknown";
-  const status =
-    !s.validationComplete &&
-    s.checks.length > 0 &&
-    !s.checks.some((c) => c.status === "FAIL")
-      ? "Validation incomplete"
-      : environmentStatus(s.checks, s.updates);
   const passes = s.checks.filter((c) => c.status === "PASS").length;
   const fails = s.checks.filter((c) => c.status === "FAIL").length;
   const discovery = useUpdateDiscovery(
@@ -250,71 +254,140 @@ export default function App() {
   const maintenanceState: MaintenanceHealth = maintenance
     ? maintenanceHealth(maintenance)
     : "unavailable";
-  const validationObserved =
-    s.checks.length > 0 &&
-    s.logs.some((line) => parseEvent(line)?.kind === "summary");
-  const readinessFailures = s.checks.filter(
-    (check) =>
-      check.status === "FAIL" && !/^Weekly maintenance/.test(check.message),
-  );
-  const validationReady = validationObserved && readinessFailures.length === 0;
-  const validationWarning = s.checks.some(
-    (check) => check.status === "WARNING",
-  );
-  const tone = overviewTone(
-    readinessFailures.length > 0 ||
-      recovery?.decision === "block_incomplete" ||
-      recovery?.decision === "block_untrusted",
-    recoveryWarning ||
-      validationWarning ||
-      (!validationObserved && s.stage !== "checking"),
-    maintenanceState,
-  );
+  const task =
+    s.stage === "running"
+      ? { phase: "running" as const, mode: s.mode }
+      : installPreflightOpen
+        ? { phase: "review" as const, mode: "install" as const }
+        : previewOpen
+          ? { phase: "review" as const, mode: "update" as const }
+          : reviewRepair
+            ? { phase: "review" as const, mode: "repair" as const }
+            : null;
+  const overviewInput: OverviewInput = {
+    epoch: generation,
+    validation: {
+      epoch: generation,
+      request: validationRequest.current,
+      value: observedReport,
+      pending: s.stage === "checking" || s.stage === "running",
+    },
+    recovery: {
+      epoch: generation,
+      request: recoveryRequest.current,
+      value: recovery,
+      pending: recoveryLoading,
+    },
+    tools: {
+      epoch: generation,
+      request: discovery.preview?.checkedAt ?? 0,
+      value: displayTools,
+      pending: discovery.toolsLoading,
+    },
+    maintenance: {
+      epoch: generation,
+      request: maintenanceRequest.current,
+      value: maintenance,
+      pending: maintenanceLoading,
+    },
+    task,
+  };
+  const decision = overviewDecision(overviewInput);
+  const recommendation = overviewDecision({ ...overviewInput, task: null });
+  const status = recommendation.headline;
+  const displayedPrimary = focusedPrimary ?? decision.primary;
+  const tone = ["ready", "updates"].includes(recommendation.state)
+    ? "green"
+    : ["checking", "unchecked", "check-incomplete", "untrusted"].includes(
+          recommendation.state,
+        )
+      ? "neutral"
+      : "yellow";
   async function refreshMaintenance() {
+    const id = ++maintenanceRequest.current;
     setMaintenanceLoading(true);
     try {
-      setMaintenance((await inspectSchedule()) as MaintenanceObservation);
+      const value = (await inspectSchedule()) as MaintenanceObservation;
+      if (mounted.current && id === maintenanceRequest.current)
+        setMaintenance(value);
     } catch {
-      setMaintenance(null);
+      if (mounted.current && id === maintenanceRequest.current)
+        setMaintenance(null);
     } finally {
-      setMaintenanceLoading(false);
+      if (mounted.current && id === maintenanceRequest.current)
+        setMaintenanceLoading(false);
     }
   }
   useEffect(() => {
-    if (previousPage.current !== page) pageHeading.current?.focus();
+    if (previousPage.current !== page) {
+      pageHeading.current?.focus();
+      setFocusedPrimary(null);
+    }
     previousPage.current = page;
   }, [page]);
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    const id = ++validationRequest.current;
     inspect()
-      .then((report) => dispatch({ type: "initial", report }))
-      .catch((e) => dispatch({ type: "error", message: String(e) }));
+      .then((report) => {
+        if (!mounted.current || id !== validationRequest.current) return;
+        setObservedReport(report);
+        dispatch({ type: "initial", report });
+      })
+      .catch((e) => {
+        if (!mounted.current || id !== validationRequest.current) return;
+        setObservedReport(null);
+        dispatch({ type: "error", message: String(e) });
+      });
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
   }, []);
   useEffect(() => {
     void refreshMaintenance();
   }, []);
   async function refreshRecovery() {
+    const id = ++recoveryRequest.current;
+    const epoch = contextEpoch.current;
     setRecoveryLoading(true);
     setRecoveryError("");
     try {
       const observation = await inspectRecovery();
+      if (
+        !mounted.current ||
+        id !== recoveryRequest.current ||
+        epoch !== contextEpoch.current
+      )
+        return null;
       setRecovery(observation);
       return observation;
     } catch {
+      if (
+        !mounted.current ||
+        id !== recoveryRequest.current ||
+        epoch !== contextEpoch.current
+      )
+        return null;
       setRecovery(null);
       setRecoveryError(
         "Recovery information could not be read. Check Again; no change has been authorized.",
       );
       return null;
     } finally {
-      setRecoveryLoading(false);
+      if (
+        mounted.current &&
+        id === recoveryRequest.current &&
+        epoch === contextEpoch.current
+      )
+        setRecoveryLoading(false);
     }
   }
   useEffect(() => {
-    void refreshRecovery().then((observation) => {
-      if (recoveryNeedsAttention(observation)) setPage("recovery");
-    });
+    void refreshRecovery();
   }, []);
   useEffect(() => {
     if (!native) return;
@@ -347,12 +420,14 @@ export default function App() {
   ) {
     if (busy || actionInFlight.current) return;
     actionInFlight.current = true;
+    setFocusedPrimary(null);
     try {
       const fresh = await refreshRecovery();
       if (selected !== "validate" && recoveryNeedsAttention(fresh)) {
         setPendingOperation(selected);
         setPreviewOpen(false);
         setInstallPreflightOpen(false);
+        setReviewRepair(false);
         setPage("recovery");
         setNotice("Review the Recovery findings before starting this change.");
         return;
@@ -374,10 +449,13 @@ export default function App() {
       }
       setPreviewOpen(false);
       setInstallPreflightOpen(false);
+      setReviewRepair(false);
       setPendingOperation(null);
-      setGeneration((g) => g + 1);
+      contextEpoch.current++;
+      const request = ++validationRequest.current;
+      setObservedReport(null);
+      setGeneration(contextEpoch.current);
       setNotice("");
-      setMode(selected);
       setPage("overview");
       runId.current = crypto.randomUUID();
       dispatch({ type: "start", mode: selected });
@@ -389,6 +467,8 @@ export default function App() {
           acknowledgedUncertainty,
           (line) => dispatch({ type: "line", line }),
         );
+        if (!mounted.current || request !== validationRequest.current) return;
+        setObservedReport(report);
         dispatch({ type: "complete", report });
         if (
           selected === "validate" &&
@@ -403,6 +483,8 @@ export default function App() {
           setPage("recovery");
         void refreshMaintenance();
       } catch (e) {
+        if (!mounted.current || request !== validationRequest.current) return;
+        setObservedReport(null);
         dispatch({ type: "error", message: String(e) });
       }
     } finally {
@@ -462,7 +544,7 @@ export default function App() {
     } else if (resume && pendingOperation) {
       // Re-enter ordinary review, never reuse a pre-acknowledgment confirmation.
       if (pendingOperation === "repair") {
-        setMode("repair");
+        setReviewRepair(true);
         setPage("overview");
         setPendingOperation(null);
       } else {
@@ -471,12 +553,22 @@ export default function App() {
     }
   }
   function reviewOperation(operation: "repair" | "update") {
-    if (busy) return;
-    setMode(operation);
+    if (busy || actionInFlight.current) return;
+    if (operation === "update") {
+      void start("update");
+      return;
+    }
+    if (recoveryNeedsAttention(recovery)) {
+      setPage("recovery");
+      setNotice("Review the Recovery findings before starting this change.");
+      return;
+    }
+    setFocusedPrimary(null);
+    setPreviewOpen(false);
+    setInstallPreflightOpen(false);
+    setReviewRepair(true);
     setPage("overview");
-    setNotice(
-      `${operationScope[operation]} Review the operation below and choose whether to start it.`,
-    );
+    setNotice("");
   }
   async function openTarget(target: Destination) {
     try {
@@ -485,8 +577,53 @@ export default function App() {
       setNotice(String(e));
     }
   }
-  const current = modes[mode];
-  const CurrentIcon = current.icon;
+  useEffect(() => {
+    if (reviewRepair) document.getElementById("next-step-heading")?.focus();
+  }, [reviewRepair]);
+  function cancelReview() {
+    setFocusedPrimary(null);
+    setInstallPreflightOpen(false);
+    setPreviewOpen(false);
+    setReviewRepair(false);
+    setPendingOperation(null);
+    requestAnimationFrame(() =>
+      document.getElementById("next-step-heading")?.focus(),
+    );
+  }
+  function overviewAction(action: OverviewAction) {
+    if (action === "review-interruption") {
+      setPage("recovery");
+      return;
+    }
+    if (action === "review-issue") {
+      setPage("validation");
+      return;
+    }
+    if (action === "open-editor") {
+      void openTarget("editor");
+      return;
+    }
+    if (action === "open-workspace") {
+      void openTarget("workspace");
+      return;
+    }
+    if (busy || actionInFlight.current) return;
+    if (action === "check") void start("validate");
+    else if (action === "recheck-safety") void refreshRecovery();
+    else if (action === "review-repair") reviewOperation("repair");
+    else void start(action === "review-install" ? "install" : "update");
+  }
+  const actionLabels: Record<OverviewAction, string> = {
+    check: "Check my setup",
+    "recheck-safety": "Check again",
+    "review-install": "Install development tools",
+    "review-repair": "Repair setup",
+    "review-updates": "Review tool updates",
+    "review-issue": "View validation results",
+    "review-interruption": "Review interruption",
+    "open-editor": "Open VSCodium",
+    "open-workspace": "Open Development",
+  };
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -596,6 +733,14 @@ export default function App() {
             {notice}
           </div>
         )}
+        {s.stage === "running" && page !== "overview" && (
+          <p role="status">
+            Setup in progress: {s.phase}{" "}
+            <button onClick={() => setPage("overview")}>
+              Return to current task
+            </button>
+          </p>
+        )}
         {page !== "recovery" && acknowledgmentOutcomes.length > 0 && (
           <div className="notice" role="status">
             {acknowledgmentOutcomes.map((result, index) => (
@@ -612,24 +757,23 @@ export default function App() {
             </button>
           </div>
         )}
-        {s.stage === "checking" &&
-          (page === "overview" || page === "validation") && (
-            <section
-              className="checking-panel"
-              aria-label="Workstation check"
-              aria-busy="true"
-            >
-              <LoaderCircle className="spinner" size={34} aria-hidden="true" />
-              <div>
-                <h2>Checking your workstation…</h2>
-                <p>
-                  Looking for installed tools and checking your configuration.
-                  Please wait.
-                </p>
-              </div>
-            </section>
-          )}
-        {!s.platform.supported && s.stage !== "checking" && (
+        {s.stage === "checking" && page === "validation" && (
+          <section
+            className="checking-panel"
+            aria-label="Workstation check"
+            aria-busy="true"
+          >
+            <LoaderCircle className="spinner" size={34} aria-hidden="true" />
+            <div>
+              <h2>Checking your workstation…</h2>
+              <p>
+                Looking for installed tools and checking your configuration.
+                Please wait.
+              </p>
+            </div>
+          </section>
+        )}
+        {observedReport && !s.platform.supported && s.stage !== "checking" && (
           <div className="notice" role="status">
             This system is outside the supported platforms. You can still run
             validation.
@@ -637,386 +781,303 @@ export default function App() {
         )}
         {page === "overview" ? (
           <>
-            {s.stage !== "running" && (
-              <>
-                <section
-                  className={`status-card tone-${tone}`}
-                  aria-label="Workstation status"
-                >
-                  <div className="status-title">
-                    <div className="status-icon">
-                      <Laptop size={22} />
-                    </div>
-                    <div>
-                      <p>DEVELOPMENT ENVIRONMENT</p>
-                      <h2>
-                        {s.stage === "checking"
-                          ? "Checking this workstation…"
-                          : busy
-                            ? "Setup in progress"
-                            : recoveryAttention
-                              ? "Needs attention"
-                              : validationReady
-                                ? "Ready!"
-                                : status}
-                      </h2>
-                    </div>
-                  </div>
-                  <div className="status-counts">
-                    {recoveryWarning && (
-                      <button
-                        className="text-button"
-                        onClick={() => setPage("recovery")}
-                      >
-                        {recoveryAttention
-                          ? (recovery?.guidance.title ??
-                            "Recovery findings unavailable")
-                          : "Package health remains unverified"}{" "}
-                        — Review Recovery
-                      </button>
-                    )}
-                    <span>
-                      <CheckCircle2 size={17} />
-                      <strong>{passes}</strong> passed
-                    </span>
-                    <span>
-                      <TriangleAlert size={17} />
-                      <strong>{fails}</strong> need attention
-                    </span>
-                    <span className="update-count" aria-live="polite">
-                      <RefreshCw size={17} />
-                      {discovery.toolsLoading ? (
-                        "Checking managed-tool updates…"
-                      ) : updateCount > 0 || !partialUpdateCheck ? (
-                        <>
-                          <strong>{updateCount}</strong>{" "}
-                          {updateCount === 1
-                            ? "managed-tool update available"
-                            : "managed-tool updates available"}
-                        </>
-                      ) : (
-                        "Updates not fully checked"
-                      )}
-                    </span>
-                    {partialUpdateCheck && updateCount > 0 && (
-                      <span>Other updates not fully checked</span>
-                    )}
-                  </div>
-                  <div className="status-maintenance">
-                    <span>
-                      {maintenanceLoading
-                        ? "Reading maintenance status…"
-                        : maintenanceState === "healthy"
-                          ? "Maintenance is current"
-                          : maintenanceState === "grace"
-                            ? "Maintenance is in its new-schedule grace period"
-                            : maintenanceState === "failed"
-                              ? "Maintenance failed"
-                              : maintenanceState === "missing"
-                                ? "Maintenance is not installed"
-                                : maintenanceState === "disabled"
-                                  ? "Maintenance is disabled"
-                                  : maintenanceState === "overdue"
-                                    ? "Maintenance is overdue"
-                                    : maintenanceState === "running"
-                                      ? "Maintenance is running"
-                                      : "Maintenance history unavailable"}
-                      {!maintenanceLoading && maintenance && (
-                        <small>
-                          Observed {localTime(maintenance.observedAt)}
-                        </small>
-                      )}
-                    </span>
-                    {!maintenanceLoading &&
-                      !["healthy", "grace"].includes(maintenanceState) && (
+            <section
+              className={`status-card guided-status tone-${tone}`}
+              aria-label="Workstation status"
+            >
+              <div className="status-title">
+                <div className="status-icon">
+                  <Laptop size={22} aria-hidden="true" />
+                </div>
+                <div>
+                  <p>DEVELOPMENT ENVIRONMENT</p>
+                  <h2>
+                    {s.stage === "running"
+                      ? "Setup in progress"
+                      : recommendation.headline}
+                  </h2>
+                </div>
+              </div>
+            </section>
+            <ApplicationUpdates data={discovery} />
+            <section
+              className="operation-card guided-task"
+              aria-labelledby="next-step-heading"
+              aria-busy={busy}
+            >
+              <p className="eyebrow">Your next step</p>
+              {s.stage === "running" ? (
+                <div className="progress-panel">
+                  <h2
+                    id="next-step-heading"
+                    ref={progressHeading}
+                    tabIndex={-1}
+                  >
+                    <LoaderCircle
+                      className="spinner"
+                      size={20}
+                      aria-hidden="true"
+                    />
+                    {s.mode === "validate" ? "Checking your setup…" : s.phase}
+                  </h2>
+                  <progress
+                    value={s.progress || undefined}
+                    max={100}
+                    aria-label={s.phase}
+                  />
+                  <p>
+                    Keep this window open. Detailed output is available below.
+                  </p>
+                </div>
+              ) : installPreflightOpen ? (
+                <>
+                  <h2 id="next-step-heading">Review your setup</h2>
+                  <p>
+                    {modes.install.description} Normal setup can reapply the
+                    full baseline, including configuration and the weekly
+                    schedule.
+                  </p>
+                  <ul aria-label="Current setup findings">
+                    {s.checks
+                      .filter((check) => check.status === "FAIL")
+                      .map((check, index) => (
+                        <li key={index}>
+                          {validationGuidance(
+                            check,
+                            undefined,
+                            s.platform.supported,
+                          )?.title ?? check.message}
+                        </li>
+                      ))}
+                  </ul>
+                  <PreflightReview
+                    operation="install"
+                    platformSupported={s.platform.supported}
+                    onContinue={(acknowledged) =>
+                      void start("install", true, acknowledged)
+                    }
+                    onCancel={cancelReview}
+                  />
+                </>
+              ) : previewOpen ? (
+                <ToolUpdatePreview
+                  data={discovery}
+                  snapshot={s.tools}
+                  platformSupported={s.platform.supported}
+                  onContinue={(acknowledged) =>
+                    void start("update", true, acknowledged)
+                  }
+                  onCancel={cancelReview}
+                />
+              ) : reviewRepair ? (
+                <>
+                  <h2 id="next-step-heading" tabIndex={-1}>
+                    Review your fixes
+                  </h2>
+                  <p>{operationScope.repair}</p>
+                  <ul aria-label="Current repair findings">
+                    {s.checks
+                      .filter((check) => check.status === "FAIL")
+                      .map((check, index) => (
+                        <li key={index}>
+                          {validationGuidance(
+                            check,
+                            undefined,
+                            s.platform.supported,
+                          )?.title ?? check.message}
+                        </li>
+                      ))}
+                  </ul>
+                  <p>{modes.repair.description}</p>
+                  <button
+                    className="primary"
+                    disabled={busy}
+                    onClick={() => void start("repair")}
+                  >
+                    Repair setup
+                  </button>
+                  <button className="secondary" onClick={cancelReview}>
+                    Back
+                  </button>
+                  <p className="muted">
+                    Your system will ask for administrator approval when needed.
+                    Native safety checks still apply.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 id="next-step-heading" tabIndex={-1} ref={resultHeading}>
+                    {decision.heading}
+                  </h2>
+                  <p className="operation-description">{decision.body}</p>
+                  {displayedPrimary && (
+                    <button
+                      className="primary"
+                      disabled={busy}
+                      onFocus={() => setFocusedPrimary(decision.primary)}
+                      onBlur={() => setFocusedPrimary(null)}
+                      onClick={() => {
+                        if (
+                          !decision.primary ||
+                          displayedPrimary.id !== decision.primary.id
+                        ) {
+                          setNotice(
+                            "The findings changed. Review your current next step before continuing.",
+                          );
+                          setFocusedPrimary(null);
+                          document.getElementById("next-step-heading")?.focus();
+                          return;
+                        }
+                        overviewAction(decision.primary.id);
+                      }}
+                    >
+                      {displayedPrimary.label}
+                      <ArrowRight size={18} aria-hidden="true" />
+                    </button>
+                  )}
+                  {s.stage === "failure" && <p role="status">{s.error}</p>}
+                </>
+              )}
+              <div className="guided-disclosures">
+                <details>
+                  <summary>Other actions</summary>
+                  <div className="result-actions">
+                    {decision.secondary
+                      .filter(
+                        (action) =>
+                          action !== displayedPrimary?.id &&
+                          action !== "review-issue",
+                      )
+                      .map((action) => (
                         <button
-                          className="text-button"
-                          onClick={() => {
-                            if (maintenanceState === "failed")
-                              void openTarget("maintenance");
-                            else if (maintenanceState === "overdue") {
-                              setMode("update");
-                              setPreviewOpen(true);
-                            } else if (maintenanceState === "unavailable")
-                              void refreshMaintenance();
-                            else setPage("schedule");
-                          }}
+                          className="secondary"
+                          key={action}
+                          disabled={busy}
+                          onClick={() => overviewAction(action)}
                         >
-                          {maintenanceState === "failed"
-                            ? "Open maintenance logs"
-                            : maintenanceState === "overdue"
-                              ? "Review managed-tool updates"
-                              : maintenanceState === "unavailable"
-                                ? "Refresh maintenance status"
-                                : "View schedule"}
+                          {actionLabels[action]}
                         </button>
-                      )}
+                      ))}
                   </div>
-                  {s.stage === "idle" && !s.validationComplete && !fails && (
-                    <p role="status">
-                      Local validation did not complete successfully. Review
-                      details and run Validate again; passing individual checks
-                      does not establish full readiness.
-                    </p>
-                  )}
-                  {s.stage === "idle" && (
-                    <div className="result-actions">
-                      <button
-                        className="secondary"
-                        onClick={() => openTarget("editor")}
-                      >
-                        Open VSCodium
-                      </button>
-                      <button
-                        className="secondary"
-                        onClick={() => openTarget("workspace")}
-                      >
-                        Open Development
-                      </button>
-                    </div>
-                  )}
+                </details>
+                <details>
+                  <summary>Details</summary>
+                  <p>
+                    {passes} passed · {fails} need attention. Validation
+                    collected{" "}
+                    {s.validationCollectedAt
+                      ? new Date(
+                          s.validationCollectedAt * 1000,
+                        ).toLocaleString()
+                      : "time unavailable"}
+                    .
+                  </p>
+                  <p>
+                    {discovery.toolsLoading
+                      ? "Checking managed-tool updates…"
+                      : partialUpdateCheck && updateCount === 0
+                        ? "Tool update availability is unknown."
+                        : `${updateCount} confirmed managed-tool updates available.`}{" "}
+                    {partialUpdateCheck && "Updates not fully checked."}
+                  </p>
+                  <ul aria-label="Latest check findings">
+                    {s.checks
+                      .filter((check) =>
+                        ["FAIL", "WARNING"].includes(check.status),
+                      )
+                      .map((check, index) => (
+                        <li key={index}>
+                          {check.status}:{" "}
+                          {validationGuidance(
+                            check,
+                            undefined,
+                            s.platform.supported,
+                          )?.title ?? check.message}
+                        </li>
+                      ))}
+                  </ul>
                   {discovery.toolsError && (
                     <p role="status">{discovery.toolsError}</p>
                   )}
-                  {maintenanceState !== "overdue" && (
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() => {
-                        setMode("update");
-                        setPreviewOpen(true);
-                      }}
-                    >
-                      Review managed-tool updates
-                    </button>
+                  <p>
+                    {maintenanceLoading
+                      ? "Reading maintenance status…"
+                      : maintenanceState === "failed"
+                        ? "Maintenance failed"
+                        : maintenanceState === "unavailable"
+                          ? "Maintenance history unavailable"
+                          : `Maintenance: ${maintenanceState}`}
+                  </p>
+                  {maintenance && (
+                    <p>
+                      {maintenance.resultDetail} Observed{" "}
+                      {localTime(maintenance.observedAt)}
+                    </p>
                   )}
-                </section>
-              </>
-            )}
-            <ApplicationUpdates data={discovery} />
-            {installPreflightOpen && (
-              <PreflightReview
-                operation="install"
-                platformSupported={s.platform.supported}
-                onContinue={(acknowledged) =>
-                  void start("install", true, acknowledged)
-                }
-                onCancel={() => {
-                  setInstallPreflightOpen(false);
-                  setPendingOperation(null);
-                }}
-              />
-            )}
-            {previewOpen && (
-              <ToolUpdatePreview
-                data={discovery}
-                snapshot={s.tools}
-                platformSupported={s.platform.supported}
-                onContinue={(acknowledged) =>
-                  void start("update", true, acknowledged)
-                }
-                onCancel={() => {
-                  setPreviewOpen(false);
-                  setPendingOperation(null);
-                }}
-              />
-            )}
-            {(s.stage === "success" || s.stage === "failure") && (
-              <section
-                className={`result ${s.stage}`}
-                aria-labelledby="result-heading"
-              >
-                <div className="result-icon">
-                  {s.stage === "success" ? <CheckCircle2 /> : <TriangleAlert />}
-                </div>
-                <div>
-                  <h2 id="result-heading" ref={resultHeading} tabIndex={-1}>
-                    {s.stage === "success"
-                      ? s.mode === "validate"
-                        ? "Validation passed."
-                        : "Development environment ready."
-                      : "Your environment needs attention."}
-                  </h2>
-                  <p>
-                    {s.stage === "success"
-                      ? "Your required tools and configuration passed validation."
-                      : s.error}
-                  </p>
+                  {recovery && (
+                    <p>
+                      {recovery.readiness === "ready_for_native_recheck"
+                        ? recovery.nativeSafety.packageHealth === "unknown"
+                          ? "Package health remains unverified; native checks still apply."
+                          : "No current safety blocker was found."
+                        : `${recovery.guidance.title}. ${recovery.guidance.steps.join(" ")}`}
+                    </p>
+                  )}
+                  {recoveryError && <p>{recoveryError}</p>}
                   <div className="result-actions">
-                    {s.stage === "success" && (
-                      <>
-                        <button onClick={() => openTarget("editor")}>
-                          Open VSCodium <ExternalLink size={14} />
-                        </button>
-                        <button onClick={() => openTarget("workspace")}>
-                          Open Development <FolderOpen size={14} />
-                        </button>
-                      </>
-                    )}
                     <button onClick={() => setPage("validation")}>
-                      View validation results <ArrowRight size={14} />
+                      View validation results
                     </button>
-                    {s.stage === "failure" && (
-                      <>
-                        <button onClick={() => start(s.mode)}>
-                          {s.mode === "validate"
-                            ? "Retry validation"
-                            : `Retry ${modes[s.mode].name.toLowerCase()}`}{" "}
-                          <RefreshCw size={14} />
-                        </button>
-                        <button onClick={() => setReportOpen(true)}>
-                          Create support report <LifeBuoy size={14} />
-                        </button>
-                      </>
+                    <button onClick={() => setPage("recovery")}>
+                      Review Recovery
+                    </button>
+                    <button onClick={() => setPage("schedule")}>
+                      View schedule
+                    </button>
+                    {maintenanceState === "failed" && (
+                      <button onClick={() => void openTarget("maintenance")}>
+                        Open maintenance logs
+                      </button>
                     )}
-                  </div>
-                </div>
-              </section>
-            )}
-            <section
-              className="operation-card"
-              aria-labelledby="operation-heading"
-            >
-              <div className="section-header">
-                <h2 id="operation-heading">Manage your environment</h2>
-                <span>Four simple ways to stay ready</span>
-              </div>
-              <div
-                className="mode-tabs"
-                role="group"
-                aria-label="Choose an operation"
-              >
-                {(Object.keys(modes) as Mode[]).map((m) => {
-                  const Icon = modes[m].icon;
-                  return (
-                    <button
-                      key={m}
-                      aria-pressed={mode === m}
-                      disabled={busy}
-                      onClick={() => setMode(m)}
-                    >
-                      <Icon size={17} />
-                      {modes[m].name}
+                    <button disabled={busy} onClick={() => setReportOpen(true)}>
+                      Create support report
                     </button>
-                  );
-                })}
-              </div>
-              <p className="operation-description">{current.description}</p>
-              {s.stage === "running" ? (
-                <div className="progress-panel">
-                  <div
-                    className="progress-heading"
-                    ref={progressHeading}
-                    tabIndex={-1}
-                    role="status"
-                  >
-                    <span>
-                      <LoaderCircle
-                        className="spinner"
-                        size={20}
-                        aria-hidden="true"
-                      />
-                      {s.phase}
-                    </span>
-                    <strong>{s.progress}%</strong>
                   </div>
-                  <progress value={s.progress} max={100} aria-label={s.phase} />
-                  <p>
-                    Keep this window open. Setup can take 10–20 minutes on a
-                    fresh laptop.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <button
-                    className="primary"
-                    disabled={
-                      busy || (!s.platform.supported && mode !== "validate")
-                    }
-                    onClick={() => start(mode)}
-                  >
-                    <CurrentIcon size={19} />
-                    {current.button}
-                    <ArrowRight size={18} />
-                  </button>
-                  <p className="operation-note">
-                    <ShieldCheck size={14} />
-                    {mode === "validate"
-                      ? "Validation runs without administrator privileges."
-                      : "Your system will ask for administrator approval when needed."}
-                  </p>
-                </>
-              )}
-              {runId.current && (
-                <section
-                  className="live-details"
-                  aria-labelledby="live-details-heading"
-                >
-                  <h2 id="live-details-heading">
-                    <Terminal size={17} aria-hidden="true" />
-                    {s.stage === "running"
-                      ? "Live details"
-                      : "Operation details"}
-                  </h2>
+                  {s.warnings.map((warning, i) => (
+                    <p key={i} role="status">
+                      {warning}
+                    </p>
+                  ))}
                   <LogOutput
                     key={runId.current}
                     s={s}
-                    openLogs={() => openTarget("logs")}
+                    openLogs={() => void openTarget("logs")}
                   />
-                </section>
-              )}
-            </section>
-            {s.warnings.length > 0 && (
-              <div className="notice" role="status">
-                <TriangleAlert size={18} />
-                <div>
-                  {s.warnings.map((w, i) => (
-                    <p key={i}>{w}</p>
-                  ))}
-                </div>
+                </details>
               </div>
-            )}
-            {s.stage !== "running" && (
-              <section
-                className="tools-preview"
-                aria-labelledby="tools-heading"
+            </section>
+            <details className="tools-preview">
+              <summary>Development tools</summary>
+              <div className="tool-grid">
+                {s.checks
+                  .filter((c) => toolForCheck(c))
+                  .map((check, i) => (
+                    <ToolItem
+                      key={i}
+                      check={check}
+                      record={displayTools.find(
+                        (t) => t.tool === toolForCheck(check),
+                      )}
+                    />
+                  ))}
+              </div>
+              <button
+                className="text-button"
+                onClick={() => setPage("validation")}
               >
-                <div className="section-header">
-                  <h2 id="tools-heading">Development tools</h2>
-                  <button
-                    className="text-button"
-                    onClick={() => setPage("validation")}
-                  >
-                    See all checks <ArrowRight size={14} />
-                  </button>
-                </div>
-                <div className="tool-grid">
-                  {s.checks
-                    .filter((c) =>
-                      toolNames.some((name) => name === toolForCheck(c)),
-                    )
-                    .sort(
-                      (a, b) =>
-                        toolNames.findIndex(
-                          (name) => name === toolForCheck(a),
-                        ) -
-                        toolNames.findIndex((name) => name === toolForCheck(b)),
-                    )
-                    .map((c, i) => (
-                      <ToolItem
-                        key={i}
-                        check={c}
-                        record={displayTools.find(
-                          (t) => t.tool === toolForCheck(c),
-                        )}
-                      />
-                    ))}
-                  {!s.checks.length && (
-                    <p>Tool status appears after the workstation check.</p>
-                  )}
-                </div>
-              </section>
-            )}
+                See all checks
+              </button>
+            </details>
           </>
         ) : page === "recovery" ? (
           <>
@@ -1134,7 +1195,7 @@ export default function App() {
             <AboutPage platform={s.platform.label} openTarget={openTarget} />
           </>
         )}
-        {(page === "validation" || (page === "overview" && !runId.current)) && (
+        {page === "validation" && (
           <details className="details">
             <summary>
               <Terminal size={17} />
@@ -1143,7 +1204,7 @@ export default function App() {
             <LogOutput s={s} openLogs={() => openTarget("logs")} />
           </details>
         )}
-        {(page === "overview" || page === "validation") && (
+        {page === "validation" && (
           <details className="details advanced">
             <summary>
               <Wrench size={17} />

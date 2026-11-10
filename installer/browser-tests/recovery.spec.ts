@@ -1,3 +1,4 @@
+import { disclosure, otherAction } from "./guided-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
 import { chooseTheme, closeAppearance } from "./appearance-helpers";
@@ -61,7 +62,10 @@ for (const theme of ["Light", "Dark"])
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       await expect(
-        page.getByRole("heading", { name: "Partially installed", exact: true }),
+        page.getByRole("heading", {
+          name: "Setup needs attention",
+          exact: true,
+        }),
       ).toBeVisible();
       await chooseTheme(page, theme);
       await closeAppearance(page);
@@ -69,10 +73,12 @@ for (const theme of ["Light", "Dark"])
       await expect(card).toHaveCount(1);
       // The default preview has real FAIL rows: their red severity must outrank
       // the independent nonblocking package-health warning.
-      await expect(card).toHaveClass(/tone-red/);
-      await card
+      await expect(card).toHaveClass(/tone-yellow/);
+      await disclosure(page, "Details");
+      await page
         .getByRole("button", {
-          name: /Package health remains unverified.*Review Recovery/,
+          name: "Review Recovery",
+          exact: true,
         })
         .click();
       await expect(
@@ -116,7 +122,7 @@ for (const theme of ["Light", "Dark"])
       });
     });
 
-    test(`Unknown health alone keeps Ready yellow in ${theme} at ${width}px`, async ({
+    test(`Unknown health alone keeps Ready with diagnostic details in ${theme} at ${width}px`, async ({
       page,
     }) => {
       // Browser-only module override: retain every other preview export and
@@ -132,6 +138,7 @@ for (const theme of ["Light", "Dark"])
           contentType: "application/javascript",
           body: `export * from "/src/bridge.ts?recoveryBaseline";
             export async function inspect() { return ${JSON.stringify({
+              validation_collected_at: 1793990000,
               code: 0,
               success: true,
               lines: [
@@ -150,9 +157,11 @@ for (const theme of ["Light", "Dark"])
       await chooseTheme(page, theme);
       await closeAppearance(page);
       await expect(card).toHaveCount(1);
-      await expect(card).toHaveClass(/tone-yellow/);
-      const reason = card.getByRole("button", {
-        name: /Package health remains unverified.*Review Recovery/,
+      await expect(card).toHaveClass(/tone-green/);
+      await disclosure(page, "Details");
+      const reason = page.getByRole("button", {
+        name: "Review Recovery",
+        exact: true,
       });
       await expect(reason).toBeVisible();
       await reason.focus();
@@ -216,6 +225,10 @@ for (const theme of ["Light", "Dark"])
       });
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
+      await expect(
+        page.getByRole("heading", { name: "Changes are paused" }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Recovery", exact: true }).click();
       await expect(
         page.getByRole("heading", { name: "Let’s get setup working again" }),
       ).toBeVisible();
