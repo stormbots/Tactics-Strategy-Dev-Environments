@@ -1456,6 +1456,10 @@ progress::-moz-progress-bar {
 .guided-status {
   display: block;
 }
+.guided-status .status-title > div:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .guided-status.tone-neutral {
   border-left-color: var(--line);
 }
