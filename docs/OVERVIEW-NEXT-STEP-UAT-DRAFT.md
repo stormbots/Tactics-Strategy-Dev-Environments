@@ -6,6 +6,11 @@ Release version, final source SHA, signed candidate hashes and execution dates:
 **TBD**. This plan is for the upcoming guided Overview release, not a new test
 claim about already accepted stable v1.2.22.
 
+Implementation execution is tracked separately in the
+[WF01–WF31 evidence ledger](OVERVIEW-WORKFLOW-EVIDENCE.md). It records tested
+source/layers, remaining native fixture gaps and unrun candidate/owner checks;
+this draft remains the acceptance plan, not an execution result.
+
 ## 1. Goal and design baseline
 
 Prove that SDE gives the student the right next action from real findings, keeps
