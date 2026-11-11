@@ -1,10 +1,12 @@
 # Guided Overview release — draft validation and UAT plan
 
-Status: **draft for owner review; not executed; no application implementation authorized by this document.**
+Status: **acceptance plan; #150 automated/native validation complete; #151 candidate preparation in progress; owner UAT Not run.**
 
-Release version, final source SHA, signed candidate hashes and execution dates:
-**TBD**. This plan is for the upcoming guided Overview release, not a new test
-claim about already accepted stable v1.2.22.
+Planned candidate **1.2.23**. Automated/native implementation source:
+`8e3c4463a475ed9fc7f89c88669fb12c129cf618`, final-main Build 42959957444 passed.
+Candidate-preparation source/tag, signed asset hashes and owner execution results
+remain **Pending / Not run** in the [candidate record](OVERVIEW-UAT-1.2.23.md).
+Stable v1.2.22 acceptance remains separate.
 
 Implementation execution is tracked separately in the
 [WF01–WF31 evidence ledger](OVERVIEW-WORKFLOW-EVIDENCE.md). It records tested
@@ -71,15 +73,26 @@ Before requesting owner UAT, Codex must fill in:
 
 | Item | Evidence / status |
 | --- | --- |
-| Approved design, including update-state correction | Draft baseline above; owner implementation authorization still required |
-| Release version and tested source | TBD |
-| Implementation PRs and exact accepted heads | TBD |
-| Full final-main Build run and applicable native/trust/browser results | TBD |
-| Native candidate-pair/upgrade evidence and its historical-binary limitations | TBD |
+| Approved design, including update-state correction | Owner-authorized implementation completed; prototype approval remains distinct from installed UAT |
+| Release version and tested source | Planned 1.2.23; implementation baseline `8e3c4463a475ed9fc7f89c88669fb12c129cf618`; final candidate-preparation/tag SHA pending |
+| Implementation PRs and exact accepted heads | See exact heads below; candidate-preparation PR/head pending |
+| Full final-main Build run and applicable native/trust/browser results | [Build 42959957444](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/42959957444) Pass on implementation baseline; candidate-preparation exact-main CI still required |
+| Native candidate-pair/upgrade evidence and its historical-binary limitations | Existing Windows SYSTEM/Mint upgrade gates passed at baseline; new same-source 1.2.22 → 1.2.23 pair Pending; not historical released-binary coverage |
 | Human signing approval and publishing run | TBD; never approve through tools |
 | Published tag/source and five asset identities/digests | TBD |
 | Independent pinned-key signature and both payload checks | TBD |
-| Candidate install instructions and owner checklist | TBD |
+| Candidate install instructions and owner checklist | [Focused checklist](OVERVIEW-UAT-1.2.23.md) prepared; verified asset-specific install instructions pending authenticated publication |
+
+
+Accepted implementation/audit heads (all integrated in the implementation baseline):
+
+| PR | Exact PR head | Merge commit |
+| --- | --- | --- |
+| #152 | `9bf97da31b58650f699f5365e4e31dfbc25f28ac` | `a8fb6542cdd79fd5f5a0d9dd915b4fdfc4a535df` |
+| #155 | `90ff20dc0dae4f9603943357bc2660603e24584a` | `f15e72b17f6257d5b297b2935371a07f4d92942b` |
+| #156 | `fcf7139ba7e434c8f1855f43d701a1abfc88d6ae` | `6e251b771c13b40ae5c62c76703ff47084e33db1` |
+| #157 | `5a7c4a6ed030c3be97635f8c0b3e49ab490000cc` | `84a5ce3f24f5381a2651408853c8d051c9b4be28` |
+| #158 | `694b9bfc12534ea7aff5d8e0eb9d79fd89f907a0` | `8e3c4463a475ed9fc7f89c88669fb12c129cf618` |
 
 Keep every existing applicable native, trust, package identity, signed SYSTEM and
 actual Mint upgrade gate. Do not replace them with prototype tests. Do not rebuild
