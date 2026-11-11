@@ -581,3 +581,180 @@ fn mutation_observation_reports_unknown_without_turning_it_into_false_inactivity
     .unwrap();
     assert_eq!(missing.activity, Activity::Unknown);
 }
+
+// Real loopback transport + real supervised child. The downloaded payload is a
+// synthetic file, not a package-manager installation or owner-machine fault.
+fn download_server(
+    after_change: bool,
+) -> (std::net::SocketAddr, std::thread::JoinHandle<Vec<u16>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let thread = std::thread::spawn(move || {
+        let statuses = if after_change {
+            vec![200, 503]
+        } else {
+            vec![503]
+        };
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        for status in &statuses {
+            let mut stream = loop {
+                match listener.accept() {
+                    Ok((stream, _)) => break stream,
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        assert!(
+                            std::time::Instant::now() < deadline,
+                            "Download fixture never connected"
+                        );
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(e) => panic!("Loopback fixture failed: {e}"),
+                }
+            };
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+                .unwrap();
+            stream
+                .set_write_timeout(Some(std::time::Duration::from_secs(3)))
+                .unwrap();
+            let mut request = [0; 1024];
+            assert!(stream.read(&mut request).unwrap() > 0);
+            let payload = if *status == 200 {
+                "synthetic-tool-v2"
+            } else {
+                "download unavailable"
+            };
+            write!(stream, "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{payload}", payload.len()).unwrap();
+        }
+        statuses
+    });
+    (address, thread)
+}
+
+#[test]
+fn mutation_download_child_probe() {
+    use std::io::{Read, Write};
+    let Some(address) = std::env::var_os("SDE_TEST_DOWNLOAD_ADDRESS") else {
+        return;
+    };
+    let root = std::path::PathBuf::from(std::env::var_os("SDE_TEST_DOWNLOAD_DIR").unwrap());
+    let after_change = std::env::var("SDE_TEST_DOWNLOAD_AFTER").unwrap() == "1";
+    for index in 0..if after_change { 2 } else { 1 } {
+        let mut stream = std::net::TcpStream::connect(address.to_str().unwrap()).unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+            .unwrap();
+        stream
+            .set_write_timeout(Some(std::time::Duration::from_secs(3)))
+            .unwrap();
+        write!(
+            stream,
+            "GET /artifact-{index} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        )
+        .unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        if response.starts_with("HTTP/1.1 503 ") {
+            eprintln!("SKYVIEW_EVENT|error|download|Synthetic artifact download returned HTTP 503; changes may already have occurred");
+            std::process::exit(23);
+        }
+        assert!(response.starts_with("HTTP/1.1 200 "));
+        assert!(response.ends_with("synthetic-tool-v2"));
+        std::fs::write(root.join("synthetic-tool"), b"synthetic-tool-v2").unwrap();
+    }
+    panic!("Fixture must encounter the controlled download failure");
+}
+
+fn download_child(
+    directory: &std::path::Path,
+    address: std::net::SocketAddr,
+    after: bool,
+) -> std::process::Command {
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+    child
+        .args([
+            "--exact",
+            "mutation_tests::mutation_download_child_probe",
+            "--nocapture",
+        ])
+        .env("SDE_TEST_DOWNLOAD_ADDRESS", address.to_string())
+        .env("SDE_TEST_DOWNLOAD_DIR", directory)
+        .env("SDE_TEST_DOWNLOAD_AFTER", if after { "1" } else { "0" });
+    child
+}
+
+#[test]
+fn download_transport_fixture_exercises_real_http_before_and_after_change() {
+    for after in [false, true] {
+        let directory = tempfile::tempdir().unwrap();
+        let (address, server) = download_server(after);
+        let result = download_child(directory.path(), address, after)
+            .output()
+            .unwrap();
+        assert_eq!(result.status.code(), Some(23));
+        assert!(String::from_utf8_lossy(&result.stderr).contains("HTTP 503"));
+        assert_eq!(
+            server.join().unwrap(),
+            if after { vec![200, 503] } else { vec![503] }
+        );
+        assert_eq!(directory.path().join("synthetic-tool").exists(), after);
+    }
+}
+
+#[test]
+fn mutation_download_failure_before_and_after_change_retains_intent_and_denies_replay() {
+    for after in [false, true] {
+        let Some(f) = Fixture::new() else { return };
+        let mut guard = mutation::begin_at(&f.path, Scope::System, || {
+            facts(Activity::Inactive, PackageHealth::Healthy, None)
+        })
+        .unwrap();
+        let original = recovery::read_journal(&f.path).unwrap().unwrap();
+        let (address, server) = download_server(after);
+        let result = guard
+            .run_with_probe(download_child(&f.path, address, after), || {
+                facts(Activity::Inactive, PackageHealth::Healthy, None)
+            })
+            .unwrap();
+        assert_eq!(result.code(), Some(23));
+        assert_eq!(
+            server.join().unwrap(),
+            if after { vec![200, 503] } else { vec![503] }
+        );
+        assert_eq!(f.path.join("synthetic-tool").exists(), after);
+        if after {
+            assert_eq!(
+                std::fs::read(f.path.join("synthetic-tool")).unwrap(),
+                b"synthetic-tool-v2"
+            );
+        }
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        assert!(guard
+            .run_with_probe(std::process::Command::new("must-not-replay"), || panic!(
+                "No second admission"
+            ))
+            .is_err());
+        drop(guard); // Unknown failure: never finish_known, clear locks or remove a journal.
+        let retained = recovery::read_journal(&f.path).unwrap().unwrap();
+        assert!(
+            retained.0 == original.0,
+            "Retained synthetic journal changed"
+        );
+        assert!(retained.1 == original.1);
+        drop(acquire_at(&f.path, "operations.gate", false).unwrap());
+        assert!(mutation::begin_at(&f.path, Scope::System, || {
+            facts(Activity::Inactive, PackageHealth::Healthy, None)
+        })
+        .is_err());
+        assert!(
+            recovery::read_journal(&f.path).unwrap().unwrap().0 == original.0,
+            "Retry changed retained evidence"
+        );
+        assert!(!f.path.join("recovery-archive").exists());
+        println!("SDE_NATIVE_DOWNLOAD_FAILURE_RETAINED_OK: after_change={after}; no completion, replay or evidence loss");
+    }
+}

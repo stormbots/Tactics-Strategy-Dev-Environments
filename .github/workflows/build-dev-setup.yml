@@ -403,11 +403,13 @@ jobs:
           printf '{"version":"1.2.2"}\n' > "$RUNNER_TEMP/sde-mint-fixture.json"
           npm --prefix installer run tauri build -- --config "$RUNNER_TEMP/sde-mint-fixture.json" --bundles deb
           cargo test --locked --manifest-path updater/Cargo.toml --no-run --message-format json > "$RUNNER_TEMP/sde-mint-tests.jsonl"
-          python3 - "$RUNNER_TEMP/sde-mint-tests.jsonl" <<'PYCODE'
+          cargo test --locked --manifest-path coordination/Cargo.toml --no-run --message-format json > "$RUNNER_TEMP/sde-mint-coordination-tests.jsonl"
+          python3 - "$RUNNER_TEMP/sde-mint-tests.jsonl" "$RUNNER_TEMP/sde-mint-coordination-tests.jsonl" <<'PYCODE'
           import json, shutil, sys
-          binaries = [v['executable'] for line in open(sys.argv[1]) if (v := json.loads(line)).get('reason') == 'compiler-artifact' and v.get('profile', {}).get('test') and 'lib' in v.get('target', {}).get('kind', []) and v.get('executable')]
-          assert len(binaries) == 1
-          shutil.copyfile(binaries[0], 'updater/target/debug/sde-native-mint-tests')
+          for source, destination in zip(sys.argv[1:], ('updater/target/debug/sde-native-mint-tests', 'coordination/target/debug/sde-native-mint-tests'), strict=True):
+              binaries = [v['executable'] for line in open(source) if (v := json.loads(line)).get('reason') == 'compiler-artifact' and v.get('profile', {}).get('test') and 'lib' in v.get('target', {}).get('kind', []) and v.get('executable')]
+              assert len(binaries) == 1
+              shutil.copyfile(binaries[0], destination)
           PYCODE
           bash tests/Prepare-MintNativeCI.sh
           mkdir -p "$RUNNER_TEMP/sde-evidence"

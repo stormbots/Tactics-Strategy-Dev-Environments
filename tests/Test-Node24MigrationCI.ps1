@@ -1,5 +1,21 @@
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Runtime installation tests are restricted to disposable GitHub runners.' }
+# Existing project/editor data predates the real system Install below.
+# Match the backend's ordinary ACL only when creating this disposable data root.
+if (-not (Test-Path 'C:\Development')) {
+    New-Item -ItemType Directory 'C:\Development' | Out-Null
+    & icacls.exe 'C:\Development' /grant '*S-1-5-32-545:(OI)(CI)M' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not prepare ordinary student workspace access.' }
+}
+$projectSentinel = Join-Path 'C:\Development' ('sde-system-sentinel-' + [guid]::NewGuid().ToString('N') + '.txt')
+[IO.File]::WriteAllText($projectSentinel,'synthetic pre-install student project')
+$projectHash = (Get-FileHash $projectSentinel).Hash
+$editorSettings = Join-Path $env:APPDATA 'VSCodium\User\settings.json'
+New-Item -ItemType Directory (Split-Path $editorSettings) -Force | Out-Null
+if (-not (Test-Path $editorSettings)) {
+    [IO.File]::WriteAllText($editorSettings,"// synthetic pre-install JSONC`n{`"editor.fontSize`":19}`n")
+}
+$editorHash = (Get-FileHash $editorSettings).Hash
 $choco = 'C:\ProgramData\chocolatey\bin\choco.exe'
 . (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Node24.ps1')
 # Simulate the reported real MSI/channel conflict, rather than a fake package.
@@ -78,4 +94,7 @@ if (-not (Test-Path 'C:\Development')) { throw 'Development workspace was not cr
 $coordinator = Join-Path $PSScriptRoot '../coordination/target/release/sde-coordination.exe'
 $status = & $coordinator status | ConvertFrom-Json
 if ($status -ne 'idle') { throw "Provisioned maintenance is not safely coordinated: $status" }
+if ((Get-FileHash $projectSentinel).Hash -cne $projectHash -or (Get-FileHash $editorSettings).Hash -cne $editorHash) { throw 'Real system Install changed pre-existing project/editor data.' }
+Write-Host 'SDE_SYSTEM_PRESERVATION_WINDOWS_OK'
+& (Join-Path $PSScriptRoot 'Test-ProfilePreservationCI.ps1')
 Write-Host 'SKYVIEW_SYSTEM_SETUP_OK'

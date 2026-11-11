@@ -18,9 +18,13 @@ No signed candidate, owner observation, publication or promotion is implied.
 - New combined-browser evidence C: `workflow-combinations.spec.ts`, added on
   `codex/150-workflow-evidence` from S. Local system-Chromium: **4 passed**, 100 combined state/theme/width/zoom
   observations and 20 screenshots. The existing 32 state/zoom/accessibility
-  regression cases and production build also passed locally. Exact-head CI
-  remains pending and must be
-  recorded in this increment's PR/checkpoint before acceptance.
+  regression cases and production build also passed locally. Exact audit head
+  `5a7c4a6ed030c3be97635f8c0b3e49ab490000cc`, PR #157,
+  [Build 42922753860](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/42922753860)
+  passed all applicable jobs, including 124 browser cases. Merged audit source L
+  `84a5ce3f24f5381a2651408853c8d051c9b4be28` has final-main
+  [Build 42949291295](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/42949291295)
+  pending at this checkpoint; check its final result before accepting L.
 - Candidate/version/assets/digests/signature/owner accounts: **Not run / not assigned**.
   Source baseline S is not a release-candidate identity.
 
@@ -116,28 +120,78 @@ owner-designated rows; exact installed candidate/platform/account is still absen
 | WF07 — failed/delayed collection is incomplete, fresh results win | D App retry and generation tests; B unavailable/incomplete. Pass. | W/M validator nonzero/summary and safe-failure contracts. Pass boundary. | No artificial native completion time invented. |
 | WF08 — explicit repair, full scope, cancel and preservation | D repair review/unresolved tests; B guidance. Pass. | W/M installed manual Install/Repair wrappers/nesting. Partial for profile/tool sentinels. | G1; full native repair cannot be inferred from app upgrade. |
 | WF09 — unresolved repair has diagnostics, no repair loop | D `retains an unresolved repair and download diagnostics without an automatic repair loop`; lifecycle decisions. Pass. | T runner failure retains intent; W/M actual nonzero child tests. Boundary Pass. | Specific missing-tool-after-real-repair fixture not observed; G1. |
-| WF10 — unsupported finding/incomplete package is not generic Repair | D validation guidance; B attention/native-incomplete. Pass. | T known damage/admission denials; U failed package blocks retry. Pass. | C adds combined browser blocker proof; pending its own results. |
+| WF10 — unsupported finding/incomplete package is not generic Repair | D validation guidance; B attention/native-incomplete. Pass. | T known damage/admission denials; U failed package blocks retry. Pass. | C combined browser blocker proof passed on the exact audit head; L final-main pending. |
 | WF11 — exact optional-update copy, cancel, editor alternatives | D exact-copy/single-action; B updates/preview. Pass. | W/M preflight/native managed-update contract. Boundary Pass. | O naturally available updates Not run. |
 | WF12 — reviewed update scope, normal authorization, fresh remaining state | D changed fingerprint/verified outcome recomputation; B changed options/update preview. Pass. | W/M installed manual supervisor and original update/preflight contracts. Partial for actual managed-tool update. | G1/G2: distinguish tool updates from U app updates. |
 | WF13 — declined/partial update is uncertain, no automatic replay | D operationLifecycle native flags and error handling; B uncertain result/review cancel. Pass. | W/M launch proof and nonzero helper; T failure retains journal. Partial for real tool partial update. | G2; no automatic retry or promise of safe cancellation. |
 | WF14 — unknown tool discovery separate from app updates | D update discovery/guidance; B update-discovery/self-update-setting. Pass. | T updater observation/policy tests. Pass boundary. | No new update default or pause/resume authority. |
-| WF15 — active operation blocks mutations, diagnostics remain | D safety combination; B active. Pass. C all zoom/combined checks pending. | T real cross-process gates/current-activity-before-child; W/M nesting. Pass. | No process-killing/restart instruction added. |
+| WF15 — active operation blocks mutations, diagnostics remain | D safety combination; B active. Pass. C all zoom/combined checks Pass on the audit head. | T real cross-process gates/current-activity-before-child; W/M nesting. Pass. | No process-killing/restart instruction added. |
 | WF16 — unknown lifetime remains uncertain; restart not repair | D/B unknown/recovery guidance. Pass. | T restart provenance reads/comparisons and unknown-state admission. Partial for actual reboot. | G3: disposable real restart observation; owner only naturally present state. |
-| WF17 — unavailable/untrusted records fail closed, diagnostics accessible | D App unavailable/source-specific guidance; B untrusted. Pass. | T real storage links/ACL/native denials. Pass. | C cross-zoom diagnostics pending. |
+| WF17 — unavailable/untrusted records fail closed, diagnostics accessible | D App unavailable/source-specific guidance; B untrusted. Pass. | T real storage links/ACL/native denials. Pass. | C cross-zoom diagnostics Pass on the audit head. |
 | WF18 — acknowledgment preserves original source evidence, no execution | D two-source App/recovery tests; R incident/report behavior. Pass. | T real standard-user intent, privileged consumers, durable generation binding; W/M feasibility. Pass. | O natural incident only; no owner fault manufacture. |
 | WF19 — summary save versus consent failure/partial success | D App partial/unconfirmed/no replay; R reports. Pass. | T native acknowledgment controller and production store failure tests. Pass. | Saved report reference is not a mutation permit. |
 | WF20 — changed evidence caught at confirmation and execution | D fresh confirmation/changed scope/options; B rereview. Pass. | T no-gap lease transfer, fresh safety after persistence and before child. Pass. | C retains combined reasons; no stale UI permit. |
-| WF21 — safety priority over pass/missing/update combinations | D six-blocker combined matrix. Pass; B individual states Pass; C combined browser matrix pending. | T `all_policy_combinations_keep_safety_independent_of_acknowledgment`, real child denial. Pass boundary. | C must pass before browser combination claim. |
+| WF21 — safety priority over pass/missing/update combinations | D six-blocker combined matrix. Pass; B individual states Pass; C combined browser matrix Pass on the audit head. | T `all_policy_combinations_keep_safety_independent_of_acknowledgment`, real child denial. Pass boundary. | C passed on the audit head; retain the separate L final-main gate. |
 | WF22 — unknown package health/history is not an invented incident | D maintenance/unknown-health; B recovery clear. Pass. | T `recovery_unknown_health_alone_warns_and_snapshot_never_leaks_private_binding` and absent account/source tests. Pass. | O clear state Not run. Historical clear-state acceptance separate. |
 | WF23 — Back/Cancel no work; only native proof establishes non-start | D cancel pending inspection/unmount/native-only outcomes; B cancel/reopen. Pass. | W/M process capture/Windows handle outcome policy; journals retained for uncertainty. Pass native proof boundary. | Actual graphical deny dialog Not observed, not an automated dialog pass. |
 | WF24 — network before/after changes preserves uncertainty/evidence | D transport/download diagnostics, no retry; B uncertain result. Pass frontend. | T supervised runner failure; U tamper/failed-postinst retry block. Partial for network at tool mutation stages. | G2: network-specific before/after native fault fixture absent. |
 | WF25 — navigation/rapid clicks keep one real operation and progress | D duplicate/nav/actual-phase/late-stream; B operation-lifecycle and zoom active-log. Pass. | T actual cross-process leases and detached supervisor/child lifetime. Pass boundary. | O normal navigation Not run. |
 | WF26 — reopen forgets intent, reconstructs fresh, no saved success | D unstarted/active reopen; B reload. Pass. | T durable evidence/restart comparisons/manual crashed supervisor. Partial for rebooted UI. | G3; no invented reconnect percentage. |
 | WF27 — out-of-order observations cannot overwrite or repurpose focus | D request/epoch/late-stream and focused editor action; B scenarios. Pass. | T source/generation views and stale token rejection. Pass. | O keyboard/focus observation Not run. |
-| WF28 — secondary/diagnostic routes preserve scope and shared guards | D App busy/shared dispatch; B/R navigation/details; C combinations pending. | W/M allowlisted IPC, T native admission. Pass boundary. | O route walkthrough Not run. |
+| WF28 — secondary/diagnostic routes preserve scope and shared guards | D App busy/shared dispatch; B/R navigation/details; C combinations Pass on the audit head. | W/M allowlisted IPC, T native admission. Pass boundary. | O route walkthrough Not run. |
 | WF29 — reports/history/optional sharing distinct from operational evidence | R report privacy/cancel/history deletion; App retained receipt. Pass. | T protected report/history/user store tests, no journal deletion. Pass. | O safe report/history walkthrough Not run. |
-| WF30 — keyboard/focus/themes/zoom/reflow/announcements | X/B/R: axe and keyboard/layout tests Pass, C combined every-zoom audit pending. | No native desktop screen-reader interaction asserted. | O installed keyboard/assistive technology Not run. |
+| WF30 — keyboard/focus/themes/zoom/reflow/announcements | X/B/R: axe and keyboard/layout tests Pass, C combined every-zoom audit Pass on the audit head. | No native desktop screen-reader interaction asserted. | O installed keyboard/assistive technology Not run. |
 | WF31 — installed candidate identity/upgrade/preservation/policy | B About/Schedule/launch routes Pass, no actual release identity claim. | U real fixture signed upgrade/sentinels/policy Pass; final candidate pair Not run. | #151 candidate identity/signature/owner installation; historical binaries not substituted. |
+
+## Native fixture follow-up — G1/G2 (CI pending)
+
+Branch `codex/150-native-outcome-fixtures` is based on L; its exact tested SHA
+and runs belong in the PR/checkpoint. Implementation is **Not run** in privileged
+Windows/Mint contexts until those jobs report the required assertions/markers.
+
+- G1 Windows: `tests/Test-Node24MigrationCI.ps1` now places synthetic project
+  and editor-setting sentinels before its existing real system Install. It checks
+  exact hashes afterward (`SDE_SYSTEM_PRESERVATION_WINDOWS_OK`). The normal
+  Users workspace ACL is applied only when creating the disposable data root;
+  no coordinator ACL or existing data is relaxed.
+- `tests/Test-ProfilePreservationCI.ps1` runs byte-identical copies of the real
+  profile/repository/coordination scripts twice under a real fresh standard-user
+  token. Projects, JSONC settings and Git identity must survive, while disclosed
+  Git/Explorer defaults are applied (`SDE_PROFILE_PRESERVATION_WINDOWS_OK`).
+- G1 Linux: `tests/verify_profile_preservation_native.py` runs a byte-identical
+  installed `Configure-SkyviewUser.sh` plus its real Git/jq/coordination code as
+  UID 65534 with a synthetic home. It checks user precedence during baseline
+  merge, the exact first backup, two invocations, JSONC preservation, project
+  bytes, retained Git identity and disclosed defaults. The installed manual
+  harness calls it on both Ubuntu and actual Mint
+  (`SDE_PROFILE_PRESERVATION_LINUX_OK`).
+- Profile fixtures use controlled empty extension lists and no remote clone.
+  Linux CLI presence is a failing placeholder that must never be invoked. These
+  tests cover the actual shared profile phase used by Install/Repair, not editor
+  downloads, all development-package installations or installed GUI interaction.
+  Existing native wrapper/scope tests and real package/upgrade gates remain
+  separate. New profile helpers refuse a retained journal or unexpected repository
+  policy rather than clearing/replacing them. No owner account is touched.
+- G2: `coordination/src/mutation_tests.rs` starts an actual loopback HTTP server
+  and actual child process. Before-change case returns HTTP 503 immediately;
+  after-change case serves a synthetic tool payload, writes a real file, then
+  returns 503. The production mutation guard must retain the same journal object
+  and bytes, reject duplicate submission and block a fresh attempt even after
+  its kernel gate becomes free. It never calls `finish_known` on those failures.
+  Expected marker: `SDE_NATIVE_DOWNLOAD_FAILURE_RETAINED_OK` for **both** cases.
+- The portable transport test passes locally with real HTTP and child exit 23.
+  It does not exercise the privileged guard. Required root/Windows coordination
+  CI executes the guard test; the existing Mint native job additionally builds
+  and runs that exact test binary inside Mint with `SDE_REQUIRE_COORDINATION=1`,
+  requiring both markers. Fresh safety facts are controlled fixture inputs;
+  the gate/journal/child/filesystem/transport are real. This is a native failure
+  boundary test, not an induced public Chocolatey/APT outage or a packaged GUI
+  operation. Those evidence layers must stay distinct.
+- G3 remains a provenance applicability review: existing required native source
+  reads/comparisons, real helper crash/supervision and fresh frontend reopen
+  tests are retained. A real OS reboot plus desktop UI reconnect is still
+  **Not observed**, and no owner is asked to manufacture one. Do not silently
+  reinterpret that limit as a pass or remove an inherited gate.
 
 ## Defect found by this audit
 
@@ -155,10 +209,10 @@ This ledger deliberately does **not** mark every workflow fully passed.
 
 | Gap | Required Codex work / safe context | Current status |
 | --- | --- | --- |
-| G1 — tool/profile mutation preservation | Disposable Windows and actual Mint fixture must exercise the applicable real Install/Repair/user-configuration boundary with project/settings sentinels and disclosed normal configuration changes. Existing installed manual tests use synthetic children; upgrade sentinels cover a different operation. Record exact command/account/pre/post evidence. | Not run; design a bounded fixture using existing test facilities, without provisioning owner machines or claiming selective repair. |
-| G2 — actual managed-tool partial/network outcome | Native fixture injects controlled download failure before and after a permitted synthetic change through the relevant production runner/guard. Assert retained journal, no false completion and denied unsafe retry. Retain actual error/receipt proof; do not weaken package/native checks or equate app upgrade with tool update. | Not run; existing generic child failure and frontend download text are partial evidence. |
+| G1 — tool/profile mutation preservation | Disposable Windows and actual Mint fixture must exercise the applicable real Install/Repair/user-configuration boundary with project/settings sentinels and disclosed normal configuration changes. Existing installed manual tests use synthetic children; upgrade sentinels cover a different operation. Record exact command/account/pre/post evidence. | Implemented above on `codex/150-native-outcome-fixtures`; privileged Windows/Mint execution pending CI. No pass claimed yet. |
+| G2 — actual managed-tool partial/network outcome | Native fixture injects controlled download failure before and after a permitted synthetic change through the relevant production runner/guard. Assert retained journal, no false completion and denied unsafe retry. Retain actual error/receipt proof; do not weaken package/native checks or equate app upgrade with tool update. | New real HTTP/supervised-child fixture implemented above; portable transport test passes locally, privileged Windows/Mint execution pending CI. No native pass claimed yet. |
 | G3 — restart/reopen provenance | Trace whether the workflow specifically requires actual reboot evidence beyond native source reads, strict comparison fixtures and supervisor-crash probes. If required, run a disposable supported restart fixture and retain independent provenance; never ask owner to manufacture interruption. | Not observed; native reads/comparisons are passing, real rebooted running UI is not. |
-| C — combined browser accessibility | New `workflow-combinations.spec.ts`: missing essential + available update + each native blocker, two themes, 390/1140px, every supported zoom; one primary, no mutation shortcuts, retained diagnostics and zero operations. | Local system-Chromium 4/4 Pass; authoritative exact-head CI pending. |
+| C — combined browser accessibility | New `workflow-combinations.spec.ts`: missing essential + available update + each native blocker, two themes, 390/1140px, every supported zoom; one primary, no mutation shortcuts, retained diagnostics and zero operations. | Local 4/4 Pass; exact audit-head Build 42922753860 Pass (124 total browser cases); L final-main pending. |
 
 No candidate preparation while unresolved unsafe authorization, false Ready,
 data loss, replay, duplicates, inaccessible diagnostics or an unbounded loop is
@@ -167,7 +221,8 @@ complete safe fixtures first and record residual limitations explicitly.
 
 ## Preserved gates and next handoff
 
-The existing `build-dev-setup.yml` is unchanged. Keep `checks`, Windows/Mint
+The native follow-up only adds fixture execution to `build-dev-setup.yml`; it
+does not remove or weaken any existing job/marker/condition. Keep `checks`, Windows/Mint
 native, both update-trust platforms and `acceptance`, all required feasibility,
 bootstrap/manual/scheduled-tool/storage/retention markers and signed-upgrade tests.
 Do not relax unknown-path CI classification for this document or new tests.
