@@ -7,6 +7,8 @@ source /etc/os-release
 printf 'Native evidence: %s; kernel/container desktop UAT remains separate\n' "$PRETTY_NAME"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
+# Dependencies for the real unprivileged profile preservation fixture.
+apt-get -y --no-remove install git jq
 root=/opt/sde-fixtures
 # Export only test/native output, never fixture keys or protected staging files.
 trap 'if [[ -d /evidence && -f "$root/native-result.txt" ]]; then cp "$root/native-result.txt" /evidence/mint-native.txt; fi' EXIT
@@ -17,6 +19,13 @@ printf 'test placeholder\n' > "$root/1.2.2/Skyview-Dev-Setup-Windows-x64.exe"
 printf 'test placeholder\n' > "$root/1.2.2/failure/Skyview-Dev-Setup-Windows-x64.exe"
 cp /work/updater/target/debug/sde-native-mint-tests "$root/native-tests"
 chmod 0700 "$root/native-tests"
+# Execute the real coordination failure fixture inside actual Mint as root, not
+# only on the Ubuntu build host. Its own isolated protected root is disposable.
+cp /work/coordination/target/debug/sde-native-mint-tests "$root/native-coordination-tests"
+chmod 0700 "$root/native-coordination-tests"
+SDE_REQUIRE_COORDINATION=1 "$root/native-coordination-tests" --exact mutation_tests::mutation_download_failure_before_and_after_change_retains_intent_and_denies_replay --nocapture | tee "$root/network-failures.txt"
+grep -Fq 'SDE_NATIVE_DOWNLOAD_FAILURE_RETAINED_OK: after_change=false;' "$root/network-failures.txt"
+grep -Fq 'SDE_NATIVE_DOWNLOAD_FAILURE_RETAINED_OK: after_change=true;' "$root/network-failures.txt"
 apt-get -y --no-remove install "$root/old.deb"
 python3 /work/tests/verify_recovery_bootstrap_native.py "$root/old.deb" | tee "$root/recovery-bootstrap.txt"
 grep -Fxq SDE_RECOVERY_LINUX_INSTALLED_BOOTSTRAP_OK "$root/recovery-bootstrap.txt"

@@ -198,6 +198,8 @@ PY
                          'recovery-context.json', 'recovery-acknowledgment.json',
                          'recovery-disposition.json'):
                 (ROOT / name).unlink(missing_ok=True)
+    from verify_profile_preservation_native import main as verify_profile
+    verify_profile(BACKEND)
     print('SDE_RECOVERY_LINUX_MANUAL_SUPERVISOR_OK')
 
 
