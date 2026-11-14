@@ -1,6 +1,7 @@
 # How our GitHub checks work
 
-*A student guide to Skyview Dev Setup*  
+*A student guide to Skyview Dev Setup*
+
 Reviewed November 14, 2026
 
 Before we share a new version of Skyview Dev Setup, we need evidence that the changes work and that our safety rules still hold. GitHub runs many of these checks for us. People then review the results and test the release on real computers.

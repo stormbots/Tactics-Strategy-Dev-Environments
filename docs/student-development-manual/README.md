@@ -2,8 +2,10 @@
 
 ## A student manual for development, CI and delivery
 
-**Audience:** Students beginning high school, with little or no programming experience.  
-**Status:** Project reference manual, first edition. Student classroom testing has not yet been conducted.  
+**Audience:** Students beginning high school, with little or no programming experience.
+
+**Status:** Project reference manual, first edition. Student classroom testing has not yet been conducted.
+
 **Repository examples checked:** November 14, 2026.
 
 Software development means more than writing code. We need to understand a problem, make a focused change, check our work and explain our results. Before sharing software, we also need to verify the exact files people will receive.
