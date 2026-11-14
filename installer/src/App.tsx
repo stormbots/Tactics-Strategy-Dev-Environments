@@ -1,3 +1,4 @@
+import { withNativeReadSequence, type ReadSequence } from "./nativeReadQueue";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -227,6 +228,7 @@ export default function App() {
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [recovery, setRecovery] = useState<RecoveryState | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [readSequencePending, setReadSequencePending] = useState(false);
   const [recoveryError, setRecoveryError] = useState("");
   const [pendingOperation, setPendingOperation] = useState<Mode | null>(null);
   const [acknowledgmentOutcomes, setAcknowledgmentOutcomes] = useState<
@@ -250,7 +252,10 @@ export default function App() {
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const previousPage = useRef(page);
   const busy =
-    s.stage === "running" || s.stage === "checking" || recoveryLoading;
+    s.stage === "running" ||
+    s.stage === "checking" ||
+    recoveryLoading ||
+    readSequencePending;
   const passes = s.checks.filter((c) => c.status === "PASS").length;
   const fails = s.checks.filter((c) => c.status === "FAIL").length;
   const discovery = useUpdateDiscovery(
@@ -289,7 +294,8 @@ export default function App() {
       epoch: generation,
       request: validationRequest.current,
       value: observedReport,
-      pending: s.stage === "checking" || s.stage === "running",
+      pending:
+        s.stage === "checking" || s.stage === "running" || readSequencePending,
     },
     recovery: {
       epoch: generation,
@@ -385,17 +391,28 @@ export default function App() {
     if (started.current) return;
     started.current = true;
     const id = ++validationRequest.current;
-    inspect()
-      .then((report) => {
-        if (!mounted.current || id !== validationRequest.current) return;
-        setObservedReport(report);
-        dispatch({ type: "initial", report });
-      })
-      .catch((e) => {
-        if (!mounted.current || id !== validationRequest.current) return;
-        setObservedReport(null);
-        dispatch({ type: "error", message: String(e) });
-      });
+    const epoch = contextEpoch.current;
+    const current = () =>
+      mounted.current &&
+      id === validationRequest.current &&
+      epoch === contextEpoch.current;
+    void withNativeReadSequence(async (lease) => {
+      if (!current()) return;
+      const safety = await refreshRecovery(lease);
+      if (!current()) return;
+      if (!safety || safety.effectiveActivity === "active") {
+        dispatch({ type: "startup-deferred" });
+        return;
+      }
+      const report = await inspect(lease);
+      if (!current()) return;
+      setObservedReport(report);
+      dispatch({ type: "initial", report });
+    }).catch((e) => {
+      if (!current()) return;
+      setObservedReport(null);
+      dispatch({ type: "error", message: String(e) });
+    });
   }, []);
   useEffect(() => {
     mounted.current = true;
@@ -406,13 +423,13 @@ export default function App() {
   useEffect(() => {
     void refreshMaintenance();
   }, []);
-  async function refreshRecovery() {
+  async function refreshRecovery(lease?: ReadSequence) {
     const id = ++recoveryRequest.current;
     const epoch = contextEpoch.current;
     setRecoveryLoading(true);
     setRecoveryError("");
     try {
-      const observation = await inspectRecovery();
+      const observation = await inspectRecovery(lease);
       if (
         !mounted.current ||
         id !== recoveryRequest.current ||
@@ -442,9 +459,6 @@ export default function App() {
         setRecoveryLoading(false);
     }
   }
-  useEffect(() => {
-    void refreshRecovery();
-  }, []);
   useEffect(() => {
     if (!native) return;
     let disposed = false;
@@ -492,132 +506,141 @@ export default function App() {
     actionInFlight.current = true;
     const navigation = navigationVersion.current;
     setFocusedPrimary(null);
+    setReadSequencePending(selected === "validate");
     try {
-      const fresh = await refreshRecovery();
-      if (!mounted.current) return;
-      if (navigation !== navigationVersion.current) {
+      await withNativeReadSequence(async (readLease) => {
+        const fresh = await refreshRecovery(readLease);
+        if (!mounted.current) return;
+        if (navigation !== navigationVersion.current) {
+          reviewed.current = null;
+          setInstallPreflightOpen(false);
+          setPreviewOpen(false);
+          setReviewRepair(false);
+          setPendingOperation(null);
+          setNotice(
+            "The pending request was not submitted. Review again when you are ready; no operation was started from this request.",
+          );
+          return;
+        }
+        if (selected !== "validate" && recoveryNeedsAttention(fresh)) {
+          reviewed.current = null;
+          setPendingOperation(selected);
+          setPreviewOpen(false);
+          setInstallPreflightOpen(false);
+          setReviewRepair(false);
+          setPage("recovery");
+          setNotice(
+            "Review the Recovery findings before starting this change.",
+          );
+          return;
+        }
+        if (fresh?.effectiveActivity === "active") {
+          setPage("recovery");
+          setNotice(
+            "Wait for the active operation to finish, then Check Again.",
+          );
+          return;
+        }
+        if (selected !== "validate") {
+          if (
+            !confirmed ||
+            !reviewed.current ||
+            reviewed.current.mode !== selected
+          ) {
+            openReview(selected, fresh);
+            return;
+          }
+          const current = reviewFingerprint(selected, {
+            ...latestReviewContext.current,
+            recovery: fresh,
+          });
+          if (reviewed.current.fingerprint !== current) {
+            openReview(selected, fresh);
+            setNotice(
+              "The reviewed findings or scope changed. Review the current details and confirm again; no operation has started.",
+            );
+            return;
+          }
+        }
+        const before = [...s.checks];
         reviewed.current = null;
-        setInstallPreflightOpen(false);
+        setOutcome(null);
         setPreviewOpen(false);
+        setInstallPreflightOpen(false);
         setReviewRepair(false);
         setPendingOperation(null);
-        setNotice(
-          "The pending request was not submitted. Review again when you are ready; no operation was started from this request.",
-        );
-        return;
-      }
-      if (selected !== "validate" && recoveryNeedsAttention(fresh)) {
-        reviewed.current = null;
-        setPendingOperation(selected);
-        setPreviewOpen(false);
-        setInstallPreflightOpen(false);
-        setReviewRepair(false);
-        setPage("recovery");
-        setNotice("Review the Recovery findings before starting this change.");
-        return;
-      }
-      if (fresh?.effectiveActivity === "active") {
-        setPage("recovery");
-        setNotice("Wait for the active operation to finish, then Check Again.");
-        return;
-      }
-      if (selected !== "validate") {
-        if (
-          !confirmed ||
-          !reviewed.current ||
-          reviewed.current.mode !== selected
-        ) {
-          openReview(selected, fresh);
-          return;
-        }
-        const current = reviewFingerprint(selected, {
-          ...latestReviewContext.current,
-          recovery: fresh,
-        });
-        if (reviewed.current.fingerprint !== current) {
-          openReview(selected, fresh);
-          setNotice(
-            "The reviewed findings or scope changed. Review the current details and confirm again; no operation has started.",
-          );
-          return;
-        }
-      }
-      const before = [...s.checks];
-      reviewed.current = null;
-      setOutcome(null);
-      setPreviewOpen(false);
-      setInstallPreflightOpen(false);
-      setReviewRepair(false);
-      setPendingOperation(null);
-      contextEpoch.current++;
-      const request = ++validationRequest.current;
-      setObservedReport(null);
-      setGeneration(contextEpoch.current);
-      setNotice("");
-      setPage("overview");
-      runId.current = crypto.randomUUID();
-      acceptingLines.current = true;
-      dispatch({ type: "start", mode: selected });
-      try {
-        const report = await operate(
-          selected,
-          runId.current,
-          checkUpdates,
-          acknowledgedUncertainty,
-          (line) => {
-            if (
-              mounted.current &&
-              acceptingLines.current &&
-              request === validationRequest.current
-            )
-              dispatch({ type: "line", line });
-          },
-        );
-        if (!mounted.current || request !== validationRequest.current) return;
-        acceptingLines.current = false;
-        setObservedReport(report);
-        if (selected !== "validate")
-          setOutcome({
-            mode: selected,
-            report,
-            error:
-              report.lines
-                .map(parseEvent)
-                .filter((event) => event?.kind === "error")
-                .at(-1)?.message ?? "",
-            before,
-          });
-        dispatch({ type: "complete", report });
-        if (
-          selected === "validate" &&
-          (fresh?.machine.incidentId || fresh?.user.incident)
-        ) {
-          setNotice(
-            "Validation does not acknowledge the interruption, prove that operation completed, or authorize another change. Recovery evidence remains available.",
-          );
-        }
-        const observation = await refreshRecovery();
-        if (selected !== "validate" && recoveryNeedsAttention(observation))
-          setNotice(
-            "Current safety findings require review before another change. Original evidence remains available in Recovery.",
-          );
-        void refreshMaintenance();
-      } catch (e) {
-        if (!mounted.current || request !== validationRequest.current) return;
-        acceptingLines.current = false;
+        contextEpoch.current++;
+        const request = ++validationRequest.current;
         setObservedReport(null);
-        if (selected !== "validate")
-          setOutcome({
-            mode: selected,
-            report: null,
-            error: String(e),
-            before,
-          });
-        dispatch({ type: "error", message: String(e) });
-        await refreshRecovery();
-      }
+        setGeneration(contextEpoch.current);
+        setNotice("");
+        setPage("overview");
+        runId.current = crypto.randomUUID();
+        acceptingLines.current = true;
+        dispatch({ type: "start", mode: selected });
+        try {
+          const report = await operate(
+            selected,
+            runId.current,
+            checkUpdates,
+            acknowledgedUncertainty,
+            (line) => {
+              if (
+                mounted.current &&
+                acceptingLines.current &&
+                request === validationRequest.current
+              )
+                dispatch({ type: "line", line });
+            },
+            ...(readLease ? ([readLease] as const) : ([] as const)),
+          );
+          if (!mounted.current || request !== validationRequest.current) return;
+          acceptingLines.current = false;
+          setObservedReport(report);
+          if (selected !== "validate")
+            setOutcome({
+              mode: selected,
+              report,
+              error:
+                report.lines
+                  .map(parseEvent)
+                  .filter((event) => event?.kind === "error")
+                  .at(-1)?.message ?? "",
+              before,
+            });
+          dispatch({ type: "complete", report });
+          if (
+            selected === "validate" &&
+            (fresh?.machine.incidentId || fresh?.user.incident)
+          ) {
+            setNotice(
+              "Validation does not acknowledge the interruption, prove that operation completed, or authorize another change. Recovery evidence remains available.",
+            );
+          }
+          const observation = await refreshRecovery(readLease);
+          if (selected !== "validate" && recoveryNeedsAttention(observation))
+            setNotice(
+              "Current safety findings require review before another change. Original evidence remains available in Recovery.",
+            );
+          void refreshMaintenance();
+        } catch (e) {
+          if (!mounted.current || request !== validationRequest.current) return;
+          acceptingLines.current = false;
+          setObservedReport(null);
+          if (selected !== "validate")
+            setOutcome({
+              mode: selected,
+              report: null,
+              error: String(e),
+              before,
+            });
+          dispatch({ type: "error", message: String(e) });
+          await refreshRecovery(readLease);
+        }
+      }, selected === "validate");
     } finally {
       actionInFlight.current = false;
+      if (mounted.current) setReadSequencePending(false);
     }
   }
   async function acknowledgeRecovery() {

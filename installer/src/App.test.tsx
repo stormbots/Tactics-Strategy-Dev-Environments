@@ -1,3 +1,5 @@
+import * as readQueue from "./nativeReadQueue";
+import { StrictMode } from "react";
 import type { Report } from "./model";
 import * as updateApi from "./updateDiscovery";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
@@ -1505,4 +1507,176 @@ it("unmount during admission discards even a pending read-only operation request
     await Promise.resolve();
   });
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
+});
+
+it("waits for startup safety before validation and stays checking between phases", async () => {
+  let settleSafety!: (state: RecoveryState) => void;
+  let settleValidation!: (report: Report) => void;
+  vi.mocked(inspectRecovery).mockReturnValueOnce(
+    new Promise((resolve) => {
+      settleSafety = resolve;
+    }),
+  );
+  vi.mocked(inspect).mockReturnValueOnce(
+    new Promise((resolve) => {
+      settleValidation = resolve;
+    }),
+  );
+  const before = vi.mocked(inspect).mock.calls.length;
+  render(<App />);
+  expect(vi.mocked(inspect).mock.calls.length).toBe(before);
+  expect(
+    screen.getByRole("heading", { name: "Checking your setup…" }),
+  ).toBeTruthy();
+  await act(async () => {
+    settleSafety(previewRecovery());
+  });
+  await waitFor(() =>
+    expect(vi.mocked(inspect).mock.calls.length).toBe(before + 1),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Checking your setup…" }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole("heading", { name: "Check not finished" }),
+  ).toBeNull();
+  await act(async () => {
+    settleValidation({
+      validation_collected_at: 1793990000,
+      code: 0,
+      success: true,
+      lines: [
+        "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+        "SKYVIEW_EVENT|summary|0|Done",
+      ],
+      log_path: "test.log",
+      platform: { label: "Windows 11 x64", supported: true },
+    });
+  });
+  expect(await screen.findByRole("heading", { name: "Ready!" })).toBeTruthy();
+});
+
+function startupReport(): Report {
+  return {
+    validation_collected_at: 1793990000,
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      "SKYVIEW_EVENT|summary|0|Done",
+    ],
+    log_path: "test.log",
+    platform: { label: "Windows 11 x64", supported: true },
+  };
+}
+
+it("submits only one startup sequence during StrictMode effect replay", async () => {
+  const safetyBefore = vi.mocked(inspectRecovery).mock.calls.length;
+  const validationBefore = vi.mocked(inspect).mock.calls.length;
+  const mutationBefore = vi.mocked(operate).mock.calls.length;
+  render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+  await screen.findByRole("heading", { name: "Ready!" });
+  expect(vi.mocked(inspectRecovery).mock.calls.length).toBe(safetyBefore + 1);
+  expect(vi.mocked(inspect).mock.calls.length).toBe(validationBefore + 1);
+  expect(vi.mocked(operate).mock.calls.length).toBe(mutationBefore);
+});
+
+it("defers startup validation for known active work without inventing a failed check", async () => {
+  const active = previewRecovery();
+  active.effectiveActivity = "active";
+  active.readiness = "blocked";
+  vi.mocked(inspectRecovery).mockResolvedValue(active);
+  const before = vi.mocked(inspect).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Changes are paused" });
+  expect(vi.mocked(inspect).mock.calls.length).toBe(before);
+  expect(
+    screen.queryByText(/This workstation could not be checked/),
+  ).toBeNull();
+  expect(
+    screen
+      .getByRole("button", { name: "Check again" })
+      .hasAttribute("disabled"),
+  ).toBe(false);
+});
+
+it("keeps unavailable startup safety separate from tool verification", async () => {
+  vi.mocked(inspectRecovery).mockRejectedValue(new Error("Unavailable"));
+  const before = vi.mocked(inspect).mock.calls.length;
+  render(<App />);
+  await screen.findByRole("heading", { name: "Safety check unavailable" });
+  expect(vi.mocked(inspect).mock.calls.length).toBe(before);
+  expect(screen.queryByRole("heading", { name: "Ready!" })).toBeNull();
+});
+
+it("does not redirect navigation when delayed startup validation finishes", async () => {
+  let complete!: (report: Report) => void;
+  vi.mocked(inspect).mockReturnValueOnce(
+    new Promise((resolve) => {
+      complete = resolve;
+    }),
+  );
+  render(<App />);
+  await waitFor(() => expect(complete).toBeTypeOf("function"));
+  fireEvent.click(screen.getByRole("button", { name: "About" }));
+  await act(async () => {
+    complete(startupReport());
+  });
+  expect(
+    screen.getByRole("heading", { name: "About Skyview Dev Setup" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+  expect(screen.getByRole("heading", { name: "Ready!" })).toBeTruthy();
+});
+
+it("does not submit startup validation after unmount while safety was pending", async () => {
+  let complete!: (state: RecoveryState) => void;
+  vi.mocked(inspectRecovery).mockReturnValueOnce(
+    new Promise((resolve) => {
+      complete = resolve;
+    }),
+  );
+  const before = vi.mocked(inspect).mock.calls.length;
+  const app = render(<App />);
+  app.unmount();
+  await act(async () => {
+    complete(previewRecovery());
+  });
+  expect(vi.mocked(inspect).mock.calls.length).toBe(before);
+});
+
+it("keeps a queued explicit check busy and rejects duplicate clicks before admission", async () => {
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  let admit!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    admit = resolve;
+  });
+  const sequence = vi
+    .spyOn(readQueue, "withNativeReadSequence")
+    .mockImplementationOnce(async (task) => {
+      await gate;
+      return task();
+    });
+  const before = vi.mocked(operate).mock.calls.length;
+  const disclosure = screen.getByText("Other actions").closest("details")!;
+  disclosure.open = true;
+  const check = screen.getByRole("button", { name: "Check my setup" });
+  fireEvent.click(check);
+  fireEvent.click(check);
+  expect(
+    screen.getByRole("heading", { name: "Checking your setup…" }),
+  ).toBeTruthy();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  await act(async () => {
+    admit();
+  });
+  await waitFor(() =>
+    expect(vi.mocked(operate).mock.calls.length).toBe(before + 1),
+  );
+  sequence.mockRestore();
 });

@@ -1,3 +1,4 @@
+import { nativeRead } from "./nativeReadQueue";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 export type RecoveryReportEntry = {
   reportId: string;
@@ -32,7 +33,7 @@ export async function readRecoveryReport(
   reportId: string,
 ): Promise<RecoveryReportDetails> {
   if (!isTauri()) throw new Error("Preview has no saved workstation reports.");
-  return invoke("read_recovery_report_details", { reportId });
+  return nativeRead(() => invoke("read_recovery_report_details", { reportId }));
 }
 export async function exportRecoveryReport(
   reportId: string,

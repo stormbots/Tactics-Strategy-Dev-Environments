@@ -1,3 +1,4 @@
+import { nativeRead } from "./nativeReadQueue";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 export type HistorySource = "machine" | "user";
 export type IncidentHistoryEntry = {
@@ -45,7 +46,11 @@ export async function listRecoveryIncidents(
   cursor: string | null = null,
 ): Promise<IncidentHistoryPage> {
   return isTauri()
-    ? invoke("list_recovery_incidents", { source, cursor, limit: 25 })
+    ? source === "machine"
+      ? nativeRead(() =>
+          invoke("list_recovery_incidents", { source, cursor, limit: 25 }),
+        )
+      : invoke("list_recovery_incidents", { source, cursor, limit: 25 })
     : {
         observedAt: Math.floor(Date.now() / 1000),
         machine:

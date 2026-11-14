@@ -1,3 +1,4 @@
+import { nativeRead, type ReadSequence } from "./nativeReadQueue";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { Mode, Report, Schedule } from "./model";
 import type { OperationIncident } from "./safeOperations";
@@ -65,8 +66,10 @@ const previewReport: Report = {
   log_path: "Preview — no files are written",
   platform: { label: "Linux Mint 22.2 · amd64", supported: true },
 };
-export async function inspect(): Promise<Report> {
-  return native ? invoke("inspect_system") : previewReport;
+export async function inspect(lease?: ReadSequence): Promise<Report> {
+  return native
+    ? nativeRead(() => invoke("inspect_system"), lease)
+    : previewReport;
 }
 export async function operate(
   mode: Mode,
@@ -74,14 +77,18 @@ export async function operate(
   checkUpdates: boolean,
   acknowledgedUncertainty: boolean,
   emit: (line: string) => void,
+  lease?: ReadSequence,
 ): Promise<Report> {
-  if (native)
-    return invoke("run_operation", {
-      operation: mode,
-      runId: id,
-      checkUpdates,
-      acknowledgedUncertainty,
-    });
+  if (native) {
+    const run = () =>
+      invoke<Report>("run_operation", {
+        operation: mode,
+        runId: id,
+        checkUpdates,
+        acknowledgedUncertainty,
+      });
+    return mode === "validate" ? nativeRead(run, lease) : run();
+  }
   const lines: string[] = [];
   for (const [percent, message] of [
     [5, "Checking system"],
@@ -161,7 +168,7 @@ export type IncidentObservation = {
   backendInterrupted?: boolean;
 };
 export async function inspectOperationIncident(): Promise<IncidentObservation> {
-  if (native) return invoke("inspect_operation_incident");
+  if (native) return nativeRead(() => invoke("inspect_operation_incident"));
   return { incident: null, backendActive: false };
 }
 export async function acknowledgeOperationIncident(id: string): Promise<void> {
@@ -170,7 +177,8 @@ export async function acknowledgeOperationIncident(id: string): Promise<void> {
 export async function supportContext(
   includeLogs: boolean,
 ): Promise<SupportContext> {
-  if (native) return invoke("support_context", { includeLogs });
+  if (native)
+    return nativeRead(() => invoke("support_context", { includeLogs }));
   return {
     deviceName: "STUDENT-LAPTOP",
     logs: includeLogs ? "Preview log: no workstation data was read." : null,
@@ -198,7 +206,7 @@ export async function setSelfUpdatePaused(
 export async function inspectSelfUpdate(): Promise<
   import("./model").SelfUpdate
 > {
-  if (native) return invoke("inspect_self_update");
+  if (native) return nativeRead(() => invoke("inspect_self_update"));
   return {
     paused: previewPaused,
     policyChangedAt: null,

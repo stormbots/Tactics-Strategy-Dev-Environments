@@ -1,3 +1,4 @@
+import { nativeRead, type ReadSequence } from "./nativeReadQueue";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { Check, Mode } from "./model";
 import type { OperationStage } from "./safeOperations";
@@ -105,8 +106,12 @@ export function previewRecovery(): RecoveryState {
     },
   };
 }
-export async function inspectRecovery(): Promise<RecoveryState> {
-  return isTauri() ? invoke("inspect_recovery_state") : previewRecovery();
+export async function inspectRecovery(
+  lease?: ReadSequence,
+): Promise<RecoveryState> {
+  return isTauri()
+    ? nativeRead(() => invoke("inspect_recovery_state"), lease)
+    : previewRecovery();
 }
 export function recoveryNeedsAttention(state: RecoveryState | null): boolean {
   if (!state || state.readiness !== "ready_for_native_recheck") return true;

@@ -254,12 +254,22 @@ export const initialState: State = {
   platform: { label: "Detecting system…", supported: false },
 };
 export type Action =
+  | { type: "startup-deferred" }
   | { type: "initial"; report: Report }
   | { type: "start"; mode: Mode }
   | { type: "line"; line: string }
   | { type: "complete"; report: Report }
   | { type: "error"; message: string };
 export function reducer(s: State, a: Action): State {
+  if (a.type === "startup-deferred")
+    return {
+      ...s,
+      stage: "idle",
+      mode: "validate",
+      validationComplete: false,
+      validationCollectedAt: null,
+      platform: { label: "System check pending", supported: false },
+    };
   if (a.type === "initial")
     return {
       ...s,
