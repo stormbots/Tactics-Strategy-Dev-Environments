@@ -18,6 +18,8 @@ jobs:
     outputs:
       application_required: ${{ steps.scope.outputs.application_required }}
       native_required: ${{ steps.scope.outputs.native_required }}
+      documentation_required: ${{ steps.scope.outputs.documentation_required }}
+      documentation_paths: ${{ steps.scope.outputs.documentation_paths }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,7 +33,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_ci_scope.py -v
           python3 -m unittest discover -s tests -p test_ci_timings.py -v
-      - name: Classify application versus fixture-only changes
+      - name: Classify full, presentation, documentation or fixture validation
         id: scope
         env:
           CI_EVENT_NAME: ${{ github.event_name }}
@@ -40,18 +42,35 @@ jobs:
         run: python3 tests/ci_scope.py
   checks:
     needs: scope
-    if: needs.scope.outputs.application_required == 'true'
+    if: needs.scope.outputs.application_required == 'true' || needs.scope.outputs.documentation_required == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lightweight reference checker
+        run: python3 -m pip install 'markdown-it-py==3.0.0' 'mdurl==0.1.2'
+      - name: Test reference validation rules
+        run: python3 -m unittest discover -s tests -p test_check_docs.py -v
+      - name: Validate changed reference documents
+        if: needs.scope.outputs.documentation_required == 'true'
+        env:
+          DOCUMENTATION_PATHS: ${{ needs.scope.outputs.documentation_paths }}
+        run: |
+          python3 tests/check_docs.py
+          python3 -m unittest discover -s tests -p test_uat_version.py
       - uses: actions/setup-node@v4
+        if: needs.scope.outputs.application_required == 'true'
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: installer/package-lock.json
       - run: npm ci && npm test && npm run build && npm audit --audit-level=high
+        if: needs.scope.outputs.application_required == 'true'
         working-directory: installer
       - name: Bash static analysis and integrity
+        if: needs.scope.outputs.application_required == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
@@ -69,15 +88,18 @@ jobs:
           cd linux
           sha256sum --check SHA256SUMS
       - name: Validate Actions definitions
+        if: needs.scope.outputs.application_required == 'true'
         uses: docker://rhysd/actionlint:1.7.7
         with:
           args: -color
       - name: Browser accessibility and interaction checks
+        if: needs.scope.outputs.application_required == 'true'
         working-directory: installer
         run: |
           npx playwright install --with-deps chromium webkit
           npm run test:browser
       - uses: actions/upload-artifact@v4
+        if: needs.scope.outputs.application_required == 'true'
         with:
           name: ui-verification
           path: installer/test-results/
@@ -448,13 +470,16 @@ jobs:
           TRUST_RESULT: ${{ needs.update-trust.result }}
           APPLICATION_REQUIRED: ${{ needs.scope.outputs.application_required }}
           NATIVE_REQUIRED: ${{ needs.scope.outputs.native_required }}
+          DOCUMENTATION_REQUIRED: ${{ needs.scope.outputs.documentation_required }}
         run: |
           python3 - <<'PY'
           import os
           assert os.environ['SCOPE_RESULT'] == 'success', 'Scope classification must succeed'
-          for name in ('APPLICATION_REQUIRED', 'NATIVE_REQUIRED'):
+          for name in ('APPLICATION_REQUIRED', 'NATIVE_REQUIRED', 'DOCUMENTATION_REQUIRED'):
               assert os.environ[name] in ('true', 'false'), 'Missing scope output'
-          assert os.environ['CHECKS_RESULT'] == ('success' if os.environ['APPLICATION_REQUIRED'] == 'true' else 'skipped'), 'Required checks did not pass'
+          checks_required = os.environ['APPLICATION_REQUIRED'] == 'true' or os.environ['DOCUMENTATION_REQUIRED'] == 'true'
+          assert os.environ['NATIVE_REQUIRED'] != 'true' or os.environ['APPLICATION_REQUIRED'] == 'true', 'Native scope requires application checks'
+          assert os.environ['CHECKS_RESULT'] == ('success' if checks_required else 'skipped'), 'Required checks did not pass'
           for name in ('NATIVE_RESULT', 'TRUST_RESULT'):
               assert os.environ[name] == ('success' if os.environ['NATIVE_REQUIRED'] == 'true' else 'skipped'), 'Required native/trust validation did not pass'
           PY

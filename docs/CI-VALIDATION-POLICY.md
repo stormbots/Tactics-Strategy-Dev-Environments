@@ -1,43 +1,63 @@
 # CI validation scope and runner cost
 
-## Policy
+## Current rules
 
-PRs changing only the explicit `PRESENTATION_PATHS` allowlist in
-`tests/ci_scope.py` run the existing Linux checks job: all frontend tests,
-TypeScript/production build, dependency audit, script/backend contracts and
-browser/accessibility regression. They do not repeat Windows/Mint native builds
-or standalone trust tests. This is PR feedback, not native/candidate acceptance.
+The owner approved three categories: full application validation, lightweight/targeted validation and activities that need no automated CI. The workflow implements these categories without changing the required `checks` and `acceptance` names or any release signing/promotion authority.
 
-The allowlist covers named existing presentation components/models/tests and the
-guided Overview planning documents. New/unknown files, native bridges, recovery
-APIs, dependencies/lockfiles, packaging, platform scripts and CI changes require
-full application validation. Mixed and renamed paths fail closed; classification
-uses every changed path from the merge base with rename detection disabled.
-Changes to the classifier or its tests now require full validation themselves.
-Existing narrowly defined fixture/Mint infrastructure exceptions remain, apart
-from this stricter treatment of classifier changes.
+| Change or activity | Required validation |
+| --- | --- |
+| Native application/API code, operation/consent/safety behavior, validation/discovery, installers, maintenance, recovery, trust, runtime configuration, dependencies/lockfiles, packaging and release identity | Full common checks, Windows and Linux/Mint native jobs, both trust jobs, acceptance |
+| Workflow changes, the scope classifier, reference checker and their tests | Full validation of the policy change itself |
+| Unknown executable formats, unclassified files, mixed changes containing full-scope work | Full validation |
+| Reference-only Markdown and static images in approved locations | Offline document checks and acceptance, on PRs and main |
+| Explicitly allowlisted pure presentation components/tests and the existing standalone prototype files, optionally with reference changes | Common frontend/build/browser/backend checks and acceptance on PRs; no native matrix |
+| Existing explicitly named fixture/Mint-infrastructure work | Existing targeted helper workflows; their platform needs remain separate from application packaging |
+| Application/presentation changes pushed to main, release branches/tags, manual full runs and unknown events | Full validation, except the existing exact Mint-infrastructure main exception |
+| Viewing files/logs/artifacts, issue or PR-description edits, review comments, planning and recording UAT observations | No new CI run; human review, authentication or UAT requirements still apply to the underlying activity |
 
-Main application pushes, release branches/tags, manual dispatch and unknown events
-retain full native/trust validation. The existing exact Mint-infrastructure-only
-main exception remains; it cannot suppress an application or classifier change.
-Full runs now wait for `checks` before allocating native/trust matrices. This
-reduces wasted native runner time on failing PRs, at the cost of longer elapsed
-time for successful full runs. No duplicated provisioning or new native runners.
+Ordinary local edits, commits and branches start no GitHub jobs by themselves. Opening or synchronizing a PR does. Draft PRs also trigger the configured checks. Trigger rules are unchanged; approving a protected job can resume existing work and is a separate authorization.
 
-The always-evaluated `acceptance` job requires successful scope classification,
-valid scope outputs and success for every applicable job. A failure, cancellation,
-unexpected skip or missing scope output cannot be reported as acceptance. Release
-retains every prior dependency and additionally depends on acceptance. Signing
-still requires its existing human environment approval; candidate owner UAT and
-separate stable-promotion authorization are unchanged.
+## Reference-only lane
 
-Repository administrators should require the stable `acceptance` check alongside
-existing required checks. Branch-protection inspection returns HTTP 403 for the
-current integration, so this work does not claim to inspect or change those
-settings. Review that configuration before adopting the narrower merge policy.
-All final-main, Windows feasibility/bootstrap, coordinator/trust, signed SYSTEM,
-actual Mint 22.3 bootstrap/manual/scheduled-tool and signed-upgrade gates remain
-mandatory where applicable. A presentation-only PR pass does not fulfill them.
+Approved reference formats are root `README.md` and `.md`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp` and `.svg` files under `docs/`. New ordinary references in these locations qualify automatically. There is no blanket exception for every file under `docs/`: scripts, HTML/JSON not already classified, runtime assets, agent instructions and unknown formats keep their stronger routing.
+
+A reference must be a regular non-executable file. The classifier checks Git modes in both compared trees; a symlink, executable or mode-changing reference cannot earn the documentation shortcut. Paths are checked without rename detection, so both sides of a rename matter.
+
+Markdown used as execution/configuration input must be registered in `FULL_REFERENCE_PATHS` when its consumer is added. Ordinary prose used for release notes remains documentation; an actual release/candidate run still requires the complete release gates.
+
+The `scope` job emits `application_required`, `native_required`, `documentation_required` and a JSON list of changed reference paths. The JSON travels as data in an environment variable, never shell command text.
+
+The stable `checks` job prepares Python and a small pinned Markdown parser, tests the reference checker, then validates changed references. It checks UTF-8, nonempty Markdown, final newlines, closed code fences, local destinations, Markdown heading anchors in changed sources, references to removed documents/images, and basic image/SVG structure. It also runs the existing version/reference consistency tests. Unrelated historical broken links do not block a new guide.
+
+External/private URLs are not fetched. Code samples are parsed as documentation, not run. Image signatures/SVG XML checks do not replace visual review; Mermaid fences are checked structurally rather than rendered. These limits are deliberate and documented.
+
+For reference-only changes, npm setup, application builds/tests/audit, browser installation/tests, native jobs and trust jobs do not run. A few short Linux jobs still perform classification, reference validation and acceptance. `checks` stays successful only when its actual document checks pass, so existing branch protection needs no renamed required context.
+
+Documentation-only pushes to main use the same lane. The push payload and exact before/after commit range must be valid; malformed/missing data falls back to full validation. Release refs and manual runs cannot use this main-only exception.
+
+## Presentation and targeted work
+
+`PRESENTATION_PATHS` now covers only the named CSS/appearance/theme/zoom files and their tests, plus the already classified Overview prototype HTML/verifier. Operation, consent, readiness and startup files such as `App.tsx`, `model.ts`, `overviewDecision.ts`, Recovery and preflight controls no longer qualify by filename alone. A wording-only edit inside such a file conservatively takes full validation because the same file also controls behavior. Pure presentation can be separated into a reviewed component when appropriate.
+
+The common checks retain their existing frontend/build/audit, script/backend, accessibility and browser coverage. This is a targeted PR lane, not native/candidate acceptance. A targeted native fixture may still require a Windows or Mint runner; targeted does not mean zero cost.
+
+## Acceptance and release protections
+
+The always-evaluated `acceptance` job validates all three boolean scope flags. `checks` must succeed whenever either application or documentation checks are required. Native/trust jobs must succeed when required and be skipped only when their scope permits it. A failure, cancellation, missing output or unexpected skip cannot become acceptance. Native scope also requires application checks.
+
+The full native/trust job definitions, supported matrices, privileged feasibility/installed/upgrade probes, integrity assertions, and release dependencies are unchanged. Release still requires `checks`, `native`, `update-trust` and `acceptance`, with human approval at the existing signing environment. Exact-candidate owner UAT and separate stable promotion authorization remain mandatory.
+
+Application changes need full exact-main evidence. Reference-only merges do not rebuild both installers. Before candidate preparation, retain the complete applicable application/native/trust evidence for the exact release source and authenticate its published assets. A document pass never substitutes for that evidence.
+
+## Verification and checkpoints
+
+Tests execute classification for PRs and exact main ranges, mixed/unknown/new/renamed paths, file modes, releases and malformed events. They execute the acceptance script for passing and failed/canceled/skipped results. Reference-checker tests cover links, anchors, removed targets, encoding/fences, inert examples, path boundaries and image structure.
+
+Use normal protected merge. Preserve useful historical results and cancel only genuinely superseded runs. Before a CI wait, record the exact head/base, run links, completed/pending checks, evidence limits and next action. Explain when a policy or mixed change needs full validation even though ordinary reference edits now take the lightweight lane.
+
+## Historical implementation notes
+
+The following ancestry and measurements describe the earlier policy. The current routing above supersedes earlier statements about new reference files and broad presentation exceptions.
 
 ## Ancestry and redundant triggers
 

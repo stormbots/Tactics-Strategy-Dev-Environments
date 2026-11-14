@@ -30,6 +30,11 @@ Use a single-context layout: root `GLOSSARY.md` and `docs/adr/`. Before explorin
 ### Testing and CI
 
 - Run targeted tests during implementation and broader validation when changes are ready.
+- Classify changes using `docs/CI-VALIDATION-POLICY.md` and `tests/ci_scope.py` before opening/updating PRs or dispatching CI.
+- Ordinary Markdown/static reference images in approved locations receive lightweight checks, including on main; do not dispatch a full build merely to publish them.
+- Application, native/safety, dependency, packaging, workflow/policy and unknown executable changes retain full validation. Mixed changes take the strongest applicable lane. Release/manual validation keeps its full gates.
+- Metadata-only work (issues, comments, PR descriptions, plans or recorded observations) needs no new CI run. Human review/UAT/signing requirements remain separate.
+- Explain the cost when a policy or mixed change needs full validation; never weaken acceptance or signing protections to save runners.
 - Do not rerun successful tests unless subsequent changes could invalidate their results.
 - Use existing GitHub Actions workflows for authoritative cross-platform builds, installation tests, regression testing, and release gates.
 - After triggering CI, inspect the initial run status and capture the run URL and commit SHA.
