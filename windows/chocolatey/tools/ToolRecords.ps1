@@ -86,6 +86,17 @@ function Get-SkyviewToolRecords {
         if ($CheckUpdates -and -not $current -and $state -ne 'native') { $state='unavailable' }
         if ($state -eq 'current' -and $current -and $packages.Contains($tool) -and $candidates.ContainsKey($packages[$tool])) { $candidate = $candidates[$packages[$tool]] }
         $reason = if ($state -eq 'unavailable') { if ($remote) { $remote.Reason } else { 'sourceUnavailable' } } else { $null }
+        if ($tool -eq 'Node.js' -and $state -eq 'current') {
+            $selectedVersion=$null; $managedVersion=$null
+            if (-not [version]::TryParse([string]$current,[ref]$selectedVersion) -or
+                -not [version]::TryParse([string]$tracked['nodejs-lts'],[ref]$managedVersion)) {
+                $candidate=$null; $state='unavailable'; $reason='metadataMismatch'
+            } elseif ($selectedVersion -ne $managedVersion) {
+                # Selected toolchain readiness is separate from this managed
+                # package's update metadata; do not compare different installs.
+                $candidate=$null; $state='inconsistent'; $reason='metadataMismatch'
+            }
+        }
         if ($tool -eq 'PowerShell 7' -and $state -eq 'current') {
             $executableVersion=$null; $packageVersion=$null; $availableVersion=$null
             $executableOk=[version]::TryParse([string]$current,[ref]$executableVersion)

@@ -18,8 +18,6 @@ function Check($Condition,$Message) { if ($Condition) { Result PASS $Message } e
 foreach ($check in @(
     @{Name='Git'; Command='git'; Args=@('--version')},
     @{Name='GitHub CLI'; Command='gh'; Args=@('--version')},
-    @{Name='Node.js'; Command='node'; Args=@('--version'); Family='^v24\.'},
-    @{Name='npm'; Command='npm'; Args=@('--version')},
     @{Name='VSCodium'; Command='codium'; Args=@('--version')},
     @{Name='PowerShell 7'; Command='pwsh'; Args=@('--version')},
     @{Name='OpenSSH'; Command='ssh'; Args=@('-V')},
@@ -34,6 +32,19 @@ foreach ($check in @(
     if ($code -ne 0 -or ($check.Family -and $version -notmatch $check.Family)) {
         Result FAIL "$($check.Name): expected runtime family or usable command; detected $version"
     } else { Result PASS "$($check.Name): $version" }
+}
+. (Join-Path $PSScriptRoot 'NodeRuntime.ps1')
+$nodeRuntime=Get-SkyviewNodeRuntime
+Write-Host ("SKYVIEW_EVENT|runtime|Node.js|{0}" -f ($nodeRuntime | ConvertTo-Json -Compress))
+switch ($nodeRuntime.status) {
+    'passed' {
+        $installed['Node.js']=$nodeRuntime.version
+        $installed['npm']=$nodeRuntime.npmVersion
+        Result PASS "Node.js: $($nodeRuntime.version); its npm $($nodeRuntime.npmVersion) verified with the same Node"
+    }
+    'notFound' { Result FAIL 'Node.js: the supported search did not find Node 24. Other versions can stay installed.' }
+    'unusable' { Result FAIL 'Node.js: Node 24 or its npm check did not work. Review the check details.' }
+    default { Result FAIL 'Node.js: SDE could not finish checking Node 24 and npm. This does not mean they are missing.' }
 }
 . (Join-Path $PSScriptRoot 'PythonRuntime.ps1')
 $pythonRuntime = Get-SkyviewPythonRuntime
