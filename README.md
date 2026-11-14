@@ -41,6 +41,12 @@ The original packages remain available:
 
 For mentor-led command-line setup, see [Windows manual instructions](windows/README.md) and [Linux manual instructions](linux/README.md). They remain supported. Optional repositories use the existing platform `repositories.csv`; the GUI does not hardcode repository URLs.
 
+## Student learning references
+
+Start with the [CI Student Guide](docs/CI-STUDENT-GUIDE.md) for a step-by-step explanation of this project's GitHub checks.
+
+For the complete development process, use [From an idea to a release](docs/student-development-manual/README.md). This manual is written for students beginning high school and includes 14 chapters, diagrams, verified repository examples, a glossary and a practice workbook. Classroom exercises use an approved practice repository; release signing and promotion remain maintainer responsibilities.
+
 ## Engineering
 
 One Tauri 2 / React / Vite app orchestrates the existing PowerShell/Chocolatey and Bash/APT backends. See [architecture and security](docs/ARCHITECTURE.md), [build instructions](docs/BUILD.md), [maintenance](docs/maintenance.md), and [acceptance tests](docs/ACCEPTANCE-TEST.md).
