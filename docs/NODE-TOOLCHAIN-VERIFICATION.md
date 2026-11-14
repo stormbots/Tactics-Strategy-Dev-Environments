@@ -35,7 +35,7 @@ The validator emits `SKYVIEW_EVENT|runtime|Node.js|{...}` with schema 1, require
 
 The frontend decoder rejects incomplete passes, another installation's npm path, malformed records and injected maintenance permission. It is an evidence foundation for later cards, not a native execution API. Existing generic rows still display the new check messages; the accepted card/continuation work remains a later increment.
 
-Validation success does not prove that Chocolatey can maintain a selected version-store installation. Managed update metadata now withholds a candidate when the selected Node version differs from Chocolatey's tracked version, rather than comparing two installations as one. A matching version still supplies advisory package metadata, not proof of path ownership or execution authority. Actual eligibility/conflict review remains required before claiming the accepted maintenance workflow complete.
+Validation success does not prove that Chocolatey can maintain a selected version-store installation. Managed update metadata now withholds a candidate when the selected Node version differs from Chocolatey's tracked version, rather than treating executable/package version differences as one update comparison. That difference is informational and does not create a readiness warning or an update-retry task. It does not prove there are two installations; package drift is also possible. A matching version still supplies advisory package metadata, not proof of path ownership or execution authority. Actual eligibility/conflict review remains required before claiming the accepted maintenance workflow complete.
 
 `Node24.ps1`, its migration/ownership rules, updater execution, coordination and all native admission checks are unchanged. Their existing preservation limitations must be resolved in the accepted follow-up work before promising a safe full Install/Repair remedy for every coexistence arrangement.
 
@@ -45,9 +45,9 @@ The managed maintenance copy includes both new helpers under its existing protec
 
 Local evidence:
 
-- 285 frontend tests, production build/type checks and formatting passed.
+- 286 frontend tests, production build/type checks and formatting passed.
 - The real JavaScript probe passed 11 compatibility/metadata cases using npm's actual semver dependency. Controlled identities are not actual Windows side-by-side installations.
-- PowerShell contracts passed 78 local assertions for pairing, newer/older defaults, fallback, executable shims, missing versus incomplete discovery, invalid output, npm failure/timeout/mismatch and unchanged defaults. Actual process quoting, exit/deadline behavior and child-environment isolation were exercised separately.
+- PowerShell contracts passed 86 local assertions for pairing, newer/older defaults, fallback, executable shims, missing versus incomplete discovery, invalid output, npm failure/timeout/mismatch and unchanged defaults. Actual process quoting, Unicode output, exit/deadline behavior and child-environment isolation were exercised separately.
 - The platform-independent metadata fixtures passed the new cross-installation update guard. The full metadata suite includes Windows native disk/COM assertions and cannot pass on this Linux host; those assertions are unchanged and remain required in Windows CI.
 - Source PowerShell parsing and the existing 35 backend contracts and 35 CI-scope tests passed. No application safety or CI classification exception was added.
 

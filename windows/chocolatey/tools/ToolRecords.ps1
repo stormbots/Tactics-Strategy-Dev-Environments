@@ -94,7 +94,7 @@ function Get-SkyviewToolRecords {
             } elseif ($selectedVersion -ne $managedVersion) {
                 # Selected toolchain readiness is separate from this managed
                 # package's update metadata; do not compare different installs.
-                $candidate=$null; $state='inconsistent'; $reason='metadataMismatch'
+                $candidate=$null; $state='native'; $reason='maintenanceUnverified'
             }
         }
         if ($tool -eq 'PowerShell 7' -and $state -eq 'current') {

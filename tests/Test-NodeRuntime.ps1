@@ -14,6 +14,8 @@ try {
 } finally { $env:NODE_OPTIONS=$beforeOptions }
 $result=Invoke-SkyviewNodeQuery $prepared.Source @('--eval','process.stdout.write("path with spaces: " + String.fromCharCode(34) + "ok" + String.fromCharCode(34))') 5000
 if ($result.Code -ne 0 -or $result.Text -ne 'path with spaces: "ok"') { throw 'Node probe argument quoting failed.' }
+$unicode=Invoke-SkyviewNodeQuery $prepared.Source @('--eval','process.stdout.write(String.fromCharCode(960))') 5000
+if ($unicode.Code -ne 0 -or $unicode.Text -cne [string][char]960) { throw 'Node probe Unicode output was lost.' }
 if ((Invoke-SkyviewNodeQuery $prepared.Source @('--eval','process.exit(7)') 5000).Code -ne 7) { throw 'Node exit code was lost.' }
 if ((Invoke-SkyviewNodeQuery $prepared.Source @('--eval','setTimeout(()=>{},10000)') 100).Reason -ne 'timeout') { throw 'Node diagnostic deadline was not enforced.' }
 & $prepared.Source (Join-Path $PSScriptRoot 'test_node_runtime_probe.cjs')
@@ -57,6 +59,8 @@ try {
     $script:nodeVersions['C:\Node26\node.exe']='20.19.0'
     Assert-Node ((Get-SkyviewNodeRuntime).status -eq 'passed') 'Older default rejected a valid pair.'
 
+    Reset-NodeCase;$script:nodePaths=@('C:\Bad pair\node.exe','C:\Node 24\node.exe');$script:nodeVersions['C:\Bad pair\node.exe']='24.0.0'
+    Assert-Node ((Get-SkyviewNodeRuntime).status -eq 'passed') 'An unusable first pair prevented a later complete candidate from passing.'
     Reset-NodeCase;$script:nodePaths=@('C:\Node26\node.exe','C:\Node 24\node.exe')
     Assert-Node ((Get-SkyviewNodeRuntime).status -eq 'passed') 'Fallback could not find side-by-side Node.'
     Reset-NodeCase;$script:nodePaths=@('C:\shim\node.exe');$script:nodeShim=$true

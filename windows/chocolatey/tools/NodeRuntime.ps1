@@ -19,6 +19,8 @@ function Invoke-SkyviewNodeQuery {
     $start.EnvironmentVariables['npm_config_fund']='false'
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = New-Object Text.UTF8Encoding($false)
+    $start.StandardErrorEncoding = New-Object Text.UTF8Encoding($false)
     $process = New-Object Diagnostics.Process
     $process.StartInfo = $start
     $clock = [Diagnostics.Stopwatch]::StartNew()
