@@ -148,6 +148,13 @@ PY
                                     env={**os.environ, 'HOME': '/nonexistent'} if as_student else None)
             assert result.returncode in (0, 1), result.stderr
             assert 'SKYVIEW_EVENT|summary|' in result.stdout, result.stdout
+            runtime_lines = [line for line in result.stdout.splitlines() if line.startswith('SKYVIEW_EVENT|runtime|Python|')]
+            assert len(runtime_lines) == 1, 'Installed validator did not run its Python helper'
+            runtime = json.loads(runtime_lines[0].split('|', 3)[3])
+            assert runtime['schema'] == 1 and runtime['component'] == 'Python'
+            assert runtime['status'] in ('passed', 'notFound', 'unusable', 'incomplete')
+            if runtime['status'] == 'passed':
+                assert runtime['version'].startswith('3.14.') and runtime['executable'].startswith('/') and runtime['pipVersion']
             assert 'Validation does not acknowledge it or authorize changes' in result.stdout
             assert journal.read_bytes() == original and journal.stat().st_ino == identity
         assert journal.stat().st_mtime_ns == before_stat.st_mtime_ns

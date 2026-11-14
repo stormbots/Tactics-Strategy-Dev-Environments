@@ -81,6 +81,8 @@ try {
     Reset-Case; $script:malformed['C:\Python 314\python.exe']=$true
     Assert ((Get-SkyviewPythonRuntime).status -eq 'incomplete') 'Malformed discovery output was accepted.'
 
+    Reset-Case; $script:pip='pip 25.3.dev1+local.1 from a checked installation (python 3.14)'
+    Assert ((Get-SkyviewPythonRuntime).status -eq 'passed') 'pip acquired an unapproved release-family constraint.'
     Reset-Case; $script:pipCode=1
     $result=Get-SkyviewPythonRuntime
     Assert ($result.status -eq 'unusable' -and $result.reason -eq 'pipFailed') 'Broken pip was accepted.'
