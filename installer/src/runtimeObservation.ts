@@ -10,6 +10,9 @@ export type PythonObservation = {
     | "verified"
     | "notDiscovered"
     | "interpreterFailed"
+    | "interpreterTimeout"
+    | "venvFailed"
+    | "venvTimeout"
     | "pipFailed"
     | "pipTimeout"
     | "discoveryIncomplete";
@@ -60,6 +63,9 @@ export function pythonObservation(line: string): PythonObservation | null {
         "verified",
         "notDiscovered",
         "interpreterFailed",
+        "interpreterTimeout",
+        "venvFailed",
+        "venvTimeout",
         "pipFailed",
         "pipTimeout",
         "discoveryIncomplete",
@@ -77,7 +83,7 @@ export function pythonObservation(line: string): PythonObservation | null {
         value.pipVersion === null ||
         (typeof value.pipVersion === "string" &&
           !/\s/.test(value.pipVersion) &&
-          /^\d{1,8}(?:\.\d{1,8}){1,3}$/.test(value.pipVersion))
+          /^[0-9][A-Za-z0-9.!+_-]{0,119}$/.test(value.pipVersion))
       )
     )
       return null;
@@ -86,7 +92,8 @@ export function pythonObservation(line: string): PythonObservation | null {
       (typeof value.executable === "string" &&
         value.executable.length <= 4096 &&
         !/[\x00-\x1f|]/.test(value.executable) &&
-        /^[A-Za-z]:\\[^\r\n\x00-\x1f|]+\.exe$/i.test(value.executable))
+        (/^[A-Za-z]:\\[^\r\n\x00-\x1f|]+\.exe$/i.test(value.executable) ||
+          value.executable.startsWith("/")))
     ))
       return null;
     if (value.status === "passed") {

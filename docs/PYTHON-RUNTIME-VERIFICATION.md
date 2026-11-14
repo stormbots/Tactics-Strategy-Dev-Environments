@@ -6,7 +6,7 @@ The Windows validator previously ran bare `python --version` and then bare `pyth
 
 Windows now discovers and checks the required interpreter directly. A single Python pass requires both the explicit 3.14 interpreter and its pip to pass. Other versions/defaults do not generate warnings when that requirement passes. The helper changes no registrations, PATH, installations, preferences or projects.
 
-This is one implementation increment. It does not complete #161, introduce a Python-only installer, offer a version exception or establish owner UAT acceptance. Node/npm, Linux resolved-identity verification, preference preservation, locations, maintenance and the accepted connected cards remain later increments. Windows retains its existing required Python/pip capability scope; this increment does not claim that a Windows venv was tested.
+This is one implementation increment. It does not complete #161, introduce a Python-only installer, offer a version exception or establish owner UAT acceptance. Node/npm, preference preservation, locations, maintenance and the accepted connected cards remain later increments. The Linux resolved-identity follow-on is described below. Windows retains its existing required Python/pip capability scope; this increment does not claim that a Windows venv was tested.
 
 ## Discovery and verification
 
@@ -50,3 +50,21 @@ The frontend has a narrow typed decoder for this evidence, with length, shape, c
 Startup baseline: #162 is merged at `9f1c316b13edfcbc221eef9eb6ffccfae125b399`; its exact-main [run 43583833987](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/43583833987) passed checks, both native jobs, both trust jobs and acceptance. The startup issue still needs its remaining packaged/owner evidence.
 
 No workflow scope, safety, signing or release identity changed. Preserve published v1.2.23 assets and existing evidence. Human signing, exact-candidate owner UAT and separate promotion approval remain mandatory.
+
+## Linux follow-on: one interpreter and its project environment
+
+The Linux validator now delegates its Python check to `linux/lib/python_runtime.py`, using system `/usr/bin/python3` only to run this utility. It discovers the explicit `python3.14` command, checks its exit status and isolated identity, then verifies the reported executable directly. It never re-resolves bare Python for associated probes or changes system/default Python.
+
+A temporary virtual environment is created with that confirmed interpreter. Before checking its pip, the helper confirms Python 3.14, the environment's own prefix, a distinct base prefix and a base executable referring to the same selected interpreter. A directory or a different interpreter's pip cannot supply the required pass. Linux continues to require project-local pip; it does not require pip to be installed into system Python.
+
+Fixed diagnostic probes have per-stage deadlines within a 30-second probe budget. On timeout, only the helper's newly created diagnostic process group is terminated, including its temporary-environment children. No existing installer or native gate owner is targeted. Temporary files are cleaned up before reporting success. Failed creation, failed pip, missing discovery, incomplete discovery and timeouts remain distinct non-passing results.
+
+The helper emits the same schema-1 observation, with Linux paths and added interpreter/venv timeout/failure reasons. Here `pipVersion` means pip verified in that interpreter's temporary project environment; the Windows check verifies interpreter-local pip. Required capabilities retain their platform-specific scope. The frontend decoder accepts both forms of explicit path, without granting a launch/save/installation capability.
+
+pip has no new release-family requirement. Both helpers and the decoder retain bounded version evidence such as `25.3.dev1+local.1` when the actual same-Python check succeeds. Harmless version spelling alone cannot manufacture a failure.
+
+The Bash validator counts the aggregate Python requirement once. A failed requirement and a crashed/missing helper both prevent Ready; a helper error is not treated as a completed required check. The managed installation copies the helper beside its existing utilities. SHA256SUMS includes the helper and updated installer/validator bytes; no integrity check is removed.
+
+Local validation: 281 frontend tests, production build/type checks and formatting passed; 12 Linux runtime tests (including existing Node selector tests), 35 backend contracts, 10 metadata tests and 26 CI-scope tests passed. ShellCheck, Python compilation and the complete Linux checksum verification passed. The Windows PowerShell contract suite still passes (153 local assertions), including pip prerelease-version evidence. Local runtime tests use synthetic interpreter observations; actual subprocess quoting, exit and timeout adapters are exercised separately.
+
+The existing installed Linux native verification now requires exactly one valid structured Python observation from both root and standard-user validator runs, alongside all original journal/summary/safety assertions. This makes a missing deployed helper a failure. These protected installed assertions and actual Mint/native acceptance are CI requirements, not local passes. An app-only fixture reporting Python absent is not evidence of a real side-by-side Python installation passing. Owner UAT of the exact authenticated candidate remains required.
