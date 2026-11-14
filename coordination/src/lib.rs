@@ -566,6 +566,9 @@ mod tests {
                 break;
             }
         }
+        // The test harness writes its result after the probe returns. Keep the
+        // pipe open so a normal exit is not turned into a BrokenPipe failure.
+        child.stdout = Some(reader.into_inner());
         child
     }
     #[test]
@@ -707,7 +710,12 @@ mod tests {
         );
         // Close the probe's input so it exits normally; never kill an installer.
         drop(external.stdin.take());
-        assert!(external.wait().unwrap().success());
+        let output = external.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "Probe failed: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
         assert!(recovery::public_state_at(&f.path).unwrap().is_none());
         assert!(!f.path.join("transaction.json").exists());
     }

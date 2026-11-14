@@ -65,6 +65,14 @@ On non-root Unix, the existing Fixture guard returns before protected filesystem
 - Rust: formatting and coordination clippy passed. The new native regression compiled, but its protected assertions require the privileged CI jobs described above.
 - System-Chromium browser suite: the original run passed 114 cases. Four combined-state cases needed a fixture update for the new startup order; all four passed their focused rerun, retaining every original assertion. CI remains authoritative for its configured Chromium/WebKit coverage and native operating systems.
 
+## First CI result and probe correction
+
+[Run 371](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/43568067928), for PR head `88b344e798e8e52eba3bb2d1a906aef10c70a302`, passed application/browser checks and both Windows and Linux/Mint native build/installed verification jobs. Both update-trust jobs failed the new regression at its final successful-exit assertion, so acceptance correctly failed and the PR remained blocked.
+
+The shared probe helper dropped the child's stdout pipe after reading its ready signal. When the child exited normally, Rust's test harness wrote its result to that closed pipe and failed with BrokenPipe. Earlier tests killed their probes and did not assert normal exit, so this fixture defect had not surfaced there.
+
+The helper now retains the pipe, and the new test drains it with `wait_with_output` after closing stdin. All gate, activity, decision, normal-exit and no-transaction assertions remain. A local unprivileged Rust harness experiment reproduced failure when dropping the pipe and passed when retaining/draining it. Formatting and coordination clippy passed; the protected regression still requires Windows/root-Linux CI. No application or workflow code changed in this correction. Preserve run 371's useful evidence, but require green results at the corrected head before merge.
+
 ## Scope and remaining release work
 
 This is the first code increment, not completion of #160/#161 or release acceptance. Required Windows/Mint/native/trust checks, exact-main evidence and packaged ordinary-launch checks remain. No production locking semantics, release identity, workflow policy, signing or published assets changed.
