@@ -44,7 +44,7 @@ for (const theme of ["Light", "Dark"])
                 'SKYVIEW_EVENT|summary|1|Complete fixture',
                 'SKYVIEW_EVENT|tool|Python|'+JSON.stringify({tool:'Python',installedVersion:'3.14',availableVersion:'3.15',updateAvailable:true,updateCheck:'current'})]
             };}
-            export async function operate(...args){window.combinedMutations.push(args);throw new Error('Unexpected operation in read-only test');}
+            export async function operate(...args){if(args[0]==='validate')return inspect();window.combinedMutations.push(args);throw new Error('Unexpected mutation in read-only test');}
           `,
           });
         });
@@ -60,8 +60,10 @@ for (const theme of ["Light", "Dark"])
             body: `
             export * from '/src/recovery.ts?combinedBaseline';
             import {previewRecovery} from '/src/recovery.ts?combinedBaseline';
+            let safetyReads=0;
             export async function inspectRecovery(){
               const s=previewRecovery(), state=${JSON.stringify(state)};
+              if(safetyReads++===0)return s;
               s.readiness=state==='incident'?'needs_acknowledgment':'blocked';
               s.decision=state==='native-incomplete'?'block_incomplete':state==='incident'?'needs_acknowledgment':'block_'+state;
               if(state==='active'||state==='unknown')s.effectiveActivity=state;
@@ -74,6 +76,21 @@ for (const theme of ["Light", "Dark"])
           });
         });
         await page.goto("/");
+        // Establish actual tool results before introducing a blocker. Cold active
+        // startup intentionally defers validation and must not invent tool rows.
+        await expect(
+          page.getByRole("heading", {
+            name: "Set up this computer",
+            exact: true,
+          }),
+        ).toBeVisible();
+        await disclosure(page, "Other actions");
+        await page
+          .getByRole("button", { name: "Check my setup", exact: true })
+          .click();
+        await page
+          .getByRole("button", { name: "Overview", exact: true })
+          .click();
         await expect(
           page.getByRole("heading", { name: heading, exact: true }),
         ).toBeVisible();

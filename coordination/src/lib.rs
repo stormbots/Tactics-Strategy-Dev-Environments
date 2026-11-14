@@ -678,6 +678,41 @@ mod tests {
         }
     }
     #[test]
+    fn startup_read_ordering_preserves_native_gate_and_external_deferral() {
+        let Some(f) = Fixture::new() else { return };
+        // An inspection and a validator both need this real native gate.
+        // Overlap reproduces self-contention; ordering releases it between reads.
+        let inspection = acquire_at(&f.path, "operations.gate", false).unwrap();
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        drop(inspection);
+        assert!(recovery::public_state_at(&f.path).unwrap().is_none());
+        drop(acquire_at(&f.path, "operations.gate", false).unwrap());
+
+        // Same-window serialization cannot waive another process's live lease.
+        let mut external = child(&f.path, "operation");
+        let observation = observations::inspect_at(&f.path);
+        assert_eq!(
+            observation.activity_reason,
+            observations::ActivityReason::GateBusy
+        );
+        assert_eq!(observation.activity, safety::Activity::Active);
+        assert_eq!(observation.decision, safety::Decision::BlockActive);
+        assert_eq!(recovery::public_state_at(&f.path).unwrap_err(), Error::Busy);
+        assert_eq!(
+            acquire_at(&f.path, "operations.gate", false).unwrap_err(),
+            Error::Busy
+        );
+        // Close the probe's input so it exits normally; never kill an installer.
+        drop(external.stdin.take());
+        assert!(external.wait().unwrap().success());
+        assert!(recovery::public_state_at(&f.path).unwrap().is_none());
+        assert!(!f.path.join("transaction.json").exists());
+    }
+
+    #[test]
     fn status_has_explicit_safe_failure_outcomes() {
         for error in [
             Error::Busy,
