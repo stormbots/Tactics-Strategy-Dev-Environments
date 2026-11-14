@@ -61,6 +61,7 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'Setup-SkyviewRepositories.ps1',
         'Test-SkyviewStudentDev.ps1',
         'Validate-SkyviewEnvironment.ps1',
+        'PythonRuntime.ps1',
         'ScheduledMaintenance.ps1',
         'Inspect-SkyviewSchedule.ps1',
         'ToolRecords.ps1',
