@@ -76,7 +76,6 @@ check_command firefox Firefox
 check_command pwsh "PowerShell 7"
 check_command ssh OpenSSH
 check_command 7z 7-Zip
-check_command python3.14 "Python 3.14"
 check_command pycharm PyCharm
 
 if command -v google-chrome >/dev/null 2>&1 || command -v google-chrome-stable >/dev/null 2>&1; then
@@ -98,22 +97,15 @@ if command -v node >/dev/null 2>&1; then
   fi
 fi
 
-if command -v python3.14 >/dev/null 2>&1; then
-  PY_VERSION="$(python3.14 --version 2>&1)"
-  if [[ "$PY_VERSION" =~ ^Python\ 3\.14\. ]]; then
-    pass "Python is on required 3.14.x family ($PY_VERSION)"
-  else
-    fail "Expected Python 3.14.x; detected ${PY_VERSION:-unknown}"
-  fi
-
-  TMP_VENV="$(mktemp -d)/venv"
-  if python3.14 -m venv "$TMP_VENV" >/dev/null 2>&1 && "$TMP_VENV/bin/python" -m pip --version >/dev/null 2>&1; then
-    pass "Python 3.14 venv and project-local pip work"
-  else
-    fail "Python 3.14 could not create a venv with pip"
-  fi
-  rm -rf "$(dirname "$TMP_VENV")"
-fi
+# One explicit interpreter owns its temporary environment and project-local pip.
+PYTHON_RUNTIME="$SCRIPT_DIR/lib/python_runtime.py"
+[[ -f "$PYTHON_RUNTIME" ]] || PYTHON_RUNTIME="$SKYVIEW_LIB/python_runtime.py"
+/usr/bin/python3 "$PYTHON_RUNTIME"
+case "$?" in
+  0) PASS_COUNT=$((PASS_COUNT+1)) ;;
+  10) FAIL_COUNT=$((FAIL_COUNT+1)) ;;
+  *) fail "Python: SDE could not finish the Python check. Review the check details." ;;
+esac
 
 if command -v git >/dev/null 2>&1; then
   [[ "$(git config --global --get init.defaultBranch 2>/dev/null)" == "main" ]] && pass "Git default branch is main" || fail "Git init.defaultBranch is not main"

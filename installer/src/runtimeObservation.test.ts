@@ -93,3 +93,25 @@ it("does not infer observations from arbitrary diagnostic messages or other even
     ),
   ).toBeNull();
 });
+
+it("accepts explicit Linux interpreter evidence and keeps environment failures distinct", () => {
+  const linux = { ...record, executable: "/opt/python 3.14/bin/python3.14" };
+  expect(pythonObservation(line(linux))).toEqual(linux);
+  for (const reason of ["venvFailed", "venvTimeout", "interpreterTimeout"]) {
+    const failure = {
+      ...linux,
+      status: reason.endsWith("Timeout") ? "incomplete" : "unusable",
+      reason,
+      pipVersion: null,
+    };
+    expect(pythonObservation(line(failure))).toEqual(failure);
+  }
+  expect(
+    pythonObservation(line({ ...linux, executable: "/tmp/python\nrun" })),
+  ).toBeNull();
+});
+
+it("does not impose a separate pip release-family restriction", () => {
+  const observed = { ...record, pipVersion: "25.3.dev1+local.1" };
+  expect(pythonObservation(line(observed))).toEqual(observed);
+});

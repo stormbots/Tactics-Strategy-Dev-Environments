@@ -150,7 +150,7 @@ function Get-SkyviewPythonRuntime {
         }
         $remaining = [Math]::Min(2500, 12000 - [int]$clock.ElapsedMilliseconds)
         $pip = Invoke-SkyviewPythonQuery $selected @('-I','-B','-m','pip','--version') $remaining
-        if ($pip.Code -eq 0 -and $pip.Text -match '\Apip (\d{1,8}(?:\.\d{1,8}){1,3}) .+ \(python 3\.14\)\z') {
+        if ($pip.Code -eq 0 -and $pip.Text -match '\Apip ([0-9][A-Za-z0-9.!+_-]{0,119}) .+ \(python 3\.14\)\z') {
             $record.status='passed'; $record.reason='verified'
             $record.version=$verified.version; $record.executable=$selected; $record.pipVersion=$Matches[1]
             return [pscustomobject]$record
