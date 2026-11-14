@@ -1,0 +1,11 @@
+{
+  "version": 4,
+  "scenarios": 14,
+  "workflowBranches": 24,
+  "focusedAccessibilityLayoutAudits": 21,
+  "initialScenarioMatrixAuditsPassed": 56,
+  "pageErrors": [],
+  "networkRequests": [],
+  "scope": "Offline HTML prototype only. No application/native/device/CI or packaged owner UAT evidence.",
+  "finalReadOnlyStageLabels": "passed"
+}

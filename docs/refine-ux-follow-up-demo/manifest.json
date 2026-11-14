@@ -1,0 +1,14 @@
+{
+  "accepted_issue": 161,
+  "acceptance_comment": 6872951134,
+  "base_main": "f6715a728bd6017ad6b6d8294cf2f1bf914da2ca",
+  "prototype_scope": "Offline HTML prototype only. No application/native/device/CI or packaged owner UAT evidence.",
+  "accepted_prototype_sha256": "f2e5ad40db10dbe1a3d17eb31df0277592583ac262720c6852d83079bd27961e",
+  "files": {
+    "index.html": "f2e5ad40db10dbe1a3d17eb31df0277592583ac262720c6852d83079bd27961e",
+    "README.md": "ce4d31422c9cff498436a5bdab49473b2e67d3b33b04abde5646306589fa08aa",
+    "prototype-validation.json": "33976a6fdb56f9c44dfc890ac5188788ace8c611878b8d508d596412c2b33aea",
+    "verify.cjs": "ac35d899062b516d6c86061683f8433b259a91e920eae9483287f2be8ed815f5"
+  },
+  "validation_note": "The report records the earlier offline mockup runs. Packaging this snapshot did not rerun all browser workflows and does not establish native or release acceptance."
+}
