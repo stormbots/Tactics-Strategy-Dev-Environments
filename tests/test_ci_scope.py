@@ -20,7 +20,7 @@ class CiScope(unittest.TestCase):
     def test_application_mixed_unknown_and_renamed_paths_require_builds(self):
         for path in ("installer/src/App.tsx", "linux/lib/common.sh", "updater/Cargo.toml",
                      "tests/Prepare-MintNativeCI.sh", ".github/workflows/prepare-self-update-uat.yml",
-                     "docs/RELEASE-NOTES-1.2.8.md", "unrecognized.txt", "old_fixture_name.py"):
+                     "docs/runtime-config.json", "unrecognized.txt", "old_fixture_name.py"):
             with self.subTest(path=path):
                 self.assertTrue(application_required(["tests/native_uat_fixtures.py", path]))
 
@@ -36,14 +36,14 @@ class CiScope(unittest.TestCase):
                 with patch.dict(os.environ, {"CI_EVENT_NAME": event, "GITHUB_OUTPUT": str(output)}, clear=True), patch.object(ci_scope, "git") as git:
                     ci_scope.main()
                 git.assert_not_called()
-                self.assertEqual(output.read_text(), "application_required=true\nnative_required=true\n")
+                self.assertEqual(output.read_text(), "application_required=true\nnative_required=true\ndocumentation_required=false\ndocumentation_paths=[]\n")
 
     def test_pr_checks_mergebase_without_filename_truncation(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output"
             with patch.dict(os.environ, {"CI_EVENT_NAME": "pull_request", "CI_BASE_SHA": "base", "CI_HEAD_SHA": "head", "GITHUB_OUTPUT": str(output)}), patch.object(ci_scope, "git", side_effect=[b"ancestor\n", b"tests/native_uat_fixtures.py\0"]) as git:
                 ci_scope.main()
-            self.assertEqual(output.read_text(), "application_required=false\nnative_required=false\n")
+            self.assertEqual(output.read_text(), "application_required=false\nnative_required=false\ndocumentation_required=false\ndocumentation_paths=[]\n")
             self.assertEqual(git.call_args_list[1].args, ("diff", "--no-renames", "--name-only", "-z", "ancestor", "head"))
 
     def test_main_push_skips_only_exact_infrastructure_changes(self):
@@ -63,10 +63,11 @@ class CiScope(unittest.TestCase):
                 env = {'CI_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/main',
                        'GITHUB_SHA': 'b'*40, 'GITHUB_EVENT_PATH': str(event), 'GITHUB_OUTPUT': str(output)}
                 raw = ('\0'.join(paths) + ('\0' if paths else '')).encode()
-                with patch.dict(os.environ, env), patch.object(ci_scope, 'git', return_value=raw) as git:
+                with patch.dict(os.environ, env), patch.object(ci_scope, 'git', side_effect=lambda *args: raw if args[0] == 'diff' else b'100644 blob abc\tdocs/MINT-HOST-INVENTORY.md\0') as git:
                     ci_scope.main()
-                git.assert_called_once_with('diff', '--no-renames', '--name-only', '-z', 'a'*40, 'b'*40)
-                self.assertEqual(output.read_text(), f'application_required={str(expected).lower()}\nnative_required={str(expected).lower()}\n')
+                self.assertEqual(git.call_args_list[0].args, ('diff', '--no-renames', '--name-only', '-z', 'a'*40, 'b'*40))
+                self.assertEqual(git.call_count, 3 if any(map(ci_scope.documentation_path, paths)) else 1)
+                self.assertEqual(output.read_text(), f'application_required={str(expected).lower()}\nnative_required={str(expected).lower()}\ndocumentation_required={str(any(ci_scope.documentation_path(p) for p in paths)).lower()}\ndocumentation_paths=' + __import__('json').dumps([p for p in paths if ci_scope.documentation_path(p)]) + '\n')
 
     def test_main_push_invalid_payload_refs_and_diff_fail_closed(self):
         import json
@@ -98,10 +99,10 @@ class CiScope(unittest.TestCase):
             after["jobs"][name].update(needs="scope", **{"if": GATE})
         return before, after
 
-    def test_only_gate_introduction_is_allowed(self):
+    def test_even_gate_only_workflow_changes_validate_full_pipeline(self):
         before, after = self.workflows()
-        self.assertFalse(application_required([WORKFLOW], before, after))
-        self.assertFalse(application_required([WORKFLOW], after, after))
+        self.assertTrue(application_required([WORKFLOW], before, after))
+        self.assertTrue(application_required([WORKFLOW], after, after))
 
     def test_real_workflow_changes_require_application_ci(self):
         for change in ("steps", "release", "trigger", "gate", "needs"):
@@ -138,7 +139,7 @@ class PresentationScope(unittest.TestCase):
                      'coordination/src/safety.rs', 'linux/lib/schedule.py',
                      'windows/Install-SkyviewStudentDev.ps1', '../installer/src/App.tsx'):
             with self.subTest(path=path):
-                self.assertTrue(ci_scope.native_required(['installer/src/App.tsx', path], 'pull_request'))
+                self.assertTrue(ci_scope.native_required(['installer/src/style.css', path], 'pull_request'))
         self.assertTrue(ci_scope.native_required([], 'pull_request'))
         for path in ci_scope.POLICY_PATHS:
             self.assertTrue(application_required([path]))
@@ -151,9 +152,9 @@ class PresentationScope(unittest.TestCase):
             output = Path(directory) / 'output'
             with patch.dict(os.environ, {'CI_EVENT_NAME': 'pull_request', 'CI_BASE_SHA': 'base',
                                          'CI_HEAD_SHA': 'head', 'GITHUB_OUTPUT': str(output)}), \
-                 patch.object(ci_scope, 'git', side_effect=[b'ancestor\n', b'installer/src/App.tsx\0']):
+                 patch.object(ci_scope, 'git', side_effect=[b'ancestor\n', b'installer/src/style.css\0']):
                 ci_scope.main()
-            self.assertEqual(output.read_text(), 'application_required=true\nnative_required=false\n')
+            self.assertEqual(output.read_text(), 'application_required=true\nnative_required=false\ndocumentation_required=false\ndocumentation_paths=[]\n')
 
     def test_native_and_trust_wait_for_checks_without_changing_native_steps(self):
         import yaml
@@ -162,6 +163,7 @@ class PresentationScope(unittest.TestCase):
         for name in ('native', 'update-trust'):
             self.assertEqual(jobs[name]['needs'], ['scope', 'checks'])
             self.assertEqual(jobs[name]['if'], "needs.scope.outputs.native_required == 'true'")
+        self.assertEqual(jobs['checks']['if'], ci_scope.GATE)
         self.assertEqual(jobs['acceptance']['if'], 'always()')
         self.assertEqual(jobs['acceptance']['needs'], ['scope', 'checks', 'native', 'update-trust'])
 
@@ -171,7 +173,7 @@ class PresentationScope(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         script = yaml.safe_load((root / WORKFLOW).read_text())['jobs']['acceptance']['steps'][0]['run']
         full = dict(SCOPE_RESULT='success', CHECKS_RESULT='success', NATIVE_RESULT='success',
-                    TRUST_RESULT='success', APPLICATION_REQUIRED='true', NATIVE_REQUIRED='true')
+                    TRUST_RESULT='success', APPLICATION_REQUIRED='true', NATIVE_REQUIRED='true', DOCUMENTATION_REQUIRED='false')
         presentation = dict(full, NATIVE_REQUIRED='false', NATIVE_RESULT='skipped', TRUST_RESULT='skipped')
         fixture = dict(presentation, APPLICATION_REQUIRED='false', CHECKS_RESULT='skipped')
         for env in (full, presentation, fixture):
@@ -181,7 +183,7 @@ class PresentationScope(unittest.TestCase):
                 env = dict(full, **{key: value})
                 with self.subTest(key=key, value=value):
                     self.assertNotEqual(subprocess.run(['bash', '-e', '-c', script], env=dict(os.environ, **env), capture_output=True).returncode, 0)
-        for key in ('APPLICATION_REQUIRED', 'NATIVE_REQUIRED'):
+        for key in ('APPLICATION_REQUIRED', 'NATIVE_REQUIRED', 'DOCUMENTATION_REQUIRED'):
             env = dict(full, **{key: ''})
             self.assertNotEqual(subprocess.run(['bash', '-e', '-c', script], env=dict(os.environ, **env), capture_output=True).returncode, 0)
 
@@ -338,6 +340,122 @@ class CoordinationWorkflowExitContract(unittest.TestCase):
         result = self.run_with_cargo_failure("fmt", 24)
         self.assertEqual(result.returncode, 24, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ["test", "fmt"])
+
+
+
+class DocumentationScope(unittest.TestCase):
+    def test_reference_formats_are_light_on_prs_and_main(self):
+        for path in ('README.md', 'docs/new-guide.md', 'docs/student-development-manual/new.md',
+                     'docs/figures/diagram.svg', 'docs/figures/screen.png', 'docs/RELEASE-NOTES-1.2.23.md'):
+            for event, ref in (('pull_request', ''), ('push', 'refs/heads/main')):
+                with self.subTest(path=path, event=event):
+                    self.assertEqual(ci_scope.classify([path], event, ref), (False, False, True))
+
+    def test_mixed_unknown_consumed_config_policy_and_execution_paths_stay_full(self):
+        for path in ('docs/helper.py', 'docs/mockup-new.html', 'docs/schema.json', 'docs/AGENTS.md',
+                     'docs/../installer/src/App.tsx', '/docs/guide.md', 'docs//guide.md',
+                     'installer/src/App.tsx', 'installer/src/model.ts', 'installer/src/PreflightReview.tsx',
+                     'installer/src/overviewDecision.ts', 'installer/src/recovery.ts',
+                     'tests/ci_scope.py', 'tests/test_ci_scope.py', 'tests/check_docs.py',
+                     'tests/test_check_docs.py', WORKFLOW, 'installer/package-lock.json',
+                     'linux/Validate-SkyviewStudentDev.sh', 'unknown.bin'):
+            with self.subTest(path=path):
+                self.assertEqual(ci_scope.classify(['docs/guide.md', path], 'pull_request'), (True, True, True))
+        self.assertEqual(ci_scope.classify(['docs/guide.md'], 'pull_request', unsafe_documents=['docs/guide.md']), (True, True, True))
+
+    def test_registered_automation_inputs_are_full_even_with_markdown_suffixes(self):
+        with patch.object(ci_scope, 'FULL_REFERENCE_PATHS', {'docs/runtime-settings.md'}):
+            self.assertEqual(ci_scope.classify(['docs/runtime-settings.md'], 'pull_request'), (True, True, False))
+
+    def test_releases_manual_unknown_events_and_empty_ranges_stay_full(self):
+        for event, ref in (('workflow_dispatch', ''), ('unknown', ''), ('merge_group', ''),
+                           ('push', 'refs/tags/v1.2.24'), ('push', 'refs/heads/release/v1.2.24')):
+            self.assertEqual(ci_scope.classify(['docs/guide.md'], event, ref), (True, True, True))
+        for paths in (None, [], ['']):
+            self.assertEqual(ci_scope.classify(paths, 'pull_request'), (True, True, False))
+
+    def test_docs_can_accompany_presentation_but_not_hide_application_main_changes(self):
+        paths = ['docs/guide.md', 'installer/src/style.css']
+        self.assertEqual(ci_scope.classify(paths, 'pull_request'), (True, False, True))
+        self.assertEqual(ci_scope.classify(paths, 'push', 'refs/heads/main'), (True, True, True))
+
+    def test_actual_pr_and_main_emit_a_data_manifest_and_check_both_file_modes(self):
+        import json
+        for event in ('pull_request', 'push'):
+            with self.subTest(event=event), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'output'; payload = Path(directory) / 'event.json'
+                payload.write_text(json.dumps(dict(ref='refs/heads/main', before='a'*40, after='b'*40, deleted=False)))
+                env = dict(CI_EVENT_NAME=event, GITHUB_REF='refs/heads/main', GITHUB_SHA='b'*40,
+                           CI_BASE_SHA='a'*40, CI_HEAD_SHA='b'*40, GITHUB_EVENT_PATH=str(payload), GITHUB_OUTPUT=str(output))
+                modes = b'100644 blob fff\tdocs/guide.md\0'
+                reads = ([b'a'*40+b'\n'] if event == 'pull_request' else []) + [b'docs/guide.md\0', modes, modes]
+                with patch.dict(os.environ, env), patch.object(ci_scope, 'git', side_effect=reads) as git:
+                    ci_scope.main()
+                values = dict(line.split('=', 1) for line in output.read_text().splitlines())
+                self.assertEqual(values, dict(application_required='false', native_required='false', documentation_required='true', documentation_paths='["docs/guide.md"]'))
+                self.assertEqual(git.call_args_list[-2].args, ('ls-tree','-r','-z','a'*40,'--','README.md','docs'))
+                self.assertEqual(git.call_args_list[-1].args, ('ls-tree','-r','-z','b'*40,'--','README.md','docs'))
+
+    def test_real_git_pr_ranges_keep_doc_renames_light_but_executable_modes_full(self):
+        import json
+        import subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def command(*args):
+                return subprocess.check_output(['git', *args], cwd=root, stderr=subprocess.DEVNULL)
+            def commit(message):
+                command('add', '--all')
+                command('-c', 'user.name=CI fixture', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', message)
+                return command('rev-parse', 'HEAD').decode().strip()
+            command('init', '-q')
+            (root / 'README.md').write_text('# Initial\n')
+            base = commit('Initial')
+            (root / 'README.md').write_text('# Updated\n')
+            first = commit('Edit reference')
+            (root / 'docs').mkdir()
+            command('mv', 'README.md', 'docs/guide.md')
+            renamed = commit('Rename reference')
+            command('update-index', '--chmod=+x', 'docs/guide.md')
+            command('-c', 'user.name=CI fixture', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', 'Executable mode')
+            executable = command('rev-parse', 'HEAD').decode().strip()
+            for older, head, full in ((base, first, False), (first, renamed, False), (renamed, executable, True)):
+                output = root / 'output'
+                output.write_text('')
+                with patch.dict(os.environ, dict(CI_EVENT_NAME='pull_request', CI_BASE_SHA=older, CI_HEAD_SHA=head, GITHUB_OUTPUT=str(output))), patch.object(ci_scope, 'git', side_effect=command):
+                    ci_scope.main()
+                values = dict(line.split('=',1) for line in output.read_text().splitlines())
+                self.assertEqual(values['application_required'], str(full).lower())
+                self.assertEqual(values['native_required'], str(full).lower())
+                self.assertEqual(values['documentation_required'], 'true')
+                self.assertEqual(set(json.loads(values['documentation_paths'])), {'docs/guide.md', 'README.md'} if head == renamed else {'docs/guide.md'} if full else {'README.md'})
+
+    def test_symlink_or_executable_prose_cannot_earn_a_shortcut(self):
+        for mode in ('120000', '100755'):
+            with patch.object(ci_scope, 'git', side_effect=[f'{mode} blob abc\tdocs/guide.md\0'.encode(), b'']):
+                self.assertEqual(ci_scope.unsafe_documentation_paths(['docs/guide.md'], 'base', 'head'), {'docs/guide.md'})
+
+    def test_only_reference_steps_run_on_docs_and_acceptance_enforces_their_result(self):
+        import subprocess
+        import yaml
+        root = Path(__file__).resolve().parents[1]
+        jobs = yaml.safe_load((root / WORKFLOW).read_text())['jobs']
+        steps = jobs['checks']['steps']
+        for step in steps:
+            if (step.get('working-directory') == 'installer' or step.get('uses', '').startswith(('actions/setup-node@', 'docker://', 'actions/upload-artifact@'))
+                    or step.get('name') == 'Bash static analysis and integrity'):
+                self.assertEqual(step['if'], "needs.scope.outputs.application_required == 'true'")
+        docs = next(s for s in steps if s.get('name') == 'Validate changed reference documents')
+        self.assertEqual(docs['env']['DOCUMENTATION_PATHS'], '${{ needs.scope.outputs.documentation_paths }}')
+        self.assertEqual(docs['run'], 'python3 tests/check_docs.py\npython3 -m unittest discover -s tests -p test_uat_version.py\n')
+        script = jobs['acceptance']['steps'][0]['run']
+        env = dict(os.environ, SCOPE_RESULT='success', CHECKS_RESULT='success', NATIVE_RESULT='skipped',
+                   TRUST_RESULT='skipped', APPLICATION_REQUIRED='false', NATIVE_REQUIRED='false', DOCUMENTATION_REQUIRED='true')
+        self.assertEqual(subprocess.run(['bash','-e','-c',script], env=env, capture_output=True).returncode, 0)
+        for result in ('failure', 'cancelled', 'skipped', ''):
+            env['CHECKS_RESULT'] = result
+            self.assertNotEqual(subprocess.run(['bash','-e','-c',script], env=env, capture_output=True).returncode, 0)
+        env.update(CHECKS_RESULT='success', DOCUMENTATION_REQUIRED='')
+        self.assertNotEqual(subprocess.run(['bash','-e','-c',script], env=env, capture_output=True).returncode, 0)
 
 
 if __name__ == "__main__":

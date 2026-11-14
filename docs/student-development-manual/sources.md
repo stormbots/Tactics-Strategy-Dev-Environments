@@ -28,7 +28,7 @@ Issue comments can change over time. The pinned implementation records preserve 
 | Acknowledgment and fresh native authority | [ADR 0001](../adr/0001-interruption-acknowledgment-boundary.md), [ADR 0002](../adr/0002-lease-bound-recovery-transition.md) |
 | Existing standalone CI introduction | [CI Student Guide](../CI-STUDENT-GUIDE.md) |
 
-The local source references above were inspected from authoring checkout `505bbfe72cc431798be9f74904782efef4dfebf3`. That checkout includes proposed follow-up work; the manual's historical implementation claims use the explicitly pinned merged records above. This draft does not declare PR #164 merged or its candidate accepted.
+The local source references above were initially inspected from authoring checkout `505bbfe72cc431798be9f74904782efef4dfebf3`. That checkout includes proposed follow-up work; the manual's historical implementation claims use the explicitly pinned merged records above. The later owner-approved CI refinement adds the lightweight reference lane described in the linked policy and workflow. Historical examples remain pinned to their recorded commits; current PR status belongs to the linked GitHub records. Publication of this manual does not accept a release candidate.
 
 ## How to read the illustrations
 

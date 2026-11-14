@@ -49,15 +49,17 @@ The main workflow also runs after application changes reach `main`. Approved rel
 
 **What happens:** The `scope` job reads the changed file paths and applies the repository's CI policy. It also tests the policy itself.
 
-A small, approved list of changes to screen layout or wording can use a shorter PR check. Changes to installation scripts, native code, dependencies or other important files require the full set. New or unrecognized files normally receive the full set too.
+Ordinary Markdown and static reference images in approved documentation locations receive lightweight checks. A small, approved list of pure presentation files can use the frontend/build/browser checks without native builds. Installation scripts, native code, dependencies, operation controls and unknown executable files require the full set. Mixed changes take the strongest applicable checks.
 
 **Why:** Runners use time and money. We can avoid repeating expensive platform builds for changes covered by the approved shorter path, while keeping the required checks for changes that need them.
 
-The rule uses specific file paths. A file being “only documentation” does not automatically qualify it for fewer checks.
+Root `README.md` and approved reference formats under `docs/` qualify for document checks, including new guides. Executable examples saved as scripts, runtime configuration, and unclassified files under `docs/` keep their stronger rules. Documentation-only merges to `main` also stay lightweight.
 
 ## 4. `checks`: test the code and screens
 
-This job runs before the more expensive platform jobs.
+This job keeps the same name for every applicable lane. For documentation-only changes, it checks Markdown, formatting, local links and image structure, plus relevant version/reference consistency. It does not install npm dependencies, build installers or start browsers.
+
+For application and approved presentation changes, it performs the following common checks before any required platform jobs.
 
 | Step | What happens | Why we do it |
 | --- | --- | --- |
@@ -120,7 +122,7 @@ It is configured to evaluate those results even when an earlier job fails. A req
 
 **Why:** GitHub needs one clear answer to “Did every required part pass?” We must not mistake several green jobs for a complete result when another required job failed.
 
-A planned skip can be correct. For example, the approved shorter PR path can skip native jobs. `acceptance` checks whether that skip matches the policy.
+A planned skip can be correct. Documentation-only changes and the approved presentation PR path skip native jobs. The document checks or application checks must still pass, as applicable. `acceptance` checks whether every result matches the policy.
 
 ## 7. Review and merge the pull request
 
@@ -134,7 +136,7 @@ If a check fails, open its failed step and read the error. We fix the cause and 
 
 ## 8. Check the actual `main` commit
 
-**What happens:** GitHub checks the merged code on `main`. We record that commit's ID and its run results. You may hear this called **exact-main CI**.
+**What happens:** GitHub checks the merged commit on `main`. Application changes receive full validation; documentation-only changes keep their lightweight checks. We record that commit's ID and its run results. You may hear this called **exact-main CI**.
 
 **Why:** The project continues to change. We need evidence for the exact shared version we plan to use, not just an earlier branch.
 

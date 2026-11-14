@@ -12,7 +12,7 @@ For a full application run, `scope` classifies the work. `checks` then runs the 
 
 The workflow's `needs` fields describe these dependencies. A job that is waiting may need an earlier job's result, an available runner or a human approval, depending on its position.
 
-The shorter presentation-only PR path comes from an explicit list of allowed file paths. A new file or a file called “documentation” does not automatically qualify for fewer checks. Read the policy instead of guessing from the extension.
+Ordinary Markdown and static reference images in approved locations use lightweight document checks, including after merge to main. New guides in those locations qualify too. Executable scripts, runtime configuration and unknown formats do not become lightweight merely because they sit under `docs/`. The shorter presentation-only PR path uses an explicit list of pure presentation files; operation and safety controls retain full validation. Mixed changes take the strongest applicable lane.
 
 ## Four items to record before interpreting green checks
 
@@ -29,7 +29,7 @@ An artifact is saved output from a run. It can help with diagnosis, but it may b
 
 The temporary runner may need to download dependencies, restore cached build files, compile Rust code, create installers and build an upgrade fixture. Parallel jobs reduce elapsed waiting time, while each still uses runner time.
 
-SDE starts common checks before the expensive native jobs. This avoids allocating those jobs when an earlier required check already failed. It does not remove their requirement when they apply.
+SDE uses document checks for ordinary references and starts common application checks before any required expensive native jobs. This avoids allocating those jobs when an earlier required check already failed. It does not remove their requirement when they apply.
 
 A new commit can supersede an older run. A cancellation is not a pass, and useful evidence should be preserved.
 
