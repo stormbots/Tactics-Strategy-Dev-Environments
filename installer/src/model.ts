@@ -167,6 +167,7 @@ export function parseEvent(line: string): Event | null {
       "summary",
       "update",
       "tool",
+      "runtime",
     ].includes(kind)
   )
     return null;

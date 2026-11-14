@@ -20,8 +20,6 @@ foreach ($check in @(
     @{Name='GitHub CLI'; Command='gh'; Args=@('--version')},
     @{Name='Node.js'; Command='node'; Args=@('--version'); Family='^v24\.'},
     @{Name='npm'; Command='npm'; Args=@('--version')},
-    @{Name='Python'; Command='python'; Args=@('--version'); Family='^Python 3\.14\.'},
-    @{Name='pip'; Command='python'; Args=@('-m','pip','--version')},
     @{Name='VSCodium'; Command='codium'; Args=@('--version')},
     @{Name='PowerShell 7'; Command='pwsh'; Args=@('--version')},
     @{Name='OpenSSH'; Command='ssh'; Args=@('-V')},
@@ -36,6 +34,18 @@ foreach ($check in @(
     if ($code -ne 0 -or ($check.Family -and $version -notmatch $check.Family)) {
         Result FAIL "$($check.Name): expected runtime family or usable command; detected $version"
     } else { Result PASS "$($check.Name): $version" }
+}
+. (Join-Path $PSScriptRoot 'PythonRuntime.ps1')
+$pythonRuntime = Get-SkyviewPythonRuntime
+Write-Host ("SKYVIEW_EVENT|runtime|Python|{0}" -f ($pythonRuntime | ConvertTo-Json -Compress))
+switch ($pythonRuntime.status) {
+    'passed' {
+        $installed['Python'] = $pythonRuntime.version
+        Result PASS "Python: $($pythonRuntime.version); pip $($pythonRuntime.pipVersion) verified with the same Python"
+    }
+    'notFound' { Result FAIL 'Python: the supported search did not find Python 3.14. Other versions can stay installed.' }
+    'unusable' { Result FAIL 'Python: Python 3.14 or its pip check did not work. Review the check details.' }
+    default { Result FAIL 'Python: SDE could not finish checking Python 3.14. This does not mean it is missing.' }
 }
 foreach ($entry in @(
     @{Name='DBeaver'; Paths=@('C:\Program Files\DBeaver\dbeaver.exe','C:\Program Files\DBeaver\dbeaver-ce.exe')},
