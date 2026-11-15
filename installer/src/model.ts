@@ -168,6 +168,7 @@ export function parseEvent(line: string): Event | null {
       "update",
       "tool",
       "runtime",
+      "preferences",
     ].includes(kind)
   )
     return null;

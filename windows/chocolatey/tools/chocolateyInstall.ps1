@@ -52,6 +52,14 @@ Invoke-ConfigStage 1 'Creating Skyview and development directories' {
 }
 
 Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
+    $parserDirectory=Join-Path $Skyview 'jsonc-parser'
+    $existingParserDirectory=Get-Item -LiteralPath $parserDirectory -Force -ErrorAction SilentlyContinue
+    if ($existingParserDirectory) {
+        if (-not $existingParserDirectory.PSIsContainer -or $existingParserDirectory.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Linked or invalid parser directory is not supported.' }
+    } else { New-Item -ItemType Directory -Path $parserDirectory | Out-Null }
+    $parserSecurity=New-Object Security.AccessControl.DirectorySecurity
+    $parserSecurity.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)')
+    Set-Acl -LiteralPath $parserDirectory -AclObject $parserSecurity
     foreach ($file in @(
         'AutoUpdate-SkyviewTools.ps1',
         'Coordination.ps1',
@@ -65,6 +73,11 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'NodeRuntime.ps1',
         'NodeRuntimeProbe.cjs',
         'GitPreferences.ps1',
+        'EditorPreferences.ps1',
+        'EditorSettingsProbe.cjs',
+        'jsonc-parser/parser.js',
+        'jsonc-parser/scanner.js',
+        'jsonc-parser/LICENSE.md',
         'ScheduledMaintenance.ps1',
         'Inspect-SkyviewSchedule.ps1',
         'ToolRecords.ps1',
@@ -176,11 +189,7 @@ Invoke-ConfigStage 9 'Configuring VSCodium and standard extensions' {
         Write-Warning 'VSCodium CLI was not found during package installation. Run the validation script after sign-out/sign-in.'
     }
 
-    $settingsDir = Join-Path $env:APPDATA 'VSCodium\User'
-    New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
-    if (-not (Test-Path (Join-Path $settingsDir 'settings.json'))) {
-        Copy-Item (Join-Path $Tools 'settings.json') (Join-Path $settingsDir 'settings.json')
-    }
+    Write-Host 'VSCodium preferences are preserved; recommendations require a separate explicit choice.'
 }
 
 Invoke-ConfigStage 10 'Registering weekly development-tool updates' {

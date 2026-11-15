@@ -33,6 +33,15 @@ check_command() {
   if command -v "$cmd" >/dev/null 2>&1; then
     local version=""
     case "$cmd" in
+      codium)
+        version="$(codium --version 2>/dev/null)"
+        local editor_exit=$?
+        version="${version%%$'\n'*}"
+        if [[ "$editor_exit" -ne 0 || ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.+-]+)?$ ]]; then
+          fail "VSCodium: SDE could not finish checking the editor command."
+          return
+        fi
+        ;;
       git|gh|pwsh|python3.14) version="$("$cmd" --version 2>/dev/null | head -n1)" ;;
     esac
     pass "$label${version:+: $version}"
@@ -133,28 +142,32 @@ else
   fail "Development workspace missing: $TARGET_HOME/Development"
 fi
 
-CODIUM_SETTINGS="$TARGET_HOME/.config/VSCodium/User/settings.json"
-if [[ -s "$CODIUM_SETTINGS" ]]; then
-  pass "VSCodium settings file exists"
-  if command -v jq >/dev/null 2>&1 && jq -e '."editor.formatOnSave" == true and ."editor.defaultFormatter" == "esbenp.prettier-vscode" and ."files.eol" == "\n"' "$CODIUM_SETTINGS" >/dev/null 2>&1; then
-    pass "VSCodium baseline settings are present"
-  else
-    warnv "Could not verify all VSCodium baseline settings (file may contain JSONC or user customizations)"
-  fi
-else
-  fail "VSCodium settings file missing: $CODIUM_SETTINGS"
-fi
+CODIUM_SETTINGS="${XDG_CONFIG_HOME:-$TARGET_HOME/.config}/VSCodium/User/settings.json"
+EDITOR_PREFERENCES="$SCRIPT_DIR/lib/editor_preferences.py"
+[[ -f "$EDITOR_PREFERENCES" ]] || EDITOR_PREFERENCES="$SKYVIEW_LIB/editor_preferences.py"
+printf '%s' "$NODE_RECORD" | /usr/bin/python3 "$EDITOR_PREFERENCES" "$CODIUM_SETTINGS"
+case "$?" in
+  0) : ;;
+  20) WARN_COUNT=$((WARN_COUNT+1)) ;;
+  *) warnv "SDE could not finish checking VSCodium preferences. Your settings have not been changed." ;;
+esac
 
 EXT_FILE=""
 [[ -f "$SKYVIEW_SHARE/extensions.txt" ]] && EXT_FILE="$SKYVIEW_SHARE/extensions.txt"
 [[ -z "$EXT_FILE" && -f "$SCRIPT_DIR/extensions.txt" ]] && EXT_FILE="$SCRIPT_DIR/extensions.txt"
-if command -v codium >/dev/null 2>&1 && [[ -n "$EXT_FILE" ]]; then
+if command -v codium >/dev/null 2>&1; then
+  if [[ -z "$EXT_FILE" || ! -r "$EXT_FILE" ]]; then
+    fail "VSCodium: SDE could not read the list of required extensions."
+  else
   INSTALLED_EXT="$(mktemp)"
   if [[ "$(id -u)" -eq 0 && -n "$TARGET_USER" ]]; then
     runuser -u "$TARGET_USER" -- env HOME="$TARGET_HOME" codium --list-extensions > "$INSTALLED_EXT" 2>/dev/null
   else
     env HOME="$TARGET_HOME" codium --list-extensions > "$INSTALLED_EXT" 2>/dev/null
   fi
+  if [[ "$?" -ne 0 ]]; then
+    fail "VSCodium: SDE could not finish checking the installed extensions."
+  else
   while IFS= read -r ext; do
     [[ -z "$ext" || "$ext" =~ ^[[:space:]]*# ]] && continue
     if grep -Fxiq "$ext" "$INSTALLED_EXT"; then
@@ -163,7 +176,9 @@ if command -v codium >/dev/null 2>&1 && [[ -n "$EXT_FILE" ]]; then
       fail "VSCodium extension missing: $ext"
     fi
   done < "$EXT_FILE"
+  fi
   rm -f "$INSTALLED_EXT"
+  fi
 fi
 
 if systemctl is-enabled skyview-student-dev-update.timer >/dev/null 2>&1; then

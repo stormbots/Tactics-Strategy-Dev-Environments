@@ -131,9 +131,10 @@ export function validationGuidance(
     (message === "VSCodium settings present" ||
       /^VSCodium settings file missing: .+/.test(message))
   )
-    return repair(
-      "Editor setup is incomplete",
-      "SDE could not find the editor settings file. The standard editing defaults may be unavailable.",
+    return diagnostics(
+      "VSCodium may be using its defaults",
+      "A missing preferences file does not mean VSCodium is broken.",
+      "Run a fresh check. SDE checks required editor features separately and preserves your preferences.",
     );
   const extension =
     /^(?:Editor extension: |VSCodium extension missing: )(.+)$/.exec(
@@ -236,9 +237,9 @@ export function validationGuidance(
       "Could not verify all VSCodium baseline settings (file may contain JSONC or user customizations)"
   )
     return manual(
-      "Some editor defaults could not be verified",
-      "Existing editor customizations or comments may prevent this check. Your preferences have been preserved.",
-      "Compare the editor settings with the installed baseline. Preserve intentional customizations, then validate again.",
+      "An older VSCodium settings check needs a refresh",
+      "Comments and personal preferences are supported. They do not mean VSCodium needs repair.",
+      "Run a fresh check. Keep your intentional preferences.",
     );
   if (
     check.status === "WARNING" &&

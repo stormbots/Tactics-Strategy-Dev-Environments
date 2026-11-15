@@ -20,22 +20,7 @@ mkdir -p "$TARGET_HOME/Development"
 
 log "Preserving your Git preferences, including choices left unset."
 
-log "Applying baseline VSCodium settings..."
-CODIUM_DIR="$TARGET_HOME/.config/VSCodium/User"
-CODIUM_SETTINGS="$CODIUM_DIR/settings.json"
-mkdir -p "$CODIUM_DIR"
-if [[ ! -s "$CODIUM_SETTINGS" ]]; then
-  install -m 0644 "$SCRIPT_DIR/config/codium-settings.json" "$CODIUM_SETTINGS"
-else
-  MERGED="$(mktemp)"
-  if jq -s '.[1] * .[0]' "$CODIUM_SETTINGS" "$SCRIPT_DIR/config/codium-settings.json" > "$MERGED" 2>/dev/null; then
-    cp "$CODIUM_SETTINGS" "$CODIUM_SETTINGS.pre-skyview-v${SKYVIEW_VERSION}.bak"
-    install -m 0644 "$MERGED" "$CODIUM_SETTINGS"
-  else
-    warn "Existing VSCodium settings.json is not strict JSON (likely JSONC); it was preserved unchanged. Baseline settings are in config/codium-settings.json."
-  fi
-  rm -f "$MERGED"
-fi
+log "Your VSCodium preferences are preserved, including an empty file or the choice to use defaults."
 
 install_codium_extensions_for_user "$TARGET_USER" "$TARGET_HOME" "$SCRIPT_DIR/extensions.txt"
 

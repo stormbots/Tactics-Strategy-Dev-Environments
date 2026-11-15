@@ -98,7 +98,8 @@ If the target directory already contains a Git repository, it is left alone. The
 
 ## Git behavior
 
-The installer applies these global defaults to the shared account:
+SDE recommends these global preferences. Install and Repair preserve existing
+values and choices left unset:
 
 ```text
 init.defaultBranch = main
@@ -110,7 +111,7 @@ It intentionally does **not** configure `user.name`, `user.email`, or GitHub aut
 
 ## VSCodium defaults
 
-For a new VSCodium profile, the package configures:
+The package keeps these suggested preferences as a reference:
 
 ```json
 {
@@ -121,7 +122,11 @@ For a new VSCodium profile, the package configures:
 }
 ```
 
-If an existing `settings.json` is strict JSON, the installer backs it up and merges these baseline values. If the existing file is JSON-with-comments (JSONC) and cannot be parsed safely with `jq`, the installer preserves it and emits a warning instead of overwriting it.
+SDE does not copy or merge these values into the user's settings. Existing JSON,
+JSONC comments, empty files and absent files are preserved. An absent file can
+mean VSCodium is using its defaults. Any later application of recommendations
+requires an explicit choice. See [settings inspection](../docs/EDITOR-PREFERENCES.md)
+for the check's scope and limits.
 
 ## Python behavior
 
@@ -193,12 +198,12 @@ The installer runs validation automatically. It can also be run later:
 Validation checks:
 
 - Linux Mint and Cinnamon
-- Git and shared-account Git defaults
+- Git functionality and configuration access; preference differences are informational
 - GitHub CLI installation and auth state (authentication is informational, not required)
 - Node.js 24.x and npm
 - Python 3.14.x plus functional `venv`/pip
 - VSCodium and all required extensions
-- VSCodium baseline settings
+- Optional VSCodium preferences, separately from required editor features
 - DBeaver, Chrome, Firefox, PowerShell, OpenSSH, and 7-Zip
 - PyCharm managed installation
 - `~/Development`

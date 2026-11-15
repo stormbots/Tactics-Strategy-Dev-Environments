@@ -156,6 +156,12 @@ sudo install -m 0644 "$SCRIPT_DIR/lib/python_runtime.py" "$SKYVIEW_LIB/python_ru
 sudo install -m 0644 "$SCRIPT_DIR/lib/node_runtime.py" "$SKYVIEW_LIB/node_runtime.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/node_runtime_probe.cjs" "$SKYVIEW_LIB/node_runtime_probe.cjs"
 sudo install -m 0644 "$SCRIPT_DIR/lib/git_preferences.py" "$SKYVIEW_LIB/git_preferences.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/editor_preferences.py" "$SKYVIEW_LIB/editor_preferences.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/editor_settings_probe.cjs" "$SKYVIEW_LIB/editor_settings_probe.cjs"
+sudo install -d -m 0755 "$SKYVIEW_LIB/jsonc-parser"
+for parser_file in parser.js scanner.js LICENSE.md; do
+  sudo install -m 0644 "$SCRIPT_DIR/lib/jsonc-parser/$parser_file" "$SKYVIEW_LIB/jsonc-parser/$parser_file"
+done
 sudo install -m 0644 "$SCRIPT_DIR/lib/coordination.py" "$SKYVIEW_LIB/coordination.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/coordination.sh" "$SKYVIEW_LIB/coordination.sh"
 sudo install -m 0644 "$SCRIPT_DIR/extensions.txt" "$SKYVIEW_SHARE/extensions.txt"
