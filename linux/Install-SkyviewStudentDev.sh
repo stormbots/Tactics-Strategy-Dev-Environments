@@ -153,6 +153,8 @@ sudo install -d -m 0755 "$SKYVIEW_ETC" "$SKYVIEW_LIB" "$SKYVIEW_SHARE" "$SKYVIEW
 sudo install -m 0644 "$SCRIPT_DIR/lib/common.sh" "$SKYVIEW_LIB/common.sh"
 sudo install -m 0644 "$SCRIPT_DIR/lib/tool_records.py" "$SKYVIEW_LIB/tool_records.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/python_runtime.py" "$SKYVIEW_LIB/python_runtime.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/node_runtime.py" "$SKYVIEW_LIB/node_runtime.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/node_runtime_probe.cjs" "$SKYVIEW_LIB/node_runtime_probe.cjs"
 sudo install -m 0644 "$SCRIPT_DIR/lib/coordination.py" "$SKYVIEW_LIB/coordination.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/coordination.sh" "$SKYVIEW_LIB/coordination.sh"
 sudo install -m 0644 "$SCRIPT_DIR/extensions.txt" "$SKYVIEW_SHARE/extensions.txt"

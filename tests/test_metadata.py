@@ -22,6 +22,47 @@ class ToolMetadata(unittest.TestCase):
         with patch.object(tools, "command", return_value="Candidate: 3.15.0"):
             self.assertIsNone(tools.candidate_for("python3.14"))
 
+    def node_records(self, tracked, selected='24.19.0', snapshot=False):
+        def command(*args):
+            if args[0] == 'dpkg-query' and args[-1] == 'nodejs':
+                return 'installed\t' + tracked if tracked else None
+            if args[0] == 'apt-cache' and args[-1] == 'nodejs':
+                return 'nodejs | 24.21.0-1nodesource1 | approved'
+            if args[:2] == ('dpkg', '--compare-versions'):
+                return ''
+            return None
+        with patch.object(tools, 'command', side_effect=command) as commands:
+            records = {r['tool']: r for r in tools.records(True,
+                       snapshot={'Node.js': selected, 'npm': '11.9.0'} if snapshot else None,
+                       node=dict(status='passed', version=selected, npmVersion='11.9.0'))}
+        self.assertFalse(any(call.args[0] == 'npm' for call in commands.call_args_list))
+        return records
+
+    def test_node_selected_runtime_cannot_borrow_another_packages_update(self):
+        for tracked in ('24.18.0-1nodesource1', '24.20.0-1nodesource1', '26.0.0-1', None):
+            for snapshot in (False, True):
+                with self.subTest(tracked=tracked, snapshot=snapshot):
+                    records = self.node_records(tracked, snapshot=snapshot)
+                    self.assertEqual(records['Node.js']['installedVersion'], '24.19.0')
+                    self.assertEqual(records['npm']['installedVersion'], '11.9.0')
+                    self.assertEqual(records['Node.js']['updateCheck'], 'native')
+                    self.assertEqual(records['Node.js']['updateReason'], 'maintenanceUnverified')
+                    self.assertFalse(records['Node.js']['updateAvailable'])
+                    self.assertIsNone(records['Node.js']['availableVersion'])
+
+    def test_matching_node_package_version_can_supply_advisory_metadata(self):
+        for tracked in ('24.19.0-1nodesource1', '1:24.19.0+dfsg-1'):
+            records = self.node_records(tracked)
+            self.assertEqual(records['Node.js']['updateCheck'], 'current')
+            self.assertEqual(records['Node.js']['availableVersion'], '24.21.0-1nodesource1')
+
+    def test_failed_pair_does_not_supply_installed_npm_from_default(self):
+        with patch.object(tools, 'command', return_value=None) as commands:
+            records = {r['tool']: r for r in tools.records(False, node=dict(status='unusable', version='24.19.0'))}
+        self.assertIsNone(records['Node.js']['installedVersion'])
+        self.assertIsNone(records['npm']['installedVersion'])
+        self.assertFalse(any(call.args[0] == 'npm' for call in commands.call_args_list))
+
     def test_update_comparison_and_unknown_candidate(self):
         def command(*args):
             if args[0] == "dpkg-query":

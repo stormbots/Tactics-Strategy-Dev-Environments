@@ -72,8 +72,17 @@ export function nodeObservation(line: string): NodeObservation | null {
     const text = (input: unknown, pattern: RegExp, limit: number) =>
       typeof input === "string" &&
       input.length <= limit &&
-      !/[\x00-\x1f|]/.test(input) &&
+      !/[\x00-\x1f\x7f|]/.test(input) &&
       pattern.test(input);
+    const linuxPath = (input: unknown) =>
+      text(input, /^\/.+$/, 4096) &&
+      !(input as string)
+        .split("/")
+        .some(
+          (part, index) =>
+            part === ".." || part === "." || (index > 0 && part === ""),
+        ) &&
+      !(input as string).includes("\\");
     if (!(
       value.version === null ||
       text(value.version, /^24\.\d{1,8}\.\d{1,8}$/, 30)
@@ -81,7 +90,8 @@ export function nodeObservation(line: string): NodeObservation | null {
       return null;
     if (!(
       value.executable === null ||
-      text(value.executable, /^[A-Za-z]:\\.+\.exe$/i, 4096)
+      text(value.executable, /^[A-Za-z]:\\.+\.exe$/i, 4096) ||
+      linuxPath(value.executable)
     ))
       return null;
     if (!(
@@ -90,7 +100,8 @@ export function nodeObservation(line: string): NodeObservation | null {
         value.npmCli,
         /^[A-Za-z]:\\.+\\node_modules\\npm\\bin\\npm-cli\.js$/i,
         4096,
-      )
+      ) ||
+      linuxPath(value.npmCli)
     ))
       return null;
     if (!(
@@ -107,10 +118,25 @@ export function nodeObservation(line: string): NodeObservation | null {
         !value.npmCli
       )
         return null;
-      const expected =
-        value.executable.replace(/[\\/][^\\/]+$/, "") +
-        "\\node_modules\\npm\\bin\\npm-cli.js";
-      if (value.npmCli.toLowerCase() !== expected.toLowerCase()) return null;
+      if (value.executable.startsWith("/")) {
+        if (!value.executable.endsWith("/bin/node")) return null;
+        const expected =
+          value.executable.slice(0, -"bin/node".length) +
+          "lib/node_modules/npm/bin/npm-cli.js";
+        if (
+          value.npmCli !== expected &&
+          !(
+            value.executable === "/usr/bin/node" &&
+            value.npmCli === "/usr/share/nodejs/npm/bin/npm-cli.js"
+          )
+        )
+          return null;
+      } else {
+        const expected =
+          value.executable.replace(/[\\/][^\\/]+$/, "") +
+          "\\node_modules\\npm\\bin\\npm-cli.js";
+        if (value.npmCli.toLowerCase() !== expected.toLowerCase()) return null;
+      }
     } else if (
       value.reason === "verified" ||
       value.npmVersion !== null ||
