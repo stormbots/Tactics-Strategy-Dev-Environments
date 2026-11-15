@@ -66,7 +66,6 @@ TARGET_HOME="$HOME"
 [[ -n "$TARGET_HOME" ]] || TARGET_HOME="$HOME"
 info "Configured student/shared user: ${TARGET_USER:-unknown} (${TARGET_HOME:-unknown})"
 
-check_command git Git
 check_command gh "GitHub CLI"
 check_command codium VSCodium
 check_command dbeaver DBeaver
@@ -109,18 +108,16 @@ case "$?" in
   *) fail "Python: SDE could not finish the Python check. Review the check details." ;;
 esac
 
-if command -v git >/dev/null 2>&1; then
-  [[ "$(git config --global --get init.defaultBranch 2>/dev/null)" == "main" ]] && pass "Git default branch is main" || fail "Git init.defaultBranch is not main"
-  [[ "$(git config --global --get fetch.prune 2>/dev/null)" == "true" ]] && pass "Git fetch.prune is true" || fail "Git fetch.prune is not true"
-  [[ "$(git config --global --get pull.ff 2>/dev/null)" == "only" ]] && pass "Git pull.ff is only" || fail "Git pull.ff is not only"
-  GIT_NAME="$(git config --global --get user.name 2>/dev/null)"
-  GIT_EMAIL="$(git config --global --get user.email 2>/dev/null)"
-  if [[ -z "$GIT_NAME" && -z "$GIT_EMAIL" ]]; then
-    info "Git user identity is intentionally unset"
-  else
-    info "Git identity is configured locally"
-  fi
-fi
+# Required command/configuration checks are separate from recommendations.
+GIT_PREFERENCES="$SCRIPT_DIR/lib/git_preferences.py"
+[[ -f "$GIT_PREFERENCES" ]] || GIT_PREFERENCES="$SKYVIEW_LIB/git_preferences.py"
+/usr/bin/python3 "$GIT_PREFERENCES"
+case "$?" in
+  0) PASS_COUNT=$((PASS_COUNT+1)) ;;
+  10) FAIL_COUNT=$((FAIL_COUNT+1)) ;;
+  *) fail "Git: SDE could not finish the Git check. Review the check details." ;;
+esac
+info "Git identity and GitHub sign-in are optional."
 
 if [[ "${1:-}" == "--check-updates" ]] && command -v gh >/dev/null 2>&1; then
   if gh auth status >/dev/null 2>&1; then

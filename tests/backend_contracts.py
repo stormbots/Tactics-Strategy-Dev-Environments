@@ -270,6 +270,10 @@ class Backends(unittest.TestCase):
         for p in ['linux/Configure-SkyviewUser.sh','windows/chocolatey/tools/Configure-SkyviewUser.ps1']:
             self.assertNotRegex(self.text(p),r'git config[^\n]*(user\.name|user\.email)')
             self.assertNotIn('gh auth login',self.text(p))
+        for p in ('linux/Configure-SkyviewUser.sh', 'windows/chocolatey/tools/Configure-SkyviewUser.ps1',
+                  'windows/chocolatey/tools/chocolateyInstall.ps1'):
+            self.assertNotRegex(self.text(p), r'git config --global (init\.defaultBranch|fetch\.prune|pull\.ff)\b')
+        self.assertIn('git config --system core.longpaths true', self.text('windows/chocolatey/tools/chocolateyInstall.ps1'))
     def test_privileged_interface(self):
         rust=self.text('installer/src-tauri/src/process.rs')
         self.assertIn('["install","repair","update"]',re.sub(r'\s+', '', rust))

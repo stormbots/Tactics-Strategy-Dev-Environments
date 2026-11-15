@@ -1,5 +1,10 @@
 """Metadata fixtures: never provision the host."""
 import importlib.util
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -8,10 +13,154 @@ ROOT = Path(__file__).resolve().parents[1]
 def module(name):
     spec = importlib.util.spec_from_file_location(name, ROOT / "linux/lib" / (name + ".py"))
     value = importlib.util.module_from_spec(spec)
+    sys.modules[name] = value
     spec.loader.exec_module(value)
     return value
 tools = module("tool_records")
 schedule = module("schedule")
+git_preferences = module('git_preferences')
+
+
+class GitPreferences(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='sde git préférences ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.config = self.root / 'student.gitconfig'
+        self.system = self.root / 'system.gitconfig'
+        self.system.write_text('')
+        self.git = shutil.which('git')
+        self.assertIsNotNone(self.git, 'Prepared native Git required')
+        environment = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+        environment.update(GIT_CONFIG_GLOBAL=str(self.config), GIT_CONFIG_SYSTEM=str(self.system))
+        self.environment = patch.dict(os.environ, environment, clear=True)
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+
+    def check(self):
+        return git_preferences.verify(find=lambda _: self.git)
+
+    def test_different_and_unset_preferences_pass_without_writes(self):
+        self.config.write_text('# preserved comment\n[init]\n defaultBranch = student-choice\n[fetch]\n prune = no\n[credential]\n helper = fixture-helper\n')
+        before = self.config.read_bytes()
+        result = self.check()
+        self.assertEqual(result['status'], 'passed')
+        self.assertEqual(result['scope'], 'globalOutsideRepository')
+        self.assertEqual([p['status'] for p in result['preferences']], ['different', 'different', 'unset'])
+        self.assertEqual(result['preferences'][1]['value'], 'false')
+        self.assertEqual(self.config.read_bytes(), before)
+        self.assertNotIn('fixture-helper', str(result))
+
+    def test_absent_file_and_empty_values_are_not_fabricated_defaults(self):
+        result = self.check()
+        self.assertEqual(result['status'], 'passed')
+        self.assertTrue(all(p['status'] == 'unset' and p['value'] is None for p in result['preferences']))
+        self.assertFalse(self.config.exists())
+        self.config.write_text('[init]\n defaultBranch =\n')
+        result = self.check()
+        self.assertEqual(result['preferences'][0]['value'], '')
+        self.assertEqual(result['preferences'][0]['status'], 'different')
+
+    def test_boolean_equivalents_are_read_by_git(self):
+        for value in ('true', 'yes', 'on', '1', ''):
+            self.config.write_text('[fetch]\n prune' + (' = ' + value if value else '') + '\n')
+            result = self.check()
+            self.assertEqual(result['status'], 'passed', value)
+            self.assertEqual(result['preferences'][1]['status'], 'matches', value)
+        for value in ('false', 'no', 'off', '0'):
+            self.config.write_text('[fetch]\n prune = ' + value + '\n')
+            self.assertEqual(self.check()['preferences'][1]['value'], 'false')
+
+    def test_malformed_global_system_and_invalid_boolean_are_incomplete(self):
+        for path, text in ((self.config, '[broken'), (self.system, '[broken'),
+                           (self.config, '[fetch]\n prune = not-a-bool\n')):
+            self.config.write_text('')
+            self.system.write_text('')
+            path.write_text(text)
+            result = self.check()
+            self.assertEqual(result['status'], 'incomplete')
+            self.assertEqual(result['reason'], 'configReadFailed')
+            self.assertEqual(path.read_text(), text)
+
+    def test_global_includes_are_read_without_claiming_project_effective_values(self):
+        included = self.root / 'included.gitconfig'
+        included.write_text('[fetch]\n prune = yes\n')
+        self.config.write_text(f'[include]\n path = {included.as_posix()}\n[init]\n defaultBranch = student\n')
+        project = self.root / 'project'
+        subprocess.run([self.git, 'init', '--quiet', str(project)], check=True, capture_output=True)
+        subprocess.run([self.git, '-C', str(project), 'config', 'fetch.prune', 'false'], check=True)
+        before = (project / '.git/config').read_bytes()
+        with patch.dict(os.environ, {'GIT_DIR': str(project / '.git'), 'GIT_WORK_TREE': str(project)}):
+            result = self.check()
+            self.assertEqual(os.environ['GIT_DIR'], str(project / '.git'))
+        self.assertEqual(result['status'], 'passed')
+        self.assertEqual(result['preferences'][1]['value'], 'true')
+        self.assertEqual((project / '.git/config').read_bytes(), before)
+
+    def test_missing_failed_and_unavailable_command_are_distinct(self):
+        self.assertEqual(git_preferences.verify(find=lambda _: None)['status'], 'notFound')
+        for code, status in ((7, 'unusable'), (-1, 'incomplete')):
+            result = git_preferences.verify(find=lambda _: self.git, run=lambda args, _: git_preferences.Probe(code if '--version' in args else 1))
+            self.assertEqual(result['status'], status)
+
+    def test_project_conditional_include_is_not_claimed_as_global_effective_value(self):
+        project = self.root / 'conditional-project'
+        subprocess.run([self.git, 'init', '--quiet', str(project)], check=True, capture_output=True)
+        included = self.root / 'conditional.gitconfig'
+        included.write_text('[init]\n defaultBranch = project-choice\n')
+        self.config.write_text('[init]\n defaultBranch = student-choice\n' +
+                               f'[includeIf "gitdir:{project.as_posix()}/.git"]\n path = {included.as_posix()}\n')
+        with patch.dict(os.environ, {'GIT_DIR': str(project / '.git'), 'GIT_WORK_TREE': str(project)}):
+            result = self.check()
+        self.assertEqual(result['status'], 'passed')
+        self.assertEqual(result['preferences'][0]['value'], 'student-choice')
+        effective = subprocess.run([self.git, '-C', str(project), 'config', '--get', 'init.defaultBranch'], check=True, capture_output=True, text=True)
+        self.assertEqual(effective.stdout.strip(), 'project-choice')
+
+    def test_read_failure_never_becomes_unset_or_pass(self):
+        for code in (7, -1):
+            def query(arguments, directory):
+                return git_preferences.Probe(0, 'git version 2.43.0\n') if '--version' in arguments else git_preferences.Probe(code)
+            result = git_preferences.verify(find=lambda _: self.git, run=query)
+            self.assertEqual(result['status'], 'incomplete')
+            self.assertTrue(all(p['status'] == 'unreadable' for p in result['preferences']))
+
+    @unittest.skipUnless(os.name == 'posix' and hasattr(os, 'geteuid') and os.geteuid() != 0,
+                         'Unprivileged POSIX permission fixture')
+    def test_actual_access_denied_is_incomplete_and_preserves_file(self):
+        self.config.write_text('[init]\n defaultBranch = student-choice\n')
+        before = self.config.read_bytes()
+        self.config.chmod(0)
+        try:
+            self.assertEqual(self.check()['status'], 'incomplete')
+        finally:
+            self.config.chmod(0o600)
+        self.assertEqual(self.config.read_bytes(), before)
+        included = self.root / 'unreadable-include.gitconfig'
+        included.write_text('[fetch]\n prune = yes\n')
+        self.config.write_text(f'[include]\n path = {included.as_posix()}\n')
+        included.chmod(0)
+        try:
+            self.assertEqual(self.check()['status'], 'incomplete')
+        finally:
+            included.chmod(0o600)
+
+    def test_report_and_real_validator_fragment_count_one_required_result(self):
+        import contextlib
+        import io
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(git_preferences.report(self.check()), 0)
+        self.assertEqual(output.getvalue().count('SKYVIEW_EVENT|validation|PASS|Git:'), 1)
+        self.assertNotIn('WARNING', output.getvalue())
+        if os.name != 'posix':
+            return
+        source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
+        fragment = source[source.index('GIT_PREFERENCES='):source.index('if [[ "${1:-}" == "--check-updates"')]
+        program = 'PASS_COUNT=0; FAIL_COUNT=0\ninfo() { :; }; fail() { FAIL_COUNT=$((FAIL_COUNT+1)); }\n' + fragment + '\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
+        result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'SCRIPT_DIR': str(ROOT / 'linux')}, capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('COUNTS 1 0', result.stdout)
 
 class ToolMetadata(unittest.TestCase):
     def test_node_uses_approved_family_when_latest_is_26(self):

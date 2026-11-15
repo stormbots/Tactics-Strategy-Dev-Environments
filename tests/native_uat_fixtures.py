@@ -132,8 +132,8 @@ def apply(root, case):
             xdg = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "git/config"
             if xdg.exists():
                 raise ValueError("Additional XDG Git configuration is unsupported")
-            if run("git", "config", "--global", "--get", "init.defaultBranch") != "main":
-                raise ValueError("Start from the verified main-branch baseline")
+            # Existing writable config was checked above. An intentional
+            # branch preference (or unset key) is no longer a readiness fault.
             with tempfile.TemporaryDirectory(dir=root) as directory:
                 candidate = Path(directory) / "gitconfig"
                 candidate.write_bytes(original)

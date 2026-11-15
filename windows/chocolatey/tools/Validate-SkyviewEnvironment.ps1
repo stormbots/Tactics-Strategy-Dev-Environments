@@ -16,7 +16,6 @@ function Result($Status,$Message) {
 }
 function Check($Condition,$Message) { if ($Condition) { Result PASS $Message } else { Result FAIL $Message } }
 foreach ($check in @(
-    @{Name='Git'; Command='git'; Args=@('--version')},
     @{Name='GitHub CLI'; Command='gh'; Args=@('--version')},
     @{Name='VSCodium'; Command='codium'; Args=@('--version')},
     @{Name='PowerShell 7'; Command='pwsh'; Args=@('--version')},
@@ -79,14 +78,22 @@ foreach ($entry in @(
     else { Result FAIL "$($entry.Name): not installed" }
 }
 Check (Test-Path 'C:\Development') 'Development folder'
-foreach ($setting in @(@{Key='init.defaultBranch';Value='main'},@{Key='fetch.prune';Value='true'},@{Key='pull.ff';Value='only'})) {
-    $value = git config --global --get $setting.Key 2>$null
-    Check ($value -eq $setting.Value) "Git default $($setting.Key) = $($setting.Value)"
+. (Join-Path $PSScriptRoot 'GitPreferences.ps1')
+$gitPreferences=Get-SkyviewGitPreferences
+Write-Host ("SKYVIEW_EVENT|preferences|Git|{0}" -f ($gitPreferences | ConvertTo-Json -Compress -Depth 5))
+switch ($gitPreferences.status) {
+    'passed' {
+        $installed['Git']=$gitPreferences.version
+        Result PASS 'Git: Git is available. Your existing preferences were preserved.'
+    }
+    'notFound' { Result FAIL 'Git: SDE could not find Git.' }
+    'unusable' { Result FAIL 'Git: the Git command did not work. Review the check details.' }
+    default {
+        if ($gitPreferences.reason -eq 'configReadFailed') { Result FAIL 'Git: SDE could not finish reading your Git settings. Review the check details.' }
+        else { Result FAIL 'Git: SDE could not finish checking Git. Review the check details.' }
+    }
 }
-$gitName = git config --global --get user.name 2>$null
-$gitEmail = git config --global --get user.email 2>$null
-if ($gitName -and $gitEmail) { Result INFO 'Git identity: configured locally' }
-else { Result INFO 'Git identity: not configured (optional)' }
+Result INFO 'Git identity and GitHub sign-in are optional.'
 if ($CheckUpdates -and (Get-Command gh -ErrorAction SilentlyContinue)) {
     & gh auth status *> $null
     if ($LASTEXITCODE -eq 0) { Result INFO 'GitHub authentication: configured locally' }

@@ -20,8 +20,8 @@ ORIGINAL = b'{"schema":1,"id":"synthetic-bootstrap-ci-only","kind":"system"}'
 def main(package):
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.geteuid() != 0:
         raise RuntimeError('Disposable root GitHub runner required.')
-    for name in ('node_runtime.py', 'node_runtime_probe.cjs'):
-        assert Path('/usr/lib/Skyview Dev Setup/backend/linux/lib', name).is_file(), 'Packaged Node helper missing'
+    for name in ('node_runtime.py', 'node_runtime_probe.cjs', 'git_preferences.py'):
+        assert Path('/usr/lib/Skyview Dev Setup/backend/linux/lib', name).is_file(), 'Packaged verification helper missing'
     journal = ROOT / 'transaction.json'
     for name in ('transaction.json', 'recovery-archive', 'recovery-disposition.json', *METADATA):
         if (ROOT / name).exists() or (ROOT / name).is_symlink():

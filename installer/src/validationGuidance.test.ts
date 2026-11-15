@@ -65,10 +65,15 @@ describe("backend validation guidance", () => {
       const result = validationGuidance(fail(message));
       expect(result?.category).toBe("Manual step");
       expect(result?.operation).toBeUndefined();
+      if (message.startsWith("Git")) {
+        expect(result?.next).toContain("keep an intentional choice");
+        expect(result?.next).toContain("fresh check");
+      }
     },
   );
   it.each([
     "Git identity: not configured (optional)",
+    "Git identity and GitHub sign-in are optional.",
     "GitHub authentication: not configured (optional)",
     "Git user identity is intentionally unset",
     "GitHub CLI is installed but intentionally not authenticated",

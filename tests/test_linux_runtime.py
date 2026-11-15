@@ -186,7 +186,7 @@ class PythonRuntimeVerification(unittest.TestCase):
     @unittest.skipUnless(BASH, "Bash is required for the validator integration")
     def test_real_validator_fragment_counts_absent_python_and_helper_failure(self):
         source = (ROOT / "linux/Validate-SkyviewStudentDev.sh").read_text()
-        fragment = source[source.index('PYTHON_RUNTIME='):source.index('\nif command -v git')]
+        fragment = source[source.index('PYTHON_RUNTIME='):source.index('# Required command/configuration')]
         for missing_helper in (False, True):
             with self.subTest(missing_helper=missing_helper):
                 directory = self.root if missing_helper else ROOT / "linux"

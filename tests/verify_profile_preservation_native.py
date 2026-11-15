@@ -56,6 +56,10 @@ def main(backend=None):
 
         run('/usr/bin/git', 'config', '--global', 'user.name', 'Synthetic Student')
         run('/usr/bin/git', 'config', '--global', 'user.email', 'student@example.invalid')
+        run('/usr/bin/git', 'config', '--global', 'init.defaultBranch', 'student-choice')
+        run('/usr/bin/git', 'config', '--global', 'fetch.prune', 'no')
+        gitconfig = home / '.gitconfig'
+        before_git = gitconfig.read_bytes()
         # All fixture data is created by the real non-root account.
         run('/bin/bash', '-c', 'mkdir -p "$HOME/Development/existing" "$HOME/.config/VSCodium/User"; printf "student-project-bytes\\n" > "$HOME/Development/existing/project.txt"')
         project = home / 'Development/existing/project.txt'
@@ -69,6 +73,7 @@ def main(backend=None):
             output = run('/bin/bash', str(script)).stdout
             assert 'User configuration complete' in output
             assert project.read_bytes() == before_project
+            assert gitconfig.read_bytes() == before_git
             result = json.loads(settings.read_text())
             assert result['editor.fontSize'] == 19 and result['sde.fixture'] == 'keep-user-value'
             baseline = json.loads((fixture / 'config/codium-settings.json').read_text())
@@ -86,10 +91,14 @@ def main(backend=None):
         assert 'preserved unchanged' in result.stdout + result.stderr
         assert project.read_bytes() == before_project
         for key, expected in [('user.name', 'Synthetic Student'), ('user.email', 'student@example.invalid'),
-                              ('init.defaultBranch', 'main'), ('fetch.prune', 'true'), ('pull.ff', 'only')]:
+                              ('init.defaultBranch', 'student-choice'), ('fetch.prune', 'no')]:
             assert run('/usr/bin/git', 'config', '--global', key).stdout.strip() == expected
+        assert gitconfig.read_bytes() == before_git
+        unset = subprocess.run(['/usr/bin/git', 'config', '--global', '--get', 'pull.ff'], cwd=home,
+                               env=env, preexec_fn=student, capture_output=True)
+        assert unset.returncode == 1 and unset.stdout == b''
         assert not (ROOT / 'transaction.json').exists()
-    print('SDE_PROFILE_PRESERVATION_LINUX_OK: real non-root profile phase twice, projects/user choices/JSONC retained; disclosed Git defaults applied')
+    print('SDE_PROFILE_PRESERVATION_LINUX_OK: real non-root profile phase twice, projects/user choices/JSONC and Git bytes/unset choices retained')
 
 
 if __name__ == '__main__':
