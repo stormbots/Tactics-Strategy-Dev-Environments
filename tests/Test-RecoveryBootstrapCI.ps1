@@ -5,6 +5,10 @@ Import-Module "$PSHOME\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShel
 $root = 'C:\ProgramData\SkyviewRoboticsCoordination'
 $journal = Join-Path $root 'transaction.json'
 $app = 'C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe'
+foreach ($helper in @('NodeRuntime.ps1','NodeRuntimeProbe.cjs')) {
+    $installedHelper=Join-Path 'C:\Program Files\Skyview Dev Setup\backend\windows\chocolatey\tools' $helper
+    if (-not (Test-Path -LiteralPath $installedHelper -PathType Leaf)) { throw "Installed Node verification helper missing: $helper" }
+}
 $package = (Resolve-Path 'dist/Skyview-Dev-Setup-Windows-x64.exe').Path
 $metadata = @('recovery-incident.json','recovery-binding.json','recovery-acknowledgment.json','recovery-context.json')
 foreach ($name in @('transaction.json','recovery-archive','recovery-disposition.json') + $metadata) {

@@ -12,6 +12,7 @@ $fixture = Join-Path ([IO.Path]::GetTempPath()) ('Skyview validator test ' + [gu
 New-Item -ItemType Directory -Path $fixture | Out-Null
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/*.ps1') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/extensions.txt') $fixture
+Copy-Item (Join-Path $root 'windows/chocolatey/tools/NodeRuntimeProbe.cjs') $fixture
 $validator = Join-Path $fixture 'Test-SkyviewStudentDev.ps1'
 $lines = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $validator 2>&1
 $code = $LASTEXITCODE
@@ -30,8 +31,21 @@ if ($runtime.status -eq 'passed') {
 } elseif ($runtime.status -in @('notFound','unusable','incomplete')) {
     if ($pythonFail.Count -ne 1 -or $pythonPass.Count -ne 0) { throw 'Incomplete/failed Python was presented as passing.' }
 } else { throw 'Unknown production Python verification state.' }
+$nodeLines=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|runtime\|Node.js\|' })
+if ($nodeLines.Count -ne 1) { throw 'The real validator must emit exactly one Node/npm observation.' }
+$node=([string]$nodeLines[0]).Substring('SKYVIEW_EVENT|runtime|Node.js|'.Length) | ConvertFrom-Json
+if ($node.schema -ne 1 -or $node.component -ne 'Node.js' -or $node.requiredFamily -ne '24' -or $node.maintenanceEligibility -ne 'notEvaluated') { throw 'Node verification changed requirement or maintenance authority.' }
+$nodePass=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|PASS\|Node.js:' })
+$nodeFail=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|FAIL\|Node.js:' })
+if ($node.status -eq 'passed') {
+    if ($nodePass.Count -ne 1 -or $nodeFail.Count -ne 0 -or -not $node.version -or -not $node.executable -or -not $node.npmVersion -or -not $node.npmCli) { throw 'Node pass is missing complete paired evidence.' }
+} elseif ($node.status -in @('notFound','unusable','incomplete')) {
+    if ($nodeFail.Count -ne 1 -or $nodePass.Count -ne 0) { throw 'Incomplete/failed Node was presented as passing.' }
+} else { throw 'Unknown Node verification state.' }
+Write-Host 'SDE_WINDOWS_NODE_RUNTIME_VALIDATOR_OK'
 Write-Host 'SDE_WINDOWS_PYTHON_RUNTIME_VALIDATOR_OK'
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-Node24Policy.ps1')
 & (Join-Path $PSScriptRoot 'Test-PythonRuntime.ps1')
+& (Join-Path $PSScriptRoot 'Test-NodeRuntime.ps1')
 $global:LASTEXITCODE = 0

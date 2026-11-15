@@ -18,10 +18,11 @@ import {
   checkTools,
   checkPreflight,
   openRelease,
+  toolExplanation,
   type AppDiscovery,
   type ToolPreview,
 } from "./updateDiscovery";
-import type { ToolRecord } from "./model";
+import { updateInspectionIncomplete, type ToolRecord } from "./model";
 vi.mock("./updateDiscovery", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./updateDiscovery")>()),
   checkApplication: vi.fn(),
@@ -304,4 +305,23 @@ it("malformed retry times remain a non-blocking unavailable check", async () => 
     ).disabled,
   ).toBe(false);
   expect(screen.queryByText(/GitHub requested another check after/)).toBeNull();
+});
+
+it("keeps Node package-version differences informational without requesting a retry", () => {
+  const selected: ToolRecord = {
+    tool: "Node.js",
+    installedVersion: "24.19.0",
+    availableVersion: null,
+    updateAvailable: false,
+    updateCheck: "native",
+    updateReason: "maintenanceUnverified",
+  };
+  expect(
+    updateInspectionIncomplete(
+      [{ status: "PASS", message: "Node.js: 24.19.0; its npm verified" }],
+      [selected],
+    ),
+  ).toBe(false);
+  expect(toolExplanation(selected)).toContain("separate review");
+  expect(toolExplanation(selected)).not.toMatch(/retry|support report|repair/i);
 });

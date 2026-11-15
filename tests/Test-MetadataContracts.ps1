@@ -28,6 +28,9 @@ $records = @(Get-SkyviewToolRecords -Installed $installed -CheckUpdates $true)
 Assert (($records | Where-Object tool -eq Git).updateCheck -eq 'unavailable') 'Feed failure incorrectly reported no updates.'
 Assert (-not ($records | Where-Object tool -eq Git).updateAvailable) 'Failed query emitted a candidate.'
 Assert ((@(Get-SkyviewToolRecords -Installed $installed -CheckUpdates $false) | Where-Object tool -eq Git).updateCheck -eq 'notChecked') 'Skipped query incorrectly reported current.'
+$script:FeedFailure=$false
+$nodeRecord=Get-SkyviewToolRecords -Installed @{'Node.js'='24.19.0';npm='11.9.0'} -CheckUpdates $true | Where-Object tool -eq 'Node.js'
+Assert ($nodeRecord.updateCheck -eq 'native' -and $nodeRecord.updateReason -eq 'maintenanceUnverified' -and -not $nodeRecord.updateAvailable -and $null -eq $nodeRecord.availableVersion) 'Another managed Node installation supplied an update claim for the selected pair.'
 Remove-Item Function:choco
 
 $xml = '<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Triggers><CalendarTrigger><StartBoundary>2026-10-04T03:00:00</StartBoundary><Enabled>true</Enabled><ScheduleByWeek><WeeksInterval>1</WeeksInterval><DaysOfWeek><Sunday /></DaysOfWeek></ScheduleByWeek></CalendarTrigger></Triggers><Settings><StartWhenAvailable>true</StartWhenAvailable></Settings></Task>'

@@ -62,6 +62,8 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'Test-SkyviewStudentDev.ps1',
         'Validate-SkyviewEnvironment.ps1',
         'PythonRuntime.ps1',
+        'NodeRuntime.ps1',
+        'NodeRuntimeProbe.cjs',
         'ScheduledMaintenance.ps1',
         'Inspect-SkyviewSchedule.ps1',
         'ToolRecords.ps1',
