@@ -248,7 +248,7 @@ class Backends(unittest.TestCase):
         self.assertIn('../../installer/src-tauri/src/recovery_user.rs', self.text('coordination/src/lib.rs'))
     def test_linux_integrity_manifest_matches_shipped_sources(self):
         entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
-        self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh'}.issubset(entries))
+        self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh', './lib/node_runtime.py', './lib/node_runtime_probe.cjs'}.issubset(entries))
         for name, expected in entries.items():
             self.assertEqual(hashlib.sha256((ROOT / 'linux' / name).read_bytes()).hexdigest(), expected, name)
     def test_canonical_extensions_match(self):

@@ -33,7 +33,7 @@ check_command() {
   if command -v "$cmd" >/dev/null 2>&1; then
     local version=""
     case "$cmd" in
-      git|node|npm|gh|pwsh|python3.14) version="$("$cmd" --version 2>/dev/null | head -n1)" ;;
+      git|gh|pwsh|python3.14) version="$("$cmd" --version 2>/dev/null | head -n1)" ;;
     esac
     pass "$label${version:+: $version}"
   else
@@ -68,8 +68,6 @@ info "Configured student/shared user: ${TARGET_USER:-unknown} (${TARGET_HOME:-un
 
 check_command git Git
 check_command gh "GitHub CLI"
-check_command node Node.js
-check_command npm npm
 check_command codium VSCodium
 check_command dbeaver DBeaver
 check_command firefox Firefox
@@ -88,14 +86,18 @@ else
   fi
 fi
 
-if command -v node >/dev/null 2>&1; then
-  NODE_VERSION="$(node --version 2>/dev/null)"
-  if [[ "$NODE_VERSION" =~ ^v24\. ]]; then
-    pass "Node.js is on required 24.x family ($NODE_VERSION)"
-  else
-    fail "Node.js must remain on 24.x; detected ${NODE_VERSION:-unknown}"
-  fi
-fi
+# One selected interpreter owns every Node/npm probe. No bare npm fallback.
+NODE_RUNTIME="$SCRIPT_DIR/lib/node_runtime.py"
+[[ -f "$NODE_RUNTIME" ]] || NODE_RUNTIME="$SKYVIEW_LIB/node_runtime.py"
+NODE_OUTPUT="$(/usr/bin/python3 "$NODE_RUNTIME")"
+case "$?" in
+  0) PASS_COUNT=$((PASS_COUNT+1)) ;;
+  10) FAIL_COUNT=$((FAIL_COUNT+1)) ;;
+  *) fail "Node.js: SDE could not finish the Node check. Review the check details." ;;
+esac
+printf '%s\n' "$NODE_OUTPUT"
+NODE_RECORD="${NODE_OUTPUT%%$'\n'*}"
+NODE_RECORD="${NODE_RECORD#SKYVIEW_EVENT|runtime|Node.js|}"
 
 # One explicit interpreter owns its temporary environment and project-local pip.
 PYTHON_RUNTIME="$SCRIPT_DIR/lib/python_runtime.py"
@@ -205,7 +207,7 @@ fi
 printf '%s\n' "------------------------------------------------------------"
 TOOL_RECORDS="$SCRIPT_DIR/lib/tool_records.py"
 [[ -f "$TOOL_RECORDS" ]] || TOOL_RECORDS="$SKYVIEW_LIB/tool_records.py"
-python3 "$TOOL_RECORDS" "${1:-}" || warnv "Tool version and update metadata is unavailable"
+printf '%s' "$NODE_RECORD" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --node-observation || warnv "Tool version and update metadata is unavailable"
 printf 'RESULT: %d PASS, %d WARN, %d FAIL\n' "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 
 event summary "$FAIL_COUNT" "$PASS_COUNT passed; $WARN_COUNT warnings; $FAIL_COUNT failed"

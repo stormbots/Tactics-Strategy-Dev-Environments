@@ -5,10 +5,11 @@ const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
-const source = fs.readFileSync(path.join(__dirname, '../windows/chocolatey/tools/NodeRuntimeProbe.cjs'), 'utf8');
+const linux = process.argv.includes('--linux');
+const source = fs.readFileSync(path.join(__dirname, linux ? '../linux/lib/node_runtime_probe.cjs' : '../windows/chocolatey/tools/NodeRuntimeProbe.cjs'), 'utf8');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sde node probe '));
-const executable = path.join(root, 'node.exe');
-const npmRoot = path.join(root, 'node_modules/npm');
+const executable = path.join(root, linux ? 'bin/node' : 'node.exe');
+const npmRoot = path.join(root, linux ? 'lib/node_modules/npm' : 'node_modules/npm');
 const npmCli = path.join(npmRoot, 'bin/npm-cli.js');
 const npmPackage = path.join(npmRoot, 'package.json');
 const installedNpm = [path.join(path.dirname(process.execPath), 'node_modules/npm'), path.resolve(path.dirname(process.execPath), '../lib/node_modules/npm')].find(p => fs.existsSync(p));
@@ -22,9 +23,21 @@ function probeRequire(id) {
   return require(id);
 }
 let count = 0;
-function check(mode = 'npm', version = '24.19.0') {
-  const subject = { execPath: executable, versions: { node: version }, argv: ['node', 'probe', mode], stdout: { write: t => { subject.output = t; } }, stderr: { write: () => {} } };
-  vm.runInNewContext(source, { require: probeRequire, process: subject });
+function check(mode = 'npm', version = '24.19.0', distro = false) {
+  const subject = { execPath: distro ? '/usr/bin/node' : executable, versions: { node: version }, argv: ['node', 'probe', mode], stdout: { write: t => { subject.output = t; } }, stderr: { write: () => {} } };
+  const mapPath = value => value.replace('/usr/share/nodejs/npm', npmRoot);
+  const distroFs = {
+    existsSync: value => value.startsWith('/usr/lib/') ? false : fs.existsSync(mapPath(value)),
+    readFileSync: (value, ...args) => fs.readFileSync(mapPath(value), ...args),
+    statSync: value => fs.statSync(mapPath(value)),
+    realpathSync: value => value === '/usr/bin/node' ? value : fs.realpathSync(mapPath(value)),
+  };
+  const selectedRequire = id => distro && id === 'node:fs' ? distroFs :
+    distro && id === 'node:module' ? { createRequire: origin => {
+      assert.equal(origin, '/usr/share/nodejs/npm/package.json');
+      return installedRequire;
+    }} : probeRequire(id);
+  vm.runInNewContext(source, { require: selectedRequire, process: subject });
   count++;
   return subject;
 }
@@ -33,6 +46,7 @@ function metadata(engine = '^20.17.0 || >=22.9.0', name = 'npm', version = '11.9
 }
 try {
   fs.mkdirSync(path.dirname(npmCli), { recursive: true });
+  fs.mkdirSync(path.dirname(executable), { recursive: true });
   fs.mkdirSync(path.join(npmRoot, 'node_modules'), { recursive: true });
   fs.writeFileSync(executable, 'fixture identity only');
   fs.writeFileSync(npmCli, "throw new Error('The metadata probe must not execute npm CLI');\n");
@@ -48,5 +62,17 @@ try {
   metadata('>=24', 'npm', '12.0.0-beta.1'); assert.equal(JSON.parse(check().output).npmVersion, '12.0.0-beta.1');
   fs.unlinkSync(npmCli); assert.equal(check().exitCode, 1);
   assert.equal(check('arbitrary-command').exitCode, 1);
-  console.log(`NODE_RUNTIME_PROBE_CONTRACTS_OK (${count} probe cases)`);
+  if (linux) {
+    metadata();
+    fs.writeFileSync(npmCli, "throw new Error('Do not execute fixture CLI');\n");
+    const distro = JSON.parse(check('npm', '24.19.0', true).output);
+    assert.equal(distro.executable, '/usr/bin/node');
+    assert.equal(distro.npmCli, '/usr/share/nodejs/npm/bin/npm-cli.js');
+    fs.unlinkSync(npmCli);
+    const foreignCli = path.join(root, 'foreign-cli.js');
+    fs.writeFileSync(foreignCli, '// unrelated npm');
+    fs.symlinkSync(foreignCli, npmCli);
+    assert.equal(check().exitCode, 1, 'An escaped CLI must not become the associated npm');
+  }
+  console.log(`${linux ? 'LINUX_' : ''}NODE_RUNTIME_PROBE_CONTRACTS_OK (${count} probe cases)`);
 } finally { fs.rmSync(root, { recursive: true, force: true }); }

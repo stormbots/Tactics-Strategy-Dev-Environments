@@ -38,11 +38,30 @@ def candidate_for(package):
         return None
     return result
 
-def records(check_updates, snapshot=None):
+def records(check_updates, snapshot=None, node=None):
+    selected = node if node and node.get('status') == 'passed' else {}
     for tool in TOOLS:
         current = available = None
+        reason = None
         state = "notChecked" if not check_updates else "unavailable"
-        if tool in PACKAGES:
+        if tool == 'Node.js':
+            # Runtime evidence and APT inventory describe different contracts.
+            # A snapshot is advisory version data, never maintenance permission.
+            current = snapshot.get(tool) if snapshot is not None else selected.get('version')
+            installed = command('dpkg-query', '-W', '-f=${db:Status-Status}\t${Version}', 'nodejs') if check_updates else None
+            tracked = installed.split('\t', 1)[1] if installed and installed.startswith('installed\t') else None
+            normalized = re.fullmatch(r'(?:\d+:)?(24\.\d+\.\d+)(?:[-+~].*)?', tracked or '')
+            if check_updates and (not current or not normalized or normalized[1] != current):
+                state, reason = 'native', 'maintenanceUnverified'
+            elif check_updates:
+                candidate = candidate_for('nodejs')
+                if candidate:
+                    state = 'current'
+                    if command('dpkg', '--compare-versions', candidate, 'gt', tracked) is not None:
+                        available = candidate
+                    elif command('dpkg', '--compare-versions', candidate, 'le', tracked) is None:
+                        state = 'unavailable'
+        elif tool in PACKAGES:
             package = PACKAGES[tool]
             installed = ("installed\t" + snapshot[tool] if snapshot.get(tool) else None) if snapshot is not None else command("dpkg-query", "-W", "-f=${db:Status-Status}\t${Version}", package)
             if installed and installed.startswith("installed\t"):
@@ -58,7 +77,7 @@ def records(check_updates, snapshot=None):
                             # A failed/unavailable comparison is not proof of current.
                             state = "unavailable"
         elif tool == "npm":
-            current = snapshot.get(tool) if snapshot is not None else release_version(command("npm", "--version"))
+            current = snapshot.get(tool) if snapshot is not None else selected.get('npmVersion')
             state = "native"  # npm ships with the managed Node runtime.
         elif tool == "PyCharm":
             try:
@@ -79,14 +98,27 @@ def records(check_updates, snapshot=None):
                     pass
         yield {"tool": tool, "installedVersion": current, "availableVersion": available,
                "updateAvailable": bool(available), "updateCheck": state,
-               "updateReason": "noCandidate" if state == "unavailable" else None,
+               "updateReason": reason or ("noCandidate" if state == "unavailable" else None),
                "source": "JetBrains releases" if tool == "PyCharm" else "Local APT metadata" if tool in PACKAGES else "Node runtime"}
 
 if __name__ == "__main__" and "--preview" in sys.argv:
     snapshot = {r["tool"]: r["installedVersion"] for r in json.loads(sys.stdin.read(16384))}
     print(json.dumps(list(records(True, snapshot))))
 elif __name__ == "__main__":
-    for record in records("--check-updates" in sys.argv[1:]):
+    node = None
+    if '--node-observation' in sys.argv:
+        try:
+            raw = sys.stdin.read(16385)
+            value = json.loads(raw) if len(raw) <= 16384 else None
+            if (isinstance(value, dict) and value.get('schema') == 1 and value.get('component') == 'Node.js'
+                    and value.get('requiredFamily') == '24' and value.get('status') == 'passed'
+                    and value.get('reason') == 'verified' and value.get('maintenanceEligibility') == 'notEvaluated'
+                    and re.fullmatch(r'24\.\d{1,8}\.\d{1,8}', value.get('version') or '')
+                    and re.fullmatch(r'[0-9][A-Za-z0-9.!+_-]{0,119}', value.get('npmVersion') or '')):
+                node = value
+        except (ValueError, TypeError):
+            pass
+    for record in records("--check-updates" in sys.argv[1:], node=node):
         print("SKYVIEW_EVENT|tool|" + record["tool"] + "|" + json.dumps(record, separators=(",", ":")))
         if record["updateAvailable"]:
             print(f'SKYVIEW_EVENT|update|available|{record["tool"]}: {record["installedVersion"]} to {record["availableVersion"]}')

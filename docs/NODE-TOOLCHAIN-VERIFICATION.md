@@ -1,4 +1,4 @@
-# Node.js and npm verification: first Windows increment for #161
+# Node.js and npm verification increments for #161
 
 ## Problem and result
 
@@ -6,7 +6,7 @@ The Windows validator independently ran bare `node --version` and bare `npm --ve
 
 It now discovers a supported Node 24 executable, resolves and reverifies its actual identity, checks its associated npm package and supported Node range, then invokes that npm CLI with the selected Node. A complete pair produces one required Node.js pass and supplies both actual versions to the existing tool metadata. Missing search results, unusable candidates and unfinished checks remain different non-passing results.
 
-Other installations, PATH, runtime-manager selection, project settings and global defaults are preserved. This is read-only observation work. Linux pairing, complete real side-by-side fixtures, maintenance eligibility/review, preservation gaps in provisioning and the accepted connected UI remain outstanding. This increment does not complete #161 or create a Node-only repair engine.
+Other installations, PATH, runtime-manager selection, project settings and global defaults are preserved. This is read-only observation work. Complete real side-by-side fixtures, maintenance eligibility/review, preservation gaps in provisioning and the accepted connected UI remain outstanding. These increments do not complete #161 or create a Node-only repair engine.
 
 ## Supported discovery
 
@@ -43,7 +43,7 @@ Validation success does not prove that Chocolatey can maintain a selected versio
 
 The managed maintenance copy includes both new helpers under its existing protected file rules. The native application bundle already includes the backend resource directory. Required installed Windows recovery verification now checks that both helpers exist; original journal/privilege/summary assertions stay intact.
 
-Local evidence:
+Windows increment's local evidence:
 
 - 286 frontend tests, production build/type checks and formatting passed.
 - The real JavaScript probe passed 11 compatibility/metadata cases using npm's actual semver dependency. Controlled identities are not actual Windows side-by-side installations.
@@ -53,4 +53,22 @@ Local evidence:
 
 Required Windows CI additionally exercises real directory discovery for nvm/Volta/fnm fixture stores, the prepared real Node 24/npm pair, production-validator observation consistency and packaged helper presence. Windows PowerShell 5.1 and installed/native assertions have not run locally. Full native/trust/acceptance CI remains mandatory for this platform change. A runner pass does not replace exact-candidate owner UAT or a complete supported coexistence fixture.
 
-Baseline is green main `6ae6a2e7750b175bf83f2ee66c76c94ffe94d47e`. #160 is currently closed; remaining packaged startup/owner evidence must be reconciled in the release ledger rather than inferred from issue closure. No release version, signing approval, owner acceptance or stable promotion is created by this increment.
+The Windows increment merged through #166 at `fa14774feaa4fac3122f2dc57fb0cd987d774aee`. Its PR and exact-main CI passed, including both native platforms, trust and acceptance. Windows CI observed the production validator and passed 91 Node runtime assertions. This is the Linux increment's green baseline.
+
+## Linux counterpart
+
+`node_runtime.py` replaces bare Node/npm and default-family checks with one selected pair. It searches bounded cached nvm, Volta and fnm version stores, `/usr/bin/node`, `/usr/local/bin/node` and the resolved Node application. It reads at most 64 entries per store, considers at most eight required-family versions per store and probes at most 12 distinct executables. Unreadable or truncated discovery stays incomplete unless a complete pair passes. Known Volta launchers, shim directories and shell wrappers are excluded; no manager initialization or acquisition command runs.
+
+The selected native executable is resolved and its identity checked again. The fixed `node_runtime_probe.cjs` checks npm under that installation's `lib/node_modules/npm`. Only `/usr/bin/node` may also use Debian's `/usr/share/nodejs/npm` layout. npm's identity, version, engine range and CLI location must pass before that exact Node invokes the CLI. An unrelated npm or escaping CLI symlink cannot supply a pass. Unsupported layouts remain non-passing rather than borrowing bare npm.
+
+Every process uses a temporary working directory, separate empty npm user/global configurations and a temporary npm cache. Injection variables and inherited npm configuration overrides are removed from the child; parent settings are preserved. A probe waits at most 2.5 seconds within a 15-second process budget. Each output pipe is capped while reading. Only the diagnostic's own process group can be stopped after a timeout or excess output. No installer is targeted and no package action or network lookup is requested.
+
+The validator emits the same schema-1 observation and one required Node.js result. It passes that observation to tool metadata without executing Node/npm again. Metadata and the advisory update preview use the selected versions. A difference from the separately read APT package version withholds the candidate and stays informational. A matching version permits only advisory package comparison; it proves neither installation ownership nor permission to change it.
+
+The frontend decoder now accepts the bounded Linux layouts while retaining the Windows checks and `maintenanceEligibility: notEvaluated`. This is still observation data for the later connected UI. Existing Install/Update package policy, supervisor snapshots, coordination and native admission are unchanged. Provisioning preservation and maintenance review must be completed before promising a full coexistence-safe remedy.
+
+Both Linux helpers are included in the integrity manifest, application backend and protected baseline installation copy. Installed recovery CI checks their package presence without weakening its original evidence assertions. The consumer audit found no remaining bare Node/npm probes in Linux validation or tool metadata; package operations still use their existing approved APT family selector.
+
+Linux increment's local evidence: 287 frontend tests, production build/type checks, 28 Linux runtime tests, 13 metadata tests and 35 backend contracts passed. The runtime suite includes the actual prepared Node 24/npm pair, the validator fragment, temporary-config isolation, bounded process output and simulated older/newer defaults. The JavaScript suite exercises 13 Linux cases, including the mapped Debian layout and an escaping CLI symlink; the existing 11 Windows probe cases still pass. Simulated identities and cached-store files are not real side-by-side installations or Mint owner-device evidence. Full native/trust/acceptance CI and exact-candidate owner UAT remain required.
+
+#160 is currently closed; remaining packaged startup/owner evidence must be reconciled in the release ledger rather than inferred from issue closure. No release version, signing approval, owner acceptance or stable promotion is created by these increments.

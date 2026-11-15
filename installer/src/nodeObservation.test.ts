@@ -70,3 +70,44 @@ it("does not derive executable evidence from raw diagnostics or another event", 
     nodeObservation(`SKYVIEW_EVENT|runtime|Python|${JSON.stringify(record)}`),
   ).toBeNull();
 });
+it("accepts bounded Linux pairs without importing npm from another installation", () => {
+  for (const [executable, npmCli] of [
+    [
+      "/home/student/.nvm/versions/node/v24.19.0/bin/node",
+      "/home/student/.nvm/versions/node/v24.19.0/lib/node_modules/npm/bin/npm-cli.js",
+    ],
+    ["/usr/bin/node", "/usr/share/nodejs/npm/bin/npm-cli.js"],
+    ["/usr/bin/node", "/usr/lib/node_modules/npm/bin/npm-cli.js"],
+    [
+      "/opt/Node 24/bin/node",
+      "/opt/Node 24/lib/node_modules/npm/bin/npm-cli.js",
+    ],
+  ]) {
+    const pair = { ...record, executable, npmCli };
+    expect(nodeObservation(line(pair))).toEqual(pair);
+    for (const bad of [
+      "/usr/local/lib/node_modules/npm/bin/npm-cli.js",
+      "/usr/bin/npm",
+      "/tmp/../usr/share/nodejs/npm/bin/npm-cli.js",
+      "C:\\Node 24\\node_modules\\npm\\bin\\npm-cli.js",
+    ]) {
+      expect(nodeObservation(line({ ...pair, npmCli: bad }))).toBeNull();
+    }
+  }
+  for (const executable of [
+    "/usr//bin/node",
+    "/usr/../bin/node",
+    "/usr/bin/node\n",
+    "/usr/bin\\node",
+  ]) {
+    expect(
+      nodeObservation(
+        line({
+          ...record,
+          executable,
+          npmCli: "/usr/share/nodejs/npm/bin/npm-cli.js",
+        }),
+      ),
+    ).toBeNull();
+  }
+});
