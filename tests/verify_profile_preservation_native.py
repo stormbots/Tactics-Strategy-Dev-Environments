@@ -74,22 +74,28 @@ def main(backend=None):
             assert 'User configuration complete' in output
             assert project.read_bytes() == before_project
             assert gitconfig.read_bytes() == before_git
-            result = json.loads(settings.read_text())
-            assert result['editor.fontSize'] == 19 and result['sde.fixture'] == 'keep-user-value'
-            baseline = json.loads((fixture / 'config/codium-settings.json').read_text())
-            for key, value in baseline.items():
-                assert result[key] == json.loads(initial).get(key, value)
+            assert settings.read_bytes() == before_settings
+            assert json.loads(settings.read_text()) == json.loads(initial)
             assert not (ROOT / 'transaction.json').exists()
             if attempt == 0:
-                backups = list(settings.parent.glob('settings.json.pre-skyview-v*.bak'))
-                assert len(backups) == 1 and backups[0].read_bytes() == before_settings
-        # Existing JSONC cannot be safely merged: original bytes must survive.
+                assert not list(settings.parent.glob('settings.json.pre-skyview-v*.bak'))
+        # JSONC comments and existing bytes survive without a settings writer.
         jsonc = '// retained comment\n{"editor.fontSize":21}\n'
         run('/usr/bin/python3', '-c', 'import pathlib,sys;pathlib.Path(sys.argv[1]).write_text(sys.argv[2])', str(settings), jsonc)
         result = run('/bin/bash', str(script))
         assert settings.read_bytes() == jsonc.encode()
-        assert 'preserved unchanged' in result.stdout + result.stderr
+        assert 'preferences are preserved' in result.stdout + result.stderr
         assert project.read_bytes() == before_project
+        assert gitconfig.read_bytes() == before_git
+        for missing in (False, True):
+            run('/usr/bin/python3', '-c', 'import pathlib,sys;p=pathlib.Path(sys.argv[1]);p.unlink() if sys.argv[2] == "missing" else p.write_bytes(b"")', str(settings), 'missing' if missing else 'empty')
+            run('/bin/bash', str(script))
+            if missing:
+                assert not settings.exists()
+            else:
+                assert settings.read_bytes() == b''
+            assert project.read_bytes() == before_project
+            assert gitconfig.read_bytes() == before_git
         for key, expected in [('user.name', 'Synthetic Student'), ('user.email', 'student@example.invalid'),
                               ('init.defaultBranch', 'student-choice'), ('fetch.prune', 'no')]:
             assert run('/usr/bin/git', 'config', '--global', key).stdout.strip() == expected
@@ -98,7 +104,7 @@ def main(backend=None):
                                env=env, preexec_fn=student, capture_output=True)
         assert unset.returncode == 1 and unset.stdout == b''
         assert not (ROOT / 'transaction.json').exists()
-    print('SDE_PROFILE_PRESERVATION_LINUX_OK: real non-root profile phase twice, projects/user choices/JSONC and Git bytes/unset choices retained')
+    print('SDE_PROFILE_PRESERVATION_LINUX_OK: real non-root profile; project/Git bytes, strict JSON/JSONC, empty and absent settings retained')
 
 
 if __name__ == '__main__':

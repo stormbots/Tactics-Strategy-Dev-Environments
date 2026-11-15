@@ -13,6 +13,8 @@ New-Item -ItemType Directory -Path $fixture | Out-Null
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/*.ps1') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/extensions.txt') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/NodeRuntimeProbe.cjs') $fixture
+Copy-Item (Join-Path $root 'windows/chocolatey/tools/EditorSettingsProbe.cjs') $fixture
+Copy-Item (Join-Path $root 'windows/chocolatey/tools/jsonc-parser') $fixture -Recurse
 $validator = Join-Path $fixture 'Test-SkyviewStudentDev.ps1'
 $lines = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $validator 2>&1
 $code = $LASTEXITCODE
@@ -54,9 +56,17 @@ if ($gitPreferences.status -eq 'passed') {
     if ($gitPass.Count -ne 1 -or $gitFail.Count -ne 0 -or @($gitPreferences.preferences | Where-Object status -eq 'unreadable').Count) { throw 'Unverified Git was reported Passed.' }
 } elseif ($gitPass.Count -ne 0 -or $gitFail.Count -ne 1) { throw 'Missing/incomplete Git must fail its required check.' }
 Write-Host 'SDE_WINDOWS_GIT_PREFERENCES_VALIDATOR_OK'
+$editorLines=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|preferences\|VSCodium\|' })
+if ($editorLines.Count -ne 1) { throw 'The real validator must emit one editor preference observation.' }
+$editor=([string]$editorLines[0]).Substring('SKYVIEW_EVENT|preferences|VSCodium|'.Length) | ConvertFrom-Json
+if ($editor.schema -ne 1 -or $editor.component -ne 'VSCodium' -or $editor.scope -ne 'standardUserFile') { throw 'Wrong editor observation scope.' }
+if ($editor.status -notin @('read','missing','unreadable','invalid','unavailable')) { throw 'Unknown editor observation status.' }
+if ($lines -match '^SKYVIEW_EVENT\|validation\|FAIL\|VSCodium settings (present|file missing)') { throw 'Optional settings still fail required editor functionality.' }
+Write-Host 'SDE_WINDOWS_EDITOR_PREFERENCES_VALIDATOR_OK'
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-Node24Policy.ps1')
 & (Join-Path $PSScriptRoot 'Test-PythonRuntime.ps1')
 & (Join-Path $PSScriptRoot 'Test-NodeRuntime.ps1')
 & (Join-Path $PSScriptRoot 'Test-GitPreferences.ps1')
+& (Join-Path $PSScriptRoot 'Test-EditorPreferences.ps1')
 $global:LASTEXITCODE = 0

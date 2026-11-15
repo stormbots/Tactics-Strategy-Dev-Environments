@@ -289,5 +289,178 @@ class ScheduleMetadata(unittest.TestCase):
         self.assertEqual(result["lastResult"], "unavailable")
         self.assertIn("Read denied", result["note"])
 
+class EditorPreferences(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.node_runtime = module('node_runtime')
+        cls.editor = module('editor_preferences')
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='sde editor café ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.path = self.root / 'settings with spaces.json'
+        self.node = shutil.which('node')
+        self.assertIsNotNone(self.node, 'Prepared Node 24 is required')
+        self.node_record = dict(version='24.19.0', executable=self.node)
+
+    def check(self, text):
+        self.path.write_text(text, encoding='utf-8')
+        before = self.path.read_bytes()
+        result = self.editor.verify(self.path, self.node_record)
+        self.assertEqual(self.path.read_bytes(), before)
+        return result
+
+    def test_comments_trailing_commas_customizations_and_override_scope(self):
+        result = self.check('// retain this\n{"editor.formatOnSave":false, "editor.defaultFormatter":"student.formatter", "files.eol":"\\r\\n", "[python]":{"editor.formatOnSave":true,},"private-fixture":"do-not-export",}')
+        self.assertEqual(result['status'], 'read', result)
+        self.assertEqual(result['scope'], 'standardUserFile')
+        self.assertTrue(all(row['status'] == 'different' for row in result['recommendations']))
+        self.assertNotIn('do-not-export', str(result))
+        self.assertEqual(result['recommendations'][0]['value'], False)
+
+    def test_missing_empty_bom_and_comment_only_settings_are_defaults_not_breakage(self):
+        missing = self.editor.verify(self.path, None)
+        self.assertEqual((missing['status'], missing['reason']), ('missing', 'defaults'))
+        self.assertFalse(self.path.exists())
+        for text in ('', '  \n', '/* keep my defaults */\n// and this comment', '\ufeff{}'):
+            with self.subTest(text=text):
+                result = self.check(text)
+                self.assertEqual(result['status'], 'read', result)
+                self.assertTrue(all(row['status'] == 'unset' for row in result['recommendations']))
+
+    def test_parser_errors_cannot_supply_a_fault_tolerant_partial_pass(self):
+        for text in ('{"editor.formatOnSave":true, "broken"}', '{', '{"a":1} garbage',
+                     '/* unterminated', '{"a":"\\q"}', '[]', 'false', 'null'):
+            with self.subTest(text=text):
+                result = self.check(text)
+                self.assertEqual((result['status'], result['reason']), ('invalid', 'invalidContents'))
+                self.assertEqual(result['recommendations'], [])
+
+    def test_values_are_bounded_and_own_keys_are_used(self):
+        result = self.check('{"__proto__":{"editor.formatOnSave":true},"editor.defaultFormatter":' + __import__('json').dumps('x' * 300) + '}')
+        self.assertEqual(result['status'], 'read')
+        self.assertEqual(result['recommendations'][0]['status'], 'unset')
+        self.assertEqual(result['recommendations'][1]['status'], 'different')
+        self.assertIsNone(result['recommendations'][1]['value'])
+
+    def test_parser_unavailable_is_not_malformed_or_missing(self):
+        result = self.check('{}')
+        self.assertEqual(result['status'], 'read')
+        unknown = self.editor.verify(self.path, None)
+        self.assertEqual((unknown['status'], unknown['reason']), ('unavailable', 'parserUnavailable'))
+        for probe in (self.node_runtime.Probe(7), self.node_runtime.Probe(-1, reason='timeout'), self.node_runtime.Probe(0, '{broken')):
+            result = self.editor.verify(self.path, self.node_record, run=lambda *_: probe)
+            self.assertEqual(result['status'], 'unavailable')
+        script = self.root / 'without-parser.cjs'
+        shutil.copyfile(ROOT / 'linux/lib/editor_settings_probe.cjs', script)
+        result = subprocess.run([self.node, str(script), str(self.path)], check=True, capture_output=True, text=True, timeout=5)
+        import json
+        record = json.loads(result.stdout)
+        self.assertEqual((record['status'], record['reason']), ('unavailable', 'parserUnavailable'))
+
+    @unittest.skipUnless(os.name == 'posix' and hasattr(os, 'geteuid') and os.geteuid() != 0,
+                         'Unprivileged POSIX access fixture')
+    def test_actual_access_denied_does_not_fail_required_editor_features(self):
+        self.path.write_text('{}')
+        self.path.chmod(0)
+        try:
+            result = self.editor.verify(self.path, self.node_record)
+        finally:
+            self.path.chmod(0o600)
+        self.assertEqual((result['status'], result['reason']), ('unreadable', 'accessDenied'))
+        import contextlib, io
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = self.editor.report(result)
+        self.assertEqual(code, 20)
+        self.assertIn('SKYVIEW_EVENT|validation|WARNING|', output.getvalue())
+        self.assertNotIn('SKYVIEW_EVENT|validation|FAIL|', output.getvalue())
+
+    def test_large_and_non_utf8_files_stay_distinct(self):
+        self.path.write_bytes(b'x' * 1048577)
+        self.assertEqual(self.editor.verify(self.path, self.node_record)['reason'], 'inspectionLimit')
+        self.path.write_bytes(b'\xff\xfe\x00')
+        self.assertEqual(self.editor.verify(self.path, self.node_record)['reason'], 'encodingUnavailable')
+        self.path.unlink()
+        self.path.mkdir()
+        self.assertEqual(self.editor.verify(self.path, self.node_record)['status'], 'unreadable')
+
+    def test_observation_decoder_rejects_false_passes_and_authority(self):
+        import json
+        good = self.check('{"editor.formatOnSave":true}')
+        for patch_value in ({'schema': True}, {'scope': 'allProjects'}, {'status': 'passed'},
+                            {'path': '/other/settings.json'}, {'permission': 'repair'},
+                            {'reason': 'defaults'}, {'recommendations': []}):
+            self.assertIsNone(self.editor.observation(json.dumps({**good, **patch_value}), str(self.path)))
+
+    def test_pinned_parser_and_both_helper_copies_match(self):
+        import hashlib, json
+        lock = json.loads((ROOT / 'installer/package-lock.json').read_text())
+        self.assertEqual(lock['packages']['']['devDependencies']['jsonc-parser'], '3.3.1')
+        self.assertEqual(lock['packages']['node_modules/jsonc-parser']['integrity'], 'sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==')
+        expected = {'parser.js':'a35db1bfb9631dcba643fa42972e9ebe2a318b4de3cac239d29081577a43d688',
+                    'scanner.js':'581d82c4f1aa84b0605369c01f414fb0164ee462e03daa298cb960076a2a9e82',
+                    'LICENSE.md':'c3a24c02d678e5f0711623dcf3ab3f243b273c2633f638a1fa8e35fb7c7f8e4d'}
+        for platform in ('linux/lib', 'windows/chocolatey/tools'):
+            for name, digest in expected.items():
+                self.assertEqual(hashlib.sha256((ROOT / platform / 'jsonc-parser' / name).read_bytes()).hexdigest(), digest)
+        self.assertEqual((ROOT / 'linux/lib/editor_settings_probe.cjs').read_bytes(), (ROOT / 'windows/chocolatey/tools/EditorSettingsProbe.cjs').read_bytes())
+
+    def test_real_optional_validator_fragment_counts_warning_not_failure(self):
+        import json
+        if os.name != 'posix':
+            return
+        config = self.root / 'xdg/VSCodium/User/settings.json'
+        config.parent.mkdir(parents=True)
+        config.write_text('{broken')
+        source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
+        fragment = source[source.index('CODIUM_SETTINGS='):source.index('\nEXT_FILE=')]
+        program = 'WARN_COUNT=0; FAIL_COUNT=0\nwarnv() { WARN_COUNT=$((WARN_COUNT+1)); }\n' + fragment + '\nprintf "COUNTS %s %s\\n" "$WARN_COUNT" "$FAIL_COUNT"'
+        result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'SCRIPT_DIR': str(ROOT / 'linux'),
+                                'TARGET_HOME': str(self.root), 'XDG_CONFIG_HOME': str(self.root / 'xdg'), 'NODE_RECORD': json.dumps(self.node_record)},
+                                text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('COUNTS 1 0', result.stdout)
+        self.assertIn('"status":"invalid"', result.stdout)
+
+    def test_failed_extension_listing_cannot_supply_partial_required_pass(self):
+        if os.name != 'posix':
+            return
+        commands = self.root / 'bin'
+        commands.mkdir()
+        cli = commands / 'codium'
+        cli.write_text('#!/bin/sh\necho required.extension\nexit 7\n')
+        cli.chmod(0o700)
+        policy = self.root / 'extensions.txt'
+        policy.write_text('required.extension\n')
+        source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
+        fragment = source[source.index('EXT_FILE='):source.index('\nif systemctl')]
+        program = 'FAIL_COUNT=0; PASS_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }; pass() { PASS_COUNT=$((PASS_COUNT+1)); }\n' + fragment + '\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
+        result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH'],
+                                'SKYVIEW_SHARE': str(self.root), 'SCRIPT_DIR': str(self.root), 'TARGET_USER': '', 'TARGET_HOME': str(self.root)},
+                                text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('COUNTS 0 1', result.stdout)
+
+    def test_version_command_must_succeed_with_a_real_version(self):
+        if os.name != 'posix':
+            return
+        commands = self.root / 'bin'
+        commands.mkdir()
+        cli = commands / 'codium'
+        source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
+        start = source.index('check_command() {')
+        fragment = source[start:source.index('\nprintf', start)]
+        program = 'FAIL_COUNT=0; PASS_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }; pass() { PASS_COUNT=$((PASS_COUNT+1)); }\n' + fragment + '\ncheck_command codium VSCodium\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
+        for code, version, counts in ((7, '1.90.0', '0 1'), (0, 'not a version', '0 1'), (0, '1.90.0', '1 0')):
+            cli.write_text(f'#!/bin/sh\necho "{version}"\nexit {code}\n')
+            cli.chmod(0o700)
+            result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH']},
+                                    text=True, capture_output=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('COUNTS ' + counts, result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

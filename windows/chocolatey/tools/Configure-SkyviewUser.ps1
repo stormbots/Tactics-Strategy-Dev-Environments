@@ -28,11 +28,7 @@ foreach ($ext in (Get-Content (Join-Path $PSScriptRoot 'extensions.txt') | Where
     } finally { $ErrorActionPreference = $previous }
     if ($code -ne 0) { throw "Editor extension $ext failed with exit code $code." }
 }
-$settingsDir = Join-Path $env:APPDATA 'VSCodium\User'
-New-Item -ItemType Directory $settingsDir -Force | Out-Null
-$settings = Join-Path $settingsDir 'settings.json'
-if (-not (Test-Path $settings)) { Copy-Item (Join-Path $PSScriptRoot 'settings.json') $settings }
-else { Event warning settings 'Your existing editor settings were preserved. Baseline defaults are available in the installed package.' }
+Event phase settings 'Your VSCodium preferences are preserved, including an empty file or the choice to use defaults.'
 $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'
 if (-not (Test-Path $config)) { $config = Join-Path $PSScriptRoot 'repositories.csv' }
 & (Join-Path $PSScriptRoot 'Setup-SkyviewRepositories.ps1') -Config $config

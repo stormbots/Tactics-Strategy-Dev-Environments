@@ -5,3 +5,9 @@
 *.rs text eol=lf
 *.lock text eol=lf
 linux/** text eol=lf
+# Keep the pinned upstream parser and license byte-identical on both platforms.
+linux/lib/jsonc-parser/* -text
+windows/chocolatey/tools/jsonc-parser/* -text
+# The unchanged upstream license uses CRLF; retain all other whitespace checks.
+linux/lib/jsonc-parser/LICENSE.md whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+windows/chocolatey/tools/jsonc-parser/LICENSE.md whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

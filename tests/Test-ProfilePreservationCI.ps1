@@ -56,6 +56,16 @@ for ($attempt = 0; $attempt -lt 2; $attempt++) {
     if ((Get-FileHash $gitConfig).Hash -cne $beforeGit) { throw 'Existing Git configuration bytes changed.' }
     if (Test-Path 'C:\ProgramData\SkyviewRoboticsCoordination\transaction.json') { throw 'Unexpected system transaction after profile setup.' }
 }
+foreach ($missing in @($false,$true)) {
+    if ($missing) { Remove-Item -LiteralPath $settings }
+    else { [IO.File]::WriteAllText($settings,'',$utf8) }
+    & 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Configure-SkyviewUser.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'Profile phase failed for default preferences.' }
+    if ($missing) { if (Test-Path -LiteralPath $settings) { throw 'Missing preferences were silently created.' } }
+    elseif ((Get-Item -LiteralPath $settings).Length -ne 0) { throw 'Empty preferences were replaced.' }
+    if ((Get-FileHash $gitConfig).Hash -cne $beforeGit -or (Get-FileHash $sentinel).Hash -cne $beforeProject) { throw 'Project/Git changed while preserving default preferences.' }
+    if (Test-Path 'C:\ProgramData\SkyviewRoboticsCoordination\transaction.json') { throw 'Unexpected system transaction after profile setup.' }
+}
 foreach ($check in @(@('user.name','Synthetic Student'),@('user.email','student@example.invalid'),@('init.defaultBranch','student-choice'),@('fetch.prune','no'))) {
     $actual = & git config --global $check[0]
     if ($LASTEXITCODE -ne 0 -or $actual -cne $check[1]) { throw 'Identity or Git preference preservation failed.' }

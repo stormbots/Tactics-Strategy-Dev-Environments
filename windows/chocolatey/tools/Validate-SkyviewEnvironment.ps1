@@ -27,6 +27,10 @@ foreach ($check in @(
     $out = @(& $cmd.Source @($check.Args) 2>&1)
     $code = $LASTEXITCODE
     $version = [string]($out | Where-Object { [string]$_ -notmatch '^\s*$' } | Select-Object -First 1)
+    if ($check.Name -eq 'VSCodium') {
+        $version=[string]($out | Where-Object { [string]$_ -match '^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.+-]+)?$' } | Select-Object -First 1)
+        if ($code -ne 0 -or -not $version) { Result FAIL 'VSCodium: SDE could not finish checking the editor command.';continue }
+    }
     if ($code -eq 0 -and $version -match '\d+(?:\.\d+)+(?:[^\s]*)?') { $installed[$check.Name] = $Matches[0] }
     if ($code -ne 0 -or ($check.Family -and $version -notmatch $check.Family)) {
         Result FAIL "$($check.Name): expected runtime family or usable command; detected $version"
@@ -108,11 +112,29 @@ $devMode = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Ap
 Check ($devMode -eq 1) 'Windows developer mode enabled'
 $fileExt = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name HideFileExt -ErrorAction SilentlyContinue).HideFileExt
 Check ($fileExt -eq 0) 'File extensions visible'
-Check (Test-Path (Join-Path $env:APPDATA 'VSCodium\User\settings.json')) 'VSCodium settings present'
+. (Join-Path $PSScriptRoot 'EditorPreferences.ps1')
+$editorPreferences=Get-SkyviewEditorPreferences -NodeObservation $nodeRuntime
+Write-Host ("SKYVIEW_EVENT|preferences|VSCodium|{0}" -f ($editorPreferences | ConvertTo-Json -Compress -Depth 5))
+switch ($editorPreferences.status) {
+    'read' { Result INFO 'VSCodium preferences were read. Your choices were preserved; they may differ from the suggestions.' }
+    'missing' { Result INFO 'VSCodium has no user preferences file here. It can use its defaults.' }
+    'invalid' { Result WARNING 'SDE could open your VSCodium preferences file, but could not understand its contents. Your settings have not been changed.' }
+    'unreadable' {
+        if ($editorPreferences.reason -eq 'accessDenied') { Result WARNING 'SDE could not open the file that stores your VSCodium preferences because it did not have permission to read it. Your settings have not been changed, and VSCodium may still work normally.' }
+        else { Result WARNING 'SDE could not read your VSCodium preferences file. Your settings have not been changed; the cause is not yet known.' }
+    }
+    default { Result WARNING 'SDE could not finish checking your VSCodium preferences. Your settings have not been changed. This does not mean they are missing or damaged.' }
+}
 if (Get-Command codium -ErrorAction SilentlyContinue) {
     $extensions = @(& codium --list-extensions 2>$null)
-    foreach ($ext in (Get-Content (Join-Path $PSScriptRoot 'extensions.txt') | Where-Object { $_ -and $_ -notmatch '^\s*#' })) {
+    $extensionsExit=$LASTEXITCODE
+    if ($extensionsExit -ne 0) { Result FAIL 'VSCodium: SDE could not finish checking the installed extensions.' }
+    else {
+    try { $requiredExtensions=@(Get-Content (Join-Path $PSScriptRoot 'extensions.txt') -ErrorAction Stop | Where-Object { $_ -and $_ -notmatch '^\s*#' }) }
+    catch { Result FAIL 'VSCodium: SDE could not read the list of required extensions.';$requiredExtensions=@() }
+    foreach ($ext in $requiredExtensions) {
         Check ($extensions -contains $ext) "Editor extension: $ext"
+    }
     }
 }
 $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'

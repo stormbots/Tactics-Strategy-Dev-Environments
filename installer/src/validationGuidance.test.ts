@@ -9,7 +9,6 @@ describe("backend validation guidance", () => {
     ["Windows", "pip: not installed"],
     ["Windows", "Chrome: not installed"],
     ["Windows", "Development folder"],
-    ["Windows", "VSCodium settings present"],
     ["Windows", "Editor extension: EditorConfig.EditorConfig"],
     ["Windows", "Windows long paths enabled"],
     ["Windows", "Windows developer mode enabled"],
@@ -18,10 +17,6 @@ describe("backend validation guidance", () => {
     ["Mint", "Google Chrome not found"],
     ["Mint", "Python 3.14 could not create a venv with pip"],
     ["Mint", "Development workspace missing: /home/student/Development"],
-    [
-      "Mint",
-      "VSCodium settings file missing: /home/student/.config/VSCodium/User/settings.json",
-    ],
     ["Mint", "VSCodium extension missing: esbenp.prettier-vscode"],
     ["Mint", "Managed PyCharm installation/symlink is missing"],
   ])("%s check offers full Repair review: %s", (_platform, message) => {
@@ -43,6 +38,8 @@ describe("backend validation guidance", () => {
     "Weekly maintenance is disabled. Run Repair to enable it.",
     "Weekly maintenance timer is not active",
     "Weekly maintenance task cannot be read by this account. Run Repair to restore read access.",
+    "VSCodium settings present",
+    "VSCodium settings file missing: /home/student/.config/VSCodium/User/settings.json",
   ])(
     "directs runtime/platform/schedule/project uncertainty to diagnostic review: %s",
     (message) => {

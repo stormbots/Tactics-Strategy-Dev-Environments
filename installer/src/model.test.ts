@@ -26,6 +26,13 @@ const valid = [
   "SKYVIEW_EVENT|summary|0|Done",
 ];
 describe("structured protocol", () => {
+  it("carries runtime and preference data without making it validation success", () => {
+    for (const kind of ["runtime", "preferences"]) {
+      const line = `SKYVIEW_EVENT|${kind}|VSCodium|{"status":"read"}`;
+      expect(parseEvent(line)?.kind).toBe(kind);
+      expect(checksFrom([line])).toHaveLength(0);
+    }
+  });
   it("parses events and preserves message pipes", () =>
     expect(
       parseEvent("SKYVIEW_EVENT|progress|45|Installing | editor")?.message,
