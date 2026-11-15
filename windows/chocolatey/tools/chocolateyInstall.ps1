@@ -64,6 +64,7 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'PythonRuntime.ps1',
         'NodeRuntime.ps1',
         'NodeRuntimeProbe.cjs',
+        'GitPreferences.ps1',
         'ScheduledMaintenance.ps1',
         'Inspect-SkyviewSchedule.ps1',
         'ToolRecords.ps1',
@@ -116,14 +117,9 @@ Invoke-ConfigStage 6 'Ensuring the Windows OpenSSH client is installed' {
     }
 }
 
-Invoke-ConfigStage 7 'Applying team Git defaults' {
+Invoke-ConfigStage 7 'Configuring required Git path support' {
     if (Get-Command git.exe -ErrorAction SilentlyContinue) {
         git config --system core.longpaths true
-        if ($env:SKYVIEW_SYSTEM_ONLY -ne '1') {
-            git config --global init.defaultBranch main
-            git config --global fetch.prune true
-            git config --global pull.ff only
-        }
     }
 }
 

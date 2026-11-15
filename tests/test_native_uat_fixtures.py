@@ -58,6 +58,7 @@ class NativeFixtures(unittest.TestCase):
         self.assertIsNotNone(fixtures.load(self.root)["active"])
 
     def test_git_roundtrip_preserves_exact_bytes(self):
+        self.git.write_bytes(b'# retained choice\n[init]\n defaultBranch = student-choice\n')
         before = self.git.read_bytes()
         fixtures.apply(self.root, "git-manual")
         self.assertEqual(fixtures.run("git", "config", "--global", "--get", "init.defaultBranch"), "uat-fixture")

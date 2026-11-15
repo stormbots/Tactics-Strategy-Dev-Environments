@@ -12,10 +12,7 @@ if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
 Event progress 82 'Configuring your workspace and editor'
 New-Item -ItemType Directory -Path 'C:\Development' -Force | Out-Null
-git config --global init.defaultBranch main
-if ($LASTEXITCODE) { throw 'Could not configure Git.' }
-git config --global fetch.prune true
-git config --global pull.ff only
+Event phase git 'Your Git preferences are preserved, including choices left unset.'
 $explorer = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
 if (-not (Test-Path $explorer)) { New-Item $explorer -Force | Out-Null }
 Set-ItemProperty $explorer -Name HideFileExt -Type DWord -Value 0

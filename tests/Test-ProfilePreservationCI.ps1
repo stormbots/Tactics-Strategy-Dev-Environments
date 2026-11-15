@@ -31,6 +31,13 @@ $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Env
 if ($LASTEXITCODE -ne 0) { throw 'Could not prepare fixture Git identity.' }
 & git config --global user.email 'student@example.invalid'
 if ($LASTEXITCODE -ne 0) { throw 'Could not prepare fixture Git identity.' }
+& git config --global init.defaultBranch student-choice
+if ($LASTEXITCODE -ne 0) { throw 'Could not prepare fixture Git preference.' }
+& git config --global fetch.prune no
+if ($LASTEXITCODE -ne 0) { throw 'Could not prepare fixture Git Boolean.' }
+# Leave pull.ff unset and require it to remain unset through both profile runs.
+$gitConfig = Join-Path $env:USERPROFILE '.gitconfig'
+$beforeGit = (Get-FileHash $gitConfig).Hash
 $project = Join-Path 'C:\Development' ('SdeProfile-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $project | Out-Null
 $sentinel = Join-Path $project 'student-project.txt'
@@ -46,12 +53,15 @@ for ($attempt = 0; $attempt -lt 2; $attempt++) {
     if ($LASTEXITCODE -ne 0) { throw 'Real standard-user profile phase failed.' }
     if ((Get-FileHash $sentinel).Hash -cne $beforeProject) { throw 'Existing student project changed.' }
     if ((Get-FileHash $settings).Hash -cne $beforeSettings) { throw 'Existing editor settings changed.' }
+    if ((Get-FileHash $gitConfig).Hash -cne $beforeGit) { throw 'Existing Git configuration bytes changed.' }
     if (Test-Path 'C:\ProgramData\SkyviewRoboticsCoordination\transaction.json') { throw 'Unexpected system transaction after profile setup.' }
 }
-foreach ($check in @(@('user.name','Synthetic Student'),@('user.email','student@example.invalid'),@('init.defaultBranch','main'),@('fetch.prune','true'),@('pull.ff','only'))) {
+foreach ($check in @(@('user.name','Synthetic Student'),@('user.email','student@example.invalid'),@('init.defaultBranch','student-choice'),@('fetch.prune','no'))) {
     $actual = & git config --global $check[0]
-    if ($LASTEXITCODE -ne 0 -or $actual -cne $check[1]) { throw 'Identity preservation or disclosed Git default failed.' }
+    if ($LASTEXITCODE -ne 0 -or $actual -cne $check[1]) { throw 'Identity or Git preference preservation failed.' }
 }
+& git config --global --get pull.ff
+if ($LASTEXITCODE -ne 1) { throw 'An unset Git preference was changed.' }
 if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced').HideFileExt -ne 0) { throw 'Disclosed Explorer configuration not applied.' }
 Write-Output 'SDE_PROFILE_PRESERVATION_WINDOWS_OK'
 exit 0

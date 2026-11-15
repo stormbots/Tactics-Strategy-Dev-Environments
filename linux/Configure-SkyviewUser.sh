@@ -18,10 +18,7 @@ event progress 82 "Configuring your development workspace"
 log "Creating development workspace..."
 mkdir -p "$TARGET_HOME/Development"
 
-log "Applying Git defaults (identity intentionally left unset)..."
-git config --global init.defaultBranch main
-git config --global fetch.prune true
-git config --global pull.ff only
+log "Preserving your Git preferences, including choices left unset."
 
 log "Applying baseline VSCodium settings..."
 CODIUM_DIR="$TARGET_HOME/.config/VSCodium/User"

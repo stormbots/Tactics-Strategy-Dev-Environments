@@ -76,12 +76,50 @@ its own target, not the whole workstation; the native report is still required.
 | `--case` | Preconditions and controlled change | Native expected diagnostic and UI |
 | --- | --- | --- |
 | `workspace` | Existing **empty** `C:\Development` on Windows or `~/Development` on Mint. Rename to adjacent `Development.sde-uat-parked`; never move files/projects. | Windows `FAIL Development folder`; Mint `FAIL Development workspace missing: <home>/Development`. Repair guidance. Review Repair selects Overview/Repair without native work or elevation. |
-| `git-manual` | Existing `.gitconfig`; effective global `init.defaultBranch` is `main`; no Git configuration environment overrides or additional XDG Git config. Save exact bytes, use Git to set `uat-fixture`. | Windows `FAIL Git default init.defaultBranch = main`; Mint `FAIL Git init.defaultBranch is not main`. Manual guidance, original diagnostic expandable, no automatic Repair action for this row. |
+| `git-manual` | Existing writable `.gitconfig`; no Git configuration environment overrides or additional XDG Git config. Save exact bytes, use Git to set `uat-fixture`. | Under the accepted #161 behavior, working Git passes despite this preference. The difference belongs in optional recommendation details, with no Repair task. The backend now records that difference; connected review UI remains pending. Earlier releases reported a failure here. |
 | `mentor-repository` | Installed repository CSV contains **only** its stock header. Add one enabled missing project `sde-uat-missing-project` with non-routable `https://example.invalid/uat-only.git`. Refuse if that project path exists. | Windows `FAIL Configured repository: sde-uat-missing-project`; Mint `FAIL Configured repository missing: <home>/Development/sde-uat-missing-project`. Mentor guidance; do not imply project loss. |
 
 For `mentor-repository`, run **Validate only**. Do not run Install/Repair/Update
 with the deliberately invalid repository configured. Restore it before other
 operations. Existing nonempty repository configurations are rejected wholesale.
+
+### Git preference verification for the follow-up release
+
+The Windows and Mint validators now check Git separately from its recommended
+preferences. A different or unset `init.defaultBranch`, `fetch.prune` or `pull.ff`
+does not fail working Git. Git itself reads Boolean values, so `yes`, `on` and
+`1` are recognized as `true`. Missing values remain unset; SDE does not guess the
+default branch name.
+
+The read-only helpers emit schema-1 `preferences` evidence for Git. They inspect
+the three global recommendations from a temporary directory outside projects.
+They also check that applicable configuration can be read. Unavailable commands,
+failed commands and unreadable configuration cannot supply a pass. Only those
+three values are recorded; identity, credential settings and full configuration
+dumps are not collected. Project and conditional settings may override these
+observations, so they do not describe every project's effective settings.
+
+Git can silently skip an unreadable file. SDE therefore checks access to known
+user sources and an explicitly configured system source before calling a value
+unset. It also checks up to 32 unconditional include targets reported by Git.
+Missing optional files are allowed; denied access and truncated inspection stay
+incomplete. It does not claim to inspect every conditional source or effective
+project setting. Each fixed Git query has a three-second limit and an 8 KiB
+captured-output limit. No settings are changed. No hooks, package actions or
+credential commands are run.
+
+Install/Repair profile configuration now preserves the Git file, including
+unset choices. The Windows package also stops writing these three global values.
+Required system `core.longpaths` configuration remains. SDE's existing repository
+operations clone the requested remote; they do not use pull/fetch or depend on
+these recommendations. No history-changing operation was added.
+
+Native profile tests must preserve the exact Git configuration bytes through
+both profile runs, alongside the existing identity, project and editor checks.
+Recommendation review and any later explicitly approved settings change still
+need the connected UI work in #161. Opening review grants no native authority.
+Earlier native evidence remains historical; this change still needs its own CI
+and exact-candidate owner UAT. Signing and promotion approvals remain separate.
 
 For appearance changes during a real elevated Repair, use the workspace snapshot
 only, after separately confirming the full operation scope and network access.

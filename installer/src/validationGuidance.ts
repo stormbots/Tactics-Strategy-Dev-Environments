@@ -21,7 +21,11 @@ const repair = (title: string, impact: string): Guidance => ({
   category: "Repair",
   operation: "repair",
 });
-const diagnostics = (title: string, impact: string, next: string): Guidance => ({
+const diagnostics = (
+  title: string,
+  impact: string,
+  next: string,
+): Guidance => ({
   title,
   impact,
   next,
@@ -170,23 +174,23 @@ export function validationGuidance(
     );
   const gitDefaults: Record<string, string> = {
     "Git default init.defaultBranch = main":
-      "Use main as the default branch for new repositories.",
+      "SDE suggests main as the first branch name for new repositories.",
     "Git init.defaultBranch is not main":
-      "Use main as the default branch for new repositories.",
+      "SDE suggests main as the first branch name for new repositories.",
     "Git default fetch.prune = true":
-      "Enable pruning of obsolete remote references when fetching.",
+      "SDE suggests removing outdated remote branch references during fetch.",
     "Git fetch.prune is not true":
-      "Enable pruning of obsolete remote references when fetching.",
+      "SDE suggests removing outdated remote branch references during fetch.",
     "Git default pull.ff = only":
-      "Use fast-forward-only pulls to avoid unexpected merge commits.",
+      "SDE suggests fast-forward-only pulls to avoid unexpected merge commits.",
     "Git pull.ff is not only":
-      "Use fast-forward-only pulls to avoid unexpected merge commits.",
+      "SDE suggests fast-forward-only pulls to avoid unexpected merge commits.",
   };
   if (check.status === "FAIL" && Object.hasOwn(gitDefaults, message))
     return manual(
-      "A Git default differs from the baseline",
-      "The standard Git workflow settings were not verified. Repository operations may behave differently from course instructions.",
-      `${gitDefaults[message]} Review the global setting before changing an intentional customization, then validate again. Git identity remains optional.`,
+      "A Git preference differs from a recommendation",
+      "Git may still work normally. A different preference alone does not mean it needs repair.",
+      `${gitDefaults[message]} You can keep an intentional choice. Run a fresh check to replace this older result. Git identity is optional.`,
     );
   if (/^Weekly maintenance/.test(message))
     return {

@@ -44,8 +44,19 @@ if ($node.status -eq 'passed') {
 } else { throw 'Unknown Node verification state.' }
 Write-Host 'SDE_WINDOWS_NODE_RUNTIME_VALIDATOR_OK'
 Write-Host 'SDE_WINDOWS_PYTHON_RUNTIME_VALIDATOR_OK'
+$gitLines=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|preferences\|Git\|' })
+if ($gitLines.Count -ne 1) { throw 'The real validator must emit one Git preference observation.' }
+$gitPreferences=([string]$gitLines[0]).Substring('SKYVIEW_EVENT|preferences|Git|'.Length) | ConvertFrom-Json
+if ($gitPreferences.schema -ne 1 -or $gitPreferences.scope -ne 'globalOutsideRepository') { throw 'Wrong Git observation contract.' }
+$gitPass=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|PASS\|Git:' })
+$gitFail=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|FAIL\|Git:' })
+if ($gitPreferences.status -eq 'passed') {
+    if ($gitPass.Count -ne 1 -or $gitFail.Count -ne 0 -or @($gitPreferences.preferences | Where-Object status -eq 'unreadable').Count) { throw 'Unverified Git was reported Passed.' }
+} elseif ($gitPass.Count -ne 0 -or $gitFail.Count -ne 1) { throw 'Missing/incomplete Git must fail its required check.' }
+Write-Host 'SDE_WINDOWS_GIT_PREFERENCES_VALIDATOR_OK'
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-Node24Policy.ps1')
 & (Join-Path $PSScriptRoot 'Test-PythonRuntime.ps1')
 & (Join-Path $PSScriptRoot 'Test-NodeRuntime.ps1')
+& (Join-Path $PSScriptRoot 'Test-GitPreferences.ps1')
 $global:LASTEXITCODE = 0
