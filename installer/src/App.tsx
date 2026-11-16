@@ -46,6 +46,7 @@ import {
   type Destination,
 } from "./bridge";
 import { ValidationCheck } from "./ValidationCheck";
+import { selectedEditorId } from "./editorLocation";
 import { operationScope, validationGuidance } from "./validationGuidance";
 import { AppearanceControls } from "./AppearanceControls";
 import {
@@ -710,7 +711,9 @@ export default function App() {
   }
   async function openTarget(target: Destination) {
     try {
-      await open(target);
+      const selection = target === "editor" && observedReport ? selectedEditorId(observedReport.lines) : undefined;
+      if (selection) await open(target, selection);
+      else await open(target);
     } catch (e) {
       setNotice(String(e));
     }

@@ -38,7 +38,7 @@ def candidate_for(package):
         return None
     return result
 
-def records(check_updates, snapshot=None, node=None):
+def records(check_updates, snapshot=None, node=None, editor=None):
     selected = node if node and node.get('status') == 'passed' else {}
     for tool in TOOLS:
         current = available = None
@@ -61,6 +61,12 @@ def records(check_updates, snapshot=None, node=None):
                         available = candidate
                     elif command('dpkg', '--compare-versions', candidate, 'le', tracked) is None:
                         state = 'unavailable'
+        elif tool == 'VSCodium':
+            current = snapshot.get(tool) if snapshot is not None else editor.get('version') if editor and editor.get('status') == 'verified' else None
+            # Selected app usability does not establish APT ownership. The
+            # accepted maintenance review is a separate, unfinished contract.
+            state = 'native' if check_updates else 'notChecked'
+            reason = 'applicationMaintenanceUnverified' if check_updates else None
         elif tool in PACKAGES:
             package = PACKAGES[tool]
             installed = ("installed\t" + snapshot[tool] if snapshot.get(tool) else None) if snapshot is not None else command("dpkg-query", "-W", "-f=${db:Status-Status}\t${Version}", package)
@@ -106,10 +112,12 @@ if __name__ == "__main__" and "--preview" in sys.argv:
     print(json.dumps(list(records(True, snapshot))))
 elif __name__ == "__main__":
     node = None
-    if '--node-observation' in sys.argv:
+    editor = None
+    if '--node-observation' in sys.argv or '--runtime-observations' in sys.argv:
+        raw = sys.stdin.read(32769)
+        rows = raw.splitlines() if '--runtime-observations' in sys.argv else [raw]
         try:
-            raw = sys.stdin.read(16385)
-            value = json.loads(raw) if len(raw) <= 16384 else None
+            value = json.loads(rows[0]) if rows and len(rows[0]) <= 16384 else None
             if (isinstance(value, dict) and value.get('schema') == 1 and value.get('component') == 'Node.js'
                     and value.get('requiredFamily') == '24' and value.get('status') == 'passed'
                     and value.get('reason') == 'verified' and value.get('maintenanceEligibility') == 'notEvaluated'
@@ -118,7 +126,17 @@ elif __name__ == "__main__":
                 node = value
         except (ValueError, TypeError):
             pass
-    for record in records("--check-updates" in sys.argv[1:], node=node):
+        try:
+            if len(rows) == 2 and len(raw) <= 32768:
+                app = json.loads(rows[1])
+                if (isinstance(app, dict) and app.get('schema') == 1 and app.get('component') == 'VSCodium'
+                        and app.get('platform') == 'linux' and app.get('status') == 'verified'
+                        and app.get('maintenanceEligibility') == 'notEvaluated'
+                        and isinstance(app.get('version'), str) and re.fullmatch(r'\d+\.\d+\.\d+(?:\.\d+)?', app['version'])):
+                    editor = app
+        except (ValueError, TypeError):
+            pass
+    for record in records("--check-updates" in sys.argv[1:], node=node, editor=editor):
         print("SKYVIEW_EVENT|tool|" + record["tool"] + "|" + json.dumps(record, separators=(",", ":")))
         if record["updateAvailable"]:
             print(f'SKYVIEW_EVENT|update|available|{record["tool"]}: {record["installedVersion"]} to {record["availableVersion"]}')

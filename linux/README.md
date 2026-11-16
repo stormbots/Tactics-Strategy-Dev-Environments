@@ -32,6 +32,8 @@ This package is the Linux Mint counterpart to `Skyview-Windows-Dev-Package-v1.0.
 
 ### VSCodium extensions
 
+Validation and **Open VSCodium** use the same verified Linux installation, including supported alternate locations. Opening checks the installation again first. See [VSCodium application locations](../docs/EDITOR-LOCATIONS.md) for the supported search and current limits. Finding a usable installation does not grant permission to update it.
+
 - ESLint — `dbaeumer.vscode-eslint`
 - Prettier — `esbenp.prettier-vscode`
 - EditorConfig — `EditorConfig.EditorConfig`

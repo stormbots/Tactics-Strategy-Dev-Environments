@@ -1008,6 +1008,22 @@ it("keeps one optional-update action and editor access under Other actions", asy
   expect(vi.mocked(operate).mock.calls.length).toBe(before);
 });
 
+it("binds editor Open to the latest verified installation without a frontend path argument", async () => {
+  const id = "b".repeat(64);
+  vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000, code: 0, success: true,
+    lines: ["SKYVIEW_EVENT|validation|PASS|VSCodium: verified",
+      `SKYVIEW_EVENT|application|VSCodium|${JSON.stringify({schema: 1, component: "VSCodium", platform: "linux", status: "verified", reason: "verified", root: "/opt/My Editor", executable: "/opt/My Editor/codium", cli: "/opt/My Editor/resources/app/out/cli.js", version: "1.106.0.25351", electronVersion: "38.0.0", selectionId: id, maintenanceEligibility: "notEvaluated"})}`,
+      "SKYVIEW_EVENT|summary|0|Done"],
+    log_path: "fixture", platform: { supported: true, label: "Linux Mint" },
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  openDisclosure("Other actions");
+  fireEvent.click(screen.getByRole("button", { name: "Open VSCodium" }));
+  await waitFor(() => expect(open).toHaveBeenCalledWith("editor", id));
+});
+
 it.each(["active", "unknown", "untrusted", "incident"] as const)(
   "opens Overview with %s safety and no competing mutation",
   async (state) => {

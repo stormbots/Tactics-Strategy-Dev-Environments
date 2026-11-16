@@ -158,6 +158,8 @@ sudo install -m 0644 "$SCRIPT_DIR/lib/node_runtime_probe.cjs" "$SKYVIEW_LIB/node
 sudo install -m 0644 "$SCRIPT_DIR/lib/git_preferences.py" "$SKYVIEW_LIB/git_preferences.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_preferences.py" "$SKYVIEW_LIB/editor_preferences.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_settings_probe.cjs" "$SKYVIEW_LIB/editor_settings_probe.cjs"
+sudo install -m 0644 "$SCRIPT_DIR/lib/editor_location.py" "$SKYVIEW_LIB/editor_location.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/editor_identity.cjs" "$SKYVIEW_LIB/editor_identity.cjs"
 sudo install -d -m 0755 "$SKYVIEW_LIB/jsonc-parser"
 for parser_file in parser.js scanner.js LICENSE.md; do
   sudo install -m 0644 "$SCRIPT_DIR/lib/jsonc-parser/$parser_file" "$SKYVIEW_LIB/jsonc-parser/$parser_file"

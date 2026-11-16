@@ -25,7 +25,7 @@ pub fn parse(line: &str) -> Option<Event> {
         "validation" if !["PASS", "WARNING", "FAIL", "INFO"].contains(&key) => return None,
         "summary" if key.parse::<u32>().is_err() => return None,
         "phase" | "status" | "warning" | "error" | "validation" | "summary" | "update" | "tool"
-        | "runtime" | "preferences" => {}
+        | "runtime" | "preferences" | "application" => {}
         _ => return None,
     }
     Some(Event {
@@ -105,7 +105,7 @@ mod tests {
     use super::*;
     #[test]
     fn observations_are_data_without_validation_time_or_success() {
-        for kind in ["runtime", "preferences"] {
+        for kind in ["runtime", "preferences", "application"] {
             let line = format!("SKYVIEW_EVENT|{kind}|VSCodium|{{\"status\":\"read\"}}");
             assert_eq!(parse(&line).unwrap().kind, kind);
             assert_eq!(validation_time(None, &line, 100), None);

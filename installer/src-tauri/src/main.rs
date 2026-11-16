@@ -3,6 +3,8 @@
 mod desktop_icon;
 #[cfg(windows)]
 mod elevation_windows;
+#[cfg(target_os = "linux")]
+mod editor_location;
 mod launch_outcome;
 mod journal;
 mod preflight;
@@ -431,7 +433,23 @@ async fn inspect_schedule(app: tauri::AppHandle) -> Result<schedule::Schedule, S
         .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-fn open_destination(app: tauri::AppHandle, destination: Destination) -> Result<(), String> {
+async fn open_destination(
+    app: tauri::AppHandle,
+    destination: Destination,
+    selection_id: Option<String>,
+) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    if matches!(destination, Destination::Editor) {
+        let root = backend(&app)?;
+        return tauri::async_runtime::spawn_blocking(move || {
+            editor_location::open(&root, selection_id.as_deref())
+        })
+        .await
+        .map_err(|_| "The editor open request could not finish.".to_string())?;
+    }
+    if selection_id.is_some() {
+        return Err("This destination does not accept an editor selection.".into());
+    }
     let url = match destination {
         Destination::Repository => {
             Some("https://github.com/stormbots/Tactics-Strategy-Dev-Environments")

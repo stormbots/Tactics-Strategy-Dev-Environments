@@ -424,42 +424,195 @@ class EditorPreferences(unittest.TestCase):
         self.assertIn('COUNTS 1 0', result.stdout)
         self.assertIn('"status":"invalid"', result.stdout)
 
+
+
+class EditorLocations(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.editor = module('editor_location')
+
+    def setUp(self):
+        import json
+        self.json = json
+        self.temp = tempfile.TemporaryDirectory(prefix='sde editor location café ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.exe = self.root / 'codium'
+        self.exe.write_bytes(b'\x7fELFfixture-never-executed')
+        self.exe.chmod(0o700)
+        (self.root / 'resources/app/out').mkdir(parents=True)
+        (self.root / self.editor.FILES[0]).write_text(json.dumps(dict(nameShort='VSCodium', applicationName='codium', quality='stable')))
+        (self.root / self.editor.FILES[1]).write_text('{"version":"1.106.0.25351"}')
+        (self.root / self.editor.FILES[2]).write_text('// fixture, never executed')
+        self.record = dict(self.editor.empty_record(), status='candidate', reason='identityObserved', root=str(self.root),
+                           executable=str(self.exe), cli=str(self.root / self.editor.FILES[2]), version='1.106.0.25351',
+                           electronVersion='38.0.0', selectionId=self.editor.selection_id(self.root))
+        normal = patch.object(self.editor, 'normal_user', return_value=True)
+        normal.start()
+        self.addCleanup(normal.stop)
+
+    def inspect(self, version=None, find=None, identity=None):
+        calls = []
+        def run(arguments, timeout):
+            self.assertGreater(timeout, 0)
+            calls.append(arguments)
+            return ((identity or self.editor.Probe(0, self.json.dumps(self.record))) if len(calls) == 1
+                    else version or self.editor.Probe(0, self.record['version'] + '\nfixture-commit\nx64'))
+        value = self.editor.inspect(run=run, find=find or (lambda: ([str(self.root)], True, 'discoveryIncomplete')))
+        return value, calls
+
+    def test_alternate_installation_spaces_and_same_cli_selected(self):
+        before = {p: p.read_bytes() for p in [self.exe, *[self.root / f for f in self.editor.FILES]]}
+        value, calls = self.inspect()
+        self.assertEqual(value['status'], 'verified')
+        self.assertEqual(value['selectionId'], self.record['selectionId'])
+        self.assertEqual(calls[1], [str(self.exe), self.record['cli'], '--version'])
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+        self.assertEqual(value['maintenanceEligibility'], 'notEvaluated')
+
+    def test_failed_or_invalid_version_never_passes(self):
+        for code, text in [(7, self.record['version']), (0, 'not a version'), (0, '1.105.0'), (-1, '')]:
+            with self.subTest(code=code, text=text):
+                value, _ = self.inspect(version=self.editor.Probe(code, text))
+                self.assertNotEqual(value['status'], 'verified')
+                self.assertIsNone(value['selectionId'])
+
+    def test_malformed_or_unexpected_identity_is_not_authority(self):
+        for text in ['{}', 'not JSON', self.json.dumps(dict(self.record, extra=True)),
+                     self.json.dumps(dict(self.record, selectionId='0' * 64)),
+                     self.json.dumps(dict(self.record, electronVersion='')), self.json.dumps(dict(self.record, schema=True))]:
+            value, calls = self.inspect(identity=self.editor.Probe(0, text))
+            self.assertEqual(value['status'], 'incomplete')
+            self.assertEqual(len(calls), 1)
+
+    def test_wrong_product_and_non_native_target_never_executed(self):
+        (self.root / self.editor.FILES[0]).write_text('{"nameShort":"Another editor"}')
+        value, calls = self.inspect()
+        self.assertEqual(value['status'], 'unusable')
+        self.assertEqual(calls, [])
+        self.exe.write_text('#!/bin/sh\nexit 0\n')
+        value, calls = self.inspect()
+        self.assertEqual(value['status'], 'unusable')
+        self.assertEqual(calls, [])
+
+    def test_missing_and_incomplete_search_are_distinct(self):
+        for complete, status in [(True, 'notFound'), (False, 'incomplete')]:
+            value, calls = self.inspect(find=lambda: ([], complete, 'staleRegistration'))
+            self.assertEqual(value['status'], status)
+            self.assertEqual(calls, [])
+        with patch.object(self.editor, 'metadata', side_effect=PermissionError):
+            value, calls = self.inspect()
+        self.assertEqual(value['reason'], 'accessDenied')
+        self.assertEqual(value['status'], 'incomplete')
+        self.assertEqual(calls, [])
+
+    def test_no_elevated_external_probe(self):
+        with patch.object(self.editor, 'normal_user', return_value=False):
+            value, calls = self.inspect(find=lambda: self.fail('must not discover as root'))
+        self.assertEqual(value['reason'], 'normalUserRequired')
+        self.assertEqual(calls, [])
+
+    def test_changed_installation_during_version_check_stays_incomplete(self):
+        def run(arguments, timeout):
+            if arguments[-1] == '--version':
+                (self.root / self.editor.FILES[2]).write_text('changed')
+                return self.editor.Probe(0, self.record['version'])
+            return self.editor.Probe(0, self.json.dumps(self.record))
+        result = self.editor.inspect(run=run, find=lambda: ([str(self.root)], True, 'discoveryIncomplete'))
+        self.assertEqual(result['status'], 'incomplete')
+        self.assertEqual(result['reason'], 'changedDuringCheck')
+
+    def test_resource_symlink_escape_rejected_before_execution(self):
+        external = self.root / 'outside.js'
+        external.write_text('fixture')
+        cli = self.root / self.editor.FILES[2]
+        cli.unlink()
+        cli.symlink_to(external)
+        value, calls = self.inspect()
+        self.assertEqual(value['status'], 'unusable')
+        self.assertEqual(calls, [])
+
+    def test_desktop_records_are_paths_not_shell_commands_or_profiles(self):
+        parse = self.editor.desktop_executable
+        self.assertEqual(parse('[Desktop Entry]\nExec="/home/student/My Editor/bin/codium" --unity-launch %F\n'), '/home/student/My Editor/bin/codium')
+        for command in ['env codium', '/bin/sh -c codium', 'codium %F', '"/opt/codium" --user-data-dir /tmp/profile',
+                        '"/opt/codium"; touch /tmp/no', '/opt/codium $(echo command)']:
+            self.assertIsNone(parse('[Desktop Entry]\nExec=' + command))
+        self.assertIsNone(parse('[Desktop Entry]\nExec=/opt/codium\nExec=/other/codium'))
+
+    def test_actual_cjs_snapshot_agrees_and_regular_node_is_not_electron(self):
+        node = shutil.which('node')
+        self.assertIsNotNone(node, 'Prepared Node required for probe fixture')
+        probe = ROOT / 'linux/lib/editor_identity.cjs'
+        result = subprocess.run([node, '-e', 'console.log(JSON.stringify(require(process.argv[1]).snapshot(process.argv[2], "38.0.0")))',
+                                 str(probe), str(self.exe)], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.json.loads(result.stdout), self.record)
+        result = subprocess.run([node, str(probe)], capture_output=True, text=True, timeout=5)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, '')
+
     def test_failed_extension_listing_cannot_supply_partial_required_pass(self):
-        if os.name != 'posix':
-            return
-        commands = self.root / 'bin'
-        commands.mkdir()
-        cli = commands / 'codium'
-        cli.write_text('#!/bin/sh\necho required.extension\nexit 7\n')
-        cli.chmod(0o700)
+        from contextlib import redirect_stdout
+        from io import StringIO
         policy = self.root / 'extensions.txt'
         policy.write_text('required.extension\n')
+        output = StringIO()
+        with patch.object(self.editor, 'inspect', return_value=dict(self.record, status='verified', reason='verified')), \
+             patch.object(self.editor, 'query', return_value=self.editor.Probe(7, 'required.extension')), redirect_stdout(output):
+            code = self.editor.validation(str(policy))
+        self.assertEqual(code, 10)
+        self.assertNotIn('PASS|VSCodium extension', output.getvalue())
+        self.assertIn('FAIL|VSCodium:', output.getvalue())
+
+    def test_selected_version_never_grants_package_update_authority(self):
+        selected = dict(self.record, status='verified', reason='verified')
+        with patch.object(tools, 'command', return_value=None):
+            result = next(r for r in tools.records(True, editor=selected) if r['tool'] == 'VSCodium')
+        self.assertEqual(result['installedVersion'], self.record['version'])
+        self.assertFalse(result['updateAvailable'])
+        self.assertEqual(result['updateReason'], 'applicationMaintenanceUnverified')
+        self.assertEqual(result['updateCheck'], 'native')
+
+    def test_discovery_uses_registered_paths_and_marks_stale_records_incomplete(self):
+        link = self.root / 'bin/codium'
+        link.parent.mkdir()
+        link.symlink_to(self.exe)
+        data = self.root / 'xdg'
+        (data / 'applications').mkdir(parents=True)
+        desktop = data / 'applications/codium.desktop'
+        desktop.write_text(f'[Desktop Entry]\nExec="{link}" %F\n')
+        with patch.dict(os.environ, {'HOME': str(self.root), 'XDG_DATA_HOME': str(data), 'XDG_DATA_DIRS': str(self.root / 'system-data')}), \
+             patch.object(self.editor.shutil, 'which', return_value=str(link)):
+            roots, complete, _ = self.editor.discover()
+            self.assertEqual(roots[0], str(self.root))
+            self.assertEqual(roots.count(str(self.root)), 1)
+            self.assertTrue(complete)
+            desktop.write_text(f'[Desktop Entry]\nExec="{self.root}/missing/codium" %F\n')
+            _, complete, reason = self.editor.discover()
+            self.assertFalse(complete)
+            self.assertEqual(reason, 'staleRegistration')
+
+    def test_diagnostic_query_bounds_and_cleans_environment(self):
+        with patch.dict(os.environ, {'NODE_OPTIONS': '--require malicious.cjs', 'VSCODE_DEV': '1'}):
+            result = self.editor.query([sys.executable, '-c', 'import os; print(os.getenv("NODE_OPTIONS"), os.getenv("VSCODE_DEV"), os.getenv("ELECTRON_RUN_AS_NODE"))'], 2)
+        self.assertEqual(result.code, 0)
+        self.assertEqual(result.text, 'None None 1')
+        self.assertEqual(self.editor.query([sys.executable, '-c', 'print("x" * 40000)'], 2).code, -1)
+        self.assertEqual(self.editor.query([sys.executable, '-c', 'import time; time.sleep(3)'], .1).code, -1)
+
+    def test_validator_cannot_succeed_with_empty_collector_output(self):
+        lib = self.root / 'lib'
+        lib.mkdir()
+        helper = lib / 'editor_location.py'
+        helper.write_text('')
         source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
         fragment = source[source.index('EXT_FILE='):source.index('\nif systemctl')]
-        program = 'FAIL_COUNT=0; PASS_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }; pass() { PASS_COUNT=$((PASS_COUNT+1)); }\n' + fragment + '\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
-        result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH'],
-                                'SKYVIEW_SHARE': str(self.root), 'SCRIPT_DIR': str(self.root), 'TARGET_USER': '', 'TARGET_HOME': str(self.root)},
-                                text=True, capture_output=True, timeout=10)
+        program = 'FAIL_COUNT=0; PASS_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }\n' + fragment + '\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
+        result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'SKYVIEW_SHARE': str(self.root),
+                                'SCRIPT_DIR': str(self.root), 'SKYVIEW_LIB': str(lib)}, capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('COUNTS 0 1', result.stdout)
-
-    def test_version_command_must_succeed_with_a_real_version(self):
-        if os.name != 'posix':
-            return
-        commands = self.root / 'bin'
-        commands.mkdir()
-        cli = commands / 'codium'
-        source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
-        start = source.index('check_command() {')
-        fragment = source[start:source.index('\nprintf', start)]
-        program = 'FAIL_COUNT=0; PASS_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }; pass() { PASS_COUNT=$((PASS_COUNT+1)); }\n' + fragment + '\ncheck_command codium VSCodium\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
-        for code, version, counts in ((7, '1.90.0', '0 1'), (0, 'not a version', '0 1'), (0, '1.90.0', '1 0')):
-            cli.write_text(f'#!/bin/sh\necho "{version}"\nexit {code}\n')
-            cli.chmod(0o700)
-            result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'PATH': str(commands) + os.pathsep + os.environ['PATH']},
-                                    text=True, capture_output=True, timeout=5)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn('COUNTS ' + counts, result.stdout)
 
 
 if __name__ == "__main__":
