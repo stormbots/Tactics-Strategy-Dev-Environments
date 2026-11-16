@@ -83,7 +83,7 @@ function Invoke-SkyviewEditorQuery([string]$Executable,[string[]]$Arguments,[int
     $start.Arguments=(@($Arguments | ForEach-Object { '"'+(($_ -replace '(\\*)"','$1$1\"') -replace '(\\+)$','$1$1')+'"' }) -join ' ')
     $start.UseShellExecute=$false; $start.CreateNoWindow=$true
     $start.WorkingDirectory=[IO.Path]::GetTempPath()
-    foreach ($key in @('NODE_OPTIONS','NODE_PATH','NODE_COMPILE_CACHE','NODE_V8_COVERAGE','VSCODE_DEV','VSCODE_CWD')) { $start.EnvironmentVariables.Remove($key) }
+    foreach ($key in @('NODE_OPTIONS','NODE_PATH','NODE_COMPILE_CACHE','NODE_V8_COVERAGE','VSCODE_DEV','VSCODE_CWD','JAVA_TOOL_OPTIONS','JDK_JAVA_OPTIONS','_JAVA_OPTIONS')) { $start.EnvironmentVariables.Remove($key) }
     $start.EnvironmentVariables['ELECTRON_RUN_AS_NODE']='1'
     $start.RedirectStandardOutput=$true; $start.RedirectStandardError=$true
     $process=New-Object Diagnostics.Process

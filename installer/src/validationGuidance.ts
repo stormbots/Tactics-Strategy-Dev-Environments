@@ -153,9 +153,10 @@ export function validationGuidance(
     check.status === "FAIL" &&
     message === "Managed PyCharm installation/symlink is missing"
   )
-    return repair(
-      "The managed PyCharm installation is unavailable",
-      "The approved PyCharm launcher could not be verified. Python IDE work may be blocked.",
+    return diagnostics(
+      "PyCharm needs a fresh check",
+      "This older check looked only in SDE's usual folder. PyCharm may be installed somewhere else.",
+      "Check again to look for supported PyCharm installations. This message alone does not mean you need to reinstall or move PyCharm.",
     );
   if (
     check.status === "FAIL" &&

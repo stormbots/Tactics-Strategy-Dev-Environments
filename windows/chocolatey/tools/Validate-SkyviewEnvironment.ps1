@@ -58,7 +58,6 @@ switch ($pythonRuntime.status) {
 }
 foreach ($entry in @(
     @{Name='DBeaver'; Paths=@('C:\Program Files\DBeaver\dbeaver.exe','C:\Program Files\DBeaver\dbeaver-ce.exe')},
-    @{Name='PyCharm'; Paths=@('C:\Program Files\JetBrains\PyCharm*\bin\pycharm64.exe')},
     @{Name='Chrome'; Paths=@('C:\Program Files\Google\Chrome\Application\chrome.exe','C:\Program Files (x86)\Google\Chrome\Application\chrome.exe')},
     @{Name='Firefox'; Paths=@('C:\Program Files\Mozilla Firefox\firefox.exe','C:\Program Files (x86)\Mozilla Firefox\firefox.exe')}
 )) {
@@ -66,17 +65,20 @@ foreach ($entry in @(
     if ($found.Count) {
         $productVersion = $found[0].VersionInfo.ProductVersion
         if ($productVersion -match '\d+(?:\.\d+)+(?:[^\s]*)?') { $installed[$entry.Name] = $Matches[0] }
-        if ($entry.Name -eq 'PyCharm') {
-            $productInfo = Join-Path (Split-Path (Split-Path $found[0].FullName -Parent) -Parent) 'product-info.json'
-            if (Test-Path $productInfo) {
-                try { $installed.PyCharm = (Get-Content $productInfo -Raw | ConvertFrom-Json).version } catch { Write-Verbose 'PyCharm version metadata unavailable.' }
-            }
-        }
         Result PASS "$($entry.Name): $productVersion"
     }
     else { Result FAIL "$($entry.Name): not installed" }
 }
 Check (Test-Path 'C:\Development') 'Development folder'
+. (Join-Path $PSScriptRoot 'PyCharmLocation.ps1')
+$pycharm=Get-SkyviewPyCharmLocation
+Write-Host ("SKYVIEW_EVENT|application|PyCharm|{0}" -f ($pycharm | ConvertTo-Json -Compress))
+if ($pycharm.status -ceq 'verified') {
+    $installed['PyCharm']=$pycharm.version
+    Result PASS "PyCharm: $($pycharm.version); product and bundled runtime verified"
+} elseif ($pycharm.status -ceq 'notFound') { Result FAIL 'PyCharm: The supported search did not find PyCharm.' }
+elseif ($pycharm.reason -ceq 'normalUserRequired') { Result FAIL 'PyCharm: Open SDE without administrator privileges to check PyCharm.' }
+else { Result FAIL 'PyCharm: SDE could not finish checking this installation. Review the check details.' }
 . (Join-Path $PSScriptRoot 'GitPreferences.ps1')
 $gitPreferences=Get-SkyviewGitPreferences
 Write-Host ("SKYVIEW_EVENT|preferences|Git|{0}" -f ($gitPreferences | ConvertTo-Json -Compress -Depth 5))

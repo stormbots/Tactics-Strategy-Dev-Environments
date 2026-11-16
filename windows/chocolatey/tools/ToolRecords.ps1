@@ -97,7 +97,7 @@ function Get-SkyviewToolRecords {
                 $candidate=$null; $state='native'; $reason='maintenanceUnverified'
             }
         }
-        if ($tool -eq 'VSCodium') {
+        if ($tool -in @('VSCodium','PyCharm')) {
             # Product usability is not Chocolatey ownership or update permission.
             $candidate=$null
             $state=if ($CheckUpdates) { 'native' } else { 'notChecked' }
@@ -121,6 +121,7 @@ function Get-SkyviewToolRecords {
                 }
             }
         }
-        [pscustomobject]@{tool=$tool; installedVersion=$current; availableVersion=$candidate; updateAvailable=[bool]$candidate; updateCheck=$state; updateReason=$reason; source='Chocolatey package metadata'}
+        $source=if ($tool -in @('VSCodium','PyCharm')) { 'Application observation' } else { 'Chocolatey package metadata' }
+        [pscustomobject]@{tool=$tool; installedVersion=$current; availableVersion=$candidate; updateAvailable=[bool]$candidate; updateCheck=$state; updateReason=$reason; source=$source}
     }
 }
