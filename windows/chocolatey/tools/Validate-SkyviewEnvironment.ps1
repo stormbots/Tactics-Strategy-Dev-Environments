@@ -17,7 +17,6 @@ function Result($Status,$Message) {
 function Check($Condition,$Message) { if ($Condition) { Result PASS $Message } else { Result FAIL $Message } }
 foreach ($check in @(
     @{Name='GitHub CLI'; Command='gh'; Args=@('--version')},
-    @{Name='VSCodium'; Command='codium'; Args=@('--version')},
     @{Name='PowerShell 7'; Command='pwsh'; Args=@('--version')},
     @{Name='OpenSSH'; Command='ssh'; Args=@('-V')},
     @{Name='7-Zip'; Command='7z'; Args=@('i')}
@@ -27,10 +26,6 @@ foreach ($check in @(
     $out = @(& $cmd.Source @($check.Args) 2>&1)
     $code = $LASTEXITCODE
     $version = [string]($out | Where-Object { [string]$_ -notmatch '^\s*$' } | Select-Object -First 1)
-    if ($check.Name -eq 'VSCodium') {
-        $version=[string]($out | Where-Object { [string]$_ -match '^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.+-]+)?$' } | Select-Object -First 1)
-        if ($code -ne 0 -or -not $version) { Result FAIL 'VSCodium: SDE could not finish checking the editor command.';continue }
-    }
     if ($code -eq 0 -and $version -match '\d+(?:\.\d+)+(?:[^\s]*)?') { $installed[$check.Name] = $Matches[0] }
     if ($code -ne 0 -or ($check.Family -and $version -notmatch $check.Family)) {
         Result FAIL "$($check.Name): expected runtime family or usable command; detected $version"
@@ -125,18 +120,13 @@ switch ($editorPreferences.status) {
     }
     default { Result WARNING 'SDE could not finish checking your VSCodium preferences. Your settings have not been changed. This does not mean they are missing or damaged.' }
 }
-if (Get-Command codium -ErrorAction SilentlyContinue) {
-    $extensions = @(& codium --list-extensions 2>$null)
-    $extensionsExit=$LASTEXITCODE
-    if ($extensionsExit -ne 0) { Result FAIL 'VSCodium: SDE could not finish checking the installed extensions.' }
-    else {
-    try { $requiredExtensions=@(Get-Content (Join-Path $PSScriptRoot 'extensions.txt') -ErrorAction Stop | Where-Object { $_ -and $_ -notmatch '^\s*#' }) }
-    catch { Result FAIL 'VSCodium: SDE could not read the list of required extensions.';$requiredExtensions=@() }
-    foreach ($ext in $requiredExtensions) {
-        Check ($extensions -contains $ext) "Editor extension: $ext"
-    }
-    }
-}
+. (Join-Path $PSScriptRoot 'EditorLocation.ps1')
+$editorLocation=Get-SkyviewEditorLocation
+Write-Host ("SKYVIEW_EVENT|application|VSCodium|{0}" -f ($editorLocation | ConvertTo-Json -Compress))
+if ($editorLocation.status -ceq 'verified') { $installed['VSCodium']=$editorLocation.version }
+$editorChecks=@(Get-SkyviewEditorRequiredChecks $editorLocation)
+if (-not $editorChecks.Count) { Result FAIL 'VSCodium: SDE could not finish checking the editor installation.' }
+foreach ($entry in $editorChecks) { Result $entry.Status $entry.Message }
 $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'
 if (Test-Path $config) {
     foreach ($repo in (Import-Csv $config)) {

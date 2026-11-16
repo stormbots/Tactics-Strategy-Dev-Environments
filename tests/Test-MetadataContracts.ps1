@@ -32,6 +32,8 @@ $script:FeedFailure=$false
 $nodeRecord=Get-SkyviewToolRecords -Installed @{'Node.js'='24.19.0';npm='11.9.0'} -CheckUpdates $true | Where-Object tool -eq 'Node.js'
 Assert ($nodeRecord.updateCheck -eq 'native' -and $nodeRecord.updateReason -eq 'maintenanceUnverified' -and -not $nodeRecord.updateAvailable -and $null -eq $nodeRecord.availableVersion) 'Another managed Node installation supplied an update claim for the selected pair.'
 Remove-Item Function:choco
+$editorRecord=Get-SkyviewToolRecords -Installed @{VSCodium='1.106.0.25351'} -CheckUpdates $true | Where-Object tool -eq VSCodium
+Assert ($editorRecord.installedVersion -eq '1.106.0.25351' -and $editorRecord.updateCheck -eq 'native' -and $editorRecord.updateReason -eq 'applicationMaintenanceUnverified' -and -not $editorRecord.updateAvailable -and $null -eq $editorRecord.availableVersion) 'Editor usability supplied unverified package update authority.'
 
 $xml = '<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Triggers><CalendarTrigger><StartBoundary>2026-10-04T03:00:00</StartBoundary><Enabled>true</Enabled><ScheduleByWeek><WeeksInterval>1</WeeksInterval><DaysOfWeek><Sunday /></DaysOfWeek></ScheduleByWeek></CalendarTrigger></Triggers><Settings><StartWhenAvailable>true</StartWhenAvailable></Settings></Task>'
 $task = [pscustomobject]@{ Xml=$xml; Enabled=$true; State=3; LastRunTime=[datetime]'1899-12-30'; NextRunTime=[datetime]'2026-10-11T03:00:00'; LastTaskResult=267011 }

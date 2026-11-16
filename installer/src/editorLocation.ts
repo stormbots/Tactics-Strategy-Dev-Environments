@@ -4,7 +4,7 @@ import { parseEvent } from "./model";
 export type EditorLocation = {
   schema: 1;
   component: "VSCodium";
-  platform: "linux";
+  platform: "linux" | "windows";
   status: "verified";
   reason: "verified";
   root: string;
@@ -46,7 +46,7 @@ export function editorLocation(line: string): EditorLocation | null {
       Object.keys(value).some((k) => !fields.includes(k)) ||
       value.schema !== 1 ||
       value.component !== "VSCodium" ||
-      value.platform !== "linux" ||
+      !["linux", "windows"].includes(value.platform) ||
       value.status !== "verified" ||
       value.reason !== "verified" ||
       value.maintenanceEligibility !== "notEvaluated"
@@ -55,17 +55,25 @@ export function editorLocation(line: string): EditorLocation | null {
     const path = (input: unknown): input is string =>
       typeof input === "string" &&
       input.length <= 4096 &&
-      input.startsWith("/") &&
+      (value.platform === "windows"
+        ? /^[A-Za-z]:\\/.test(input)
+        : input.startsWith("/")) &&
       !/[\x00-\x1f\x7f|]/.test(input) &&
       !input.includes("//") &&
-      !input.split("/").some((p) => p === "." || p === "..");
+      !(
+        value.platform === "windows" ? input.split(/[\\/]/) : input.split("/")
+      ).some((p) => p === "." || p === "..");
+    const separator = value.platform === "windows" ? "\\" : "/";
+    const executable = value.platform === "windows" ? "VSCodium.exe" : "codium";
+    const root =
+      typeof value.root === "string" ? value.root.replace(/[\\/]$/, "") : "";
     if (
       !path(value.root) ||
       !path(value.executable) ||
       !path(value.cli) ||
-      value.executable !== `${value.root.replace(/\/$/, "")}/codium` ||
+      value.executable !== `${root}${separator}${executable}` ||
       value.cli !==
-        `${value.root.replace(/\/$/, "")}/resources/app/out/cli.js` ||
+        `${root}${separator}${["resources", "app", "out", "cli.js"].join(separator)}` ||
       typeof value.version !== "string" ||
       !/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(value.version) ||
       value.version.length > 80 ||

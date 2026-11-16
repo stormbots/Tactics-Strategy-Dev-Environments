@@ -3,7 +3,7 @@
 mod desktop_icon;
 #[cfg(windows)]
 mod elevation_windows;
-#[cfg(target_os = "linux")]
+#[cfg(any(windows, target_os = "linux"))]
 mod editor_location;
 mod launch_outcome;
 mod journal;
@@ -438,7 +438,7 @@ async fn open_destination(
     destination: Destination,
     selection_id: Option<String>,
 ) -> Result<(), String> {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(windows, target_os = "linux"))]
     if matches!(destination, Destination::Editor) {
         let root = backend(&app)?;
         return tauri::async_runtime::spawn_blocking(move || {
@@ -468,10 +468,7 @@ async fn open_destination(
         return Ok(());
     }
     let path = match destination {
-        #[cfg(windows)]
-        Destination::Editor => PathBuf::from(r"C:\Program Files\VSCodium\VSCodium.exe"),
-        #[cfg(not(windows))]
-        Destination::Editor => PathBuf::from("/usr/bin/codium"),
+        Destination::Editor => return Err("Editor discovery is unavailable on this platform.".into()),
         #[cfg(windows)]
         Destination::Workspace => PathBuf::from(r"C:\Development"),
         #[cfg(not(windows))]
@@ -493,16 +490,11 @@ async fn open_destination(
                 .into(),
         );
     }
-    let mut cmd = if matches!(destination, Destination::Editor) {
-        std::process::Command::new(path)
-    } else {
-        #[cfg(windows)]
-        let mut c = std::process::Command::new(r"C:\Windows\explorer.exe");
-        #[cfg(not(windows))]
-        let mut c = std::process::Command::new("/usr/bin/xdg-open");
-        c.arg(path);
-        c
-    };
+    #[cfg(windows)]
+    let mut cmd = std::process::Command::new(r"C:\Windows\explorer.exe");
+    #[cfg(not(windows))]
+    let mut cmd = std::process::Command::new("/usr/bin/xdg-open");
+    cmd.arg(path);
     process::hidden(&mut cmd)
         .spawn()
         .map_err(|e| e.to_string())?;

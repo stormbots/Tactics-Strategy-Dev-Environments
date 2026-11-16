@@ -1,7 +1,7 @@
-# VSCodium application locations: Linux increment
+# VSCodium application locations: Windows and Linux
 
 Part of [issue #161](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/161).
-This increment connects Linux VSCodium validation and the ordinary **Open VSCodium** action to the same checked installation. It does not complete the application-location proposal for Windows or other applications.
+These increments connect Windows and Linux VSCodium validation and the ordinary **Open VSCodium** action to the same checked installation. They do not complete the application-location proposal for other applications or the remaining maintenance and selection work.
 
 ## What the student sees
 
@@ -9,7 +9,7 @@ VSCodium can be installed in a supported location outside the usual system folde
 
 If the installation moved, changed, or disappeared after the check, Open reports the problem. The student can check again or open VSCodium from their desktop. SDE does not silently open a different installation using an old selection.
 
-## Discovery and selection
+## Linux discovery and selection
 
 The shared read-only collector is `linux/lib/editor_location.py`. Validation and native Open both use it. It examines these sources in order:
 
@@ -37,7 +37,23 @@ The frontend sends native Open only that ID, never an executable path or command
 
 Application usability does not prove that APT owns that installation. Version metadata therefore reports the checked version but does not offer an APT update candidate for it. The UI explains that SDE has not yet confirmed update permission. This is informational and does not request Repair or a retry.
 
-Windows discovery, other applications, explicit choice between multiple verified installations, maintenance ownership, and preservation of alternate installations during full Install/Repair or scheduled maintenance remain follow-up work. This increment does not establish that those modifying operations preserve every alternate installation. It does not authorize them. Owner UAT must exercise the final authenticated candidate; source fixtures and CI alone do not close #161.
+Other applications, explicit choice between multiple verified installations, maintenance ownership, and preservation of alternate installations during full Install/Repair or scheduled maintenance remain follow-up work. These increments do not establish that those modifying operations preserve every alternate installation. They do not authorize them. Owner UAT must exercise the final authenticated candidate; source fixtures and CI alone do not close #161.
+
+## Windows discovery and ordinary Open
+
+Windows uses the shared read-only `EditorLocation.ps1` collector for validation and Open. Discovery reads the PATH `codium.cmd` or `VSCodium.exe` location, Windows App Paths and uninstall records for VSCodium, then the known Program Files and per-user `Programs\VSCodium` folders. It reads up to 512 uninstall keys per registry branch and checks at most twelve distinct executable paths. It never runs registry command text, a `.cmd` launcher, `Win32_Product`, or an installer. The first fully verified installation wins. A stale registered path or an incomplete search cannot establish absence.
+
+The supported layout has a native PE `VSCodium.exe` beside the same three fixed resource files. The product must identify stable VSCodium. UNC paths, reparse-point paths, unsupported wrappers and custom profiles are not verified by this increment. A different supported local-drive location alone does not cause a failure. Discovery neither rewrites PATH nor moves an installation.
+
+The fixed `EditorIdentityProbe.cjs` runs with that application's bundled Electron runtime; ordinary Node cannot supply a successful production identity probe. The selected installation's own CLI must report the matching version and required extensions. The collector removes Node injection variables and bounds both output streams to 32 KiB each. Identity/version subprocesses share a fifteen-second budget; extension inspection has a separate six-second limit. File sizes and candidate counts are also bounded, but filesystem latency is not a hard wall-clock guarantee.
+
+The frontend passes only a selection ID to native Open. Native code calls the same fixed collector through Windows PowerShell, rechecks product files, canonical paths, native executable signature and fingerprint, then opens the checked executable. No command string, registry arguments or frontend path becomes a launch instruction. A previous selection must still match; moved, missing or changed files require another check. The fingerprint detects change and does not authenticate the publisher.
+
+The collector refuses an elevated administrator or SYSTEM token, and native Open independently checks for an ordinary token before starting discovery. Membership in the administrators group with a normal filtered desktop token is not elevation. There is no UAC prompt or elevated fallback. An elevated SDE session must be reopened normally. Collection does not acquire another SDE operation gate or clear retained recovery evidence.
+
+Windows reports the checked VSCodium version separately from Chocolatey ownership. Until the maintenance contract is implemented, it offers no package-update candidate for that selected installation. Neither a compatible installation nor a fingerprint grants modification permission. Existing full Install/Repair and scheduled-maintenance preservation still need their own review.
+
+Local PowerShell tests cover bounded read-only queries and incomplete-result handling. Windows CI also exercises real temporary files and paths with spaces, CJS/PowerShell fingerprint agreement, stale registration, changed resources, failed version and extension commands, strict observation parsing, packaged-helper presence, and native Rust verification. Fixture executable files are never launched. Exact-candidate owner UAT must still cover real installations and desktop Open.
 
 ## Source references
 

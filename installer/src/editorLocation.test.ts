@@ -18,6 +18,26 @@ const record = {
 const line = (value: unknown) =>
   `SKYVIEW_EVENT|application|VSCodium|${JSON.stringify(value)}`;
 
+it("accepts a checked Windows installation while rejecting commands, UNC and escaped resources", () => {
+  const windows = {
+    ...record,
+    platform: "windows",
+    root: "C:\\Users\\Student\\My Editor",
+    executable: "C:\\Users\\Student\\My Editor\\VSCodium.exe",
+    cli: "C:\\Users\\Student\\My Editor\\resources\\app\\out\\cli.js",
+  };
+  expect(editorLocation(line(windows))).toEqual(windows);
+  expect(selectedEditorId([line(windows)])).toBe(record.selectionId);
+  for (const patch of [
+    { executable: "C:\\Windows\\System32\\cmd.exe" },
+    { root: "\\\\server\\app" },
+    { root: "C:\\Users\\..\\Other" },
+    { cli: "C:\\Other\\cli.js" },
+  ]) {
+    expect(editorLocation(line({ ...windows, ...patch }))).toBeNull();
+  }
+});
+
 it("keeps a verified selection as data without granting update authority", () => {
   expect(editorLocation(line(record))).toEqual(record);
   expect(selectedEditorId([line(record)])).toBe(record.selectionId);
@@ -26,7 +46,7 @@ it.each([
   { schema: true },
   { status: "candidate" },
   { maintenanceEligibility: "allowed" },
-  { platform: "windows" },
+  { platform: "other" },
   { extra: true },
   { root: "/home/../student/My Editor" },
   { executable: "/bin/sh" },

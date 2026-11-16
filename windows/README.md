@@ -182,6 +182,8 @@ into the deployment layout before the installer can run.
 
 ## Validation
 
+VSCodium validation and **Open VSCodium** use the same verified installation, including supported alternate locations. Open checks it again before launch and uses no elevation. See [VSCodium application locations](../docs/EDITOR-LOCATIONS.md) for the search and its limits. Finding a usable installation does not grant update permission.
+
 After installation, sign out/in or reboot if newly installed commands are not
 immediately visible. Then run:
 
