@@ -44,9 +44,31 @@ if ($env:OS -ne 'Windows_NT') {
             $product=if ($tool -eq 'Chrome') { 'Google Chrome' } else { 'Firefox' }
             $version=if ($tool -eq 'Chrome') { '143.0.7499.40' } else { '146.0.1.0' }
             $displayVersion=if ($tool -eq 'Firefox') { $version+'esr' } else { $version }
-            # Compile version resources for real FileVersionInfo inspection only.
+            # Windows FileVersionInfo reads native VERSIONINFO resources. On
+            # Unix it can fall back to managed attributes, so Add-Type alone
+            # does not prove this Windows fixture has usable native resources.
             $definition="using System.Reflection; [assembly: AssemblyProduct(`"$product`")] [assembly: AssemblyFileVersion(`"$version`")] [assembly: AssemblyInformationalVersion(`"$displayVersion`")] public class $($tool)LocationFixture {}"
-            Add-Type -TypeDefinition $definition -OutputAssembly $path -OutputType Library
+            if ($env:OS -eq 'Windows_NT') {
+                $source=Join-Path $root 'version-fixture.cs'
+                [IO.File]::WriteAllText($source,$definition,$utf8)
+                $compiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+                & $compiler /nologo /target:library ("/out:"+$path) $source
+                if ($LASTEXITCODE -ne 0) { throw 'Windows version-resource fixture compilation failed.' }
+                $stream=[IO.File]::OpenRead($path)
+                try {
+                    $reader=New-Object IO.BinaryReader($stream)
+                    $stream.Position=60;$pe=$reader.ReadUInt32()
+                    $stream.Position=$pe+24;$magic=$reader.ReadUInt16()
+                    $directoryOffset=if ($magic -eq 0x10b) { 96 } elseif ($magic -eq 0x20b) { 112 } else { throw 'Unsupported fixture PE format.' }
+                    $stream.Position=$pe+24+$directoryOffset+16
+                    $resourceRva=$reader.ReadUInt32();$resourceSize=$reader.ReadUInt32()
+                    Assert-Application ($resourceRva -ne 0 -and $resourceSize -gt 0) 'Fixture lacks native Windows version resources.'
+                } finally { $stream.Dispose() }
+            } else {
+                Add-Type -TypeDefinition $definition -OutputAssembly $path -OutputType Library
+            }
+            $fixtureInfo=[Diagnostics.FileVersionInfo]::GetVersionInfo($path)
+            Assert-Application ($fixtureInfo.ProductName -ceq $product -and $fixtureInfo.ProductVersion -ceq $displayVersion) 'Fixture version metadata is unavailable before discovery.'
             if ($tool -eq 'Firefox') {
                 [IO.File]::WriteAllText((Join-Path $root 'application.ini'),"[App]`nName=Firefox`nID={ec8030f7-c20a-464f-9b0e-13a3a9e97384}`nVersion=$version`n",$utf8)
             }
