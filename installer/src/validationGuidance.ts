@@ -86,6 +86,16 @@ export function validationGuidance(
       "Check the operating-system information against SDE's supported platforms before setup or maintenance. Keep the details in a support report if it cannot be verified.",
     );
   const message = check.message;
+  const oldApplication =
+    /^(DBeaver|Chrome|Firefox)(?:: not installed| not found)$/.exec(
+      message,
+    )?.[1] ?? (message === "Google Chrome not found" ? "Chrome" : undefined);
+  if (check.status === "FAIL" && oldApplication)
+    return diagnostics(
+      `${oldApplication} needs a fresh check`,
+      `This older check looked only in a few places. ${oldApplication} may already be installed somewhere else.`,
+      "Check again to look for supported installations. This message alone does not mean you need to reinstall or move the app.",
+    );
   const match = missingTool.exec(message);
   if (
     check.status === "FAIL" &&

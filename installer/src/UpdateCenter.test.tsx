@@ -307,15 +307,29 @@ it("malformed retry times remain a non-blocking unavailable check", async () => 
   expect(screen.queryByText(/GitHub requested another check after/)).toBeNull();
 });
 
-it("keeps editor maintenance eligibility separate from usability", () => {
-  const selected: ToolRecord = {
-    tool: "VSCodium", installedVersion: "1.106.0.25351", availableVersion: null,
-    updateAvailable: false, updateCheck: "native", updateReason: "applicationMaintenanceUnverified",
-  };
-  expect(updateInspectionIncomplete([{status: "PASS", message: "VSCodium: verified"}], [selected])).toBe(false);
-  expect(toolExplanation(selected)).toContain("separate review");
-  expect(toolExplanation(selected)).not.toMatch(/retry|support report|repair|Python/i);
-});
+it.each(["VSCodium", "PyCharm", "DBeaver", "Chrome", "Firefox"])(
+  "keeps %s maintenance eligibility separate from usability",
+  (tool) => {
+    const selected: ToolRecord = {
+      tool,
+      installedVersion: "1.106.0.25351",
+      availableVersion: null,
+      updateAvailable: false,
+      updateCheck: "native",
+      updateReason: "applicationMaintenanceUnverified",
+    };
+    expect(
+      updateInspectionIncomplete(
+        [{ status: "PASS", message: `${tool}: verified` }],
+        [selected],
+      ),
+    ).toBe(false);
+    expect(toolExplanation(selected)).toContain("separate review");
+    expect(toolExplanation(selected)).not.toMatch(
+      /retry|support report|repair|Python/i,
+    );
+  },
+);
 
 it("keeps Node package-version differences informational without requesting a retry", () => {
   const selected: ToolRecord = {

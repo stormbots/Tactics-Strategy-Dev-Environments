@@ -56,18 +56,16 @@ switch ($pythonRuntime.status) {
     'unusable' { Result FAIL 'Python: Python 3.14 or its pip check did not work. Review the check details.' }
     default { Result FAIL 'Python: SDE could not finish checking Python 3.14. This does not mean it is missing.' }
 }
-foreach ($entry in @(
-    @{Name='DBeaver'; Paths=@('C:\Program Files\DBeaver\dbeaver.exe','C:\Program Files\DBeaver\dbeaver-ce.exe')},
-    @{Name='Chrome'; Paths=@('C:\Program Files\Google\Chrome\Application\chrome.exe','C:\Program Files (x86)\Google\Chrome\Application\chrome.exe')},
-    @{Name='Firefox'; Paths=@('C:\Program Files\Mozilla Firefox\firefox.exe','C:\Program Files (x86)\Mozilla Firefox\firefox.exe')}
-)) {
-    $found = @($entry.Paths | ForEach-Object { Get-Item $_ -ErrorAction SilentlyContinue } | Select-Object -First 1)
-    if ($found.Count) {
-        $productVersion = $found[0].VersionInfo.ProductVersion
-        if ($productVersion -match '\d+(?:\.\d+)+(?:[^\s]*)?') { $installed[$entry.Name] = $Matches[0] }
-        Result PASS "$($entry.Name): $productVersion"
-    }
-    else { Result FAIL "$($entry.Name): not installed" }
+. (Join-Path $PSScriptRoot 'ApplicationLocations.ps1')
+foreach ($application in @('DBeaver','Chrome','Firefox')) {
+    $observation=Get-SkyviewApplicationLocation $application
+    Write-Host ("SKYVIEW_EVENT|application|{0}|{1}" -f $application,($observation | ConvertTo-Json -Compress))
+    if ($observation.status -ceq 'verified') {
+        $installed[$application]=$observation.version
+        Result PASS "$application`: $($observation.version); product and version evidence verified"
+    } elseif ($observation.status -ceq 'notFound') { Result FAIL "$application`: The supported search did not find $application." }
+    elseif ($observation.reason -ceq 'normalUserRequired') { Result FAIL "$application`: Open SDE without administrator privileges to check this app." }
+    else { Result FAIL "$application`: SDE could not finish checking this installation. Review the check details." }
 }
 Check (Test-Path 'C:\Development') 'Development folder'
 . (Join-Path $PSScriptRoot 'PyCharmLocation.ps1')

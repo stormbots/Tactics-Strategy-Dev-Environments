@@ -84,6 +84,20 @@ if ($pycharm.status -eq 'verified') {
     if ($pycharmPass.Count -ne 1 -or $pycharmFail.Count -ne 0 -or -not $pycharm.runtimeVersion) { throw 'Unverified PyCharm passed.' }
 } elseif ($pycharmPass.Count -ne 0 -or $pycharmFail.Count -ne 1) { throw 'Incomplete PyCharm lost its required failure.' }
 Write-Host 'SDE_WINDOWS_PYCHARM_LOCATION_VALIDATOR_OK'
+foreach ($application in @('DBeaver','Chrome','Firefox')) {
+    $prefix="SKYVIEW_EVENT|application|$application|"
+    $rows=@($lines | Where-Object { ([string]$_).StartsWith($prefix) })
+    if ($rows.Count -ne 1) { throw "Expected one $application observation." }
+    $observation=([string]$rows[0]).Substring($prefix.Length) | ConvertFrom-Json
+    $passed=@($lines | Where-Object { ([string]$_).StartsWith("SKYVIEW_EVENT|validation|PASS|$application`:") })
+    $failed=@($lines | Where-Object { ([string]$_).StartsWith("SKYVIEW_EVENT|validation|FAIL|$application`:") })
+    if ($observation.schema -ne 1 -or $observation.platform -ne 'windows') { throw 'Wrong application observation.' }
+    if ($observation.status -eq 'verified') {
+        if ($passed.Count -ne 1 -or $failed.Count -ne 0 -or -not $observation.version) { throw 'Application pass lacks evidence.' }
+    } elseif ($passed.Count -ne 0 -or $failed.Count -ne 1) { throw 'Unverified application lost its failure.' }
+}
+Write-Host 'SDE_WINDOWS_APPLICATION_LOCATIONS_VALIDATOR_OK'
+
 
 
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
@@ -94,4 +108,5 @@ Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-EditorPreferences.ps1')
 & (Join-Path $PSScriptRoot 'Test-EditorLocation.ps1')
 & (Join-Path $PSScriptRoot 'Test-PyCharmLocation.ps1')
+& (Join-Path $PSScriptRoot 'Test-ApplicationLocations.ps1')
 $global:LASTEXITCODE = 0

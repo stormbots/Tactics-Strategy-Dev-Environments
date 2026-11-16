@@ -158,6 +158,7 @@ sudo install -m 0644 "$SCRIPT_DIR/lib/node_runtime_probe.cjs" "$SKYVIEW_LIB/node
 sudo install -m 0644 "$SCRIPT_DIR/lib/git_preferences.py" "$SKYVIEW_LIB/git_preferences.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_preferences.py" "$SKYVIEW_LIB/editor_preferences.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_settings_probe.cjs" "$SKYVIEW_LIB/editor_settings_probe.cjs"
+sudo install -m 0644 "$SCRIPT_DIR/lib/application_locations.py" "$SKYVIEW_LIB/application_locations.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/pycharm_location.py" "$SKYVIEW_LIB/pycharm_location.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_location.py" "$SKYVIEW_LIB/editor_location.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_identity.cjs" "$SKYVIEW_LIB/editor_identity.cjs"

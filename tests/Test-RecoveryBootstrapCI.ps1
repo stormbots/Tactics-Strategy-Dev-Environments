@@ -5,7 +5,7 @@ Import-Module "$PSHOME\Modules\Microsoft.PowerShell.Security\Microsoft.PowerShel
 $root = 'C:\ProgramData\SkyviewRoboticsCoordination'
 $journal = Join-Path $root 'transaction.json'
 $app = 'C:\Program Files\Skyview Dev Setup\skyview-dev-setup.exe'
-foreach ($helper in @('NodeRuntime.ps1','NodeRuntimeProbe.cjs','GitPreferences.ps1','PyCharmLocation.ps1','EditorLocation.ps1','Inspect-SkyviewEditorLocation.ps1','EditorIdentityProbe.cjs','EditorPreferences.ps1','EditorSettingsProbe.cjs','jsonc-parser/parser.js','jsonc-parser/scanner.js','jsonc-parser/LICENSE.md')) {
+foreach ($helper in @('NodeRuntime.ps1','NodeRuntimeProbe.cjs','GitPreferences.ps1','ApplicationLocations.ps1','PyCharmLocation.ps1','EditorLocation.ps1','Inspect-SkyviewEditorLocation.ps1','EditorIdentityProbe.cjs','EditorPreferences.ps1','EditorSettingsProbe.cjs','jsonc-parser/parser.js','jsonc-parser/scanner.js','jsonc-parser/LICENSE.md')) {
     $installedHelper=Join-Path 'C:\Program Files\Skyview Dev Setup\backend\windows\chocolatey\tools' $helper
     if (-not (Test-Path -LiteralPath $installedHelper -PathType Leaf)) { throw "Installed verification helper missing: $helper" }
 }

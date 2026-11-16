@@ -225,7 +225,8 @@ class ToolMetadata(unittest.TestCase):
             records = {r["tool"]: r for r in tools.records(True)}
         self.assertTrue(records["Git"]["updateAvailable"])
         self.assertEqual(records["Git"]["availableVersion"], "2.44.0")
-        self.assertEqual(records["Firefox"]["updateCheck"], "unavailable")
+        self.assertEqual(records["Firefox"]["updateCheck"], "native")
+        self.assertEqual(records["Firefox"]["updateReason"], "applicationMaintenanceUnverified")
         self.assertFalse(records["Firefox"]["updateAvailable"])
 
     def test_skipped_check_does_not_query_available_versions(self):
@@ -720,6 +721,138 @@ class PyCharmLocations(unittest.TestCase):
         self.assertFalse(record['updateAvailable'])
         self.assertEqual(record['updateReason'], 'applicationMaintenanceUnverified')
         network.assert_not_called()
+
+
+class ApplicationLocations(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        module('editor_location'); module('pycharm_location')
+        cls.app = module('application_locations')
+
+    def setUp(self):
+        import json, zipfile
+        self.json = json
+        self.temp = tempfile.TemporaryDirectory(prefix='sde alternate apps ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.paths = {name: self.root / name for name in self.app.TOOLS}
+        for name, path in self.paths.items():
+            path.mkdir()
+            self.native(path / {'DBeaver': 'dbeaver', 'Chrome': 'chrome', 'Firefox': 'firefox'}[name])
+        dbeaver = self.paths['DBeaver']
+        (dbeaver / 'plugins').mkdir()
+        self.jar = dbeaver / 'plugins/org.jkiss.dbeaver.launcher_1.0.0.jar'
+        with zipfile.ZipFile(self.jar, 'w') as archive:
+            archive.writestr('META-INF/MANIFEST.MF', 'Bundle-SymbolicName: org.jkiss.dbeaver.launcher;singleton:=true\n')
+        (dbeaver / '.eclipseproduct').write_text('name=DBeaver\nid=org.jkiss.dbeaver.product\nversion=26.2.1\n')
+        (dbeaver / 'dbeaver.ini').write_text('-startup\nplugins/org.jkiss.dbeaver.launcher_1.0.0.jar\n-vmargs\n-Dosgi.requiredJavaVersion=21\n')
+        (dbeaver / 'jre/bin').mkdir(parents=True)
+        self.native(dbeaver / 'jre/bin/java')
+        (self.paths['Firefox'] / 'application.ini').write_text('[App]\nName=Firefox\nID={ec8030f7-c20a-464f-9b0e-13a3a9e97384}\nVersion=146.0.1\n')
+        p=patch.object(self.app, 'normal_user', return_value=True);p.start();self.addCleanup(p.stop)
+        p=patch.object(self.app.platform, 'machine', return_value='x86_64');p.start();self.addCleanup(p.stop)
+        self.calls=[]
+
+    def native(self, file):
+        file.write_bytes(b'\x7fELF\x02\x01' + b'\0'*12 + b'\x3e\0fixture-never-executed')
+        file.chmod(0o700)
+
+    def inspect(self, tool, code=0, text=None, complete=True, candidates=None):
+        def run(args, timeout):
+            self.calls.append(args)
+            self.assertGreater(timeout, 0)
+            output = {'DBeaver': 'openjdk 21.0.9 2025-10-21', 'Chrome': 'Google Chrome 143.0.7499.40', 'Firefox': 'Mozilla Firefox 146.0.1'}[tool]
+            return type('Probe', (), dict(code=code, text=text if text is not None else output))()
+        return self.app.inspect(tool, run=run, find=lambda _: (candidates if candidates is not None else [str(self.paths[tool])], [], complete))
+
+    def test_each_alternate_installation_owns_its_product_checks(self):
+        for tool in self.app.TOOLS:
+            with self.subTest(tool=tool):
+                value=self.inspect(tool)
+                self.assertEqual(value['status'], 'verified')
+                self.assertEqual(value['root'], str(self.paths[tool]))
+                self.assertEqual(value['maintenanceEligibility'], 'notEvaluated')
+                target=self.paths[tool] / ('jre/bin/java' if tool == 'DBeaver' else tool.lower())
+                self.assertEqual(self.calls[-1], [str(target), '--version'])
+        self.assertEqual(self.inspect('Firefox', text='Mozilla Firefox 146.0.1esr')['status'], 'verified')
+
+    def test_wrong_browser_brand_version_or_failed_command_never_passes(self):
+        for tool, code, text in [('Chrome', 0, 'Chromium 143.0.7499.40'), ('Firefox', 0, 'Mozilla Firefox 145.0'),
+                                 ('Chrome', 7, 'Google Chrome 143.0.7499.40'), ('Firefox', -1, '')]:
+            self.assertNotEqual(self.inspect(tool, code, text)['status'], 'verified')
+
+    def test_internal_firefox_native_symlink_is_supported_without_escape(self):
+        target=self.paths['Firefox']/'firefox'
+        native=target.with_name('firefox-bin')
+        target.rename(native); target.symlink_to('firefox-bin')
+        self.assertEqual(self.inspect('Firefox')['status'], 'verified')
+        self.assertEqual(self.calls[-1], [str(native), '--version'])
+        target.unlink();target.symlink_to(self.paths['Chrome']/'chrome')
+        self.assertEqual(self.inspect('Firefox')['status'], 'incomplete')
+
+    def test_dbeaver_product_and_startup_identity_checked_before_runtime(self):
+        (self.paths['DBeaver'] / '.eclipseproduct').write_text('name=Other\nid=org.jkiss.dbeaver.product\nversion=26.2.1\n')
+        self.assertEqual(self.inspect('DBeaver')['status'], 'unusable')
+        self.assertEqual(self.calls, [])
+
+    def test_dbeaver_vm_minimum_and_failure_are_required(self):
+        self.assertEqual(self.inspect('DBeaver', text='openjdk 17.0.9')['status'], 'unusable')
+        self.assertEqual(self.inspect('DBeaver', code=7, text='openjdk 21.0.9')['status'], 'unusable')
+        (self.paths['DBeaver'] / 'jre/bin/java').unlink()
+        self.assertEqual(self.inspect('DBeaver')['status'], 'incomplete')
+
+    def test_jar_escape_and_wrong_bundle_do_not_execute(self):
+        (self.paths['DBeaver'] / 'dbeaver.ini').write_text('-startup\n../untrusted.jar\n')
+        self.assertEqual(self.inspect('DBeaver')['status'], 'incomplete')
+        self.assertEqual(self.calls, [])
+        (self.paths['DBeaver'] / 'dbeaver.ini').write_text('-startup\nplugins/org.jkiss.dbeaver.launcher_1.0.0.jar\n')
+        import zipfile
+        with zipfile.ZipFile(self.jar, 'w') as archive:
+            archive.writestr('META-INF/MANIFEST.MF', 'Bundle-SymbolicName: other.product\n')
+        self.assertEqual(self.inspect('DBeaver')['status'], 'unusable')
+        self.assertEqual(self.calls, [])
+
+    def test_missing_unknown_and_elevated_states_remain_distinct(self):
+        self.assertEqual(self.inspect('Chrome', candidates=[])['status'], 'notFound')
+        self.assertEqual(self.inspect('Chrome', candidates=[], complete=False)['status'], 'incomplete')
+        with patch.object(self.app, 'normal_user', return_value=False):
+            self.assertEqual(self.inspect('Chrome')['reason'], 'normalUserRequired')
+        self.assertEqual(self.calls, [])
+
+    def test_access_denial_resource_disappearance_and_replaced_target(self):
+        with patch.object(self.app, 'checked', side_effect=PermissionError):
+            self.assertEqual(self.inspect('Firefox')['reason'], 'accessDenied')
+        (self.paths['Firefox'] / 'application.ini').unlink()
+        self.assertEqual(self.inspect('Firefox')['reason'], 'staleRegistration')
+        target=self.paths['Chrome'] / 'chrome'
+        def run(args, timeout):
+            target.write_bytes(target.read_bytes()+b'changed')
+            return type('Probe', (), dict(code=0, text='Google Chrome 143.0.7499.40'))()
+        result=self.app.inspect('Chrome', run=run, find=lambda _: ([str(self.paths['Chrome'])], [], True))
+        self.assertEqual(result['reason'], 'changedDuringCheck')
+
+    def test_selected_app_versions_do_not_grant_apt_update_authority(self):
+        apps={tool:self.inspect(tool) for tool in self.app.TOOLS}
+        with patch.object(tools, 'command', return_value=None):
+            records={r['tool']:r for r in tools.records(True, applications=apps)}
+        for tool in self.app.TOOLS:
+            self.assertEqual(records[tool]['installedVersion'], apps[tool]['version'])
+            self.assertFalse(records[tool]['updateAvailable'])
+            self.assertEqual(records[tool]['updateReason'], 'applicationMaintenanceUnverified')
+
+    def test_unsupported_chrome_architecture_keeps_original_nonblocking_policy(self):
+        with patch.object(self.app.platform, 'machine', return_value='aarch64'):
+            self.assertEqual(self.inspect('Chrome')['status'], 'notApplicable')
+        self.assertEqual(self.calls, [])
+
+    def test_empty_collector_output_cannot_make_three_required_apps_pass(self):
+        lib=self.root/'lib';lib.mkdir();(lib/'application_locations.py').write_text('')
+        source=(ROOT/'linux/Validate-SkyviewStudentDev.sh').read_text()
+        fragment=source[source.index('APPLICATION_LOCATIONS='):source.index('# One selected interpreter')]
+        program='PASS_COUNT=0;FAIL_COUNT=0;WARN_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }\n'+fragment+'\nprintf "COUNTS %s %s %s\\n" "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"'
+        result=subprocess.run(['/bin/bash','-c',program],env={**os.environ,'SCRIPT_DIR':str(self.root),'SKYVIEW_LIB':str(lib)},capture_output=True,text=True,timeout=5)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('COUNTS 0 0 3',result.stdout)
 
 
 if __name__ == "__main__":
