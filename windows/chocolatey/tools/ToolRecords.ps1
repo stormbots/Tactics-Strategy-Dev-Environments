@@ -97,6 +97,12 @@ function Get-SkyviewToolRecords {
                 $candidate=$null; $state='native'; $reason='maintenanceUnverified'
             }
         }
+        if ($tool -eq 'VSCodium') {
+            # Product usability is not Chocolatey ownership or update permission.
+            $candidate=$null
+            $state=if ($CheckUpdates) { 'native' } else { 'notChecked' }
+            $reason=if ($CheckUpdates) { 'applicationMaintenanceUnverified' } else { $null }
+        }
         if ($tool -eq 'PowerShell 7' -and $state -eq 'current') {
             $executableVersion=$null; $packageVersion=$null; $availableVersion=$null
             $executableOk=[version]::TryParse([string]$current,[ref]$executableVersion)

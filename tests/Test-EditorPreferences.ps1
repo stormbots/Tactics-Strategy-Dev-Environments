@@ -54,22 +54,7 @@ try {
             Assert-EditorPreference ($record.status -eq 'unreadable' -and $record.reason -eq 'accessDenied') 'Denied access was mislabeled missing/invalid.'
         } finally { Set-Acl -LiteralPath $path -AclObject $acl }
     }
-    # Run the real extension-list branch with a failed command's partial output.
-    $source=Get-Content (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Validate-SkyviewEnvironment.ps1') -Raw
-    $start=$source.IndexOf('if (Get-Command codium -ErrorAction SilentlyContinue) {')
-    $end=$source.IndexOf('$config = ',$start)
-    $fragment=[scriptblock]::Create($source.Substring($start,$end-$start))
-    $script:editorFailures=0;$script:editorPasses=0
-    function Result($Status,$Message) { if ($Status -eq 'FAIL') { $script:editorFailures++ } }
-    function Check($Condition,$Message) { if ($Condition) { $script:editorPasses++ } else { $script:editorFailures++ } }
-    $originalCodium=${function:codium}
-    try {
-        function codium { $global:LASTEXITCODE=7;return 'esbenp.prettier-vscode' }
-        & $fragment
-        Assert-EditorPreference ($editorFailures -eq 1 -and $editorPasses -eq 0) 'Failed extension listing supplied a partial required pass.'
-    } finally {
-        if ($originalCodium) { ${function:codium}=$originalCodium } else { Remove-Item Function:codium }
-    }
+    # Required extension command failure cases live in Test-EditorLocation.ps1.
     Write-Host "EDITOR_PREFERENCES_CONTRACTS_OK ($count assertions)"
 } finally { [IO.Directory]::Delete($directory,$true) }
 $global:LASTEXITCODE=0

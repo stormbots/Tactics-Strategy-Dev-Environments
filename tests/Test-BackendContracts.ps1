@@ -14,6 +14,7 @@ Copy-Item (Join-Path $root 'windows/chocolatey/tools/*.ps1') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/extensions.txt') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/NodeRuntimeProbe.cjs') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/EditorSettingsProbe.cjs') $fixture
+Copy-Item (Join-Path $root 'windows/chocolatey/tools/EditorIdentityProbe.cjs') $fixture
 Copy-Item (Join-Path $root 'windows/chocolatey/tools/jsonc-parser') $fixture -Recurse
 $validator = Join-Path $fixture 'Test-SkyviewStudentDev.ps1'
 $lines = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $validator 2>&1
@@ -63,10 +64,22 @@ if ($editor.schema -ne 1 -or $editor.component -ne 'VSCodium' -or $editor.scope 
 if ($editor.status -notin @('read','missing','unreadable','invalid','unavailable')) { throw 'Unknown editor observation status.' }
 if ($lines -match '^SKYVIEW_EVENT\|validation\|FAIL\|VSCodium settings (present|file missing)') { throw 'Optional settings still fail required editor functionality.' }
 Write-Host 'SDE_WINDOWS_EDITOR_PREFERENCES_VALIDATOR_OK'
+$locations=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|application\|VSCodium\|' })
+if ($locations.Count -ne 1) { throw 'The real validator must emit one editor location observation.' }
+$location=([string]$locations[0]).Substring('SKYVIEW_EVENT|application|VSCodium|'.Length) | ConvertFrom-Json
+$locationPass=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|PASS\|VSCodium:' })
+$locationFail=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|FAIL\|VSCodium:' })
+if ($location.schema -ne 1 -or $location.platform -ne 'windows') { throw 'Wrong editor location contract.' }
+if ($location.status -eq 'verified') {
+    if ($locationPass.Count -ne 1 -or -not $location.selectionId) { throw 'Editor pass lacks a verified selection.' }
+} elseif ($locationPass.Count -or $locationFail.Count -ne 1) { throw 'Unverified editor was reported as passed.' }
+Write-Host 'SDE_WINDOWS_EDITOR_LOCATION_VALIDATOR_OK'
+
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-Node24Policy.ps1')
 & (Join-Path $PSScriptRoot 'Test-PythonRuntime.ps1')
 & (Join-Path $PSScriptRoot 'Test-NodeRuntime.ps1')
 & (Join-Path $PSScriptRoot 'Test-GitPreferences.ps1')
 & (Join-Path $PSScriptRoot 'Test-EditorPreferences.ps1')
+& (Join-Path $PSScriptRoot 'Test-EditorLocation.ps1')
 $global:LASTEXITCODE = 0
