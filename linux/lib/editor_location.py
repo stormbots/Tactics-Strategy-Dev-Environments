@@ -38,7 +38,8 @@ def query(arguments, timeout):
         return Probe(-1)
     environment = {k: v for k, v in os.environ.items()
                    if k not in ('NODE_OPTIONS', 'NODE_PATH', 'NODE_COMPILE_CACHE', 'NODE_V8_COVERAGE',
-                                'ELECTRON_RUN_AS_NODE', 'VSCODE_DEV', 'VSCODE_CWD')}
+                                'ELECTRON_RUN_AS_NODE', 'VSCODE_DEV', 'VSCODE_CWD',
+                                'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')}
     environment['ELECTRON_RUN_AS_NODE'] = '1'
     try:
         with tempfile.TemporaryDirectory(prefix='sde-editor-check-') as directory:

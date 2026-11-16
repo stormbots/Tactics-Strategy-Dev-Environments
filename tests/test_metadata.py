@@ -615,5 +615,112 @@ class EditorLocations(unittest.TestCase):
         self.assertIn('COUNTS 0 1', result.stdout)
 
 
+class PyCharmLocations(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        module('editor_location')
+        cls.app = module('pycharm_location')
+
+    def setUp(self):
+        import json
+        self.json = json
+        self.temp = tempfile.TemporaryDirectory(prefix='sde PyCharm alternate ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        (self.root / 'bin').mkdir()
+        (self.root / 'jbr/bin').mkdir(parents=True)
+        self.launcher = self.root / 'bin/pycharm'
+        self.runtime = self.root / 'jbr/bin/java'
+        for file in (self.launcher, self.runtime):
+            file.write_bytes(b'\x7fELF\x02\x01' + b'\x00' * 12 + b'\x3e\x00' + b'fixture-never-executed')
+            file.chmod(0o700)
+        self.info = dict(name='PyCharm', productCode='PY', version='2026.1.1', minRequiredJavaVersion=21, launch=[dict(os='Linux', arch='amd64', launcherPath='bin/pycharm', javaExecutablePath='jbr/bin/java')])
+        self.metadata = self.root / 'product-info.json'
+        self.metadata.write_text(json.dumps(self.info))
+        for target, value in [('normal_user', True)]:
+            p = patch.object(self.app, target, return_value=value)
+            p.start(); self.addCleanup(p.stop)
+        p = patch.object(self.app.platform, 'machine', return_value='x86_64')
+        p.start(); self.addCleanup(p.stop)
+        self.calls = []
+
+    def inspect(self, result=None, complete=True, roots=None):
+        def run(args, timeout):
+            self.calls.append(args)
+            self.assertGreater(timeout, 0)
+            return result or type('Probe', (), dict(code=0, text='openjdk 21.0.7 2025-04-15\nOpenJDK Runtime Environment JBR-21.0.7+6'))()
+        return self.app.inspect(run=run, find=lambda: (roots if roots is not None else [str(self.root)], [], complete))
+
+    def test_alternate_bundle_and_own_runtime_verified_without_managed_link(self):
+        before = {p: p.read_bytes() for p in (self.metadata, self.launcher, self.runtime)}
+        value = self.inspect()
+        self.assertEqual(value['status'], 'verified')
+        self.assertEqual(value['version'], '2026.1.1')
+        self.assertEqual(self.calls, [[str(self.runtime), '--version']])
+        self.assertEqual(value['maintenanceEligibility'], 'notEvaluated')
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_wrong_product_and_escaped_runtime_are_not_executed(self):
+        self.metadata.write_text(self.json.dumps(dict(self.info, productCode='IU')))
+        self.assertEqual(self.inspect()['status'], 'unusable')
+        self.assertEqual(self.calls, [])
+        self.metadata.write_text(self.json.dumps(self.info))
+        self.runtime.unlink(); self.runtime.symlink_to(self.launcher)
+        self.assertEqual(self.inspect()['status'], 'incomplete')
+        self.assertEqual(self.calls, [])
+
+    def test_failed_partial_or_non_bundled_runtime_output_does_not_pass(self):
+        for code, text in [(7, 'openjdk 21.0.7\nJBR-21'), (0, 'openjdk 21.0.7'), (0, 'not a runtime'), (-1, '')]:
+            result = type('Probe', (), dict(code=code, text=text))()
+            self.assertNotEqual(self.inspect(result)['status'], 'verified')
+
+    def test_vendor_minimum_runtime_is_required_when_present(self):
+        result = type('Probe', (), dict(code=0, text='openjdk 17.0.9\nJBR-17'))()
+        self.assertEqual(self.inspect(result=result)['status'], 'unusable')
+        self.info.pop('minRequiredJavaVersion')
+        self.metadata.write_text(self.json.dumps(self.info))
+        self.assertEqual(self.inspect(result=result)['status'], 'verified')
+
+    def test_missing_and_incomplete_search_remain_distinct(self):
+        self.assertEqual(self.inspect(roots=[])['status'], 'notFound')
+        self.assertEqual(self.inspect(roots=[], complete=False)['status'], 'incomplete')
+        with patch.object(self.app, 'normal_user', return_value=False):
+            self.assertEqual(self.inspect()['reason'], 'normalUserRequired')
+        self.assertEqual(self.calls, [])
+
+    def test_access_denial_and_disappearance_stay_incomplete(self):
+        with patch.object(self.app, 'layout', side_effect=PermissionError):
+            self.assertEqual(self.inspect()['reason'], 'accessDenied')
+        self.runtime.unlink()
+        self.assertEqual(self.inspect()['reason'], 'staleRegistration')
+        self.assertEqual(self.calls, [])
+
+    def test_changed_files_during_runtime_probe_do_not_pass(self):
+        def run(args, timeout):
+            self.launcher.write_bytes(b'changed')
+            return type('Probe', (), dict(code=0, text='openjdk 21.0.7\nJBR-21'))()
+        value = self.app.inspect(run=run, find=lambda: ([str(self.root)], [], True))
+        self.assertEqual(value['reason'], 'changedDuringCheck')
+        self.assertEqual(value['status'], 'incomplete')
+
+    def test_community_and_script_launcher_supported_without_running_launcher(self):
+        self.info.update(name='PyCharm Community Edition', productCode='PC')
+        self.info['launch'][0]['launcherPath'] = 'bin/pycharm.sh'
+        launcher = self.root / 'bin/pycharm.sh'
+        launcher.write_text('#!/bin/sh\nexit 99\n'); launcher.chmod(0o700)
+        self.metadata.write_text(self.json.dumps(self.info))
+        self.assertEqual(self.inspect()['status'], 'verified')
+        self.assertEqual(self.calls, [[str(self.runtime), '--version']])
+
+    def test_pyCharm_selection_does_not_grant_update_ownership(self):
+        selected = self.inspect()
+        with patch.object(tools, 'command', return_value=None), patch.object(tools.urllib.request, 'urlopen') as network:
+            record = next(r for r in tools.records(True, pycharm=selected) if r['tool'] == 'PyCharm')
+        self.assertEqual(record['installedVersion'], '2026.1.1')
+        self.assertFalse(record['updateAvailable'])
+        self.assertEqual(record['updateReason'], 'applicationMaintenanceUnverified')
+        network.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

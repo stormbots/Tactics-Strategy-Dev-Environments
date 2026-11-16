@@ -4,6 +4,14 @@ import type { Check, ToolRecord } from "./model";
 const fail = (message: string): Check => ({ status: "FAIL", message });
 
 describe("backend validation guidance", () => {
+  it("requests a fresh PyCharm check for an older location-only failure", () => {
+    const result = validationGuidance(
+      fail("Managed PyCharm installation/symlink is missing"),
+    );
+    expect(result?.category).toBe("Diagnostic review");
+    expect(result?.operation).toBeUndefined();
+    expect(result?.next).toContain("Check again");
+  });
   it.each([
     ["Windows", "Git: not installed"],
     ["Windows", "pip: not installed"],
@@ -18,7 +26,6 @@ describe("backend validation guidance", () => {
     ["Mint", "Python 3.14 could not create a venv with pip"],
     ["Mint", "Development workspace missing: /home/student/Development"],
     ["Mint", "VSCodium extension missing: esbenp.prettier-vscode"],
-    ["Mint", "Managed PyCharm installation/symlink is missing"],
   ])("%s check offers full Repair review: %s", (_platform, message) => {
     const result = validationGuidance(fail(message));
     expect(result?.operation).toBe("repair");

@@ -72,7 +72,6 @@ check_command firefox Firefox
 check_command pwsh "PowerShell 7"
 check_command ssh OpenSSH
 check_command 7z 7-Zip
-check_command pycharm PyCharm
 
 if command -v google-chrome >/dev/null 2>&1 || command -v google-chrome-stable >/dev/null 2>&1; then
   pass "Google Chrome found"
@@ -179,11 +178,20 @@ else
   fail "Weekly maintenance timer is not active"
 fi
 
-if [[ -L /opt/pycharm && -x /opt/pycharm/bin/pycharm ]]; then
-  pass "PyCharm managed installation is active at /opt/pycharm"
+PYCHARM_LOCATION="$SCRIPT_DIR/lib/pycharm_location.py"
+[[ -f "$PYCHARM_LOCATION" ]] || PYCHARM_LOCATION="$SKYVIEW_LIB/pycharm_location.py"
+PYCHARM_OUTPUT="$(/usr/bin/python3 "$PYCHARM_LOCATION")"
+PYCHARM_EXIT=$?
+printf '%s\n' "$PYCHARM_OUTPUT"
+if [[ "$PYCHARM_EXIT" -eq 0 && "$PYCHARM_OUTPUT" == SKYVIEW_EVENT\|application\|PyCharm\|* && "$PYCHARM_OUTPUT" == *SKYVIEW_EVENT\|validation\|PASS\|PyCharm:* ]]; then
+  PASS_COUNT=$((PASS_COUNT+1))
+elif [[ "$PYCHARM_EXIT" -eq 10 && "$PYCHARM_OUTPUT" == *SKYVIEW_EVENT\|validation\|FAIL\|PyCharm:* ]]; then
+  FAIL_COUNT=$((FAIL_COUNT+1))
 else
-  fail "Managed PyCharm installation/symlink is missing"
+  fail "PyCharm: SDE could not finish checking this installation. Review the check details."
 fi
+PYCHARM_RECORD="${PYCHARM_OUTPUT%%$'\n'*}"
+PYCHARM_RECORD="${PYCHARM_RECORD#SKYVIEW_EVENT|application|PyCharm|}"
 
 REPO_FILE="$SKYVIEW_ETC/repositories.csv"
 [[ -f "$REPO_FILE" ]] || REPO_FILE="$SCRIPT_DIR/repositories.csv"
@@ -206,7 +214,7 @@ fi
 printf '%s\n' "------------------------------------------------------------"
 TOOL_RECORDS="$SCRIPT_DIR/lib/tool_records.py"
 [[ -f "$TOOL_RECORDS" ]] || TOOL_RECORDS="$SKYVIEW_LIB/tool_records.py"
-printf '%s\n%s' "$NODE_RECORD" "$EDITOR_RECORD" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --runtime-observations || warnv "Tool version and update metadata is unavailable"
+printf '%s\n%s\n%s' "$NODE_RECORD" "$EDITOR_RECORD" "$PYCHARM_RECORD" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --runtime-observations || warnv "Tool version and update metadata is unavailable"
 printf 'RESULT: %d PASS, %d WARN, %d FAIL\n' "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 
 event summary "$FAIL_COUNT" "$PASS_COUNT passed; $WARN_COUNT warnings; $FAIL_COUNT failed"

@@ -74,6 +74,17 @@ if ($location.status -eq 'verified') {
     if ($locationPass.Count -ne 1 -or -not $location.selectionId) { throw 'Editor pass lacks a verified selection.' }
 } elseif ($locationPass.Count -or $locationFail.Count -ne 1) { throw 'Unverified editor was reported as passed.' }
 Write-Host 'SDE_WINDOWS_EDITOR_LOCATION_VALIDATOR_OK'
+$pycharmLines=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|application\|PyCharm\|' })
+if ($pycharmLines.Count -ne 1) { throw 'The real validator must emit one PyCharm observation.' }
+$pycharm=([string]$pycharmLines[0]).Substring('SKYVIEW_EVENT|application|PyCharm|'.Length) | ConvertFrom-Json
+$pycharmPass=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|PASS\|PyCharm:' })
+$pycharmFail=@($lines | Where-Object { [string]$_ -match '^SKYVIEW_EVENT\|validation\|FAIL\|PyCharm:' })
+if ($pycharm.schema -ne 1 -or $pycharm.platform -ne 'windows') { throw 'Wrong PyCharm observation contract.' }
+if ($pycharm.status -eq 'verified') {
+    if ($pycharmPass.Count -ne 1 -or $pycharmFail.Count -ne 0 -or -not $pycharm.runtimeVersion) { throw 'Unverified PyCharm passed.' }
+} elseif ($pycharmPass.Count -ne 0 -or $pycharmFail.Count -ne 1) { throw 'Incomplete PyCharm lost its required failure.' }
+Write-Host 'SDE_WINDOWS_PYCHARM_LOCATION_VALIDATOR_OK'
+
 
 Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-Node24Policy.ps1')
@@ -82,4 +93,5 @@ Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-GitPreferences.ps1')
 & (Join-Path $PSScriptRoot 'Test-EditorPreferences.ps1')
 & (Join-Path $PSScriptRoot 'Test-EditorLocation.ps1')
+& (Join-Path $PSScriptRoot 'Test-PyCharmLocation.ps1')
 $global:LASTEXITCODE = 0
