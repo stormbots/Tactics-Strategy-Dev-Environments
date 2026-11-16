@@ -38,7 +38,7 @@ def candidate_for(package):
         return None
     return result
 
-def records(check_updates, snapshot=None, node=None, editor=None, pycharm=None):
+def records(check_updates, snapshot=None, node=None, editor=None, pycharm=None, applications=None):
     selected = node if node and node.get('status') == 'passed' else {}
     for tool in TOOLS:
         current = available = None
@@ -67,6 +67,11 @@ def records(check_updates, snapshot=None, node=None, editor=None, pycharm=None):
             # accepted maintenance review is a separate, unfinished contract.
             state = 'native' if check_updates else 'notChecked'
             reason = 'applicationMaintenanceUnverified' if check_updates else None
+        elif tool in ('DBeaver', 'Chrome', 'Firefox'):
+            observed = (applications or {}).get(tool, {})
+            current = snapshot.get(tool) if snapshot is not None else observed.get('version') if observed.get('status') == 'verified' else None
+            state = 'native' if check_updates else 'notChecked'
+            reason = 'applicationMaintenanceUnverified' if check_updates else None
         elif tool in PACKAGES:
             package = PACKAGES[tool]
             installed = ("installed\t" + snapshot[tool] if snapshot.get(tool) else None) if snapshot is not None else command("dpkg-query", "-W", "-f=${db:Status-Status}\t${Version}", package)
@@ -92,7 +97,7 @@ def records(check_updates, snapshot=None, node=None, editor=None, pycharm=None):
         yield {"tool": tool, "installedVersion": current, "availableVersion": available,
                "updateAvailable": bool(available), "updateCheck": state,
                "updateReason": reason or ("noCandidate" if state == "unavailable" else None),
-               "source": "Application observation" if tool in ('PyCharm', 'VSCodium') else "Local APT metadata" if tool in PACKAGES else "Node runtime"}
+               "source": "Application observation" if tool in ('PyCharm', 'VSCodium', 'DBeaver', 'Chrome', 'Firefox') else "Local APT metadata" if tool in PACKAGES else "Node runtime"}
 
 if __name__ == "__main__" and "--preview" in sys.argv:
     snapshot = {r["tool"]: r["installedVersion"] for r in json.loads(sys.stdin.read(16384))}
@@ -101,8 +106,9 @@ elif __name__ == "__main__":
     node = None
     editor = None
     pycharm = None
+    applications = {}
     if '--node-observation' in sys.argv or '--runtime-observations' in sys.argv:
-        raw = sys.stdin.read(32769)
+        raw = sys.stdin.read(65537)
         rows = raw.splitlines() if '--runtime-observations' in sys.argv else [raw]
         try:
             value = json.loads(rows[0]) if rows and len(rows[0]) <= 16384 else None
@@ -115,7 +121,7 @@ elif __name__ == "__main__":
         except (ValueError, TypeError):
             pass
         try:
-            if len(rows) in (2, 3) and len(raw) <= 32768:
+            if len(rows) in (2, 3, 4) and len(raw) <= 65536:
                 app = json.loads(rows[1])
                 if (isinstance(app, dict) and app.get('schema') == 1 and app.get('component') == 'VSCodium'
                         and app.get('platform') == 'linux' and app.get('status') == 'verified'
@@ -125,7 +131,7 @@ elif __name__ == "__main__":
         except (ValueError, TypeError):
             pass
         try:
-            if len(rows) == 3 and len(raw) <= 32768:
+            if len(rows) in (3, 4) and len(raw) <= 65536:
                 app = json.loads(rows[2])
                 if (isinstance(app, dict) and app.get('schema') == 1 and app.get('component') == 'PyCharm'
                         and app.get('platform') == 'linux' and app.get('status') == 'verified'
@@ -134,7 +140,19 @@ elif __name__ == "__main__":
                     pycharm = app
         except (ValueError, TypeError):
             pass
-    for record in records("--check-updates" in sys.argv[1:], node=node, editor=editor, pycharm=pycharm):
+        try:
+            if len(rows) == 4 and len(raw) <= 65536:
+                apps = json.loads(rows[3])
+                if isinstance(apps, list) and len(apps) <= 3:
+                    for app in apps:
+                        if (isinstance(app, dict) and app.get('schema') == 1 and app.get('component') in ('DBeaver', 'Chrome', 'Firefox')
+                                and app.get('platform') == 'linux' and app.get('status') == 'verified'
+                                and app.get('maintenanceEligibility') == 'notEvaluated' and isinstance(app.get('version'), str)
+                                and len(app['version']) <= 80 and re.fullmatch(r'\d+(?:\.\d+){1,3}', app['version'])):
+                            applications[app['component']] = app
+        except (ValueError, TypeError):
+            pass
+    for record in records("--check-updates" in sys.argv[1:], node=node, editor=editor, pycharm=pycharm, applications=applications):
         print("SKYVIEW_EVENT|tool|" + record["tool"] + "|" + json.dumps(record, separators=(",", ":")))
         if record["updateAvailable"]:
             print(f'SKYVIEW_EVENT|update|available|{record["tool"]}: {record["installedVersion"]} to {record["availableVersion"]}')

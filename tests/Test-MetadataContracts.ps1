@@ -22,7 +22,7 @@ Assert ($git.updateAvailable -and $git.availableVersion -eq '2.44.0') 'Git updat
 Assert ($node.updateAvailable -and $node.availableVersion -eq '24.21.0') 'Pinned Node family update missing.'
 Assert (-not ($records | Where-Object tool -eq Python).updateAvailable) 'Python runtime boundary violated.'
 Assert (($records | Where-Object tool -eq Chrome).updateCheck -eq 'native') 'Chrome must use native updates.'
-Assert (($records | Where-Object tool -eq Firefox).updateCheck -eq 'unavailable') 'Untracked tool incorrectly reported current.'
+Assert (($records | Where-Object tool -eq Firefox).updateCheck -eq 'native' -and ($records | Where-Object tool -eq Firefox).updateReason -eq 'applicationMaintenanceUnverified' -and -not ($records | Where-Object tool -eq Firefox).updateAvailable) 'Application discovery granted unverified update authority.'
 $script:FeedFailure = $true
 $records = @(Get-SkyviewToolRecords -Installed $installed -CheckUpdates $true)
 Assert (($records | Where-Object tool -eq Git).updateCheck -eq 'unavailable') 'Feed failure incorrectly reported no updates.'

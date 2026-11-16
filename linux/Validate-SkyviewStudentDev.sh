@@ -67,21 +67,44 @@ TARGET_HOME="$HOME"
 info "Configured student/shared user: ${TARGET_USER:-unknown} (${TARGET_HOME:-unknown})"
 
 check_command gh "GitHub CLI"
-check_command dbeaver DBeaver
-check_command firefox Firefox
 check_command pwsh "PowerShell 7"
 check_command ssh OpenSSH
 check_command 7z 7-Zip
 
-if command -v google-chrome >/dev/null 2>&1 || command -v google-chrome-stable >/dev/null 2>&1; then
-  pass "Google Chrome found"
-else
-  if [[ "$(dpkg --print-architecture 2>/dev/null)" == "amd64" ]]; then
-    fail "Google Chrome not found"
-  else
-    warnv "Google Chrome not found; automated Chrome parity is only enforced on amd64"
+APPLICATION_LOCATIONS="$SCRIPT_DIR/lib/application_locations.py"
+[[ -f "$APPLICATION_LOCATIONS" ]] || APPLICATION_LOCATIONS="$SKYVIEW_LIB/application_locations.py"
+APPLICATION_OUTPUT="$(/usr/bin/python3 "$APPLICATION_LOCATIONS")"
+APPLICATION_EXIT=$?
+printf '%s\n' "$APPLICATION_OUTPUT"
+declare -A APPLICATION_SEEN=() APPLICATION_OBS=()
+APPLICATION_FAILURES=0
+APPLICATION_RECORDS='['
+while IFS= read -r application_line; do
+  for application in DBeaver Chrome Firefox; do
+    if [[ "$application_line" == SKYVIEW_EVENT\|application\|"$application"\|* ]]; then
+      APPLICATION_OBS[$application]=$(( ${APPLICATION_OBS[$application]:-0}+1 ))
+      [[ "$APPLICATION_RECORDS" == '[' ]] || APPLICATION_RECORDS+=','
+      application_prefix="SKYVIEW_EVENT|application|$application|"
+      APPLICATION_RECORDS+="${application_line#"$application_prefix"}"
+    fi
+    for application_status in PASS FAIL WARNING; do
+      if [[ "$application_line" == SKYVIEW_EVENT\|validation\|"$application_status"\|"$application":* ]]; then
+        APPLICATION_SEEN[$application]=$(( ${APPLICATION_SEEN[$application]:-0}+1 ))
+        case "$application_status" in
+          PASS) PASS_COUNT=$((PASS_COUNT+1)) ;;
+          FAIL) FAIL_COUNT=$((FAIL_COUNT+1)); APPLICATION_FAILURES=$((APPLICATION_FAILURES+1)) ;;
+          WARNING) WARN_COUNT=$((WARN_COUNT+1)) ;;
+        esac
+      fi
+    done
+  done
+done <<< "$APPLICATION_OUTPUT"
+APPLICATION_RECORDS+=']'
+for application in DBeaver Chrome Firefox; do
+  if [[ "${APPLICATION_OBS[$application]:-0}" -ne 1 || "${APPLICATION_SEEN[$application]:-0}" -ne 1 || ( "$APPLICATION_EXIT" -ne 0 && "$APPLICATION_EXIT" -ne 10 ) || ( "$APPLICATION_EXIT" -eq 10 && "$APPLICATION_FAILURES" -eq 0 ) ]]; then
+    fail "$application: SDE could not finish checking this installation. Review the check details."
   fi
-fi
+done
 
 # One selected interpreter owns every Node/npm probe. No bare npm fallback.
 NODE_RUNTIME="$SCRIPT_DIR/lib/node_runtime.py"
@@ -214,7 +237,7 @@ fi
 printf '%s\n' "------------------------------------------------------------"
 TOOL_RECORDS="$SCRIPT_DIR/lib/tool_records.py"
 [[ -f "$TOOL_RECORDS" ]] || TOOL_RECORDS="$SKYVIEW_LIB/tool_records.py"
-printf '%s\n%s\n%s' "$NODE_RECORD" "$EDITOR_RECORD" "$PYCHARM_RECORD" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --runtime-observations || warnv "Tool version and update metadata is unavailable"
+printf '%s\n%s\n%s\n%s' "$NODE_RECORD" "$EDITOR_RECORD" "$PYCHARM_RECORD" "$APPLICATION_RECORDS" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --runtime-observations || warnv "Tool version and update metadata is unavailable"
 printf 'RESULT: %d PASS, %d WARN, %d FAIL\n' "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 
 event summary "$FAIL_COUNT" "$PASS_COUNT passed; $WARN_COUNT warnings; $FAIL_COUNT failed"

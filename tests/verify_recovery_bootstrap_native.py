@@ -22,7 +22,7 @@ def main(package):
         raise RuntimeError('Disposable root GitHub runner required.')
     for name in ('node_runtime.py', 'node_runtime_probe.cjs', 'git_preferences.py',
                  'editor_preferences.py', 'editor_settings_probe.cjs',
-                 'pycharm_location.py', 'editor_location.py', 'editor_identity.cjs',
+                 'application_locations.py', 'pycharm_location.py', 'editor_location.py', 'editor_identity.cjs',
                  'jsonc-parser/parser.js', 'jsonc-parser/scanner.js', 'jsonc-parser/LICENSE.md'):
         assert Path('/usr/lib/Skyview Dev Setup/backend/linux/lib', name).is_file(), 'Packaged verification helper missing'
     journal = ROOT / 'transaction.json'

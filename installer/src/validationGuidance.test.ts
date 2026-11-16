@@ -4,6 +4,19 @@ import type { Check, ToolRecord } from "./model";
 const fail = (message: string): Check => ({ status: "FAIL", message });
 
 describe("backend validation guidance", () => {
+  it.each([
+    "DBeaver: not installed",
+    "Chrome: not installed",
+    "Firefox: not installed",
+    "DBeaver not found",
+    "Firefox not found",
+    "Google Chrome not found",
+  ])("refreshes an old application-location check: %s", (message) => {
+    const result = validationGuidance(fail(message));
+    expect(result?.category).toBe("Diagnostic review");
+    expect(result?.operation).toBeUndefined();
+    expect(result?.next).toContain("Check again");
+  });
   it("requests a fresh PyCharm check for an older location-only failure", () => {
     const result = validationGuidance(
       fail("Managed PyCharm installation/symlink is missing"),
@@ -15,14 +28,12 @@ describe("backend validation guidance", () => {
   it.each([
     ["Windows", "Git: not installed"],
     ["Windows", "pip: not installed"],
-    ["Windows", "Chrome: not installed"],
     ["Windows", "Development folder"],
     ["Windows", "Editor extension: EditorConfig.EditorConfig"],
     ["Windows", "Windows long paths enabled"],
     ["Windows", "Windows developer mode enabled"],
     ["Mint", "GitHub CLI not found"],
     ["Mint", "Python 3.14 not found"],
-    ["Mint", "Google Chrome not found"],
     ["Mint", "Python 3.14 could not create a venv with pip"],
     ["Mint", "Development workspace missing: /home/student/Development"],
     ["Mint", "VSCodium extension missing: esbenp.prettier-vscode"],
