@@ -188,8 +188,8 @@ export async function saveSupportReport(html: string): Promise<string | null> {
   if (native) return invoke("save_support_report", { html });
   return "Preview — no file was written";
 }
-export async function open(destination: Destination) {
-  if (native) await invoke("open_destination", { destination });
+export async function open(destination: Destination, selectionId?: string) {
+  if (native) await invoke("open_destination", { destination, selectionId: selectionId ?? null });
 }
 
 let previewPaused = false;

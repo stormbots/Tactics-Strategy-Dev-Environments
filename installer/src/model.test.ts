@@ -27,7 +27,7 @@ const valid = [
 ];
 describe("structured protocol", () => {
   it("carries runtime and preference data without making it validation success", () => {
-    for (const kind of ["runtime", "preferences"]) {
+    for (const kind of ["runtime", "preferences", "application"]) {
       const line = `SKYVIEW_EVENT|${kind}|VSCodium|{"status":"read"}`;
       expect(parseEvent(line)?.kind).toBe(kind);
       expect(checksFrom([line])).toHaveLength(0);

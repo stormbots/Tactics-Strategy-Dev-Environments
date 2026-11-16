@@ -33,15 +33,6 @@ check_command() {
   if command -v "$cmd" >/dev/null 2>&1; then
     local version=""
     case "$cmd" in
-      codium)
-        version="$(codium --version 2>/dev/null)"
-        local editor_exit=$?
-        version="${version%%$'\n'*}"
-        if [[ "$editor_exit" -ne 0 || ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.+-]+)?$ ]]; then
-          fail "VSCodium: SDE could not finish checking the editor command."
-          return
-        fi
-        ;;
       git|gh|pwsh|python3.14) version="$("$cmd" --version 2>/dev/null | head -n1)" ;;
     esac
     pass "$label${version:+: $version}"
@@ -76,7 +67,6 @@ TARGET_HOME="$HOME"
 info "Configured student/shared user: ${TARGET_USER:-unknown} (${TARGET_HOME:-unknown})"
 
 check_command gh "GitHub CLI"
-check_command codium VSCodium
 check_command dbeaver DBeaver
 check_command firefox Firefox
 check_command pwsh "PowerShell 7"
@@ -155,31 +145,28 @@ esac
 EXT_FILE=""
 [[ -f "$SKYVIEW_SHARE/extensions.txt" ]] && EXT_FILE="$SKYVIEW_SHARE/extensions.txt"
 [[ -z "$EXT_FILE" && -f "$SCRIPT_DIR/extensions.txt" ]] && EXT_FILE="$SCRIPT_DIR/extensions.txt"
-if command -v codium >/dev/null 2>&1; then
-  if [[ -z "$EXT_FILE" || ! -r "$EXT_FILE" ]]; then
-    fail "VSCodium: SDE could not read the list of required extensions."
-  else
-  INSTALLED_EXT="$(mktemp)"
-  if [[ "$(id -u)" -eq 0 && -n "$TARGET_USER" ]]; then
-    runuser -u "$TARGET_USER" -- env HOME="$TARGET_HOME" codium --list-extensions > "$INSTALLED_EXT" 2>/dev/null
-  else
-    env HOME="$TARGET_HOME" codium --list-extensions > "$INSTALLED_EXT" 2>/dev/null
+EDITOR_LOCATION="$SCRIPT_DIR/lib/editor_location.py"
+[[ -f "$EDITOR_LOCATION" ]] || EDITOR_LOCATION="$SKYVIEW_LIB/editor_location.py"
+EDITOR_OUTPUT="$(/usr/bin/python3 "$EDITOR_LOCATION" --validate "$EXT_FILE")"
+EDITOR_EXIT=$?
+printf '%s\n' "$EDITOR_OUTPUT"
+# Preserve each required failure count from the helper's explicit records.
+EDITOR_FAILURES=0
+EDITOR_RESULTS=0
+EDITOR_OBSERVATIONS=0
+while IFS= read -r editor_line; do
+  [[ "$editor_line" == SKYVIEW_EVENT\|validation\|PASS\|* ]] && PASS_COUNT=$((PASS_COUNT+1))
+  [[ "$editor_line" == SKYVIEW_EVENT\|application\|VSCodium\|* ]] && EDITOR_OBSERVATIONS=$((EDITOR_OBSERVATIONS+1))
+  [[ "$editor_line" == SKYVIEW_EVENT\|validation\|PASS\|VSCodium:* || "$editor_line" == SKYVIEW_EVENT\|validation\|FAIL\|VSCodium:* ]] && EDITOR_RESULTS=$((EDITOR_RESULTS+1))
+  if [[ "$editor_line" == SKYVIEW_EVENT\|validation\|FAIL\|* ]]; then
+    FAIL_COUNT=$((FAIL_COUNT+1)); EDITOR_FAILURES=$((EDITOR_FAILURES+1))
   fi
-  if [[ "$?" -ne 0 ]]; then
-    fail "VSCodium: SDE could not finish checking the installed extensions."
-  else
-  while IFS= read -r ext; do
-    [[ -z "$ext" || "$ext" =~ ^[[:space:]]*# ]] && continue
-    if grep -Fxiq "$ext" "$INSTALLED_EXT"; then
-      pass "VSCodium extension installed: $ext"
-    else
-      fail "VSCodium extension missing: $ext"
-    fi
-  done < "$EXT_FILE"
-  fi
-  rm -f "$INSTALLED_EXT"
-  fi
+done <<< "$EDITOR_OUTPUT"
+if [[ "$EDITOR_RESULTS" -eq 0 || "$EDITOR_OBSERVATIONS" -ne 1 || ( "$EDITOR_EXIT" -ne 0 && "$EDITOR_FAILURES" -eq 0 ) ]]; then
+  fail "VSCodium: SDE could not finish checking the editor installation."
 fi
+EDITOR_RECORD="${EDITOR_OUTPUT%%$'\n'*}"
+EDITOR_RECORD="${EDITOR_RECORD#SKYVIEW_EVENT|application|VSCodium|}"
 
 if systemctl is-enabled skyview-student-dev-update.timer >/dev/null 2>&1; then
   pass "Weekly maintenance timer is enabled"
@@ -219,7 +206,7 @@ fi
 printf '%s\n' "------------------------------------------------------------"
 TOOL_RECORDS="$SCRIPT_DIR/lib/tool_records.py"
 [[ -f "$TOOL_RECORDS" ]] || TOOL_RECORDS="$SKYVIEW_LIB/tool_records.py"
-printf '%s' "$NODE_RECORD" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --node-observation || warnv "Tool version and update metadata is unavailable"
+printf '%s\n%s' "$NODE_RECORD" "$EDITOR_RECORD" | /usr/bin/python3 "$TOOL_RECORDS" "${1:-}" --runtime-observations || warnv "Tool version and update metadata is unavailable"
 printf 'RESULT: %d PASS, %d WARN, %d FAIL\n' "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"
 
 event summary "$FAIL_COUNT" "$PASS_COUNT passed; $WARN_COUNT warnings; $FAIL_COUNT failed"

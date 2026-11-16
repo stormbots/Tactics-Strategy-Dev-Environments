@@ -91,6 +91,8 @@ export const failureText: Record<string, string> = {
     "The running SDE version could not be compared. Check About and collect a support report; no newer release is inferred.",
 };
 export function toolExplanation(t: ToolRecord): string {
+  if (t.updateReason === "applicationMaintenanceUnverified")
+    return `SDE has not confirmed that it can update this ${t.tool} installation. Updates need a separate review.`;
   if (t.updateReason === "maintenanceUnverified")
     return "The checked Node version differs from SDE's software records. Updates for this installation need a separate review.";
   if (t.updateReason === "metadataMismatch")
