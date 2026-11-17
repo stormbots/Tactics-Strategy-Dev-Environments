@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it } from "../testing/unitApi";
 import { editorLocation, selectedEditorId } from "./editorLocation";
 
 const record = {

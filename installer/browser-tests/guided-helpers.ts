@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { type Page } from "../testing/browserApi";
 export async function disclosure(page: Page, name: string) {
   const summary = page.getByText(name, { exact: true });
   if (!((await summary.locator("..").getAttribute("open")) !== null))

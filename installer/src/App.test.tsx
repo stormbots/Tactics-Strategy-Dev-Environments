@@ -2,7 +2,7 @@ import * as readQueue from "./nativeReadQueue";
 import { StrictMode } from "react";
 import type { Report } from "./model";
 import * as updateApi from "./updateDiscovery";
-import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "../testing/unitApi";
 import {
   render,
   screen,
@@ -65,6 +65,7 @@ function interrupted(source: "machine" | "user" = "machine"): RecoveryState {
 vi.mock("./bridge", () => ({
   native: false,
   appVersion: "1.2.0",
+  setSelfUpdatePaused: vi.fn(async () => { throw new Error("No policy change is authorized in this fixture"); }),
   inspectSelfUpdate: vi.fn(async () => ({
     paused: true,
     policyChangedAt: null,
@@ -178,7 +179,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
   expect(
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
   ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Run validation" }));
   await screen.findByRole("heading", { name: "Review an interruption" });
   expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(
     acknowledgmentsBefore,

@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { expect, it, vi } from "../testing/unitApi";
 import { NativeReadQueue, type ReadSequence } from "./nativeReadQueue";
 
 function deferred<T>() {

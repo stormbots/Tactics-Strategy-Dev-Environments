@@ -5,7 +5,7 @@ import {
   chooseZoom,
   closeAppearance,
 } from "./appearance-helpers";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../testing/browserApi";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const levels = [90, 100, 115, 130, 150];
