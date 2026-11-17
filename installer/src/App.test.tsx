@@ -1696,3 +1696,147 @@ it("keeps a queued explicit check busy and rejects duplicate clicks before admis
   );
   sequence.mockRestore();
 });
+
+const accessDeniedMessage =
+  "SDE could not open the file that stores your VSCodium preferences because it did not have permission to read it. Your settings have not been changed, and VSCodium may still work normally.";
+function editorAccessReport(resolved = false): Report {
+  const preferences = {
+    schema: 1,
+    component: "VSCodium",
+    scope: "standardUserFile",
+    path: "/home/student/.config/VSCodium/User/settings.json",
+    status: resolved ? "missing" : "unreadable",
+    reason: resolved ? "defaults" : "accessDenied",
+    recommendations: [],
+  };
+  return {
+    validation_collected_at: 1793990000,
+    code: resolved ? 1 : 0,
+    success: !resolved,
+    lines: [
+      `SKYVIEW_EVENT|preferences|VSCodium|${JSON.stringify(preferences)}`,
+      resolved
+        ? "SKYVIEW_EVENT|validation|FAIL|Python 3.14 not found"
+        : "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      resolved
+        ? "SKYVIEW_EVENT|validation|INFO|VSCodium has no user preferences file here. It can use its defaults."
+        : `SKYVIEW_EVENT|validation|WARNING|${accessDeniedMessage}`,
+      `SKYVIEW_EVENT|summary|${resolved ? 1 : 0}|Done`,
+    ],
+    log_path: "test.log",
+    platform: { label: "Linux Mint 22.3", supported: true },
+  };
+}
+async function openEditorAccessReview() {
+  vi.mocked(inspect).mockResolvedValueOnce(editorAccessReport());
+  const rendered = render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(screen.getByRole("button", { name: "Validation" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review access problem" }),
+  );
+  await screen.findByRole("region", { name: "VSCodium access review" });
+  return rendered;
+}
+it("rechecks VSCodium access in place and clears only that finding from fresh evidence", async () => {
+  const before = vi.mocked(operate).mock.calls.length;
+  const { container } = await openEditorAccessReview();
+  expect(
+    (
+      await axe.run(container, {
+        rules: { "color-contrast": { enabled: false } },
+      })
+    ).violations,
+  ).toEqual([]);
+  expect(
+    screen.getByText("/home/student/.config/VSCodium/User/settings.json"),
+  ).toBeTruthy();
+  expect(vi.mocked(operate).mock.calls.length).toBe(before);
+  let finish!: (report: Report) => void;
+  vi.mocked(operate).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const recheck = screen.getByRole("button", { name: "Check VSCodium again" });
+  fireEvent.click(recheck);
+  fireEvent.click(recheck);
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  expect(
+    screen.getByRole("heading", { name: "Validation results" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("region", { name: "VSCodium access review" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: "Checking…" }).hasAttribute("disabled"),
+  ).toBe(true);
+  await act(async () => finish(editorAccessReport(true)));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: "Review access problem" }),
+    ).toBeNull(),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Validation results" }),
+  ).toBeTruthy();
+  expect(screen.getByText("Python 3.14 not found")).toBeTruthy();
+  expect(
+    vi
+      .mocked(operate)
+      .mock.calls.slice(before)
+      .map((call) => call[0]),
+  ).toEqual(["validate"]);
+});
+it("keeps failed access review open and retains earlier evidence after incomplete collection", async () => {
+  await openEditorAccessReview();
+  vi.mocked(operate).mockResolvedValueOnce(editorAccessReport());
+  fireEvent.click(screen.getByRole("button", { name: "Check VSCodium again" }));
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Check VSCodium again" })
+        .hasAttribute("disabled"),
+    ).toBe(false),
+  );
+  expect(
+    screen.getByRole("region", { name: "VSCodium access review" }),
+  ).toBeTruthy();
+  vi.mocked(operate).mockResolvedValueOnce({
+    ...editorAccessReport(),
+    code: 1,
+    success: false,
+    lines: ["SKYVIEW_EVENT|error|collection|The new check did not finish"],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Check VSCodium again" }));
+  await screen.findByText(/The earlier results are still shown below/);
+  expect(
+    screen.getByRole("region", { name: "VSCodium access review" }),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("button", { name: "Check VSCodium again" })
+      .hasAttribute("disabled"),
+  ).toBe(false);
+});
+it("does not redirect back to access review when a check finishes after navigation", async () => {
+  await openEditorAccessReview();
+  let finish!: (report: Report) => void;
+  vi.mocked(operate).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Check VSCodium again" }));
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  fireEvent.click(screen.getByRole("button", { name: "About" }));
+  const heading = screen.getByRole("heading", { level: 1 });
+  const label = heading.textContent;
+  await act(async () => finish(editorAccessReport(true)));
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(label);
+  expect(
+    screen.queryByRole("heading", { name: "Validation results" }),
+  ).toBeNull();
+});
