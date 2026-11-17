@@ -71,3 +71,19 @@ it("fake time and awaited rejection assertions retain failure semantics", async 
   });
   assert.throws(() => expect("same").not.toBe("same"));
 });
+
+const crossCaseMock = vi
+  .fn(() => "retained implementation")
+  .mockReturnValueOnce("first queued response")
+  .mockReturnValueOnce("second queued response");
+it("a case records its own mock calls", () => {
+  expect(crossCaseMock).not.toHaveBeenCalled();
+  expect(crossCaseMock()).toBe("first queued response");
+  expect(crossCaseMock).toHaveBeenCalledOnce();
+});
+it("the next case has clean call history and retained response queues", () => {
+  expect(crossCaseMock).not.toHaveBeenCalled();
+  expect(crossCaseMock()).toBe("second queued response");
+  expect(crossCaseMock()).toBe("retained implementation");
+  expect(crossCaseMock).toHaveBeenCalledTimes(2);
+});

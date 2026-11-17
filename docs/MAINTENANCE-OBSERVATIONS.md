@@ -23,3 +23,9 @@ Older retained validation failures stay failures until a fresh check replaces th
 This is an observation increment. Explicit leave-disabled persistence, supported full-scope restoration review, its automatic follow-up checks and the accepted connected Overview cards remain follow-up work. There is no new Enable endpoint, policy resumption, automatic retry, task invocation or permission to change packages. Existing Install/Repair effects are unchanged and still need their accepted preservation audit before the new restoration flow is offered.
 
 Full Windows/Mint native, trust, integrity and acceptance checks remain required. Human signing approval, owner UAT of the exact authenticated candidate and separate stable-promotion authorization remain required.
+
+## Test-runner integration
+
+The five maintenance unit cases are explicitly registered alongside the original 313 cases. The assertion baseline retains every original assertion expression in order and adds only the reviewed maintenance assertions. No test assertion is removed or relaxed.
+
+Integration exposed a compatibility gap in the new Node adapter: Vitest 5 clears mock call histories before each case by default. The adapter now preserves that behavior without resetting implementations or queued responses. Two new harness controls verify that calls from an earlier case do not leak into the next case and queued responses still work. This keeps the existing “no operation was called” maintenance assertion meaningful.
