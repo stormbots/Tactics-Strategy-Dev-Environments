@@ -1,5 +1,5 @@
 import { disclosure, otherAction } from "./guided-helpers";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../testing/browserApi";
 import {
   chooseTheme,
   chooseZoom,

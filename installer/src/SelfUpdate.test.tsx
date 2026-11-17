@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "../testing/unitApi";
 import {
   cleanup,
   fireEvent,
@@ -9,6 +9,9 @@ import {
 import { setSelfUpdatePaused } from "./bridge";
 vi.mock("./bridge", () => ({
   appVersion: "1.2.16",
+  native: false,
+  inspectSchedule: vi.fn(async () => { throw new Error("Schedule inspection is not part of this fixture"); }),
+  inspectSelfUpdate: vi.fn(async () => { throw new Error("Policy inspection is not part of this fixture"); }),
   setSelfUpdatePaused: vi.fn(),
 }));
 import { SelfUpdatePanel } from "./DetailsPages";

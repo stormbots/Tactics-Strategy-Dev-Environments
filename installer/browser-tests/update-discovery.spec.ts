@@ -1,5 +1,5 @@
 import { disclosure, otherAction } from "./guided-helpers";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../testing/browserApi";
 import axe from "axe-core";
 import { chooseTheme, chooseZoom, closeAppearance } from "./appearance-helpers";
 for (const theme of ["Light", "Dark"]) {

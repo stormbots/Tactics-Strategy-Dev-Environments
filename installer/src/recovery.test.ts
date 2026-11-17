@@ -1,4 +1,4 @@
-import { expect, it, vi, beforeEach } from "vitest";
+import { expect, it, vi, beforeEach } from "../testing/unitApi";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   acknowledgeMachine,
