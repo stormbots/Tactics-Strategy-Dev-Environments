@@ -1,0 +1,23 @@
+{
+  "name": "sde-tooling-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node build.mjs && node --experimental-test-module-mocks app.test.mjs",
+    "build": "node build.mjs",
+    "smoke": "node smoke.mjs",
+    "test:negative": "node negative-control.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "lucide-react": "0.468.0",
+    "@tauri-apps/api": "2.12.1",
+    "jsdom": "26.1.0",
+    "@testing-library/react": "16.3.3",
+    "axe-core": "4.14.0",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.63.0"
+  }
+}
