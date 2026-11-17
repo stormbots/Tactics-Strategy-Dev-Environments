@@ -632,6 +632,32 @@ it("retains a required schedule failure and its details without inventing an inc
   openDisclosure("Details");
   expect(screen.getByText("Maintenance: missing")).toBeTruthy();
 });
+it("keeps new maintenance observations informational and offers schedule review", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      "SKYVIEW_EVENT|validation|INFO|Weekly maintenance is disabled. Review Schedule.",
+      "SKYVIEW_EVENT|summary|0|Validation completed with 0 failed checks",
+    ],
+    log_path: "validation.log",
+    platform: { label: "Linux Mint 22.3", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(screen.getByRole("button", { name: "Validation" }));
+  expect(screen.getByText("INFORMATION")).toBeTruthy();
+  expect(
+    screen.getAllByText("Weekly maintenance is disabled. Review Schedule.", {
+      selector: "p",
+    }).length,
+  ).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "View Schedule" }));
+  await screen.findByRole("heading", { name: "Scheduled maintenance" });
+  expect(vi.mocked(operate)).not.toHaveBeenCalled();
+});
 function openDisclosure(name: string) {
   const summary = screen.getByText(name, {});
   if (!summary.closest("details")?.open) fireEvent.click(summary);

@@ -5,6 +5,7 @@ import os
 import re
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 TIMER = "skyview-student-dev-update.timer"
@@ -99,7 +100,7 @@ def inspect():
     try:
         timer = show(TIMER)
         if timer.get("LoadState") == "not-found":
-            return {**r, "status": "missing", "note": "Weekly maintenance is not installed. Use Install or Repair on Overview."}
+            return {**r, "status": "missing", "note": "Weekly maintenance is not installed. Review the schedule before choosing any setup changes."}
         if timer.get("LoadState") != "loaded":
             raise OSError("The maintenance timer could not be loaded.")
         enabled = timer.get("UnitFileState") in ("enabled", "enabled-runtime")
@@ -113,11 +114,12 @@ def inspect():
                  frequency=frequency + " (system local time unless the calendar specifies a zone)",
                  nextRun=timestamp(timer.get("NextElapseUSecRealtime")) if active else None,
                  catchUp={"yes": True, "no": False}.get(timer.get("Persistent")),
-                 note="" if active else "The timer is inactive. Use Repair on Overview to restore weekly maintenance.")
+                 note=("Automatic development-tool maintenance will not run on future boots while the timer is disabled."
+                       if not enabled else "" if active else "The timer is enabled but is not waiting for its next run. Review the schedule."))
         # Inspect only the owned service. Do not accept a service name from UI.
         service = show(SERVICE)
         if service.get("LoadState") != "loaded":
-            r["note"] = "Maintenance service information is unavailable. Use Repair on Overview."
+            r["note"] = "SDE could not read the maintenance service information. Review the schedule and save a support report if the check still fails."
             return r
         raw_last = service.get("ExecMainStartTimestamp", "")
         last = timestamp(raw_last)
@@ -148,5 +150,33 @@ def inspect():
         r["note"] = str(error)
     return r
 
+def validation_message(record):
+    """Scheduling is information, never proof of tool health or native activity."""
+    status = record['status']
+    if status == 'disabled':
+        # A disabled unit can remain active until shutdown. Do not claim it
+        # cannot fire in this session or silently stop it.
+        return ('Weekly maintenance is disabled. The timer may still run in this session.'
+                if record['active'] else
+                'Weekly maintenance is disabled. Future automatic development-tool maintenance is not scheduled.') + ' Review Schedule.'
+    if status == 'missing':
+        return 'Weekly maintenance timer is missing. Review Schedule before choosing any setup changes.'
+    if status == 'enabled':
+        if not record['active']:
+            return 'Weekly maintenance timer is enabled but inactive. Review Schedule.'
+        return 'Weekly maintenance timer is enabled. View Schedule for its next run and earlier results.'
+    return 'Weekly maintenance could not be checked. Review Schedule and save a support report if the check still fails.'
+
+
+def main(args):
+    if args not in ([], ['--validation']):
+        raise SystemExit('Unsupported schedule inspection option')
+    record = inspect()
+    if args:
+        print('SKYVIEW_EVENT|validation|INFO|' + validation_message(record))
+    else:
+        print(json.dumps(record, separators=(',', ':')))
+
+
 if __name__ == "__main__":
-    print(json.dumps(inspect(), separators=(",", ":")))
+    main(sys.argv[1:])
