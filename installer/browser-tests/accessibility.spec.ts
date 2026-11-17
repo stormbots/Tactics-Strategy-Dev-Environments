@@ -1,8 +1,8 @@
 import { disclosure, otherAction } from "./guided-helpers";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../testing/browserApi";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-async function audit(page: import("@playwright/test").Page) {
+async function audit(page: import("playwright-core").Page) {
   await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
   const violations = await page.evaluate(async () => {
     const a = (
@@ -21,7 +21,7 @@ async function audit(page: import("@playwright/test").Page) {
   });
   expect(violations).toEqual([]);
 }
-async function beginInstall(page: import("@playwright/test").Page) {
+async function beginInstall(page: import("playwright-core").Page) {
   await otherAction(page, "Install development tools");
   await expect(
     page.getByRole("heading", { name: "Before Install begins" }),

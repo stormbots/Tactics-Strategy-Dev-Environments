@@ -96,7 +96,7 @@ jobs:
         if: needs.scope.outputs.application_required == 'true'
         working-directory: installer
         run: |
-          npx playwright install --with-deps chromium webkit
+          npx playwright-core install --with-deps chromium webkit
           npm run test:browser
       - uses: actions/upload-artifact@v4
         if: needs.scope.outputs.application_required == 'true'

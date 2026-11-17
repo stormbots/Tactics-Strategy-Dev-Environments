@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "../testing/unitApi";
 import { validationGuidance } from "./validationGuidance";
 import type { Check, ToolRecord } from "./model";
 const fail = (message: string): Check => ({ status: "FAIL", message });

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../testing/browserApi";
 import { createRequire } from "node:module";
 import { chooseTheme, closeAppearance } from "./appearance-helpers";
 const require = createRequire(import.meta.url);
