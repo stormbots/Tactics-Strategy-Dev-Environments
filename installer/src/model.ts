@@ -15,6 +15,14 @@ export type ToolRecord = {
     "current" | "notChecked" | "unavailable" | "native" | "inconsistent";
 };
 export type Schedule = {
+  inspectionScope?: "schedule" | "history";
+  inspectionReason?:
+    | "verified"
+    | "notInstalled"
+    | "accessDenied"
+    | "timedOut"
+    | "readFailed"
+    | "unknown";
   status: "enabled" | "disabled" | "missing" | "unavailable";
   active: boolean;
   identifier: string;

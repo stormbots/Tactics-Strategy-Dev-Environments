@@ -38,6 +38,8 @@ function ConvertTo-SkyviewSchedule {
         logFolder = 'C:\ProgramData\SkyviewRobotics\Logs'
         logsAvailable = [bool](Test-Path -LiteralPath 'C:\ProgramData\SkyviewRobotics\Logs' -PathType Container)
         note = ''
+        inspectionScope = 'schedule'
+        inspectionReason = 'verified'
         observedAt = $observed
         createdAt = $null
         lastSuccess = $(if ($result -eq 'success') { $last } else { $null })
@@ -55,6 +57,8 @@ function Get-SkyviewSchedule {
         $code = '{0:X8}' -f ($exception.HResult -band 0xffffffffL)
         $missing = $code -in @('80070002', '80070003')
         [pscustomobject]@{
+            inspectionScope='schedule'
+            inspectionReason=$(if ($missing) { 'notInstalled' } elseif ($code -eq '80070005') { 'accessDenied' } else { 'readFailed' })
             status = $(if ($missing) { 'missing' } else { 'unavailable' }); active=$false
             identifier='\Skyview Robotics - Dev Tool Updates'; frequency='Unavailable'
             nextRun=$null; lastRun=$null; lastResult='unavailable'; resultDetail='Unavailable'

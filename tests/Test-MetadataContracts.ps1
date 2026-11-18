@@ -41,6 +41,7 @@ $xml = '<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Tri
 $task = [pscustomobject]@{ Xml=$xml; Enabled=$true; State=3; LastRunTime=[datetime]'1899-12-30'; NextRunTime=[datetime]'2026-10-11T03:00:00'; LastTaskResult=267011 }
 $result = ConvertTo-SkyviewSchedule -Task $task
 Assert ($result.status -eq 'enabled' -and $result.lastResult -eq 'never') 'Never-run task incorrectly reported success.'
+Assert ($result.inspectionScope -eq 'schedule' -and $result.inspectionReason -eq 'verified') 'Verified schedule cause missing.'
 Assert ($result.catchUp -and $result.frequency -like '*Sunday at 03:00*') 'Actual trigger/settings not inspected.'
 $task.Enabled = $false
 $task.LastRunTime = [datetime]'2026-10-04T03:00:00'
@@ -55,9 +56,11 @@ Assert ($null -eq (ConvertTo-SkyviewSchedule -Task $task).nextRun) 'Disabled tri
 function New-Object { throw [Runtime.InteropServices.COMException]::new('Denied', [int]-2147024891) }
 $result = Get-SkyviewSchedule
 Assert ($result.status -eq 'unavailable' -and $result.note -like '*does not have permission to read*' -and $result.note -like '*teacher or administrator*' -and $result.note -like '*has not been changed*' -and $result.note -notmatch '\bRepair\b') 'Read permission error must explain denied access and safe review without claiming a task change or recommending Repair.'
+Assert ($result.inspectionScope -eq 'schedule' -and $result.inspectionReason -eq 'accessDenied') 'Confirmed access denial was not classified.'
 Remove-Item Function:New-Object
 function New-Object { throw [Runtime.InteropServices.COMException]::new('Missing', [int]-2147024893) }
 Assert ((Get-SkyviewSchedule).status -eq 'missing') 'Missing task incorrectly reported as success.'
+Assert ((Get-SkyviewSchedule).inspectionReason -eq 'notInstalled') 'Confirmed missing task cause lost.'
 Remove-Item Function:New-Object
 Write-Host 'SKYVIEW_METADATA_CONTRACTS_OK'
 # PowerShell executable/package drift must not advertise an equal/older version.
