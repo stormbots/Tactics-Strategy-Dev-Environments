@@ -29,6 +29,7 @@ import {
   toolStatus,
   toolNames,
   parseEvent,
+  checksFrom,
   updateInspectionIncomplete,
   type Check,
   type Mode,
@@ -46,6 +47,7 @@ import {
   type Destination,
 } from "./bridge";
 import { ValidationCheck } from "./ValidationCheck";
+import { completeEditorPreferences } from "./editorPreferences";
 import { selectedEditorId } from "./editorLocation";
 import { operationScope, validationGuidance } from "./validationGuidance";
 import { AppearanceControls } from "./AppearanceControls";
@@ -200,6 +202,10 @@ export default function App() {
   const [focusedPrimary, setFocusedPrimary] =
     useState<OverviewDecision["primary"]>(null);
   const [observedReport, setObservedReport] = useState<Report | null>(null);
+  // View-only results retained while an access review is rechecked. Never used
+  // by readiness, operation review, native admission or execution decisions.
+  const [accessReviewSnapshot, setAccessReviewSnapshot] =
+    useState<Report | null>(null);
   const [outcome, setOutcome] = useState<OperationOutcome | null>(null);
   const reviewed = useRef<{ mode: OperationKind; fingerprint: string } | null>(
     null,
@@ -259,6 +265,18 @@ export default function App() {
     readSequencePending;
   const passes = s.checks.filter((c) => c.status === "PASS").length;
   const fails = s.checks.filter((c) => c.status === "FAIL").length;
+  const accessDisplayReport = accessReviewSnapshot ?? observedReport;
+  const accessObservation = accessDisplayReport
+    ? completeEditorPreferences(accessDisplayReport)
+    : null;
+  const editorAccessPath =
+    accessObservation?.status === "unreadable" &&
+    accessObservation.reason === "accessDenied"
+      ? (accessObservation.path ?? undefined)
+      : undefined;
+  const validationDisplayChecks = accessReviewSnapshot
+    ? checksFrom(accessReviewSnapshot.lines)
+    : s.checks;
   const discovery = useUpdateDiscovery(
     s.tools,
     generation,
@@ -502,10 +520,13 @@ export default function App() {
     selected: Mode,
     confirmed = false,
     acknowledgedUncertainty = false,
+    keepAccessReview = false,
   ) {
     if (busy || actionInFlight.current) return;
     actionInFlight.current = true;
     const navigation = navigationVersion.current;
+    const inAccessReview =
+      selected === "validate" && keepAccessReview && page === "validation";
     setFocusedPrimary(null);
     setReadSequencePending(selected === "validate");
     try {
@@ -564,6 +585,9 @@ export default function App() {
           }
         }
         const before = [...s.checks];
+        if (inAccessReview)
+          setAccessReviewSnapshot((previous) => previous ?? observedReport);
+        else setAccessReviewSnapshot(null);
         reviewed.current = null;
         setOutcome(null);
         setPreviewOpen(false);
@@ -575,7 +599,7 @@ export default function App() {
         setObservedReport(null);
         setGeneration(contextEpoch.current);
         setNotice("");
-        setPage("overview");
+        if (!inAccessReview) setPage("overview");
         runId.current = crypto.randomUUID();
         acceptingLines.current = true;
         dispatch({ type: "start", mode: selected });
@@ -598,6 +622,8 @@ export default function App() {
           if (!mounted.current || request !== validationRequest.current) return;
           acceptingLines.current = false;
           setObservedReport(report);
+          if (inAccessReview && completeEditorPreferences(report))
+            setAccessReviewSnapshot(null);
           if (selected !== "validate")
             setOutcome({
               mode: selected,
@@ -642,6 +668,12 @@ export default function App() {
     } finally {
       actionInFlight.current = false;
       if (mounted.current) setReadSequencePending(false);
+      if (
+        inAccessReview &&
+        mounted.current &&
+        navigation === navigationVersion.current
+      )
+        pageHeading.current?.focus();
     }
   }
   async function acknowledgeRecovery() {
@@ -1310,13 +1342,23 @@ export default function App() {
                 <button
                   className="secondary"
                   disabled={busy}
-                  onClick={() => start("validate")}
+                  onClick={() =>
+                    start("validate", false, false, !!editorAccessPath)
+                  }
                 >
                   <RefreshCw size={16} />
                   Check again
                 </button>
               </div>
             </div>
+            {accessReviewSnapshot && (
+              <p role="status">
+                {busy
+                  ? "Checking again. The earlier results stay below until the new check finishes."
+                  : "SDE couldn’t finish the new preferences check. The earlier results are still shown below. Check again or create a support report."}
+              </p>
+            )}
+            {!busy && s.error && <p role="alert">{s.error}</p>}
             <p className="muted">
               Git identity and GitHub sign-in are optional. They do not cause
               validation to fail.
@@ -1336,7 +1378,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {[...s.checks]
+                {[...validationDisplayChecks]
                   .sort(
                     (a, b) => checkPriority[a.status] - checkPriority[b.status],
                   )
@@ -1345,13 +1387,23 @@ export default function App() {
                       <td>
                         <ValidationCheck
                           check={c}
-                          record={displayTools.find(
-                            (r) => r.tool === toolForCheck(c),
-                          )}
+                          record={
+                            accessReviewSnapshot
+                              ? undefined
+                              : displayTools.find(
+                                  (r) => r.tool === toolForCheck(c),
+                                )
+                          }
+                          stale={!!accessReviewSnapshot}
                           supported={s.platform.supported}
                           busy={busy}
                           onReview={reviewOperation}
                           onSchedule={() => navigate("schedule")}
+                          editorAccessPath={editorAccessPath}
+                          onEditorCheck={() =>
+                            void start("validate", false, false, true)
+                          }
+                          onSupport={() => setReportOpen(true)}
                         />
                       </td>
                       <td>
@@ -1366,7 +1418,9 @@ export default function App() {
                   ))}
               </tbody>
             </table>
-            {!s.checks.length && <p>Run validation to see your results.</p>}
+            {!validationDisplayChecks.length && (
+              <p>Run validation to see your results.</p>
+            )}
           </section>
         ) : page === "schedule" ? (
           <SchedulePage openTarget={openTarget} />

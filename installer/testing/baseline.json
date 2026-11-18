@@ -60,7 +60,10 @@
       "does not redirect navigation when delayed startup validation finishes",
       "does not submit startup validation after unmount while safety was pending",
       "keeps a queued explicit check busy and rejects duplicate clicks before admission",
-      "keeps new maintenance observations informational and offers schedule review"
+      "keeps new maintenance observations informational and offers schedule review",
+      "rechecks VSCodium access in place and clears only that finding from fresh evidence",
+      "keeps failed access review open and retains earlier evidence after incomplete collection",
+      "does not redirect back to access review when a check finishes after navigation"
     ],
     "src/RecoveryIncidentHistory.test.tsx": [
       "confirms selected per-account view deletion without deleting evidence and rejects duplicate clicks",
@@ -361,6 +364,25 @@
       "backend validation guidance never suggests provisioning an unsupported platform",
       "backend validation guidance preserves warnings and supplies manual next steps",
       "backend validation guidance keeps disabled scheduling informational with a read-only review path"
+    ],
+    "src/editorPreferences.test.ts": [
+      "accepts Windows and Linux display locations without turning them into commands",
+      "rejects malformed/ambiguous evidence: {\"schema\":true}",
+      "rejects malformed/ambiguous evidence: {\"component\":\"Other editor\"}",
+      "rejects malformed/ambiguous evidence: {\"scope\":\"workspace\"}",
+      "rejects malformed/ambiguous evidence: {\"status\":\"read\",\"reason\":\"accessDenied\"}",
+      "rejects malformed/ambiguous evidence: {\"reason\":\"unknown\"}",
+      "rejects malformed/ambiguous evidence: {\"path\":\"relative/settings.json\"}",
+      "rejects malformed/ambiguous evidence: {\"path\":\"/tmp/bad\\npath\"}",
+      "rejects malformed/ambiguous evidence: {\"path\":\"/tmp/hidden‮exe\"}",
+      "rejects malformed/ambiguous evidence: {\"path\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+      "rejects malformed/ambiguous evidence: {\"recommendations\":[\"unexpected\"]}",
+      "rejects malformed/ambiguous evidence: {\"command\":\"do something\"}",
+      "does not reuse a valid record when another record is malformed or duplicated",
+      "requires complete collection before settling an earlier finding",
+      "a complete preferences result does not depend on unrelated tool success",
+      "requires all three supported recommendation records for a successful read",
+      "rejects malformed/ambiguous evidence: {\"status\":[\"unreadable\"],\"reason\":\"accessDenied\"}"
     ]
   },
   "browser": [
@@ -1007,6 +1029,18 @@
       "title": "runner conformance: polling failures and cancellation cannot pass",
       "project": "webkit-sidebar",
       "added": true
+    },
+    {
+      "file": "editor-access.spec.ts",
+      "project": "chromium",
+      "title": "VSCodium access review stays in place at 390px",
+      "added": true
+    },
+    {
+      "file": "editor-access.spec.ts",
+      "project": "chromium",
+      "title": "VSCodium access review stays in place at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1080,8 +1114,8 @@
       "sha256": "25b8842aac205ea2ae42712893cb2a78061d89b22dd10799c0276a6556923ea7"
     },
     "src/App.test.tsx": {
-      "count": 405,
-      "sha256": "d47f4e11ff42649b2965aa0312259d285d1cc31cde238a8ff163de6340c7678f"
+      "count": 441,
+      "sha256": "03318bc53745fa98fb0acf15054b9e95e09281db89c247880033fa7638ffa936"
     },
     "src/RecoveryIncidentHistory.test.tsx": {
       "count": 50,
@@ -1166,6 +1200,14 @@
     "src/validationGuidance.test.ts": {
       "count": 66,
       "sha256": "78338a8f0e582fcf20f4b1aa31640578c01f9e442771d73f7f7ea3f51e63e58a"
+    },
+    "src/editorPreferences.test.ts": {
+      "count": 20,
+      "sha256": "8218384f1e822ec563f89c3f714f07178dbca74aa538c36a52d786e89a2d5583"
+    },
+    "browser-tests/editor-access.spec.ts": {
+      "count": 24,
+      "sha256": "52f13a358f8917e226df01d8139975485154dd9fc26f9ad242a3da6f22d0b492"
     }
   },
   "updates": [
@@ -1174,6 +1216,13 @@
       "issue": 174,
       "addedUnitCases": 5,
       "review": "Existing assertion expressions preserved in order; only the five reviewed maintenance cases were added."
+    },
+    {
+      "source": "fe2b57d1e7cd509a4a9adadf0bd378f808e65158",
+      "issue": 161,
+      "addedUnitCases": 20,
+      "addedBrowserCases": 2,
+      "review": "Every main App assertion remains in order; all prepared editor preferences and browser assertion expressions are unchanged. One additional malformed-status regression rejects array coercion before replacing retained display evidence."
     }
   ]
 }

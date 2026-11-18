@@ -1,5 +1,7 @@
 import { validationGuidance, type Guidance } from "./validationGuidance";
 import type { Check, ToolRecord } from "./model";
+import { EditorAccessReview } from "./EditorAccessReview";
+import { editorAccessMessage } from "./editorPreferences";
 
 export function ValidationCheck({
   check,
@@ -8,6 +10,10 @@ export function ValidationCheck({
   busy,
   onReview,
   onSchedule,
+  editorAccessPath,
+  onEditorCheck,
+  onSupport,
+  stale = false,
 }: {
   check: Check;
   record?: ToolRecord;
@@ -15,7 +21,26 @@ export function ValidationCheck({
   busy: boolean;
   onReview: (operation: NonNullable<Guidance["operation"]>) => void;
   onSchedule: () => void;
+  editorAccessPath?: string;
+  onEditorCheck?: () => void;
+  onSupport?: () => void;
+  stale?: boolean;
 }) {
+  if (
+    check.status === "WARNING" &&
+    check.message === editorAccessMessage &&
+    editorAccessPath &&
+    onEditorCheck &&
+    onSupport
+  )
+    return (
+      <EditorAccessReview
+        path={editorAccessPath}
+        busy={busy}
+        onCheck={onEditorCheck}
+        onSupport={onSupport}
+      />
+    );
   const guidance = validationGuidance(check, record, supported);
   if (!guidance) return <>{check.message}</>;
   return (
@@ -28,7 +53,7 @@ export function ValidationCheck({
       {guidance.operation && (
         <button
           className="secondary"
-          disabled={busy}
+          disabled={busy || stale}
           onClick={() => onReview(guidance.operation!)}
           aria-label={`Review ${guidance.category} for ${guidance.title}`}
         >
