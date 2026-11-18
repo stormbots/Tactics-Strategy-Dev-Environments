@@ -60,6 +60,17 @@ export function validationGuidance(
   record?: ToolRecord,
   supported = true,
 ): Guidance | undefined {
+  if (/^Weekly maintenance/.test(check.message))
+    return {
+      ...diagnostics(
+        "Maintenance schedule",
+        check.status === "INFO"
+          ? check.message
+          : "This earlier result needs a fresh schedule check.",
+        "Open Schedule to read the current state, next run and earlier results. Refreshing the schedule does not start maintenance or change its settings.",
+      ),
+      destination: "schedule",
+    };
   if (check.status === "INFO") return;
   if (check.status === "PASS") {
     if (
@@ -204,15 +215,6 @@ export function validationGuidance(
       "Git may still work normally. A different preference alone does not mean it needs repair.",
       `${gitDefaults[message]} You can keep an intentional choice. Run a fresh check to replace this older result. Git identity is optional.`,
     );
-  if (/^Weekly maintenance/.test(message))
-    return {
-      ...diagnostics(
-        "Weekly maintenance needs review",
-        "SDE could not confirm that the managed maintenance schedule is available and enabled. Automatic tool maintenance may be affected.",
-        "Open Schedule to review the task or timer and its last result. Check whether it was intentionally disabled before choosing Repair or changing the schedule.",
-      ),
-      destination: "schedule",
-    };
   if (
     /^(?:Configured repository: |Configured repository missing: )/.test(
       message,

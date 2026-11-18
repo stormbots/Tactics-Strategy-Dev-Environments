@@ -11,6 +11,7 @@ import { writeFileSync } from "node:fs";
 import {
   fn,
   spyOn as maintainedSpyOn,
+  clearAllMocks,
   resetAllMocks,
   restoreAllMocks,
   isMockFunction,
@@ -20,6 +21,10 @@ import { waitFor } from "@testing-library/dom";
 import * as fakeTimers from "@sinonjs/fake-timers";
 export { beforeEach, afterEach };
 export { expect } from "./assertions";
+
+// Preserve Vitest 5's clearMocks default: histories reset before hooks/cases,
+// while mock implementations and queued responses remain intact.
+beforeEach(() => clearAllMocks());
 
 const registered: string[] = [],
   completed: string[] = [],

@@ -54,7 +54,7 @@ Assert ($null -eq (ConvertTo-SkyviewSchedule -Task $task).nextRun) 'Disabled tri
 # COM error fixtures cover the native read-only command's actionable states.
 function New-Object { throw [Runtime.InteropServices.COMException]::new('Denied', [int]-2147024891) }
 $result = Get-SkyviewSchedule
-Assert ($result.status -eq 'unavailable' -and $result.note -like '*cannot read*') 'Read permission error not explained.'
+Assert ($result.status -eq 'unavailable' -and $result.note -like '*does not have permission to read*' -and $result.note -like '*teacher or administrator*' -and $result.note -like '*has not been changed*' -and $result.note -notmatch '\bRepair\b') 'Read permission error must explain denied access and safe review without claiming a task change or recommending Repair.'
 Remove-Item Function:New-Object
 function New-Object { throw [Runtime.InteropServices.COMException]::new('Missing', [int]-2147024893) }
 Assert ((Get-SkyviewSchedule).status -eq 'missing') 'Missing task incorrectly reported as success.'

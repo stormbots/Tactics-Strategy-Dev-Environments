@@ -59,7 +59,8 @@
       "keeps unavailable startup safety separate from tool verification",
       "does not redirect navigation when delayed startup validation finishes",
       "does not submit startup validation after unmount while safety was pending",
-      "keeps a queued explicit check busy and rejects duplicate clicks before admission"
+      "keeps a queued explicit check busy and rejects duplicate clicks before admission",
+      "keeps new maintenance observations informational and offers schedule review"
     ],
     "src/RecoveryIncidentHistory.test.tsx": [
       "confirms selected per-account view deletion without deleting evidence and rejects duplicate clicks",
@@ -261,7 +262,10 @@
       "request/operation freshness maintenance failure remains available without inventing a recovery incident",
       "request/operation freshness late success cannot replace a newer failure or settle a request twice",
       "request/operation freshness a new operation epoch rejects pre-mutation validation, tools and safety",
-      "request/operation freshness reopen starts from absent observations rather than a saved success"
+      "request/operation freshness reopen starts from absent observations rather than a saved success",
+      "request/operation freshness keeps disabled scheduling separate from tools and native safety",
+      "request/operation freshness keeps missing scheduling separate from tools and native safety",
+      "request/operation freshness keeps unavailable scheduling separate from tools and native safety"
     ],
     "src/recovery.test.ts": [
       "uses a fixed input-free native observation and never persists preview state",
@@ -355,7 +359,8 @@
       "backend validation guidance fails safely to diagnostic review for unknown diagnostics: Future check: unknown failure",
       "backend validation guidance fails safely to diagnostic review for unknown diagnostics: <script>alert('example')</script>",
       "backend validation guidance never suggests provisioning an unsupported platform",
-      "backend validation guidance preserves warnings and supplies manual next steps"
+      "backend validation guidance preserves warnings and supplies manual next steps",
+      "backend validation guidance keeps disabled scheduling informational with a read-only review path"
     ]
   },
   "browser": [
@@ -1075,8 +1080,8 @@
       "sha256": "25b8842aac205ea2ae42712893cb2a78061d89b22dd10799c0276a6556923ea7"
     },
     "src/App.test.tsx": {
-      "count": 399,
-      "sha256": "0e6d59adfbe0d62d061dce66b6d4839b7569d0604246eb89a880353bbd6fc6e8"
+      "count": 405,
+      "sha256": "d47f4e11ff42649b2965aa0312259d285d1cc31cde238a8ff163de6340c7678f"
     },
     "src/RecoveryIncidentHistory.test.tsx": {
       "count": 50,
@@ -1131,8 +1136,8 @@
       "sha256": "e5f6b432a5d4d24dabf4d1fd1efe0aa83ff08c9628c9429fb85330c15224fce3"
     },
     "src/overviewDecision.test.ts": {
-      "count": 100,
-      "sha256": "5ff436f48313b2e0a3b9b4be8ec61dc95f796e0a4e08215c9c5be3def8aef36f"
+      "count": 110,
+      "sha256": "ee2bd636e00fcd02b6a7b0f39d4f1f3c8108cda305ec913830d8609925285850"
     },
     "src/recovery.test.ts": {
       "count": 26,
@@ -1159,8 +1164,16 @@
       "sha256": "907f8f8b0e2a6276c97b791b968344961e1fd466f58622310501a39fff677a2c"
     },
     "src/validationGuidance.test.ts": {
-      "count": 58,
-      "sha256": "835480dad99d2f3ce6905959845699d985e1414f9ae35441866e9101393ae030"
+      "count": 66,
+      "sha256": "78338a8f0e582fcf20f4b1aa31640578c01f9e442771d73f7f7ea3f51e63e58a"
     }
-  }
+  },
+  "updates": [
+    {
+      "source": "d77452b865df2c4116e20d3303ca5c6b10da7457",
+      "issue": 174,
+      "addedUnitCases": 5,
+      "review": "Existing assertion expressions preserved in order; only the five reviewed maintenance cases were added."
+    }
+  ]
 }

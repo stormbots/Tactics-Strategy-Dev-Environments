@@ -608,7 +608,7 @@ class EditorLocations(unittest.TestCase):
         helper = lib / 'editor_location.py'
         helper.write_text('')
         source = (ROOT / 'linux/Validate-SkyviewStudentDev.sh').read_text()
-        fragment = source[source.index('EXT_FILE='):source.index('\nif systemctl')]
+        fragment = source[source.index('EXT_FILE='):source.index('\n# Scheduling is observed')]
         program = 'FAIL_COUNT=0; PASS_COUNT=0\nfail() { FAIL_COUNT=$((FAIL_COUNT+1)); }\n' + fragment + '\nprintf "COUNTS %s %s\\n" "$PASS_COUNT" "$FAIL_COUNT"'
         result = subprocess.run(['/bin/bash', '-c', program], env={**os.environ, 'SKYVIEW_SHARE': str(self.root),
                                 'SCRIPT_DIR': str(self.root), 'SKYVIEW_LIB': str(lib)}, capture_output=True, text=True, timeout=5)

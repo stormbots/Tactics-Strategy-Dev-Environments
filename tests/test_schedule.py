@@ -1,5 +1,7 @@
 """Schedule regressions; package managers and development tools never run."""
 import importlib.util
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -104,6 +106,56 @@ class ScheduleHistory(unittest.TestCase):
                 self.assertEqual(publish.call_args.args[0]['lastResult'], expected)
 
 
+class ScheduleValidation(unittest.TestCase):
+    def test_shell_fallback_retains_real_tool_failures_and_warns_only_about_inspection(self):
+        source = (REPO / 'linux/Validate-SkyviewStudentDev.sh').read_text()
+        fragment = source[source.index('SCHEDULE_HELPER='):source.index('PYCHARM_LOCATION=')]
+        with tempfile.TemporaryDirectory(prefix='sde schedule ') as directory:
+            lib = Path(directory) / 'lib'
+            lib.mkdir()
+            (lib / 'schedule.py').write_text('raise SystemExit(1)\n')
+            program = ('PASS_COUNT=2; WARN_COUNT=1; FAIL_COUNT=1\n'
+                       'info() { printf "SKYVIEW_EVENT|validation|INFO|%s\\n" "$*"; }\n' + fragment +
+                       '\nprintf "COUNTS %s %s %s\\n" "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT"')
+            result = subprocess.run(['/bin/bash', '-c', program], text=True,
+                                    capture_output=True, timeout=5,
+                                    env={**os.environ, 'SCRIPT_DIR': directory, 'SKYVIEW_LIB': str(lib)})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('SKYVIEW_EVENT|validation|INFO|Weekly maintenance could not be checked.', result.stdout)
+        self.assertIn('COUNTS 2 1 1', result.stdout)
+
+    def test_schedule_states_are_information_and_keep_their_actual_meaning(self):
+        for status, active, expected in (
+                ('enabled', True, 'timer is enabled. View Schedule'),
+                ('enabled', False, 'enabled but inactive'),
+                ('disabled', False, 'Future automatic development-tool maintenance is not scheduled'),
+                ('disabled', True, 'may still run in this session'),
+                ('missing', False, 'timer is missing'),
+                ('unavailable', False, 'could not be checked')):
+            for history in ('success', 'failure', 'deferred', 'running', 'unavailable'):
+                record = dict(status=status, active=active, lastResult=history)
+                before = dict(record)
+                with self.subTest(status=status, active=active, history=history), \
+                        patch.object(schedule, 'inspect', return_value=record), \
+                        contextlib.redirect_stdout(io.StringIO()) as output:
+                    schedule.main(['--validation'])
+                    line = output.getvalue().strip()
+                    self.assertTrue(line.startswith('SKYVIEW_EVENT|validation|INFO|'))
+                    self.assertIn(expected, line)
+                    self.assertNotIn('Repair', line)
+                    self.assertEqual(record, before)
+
+    def test_json_inspection_contract_is_unchanged_and_other_options_are_rejected(self):
+        record = dict(status='disabled', active=False, lastResult='failure')
+        with patch.object(schedule, 'inspect', return_value=record), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            schedule.main([])
+        self.assertEqual(json.loads(output.getvalue()), record)
+        with patch.object(schedule, 'inspect') as inspect, self.assertRaises(SystemExit):
+            schedule.main(['--enable'])
+        inspect.assert_not_called()
+
+
 @unittest.skipUnless(sys.platform == 'linux' and os.geteuid() == 0,
                      'Protected filesystem checks require disposable Linux root runner')
 class ProtectedHistory(unittest.TestCase):
@@ -184,6 +236,50 @@ class ProtectedHistory(unittest.TestCase):
             subprocess.run(['systemctl', 'reset-failed', unit.name], check=False, timeout=10)
             unit.unlink(missing_ok=True)
             subprocess.run(['systemctl', 'daemon-reload'], check=True, timeout=30)
+
+    def test_real_timer_disabled_and_inactive_states_remain_read_only_information(self):
+        if os.environ.get('SDE_REQUIRE_SCHEDULE_SYSTEMD') != '1':
+            self.skipTest('Real systemd integration is enabled on disposable CI only')
+        self.assertTrue(Path('/run/systemd/system').is_dir(), 'Booted systemd runner required')
+        name = 'skyview-ci-schedule-' + self.root.name
+        timer = Path('/run/systemd/system') / (name + '.timer')
+        service = timer.with_suffix('.service')
+        def systemctl(*args):
+            subprocess.run(['systemctl', *args], check=True, capture_output=True, timeout=30)
+        try:
+            # This harmless fixture cannot fire during CI and uses no real
+            # maintenance task, package manager, project or user preference.
+            service.write_text('[Service]\nType=oneshot\nExecStart=/usr/bin/true\n')
+            timer.write_text('[Timer]\nOnCalendar=2099-01-01 00:00:00 UTC\n'
+                             '[Install]\nWantedBy=timers.target\n')
+            systemctl('daemon-reload')
+            systemctl('enable', '--runtime', timer.name)
+            with patch.object(schedule, 'TIMER', timer.name), patch.object(schedule, 'SERVICE', service.name):
+                for action, status, active, text in (
+                        (None, 'enabled', False, 'enabled but inactive'),
+                        ('start', 'enabled', True, 'timer is enabled'),
+                        ('disable', 'disabled', True, 'may still run in this session'),
+                        ('stop', 'disabled', False, 'not scheduled')):
+                    if action == 'disable':
+                        systemctl('disable', '--runtime', timer.name)
+                    elif action:
+                        systemctl(action, timer.name)
+                    before = schedule.show(timer.name)
+                    with contextlib.redirect_stdout(io.StringIO()) as output:
+                        schedule.main(['--validation'])
+                    self.assertTrue(output.getvalue().startswith('SKYVIEW_EVENT|validation|INFO|'))
+                    self.assertIn(text, output.getvalue())
+                    record = schedule.inspect()
+                    self.assertEqual((record['status'], record['active']), (status, active))
+                    after = schedule.show(timer.name)
+                    for key in ('UnitFileState', 'ActiveState', 'LastTriggerUSec'):
+                        self.assertEqual(after.get(key), before.get(key))
+        finally:
+            subprocess.run(['systemctl', 'stop', timer.name], check=False, capture_output=True, timeout=30)
+            subprocess.run(['systemctl', 'disable', '--runtime', timer.name], check=False, capture_output=True, timeout=30)
+            timer.unlink(missing_ok=True)
+            service.unlink(missing_ok=True)
+            systemctl('daemon-reload')
 
 
 if __name__ == '__main__':

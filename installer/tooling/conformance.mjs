@@ -51,7 +51,7 @@ export async function conformance() {
     throw new Error("Runner conformance failed");
   }
   const result = JSON.parse(await readFile(receipt, "utf8"));
-  assert.equal(result.registered.length, 5);
+  assert.equal(result.registered.length, 7);
   assert.deepEqual(result.registered, result.completed);
   const bundleFixture = join(output, "testing/bundle-fixture");
   await (
@@ -99,6 +99,6 @@ export async function conformance() {
     if (name === "calls") assert.match(failed.text, /99/);
   }
   console.log(
-    "RUNNER_CONFORMANCE_OK (5 positive cases, 7 required failure/cancellation controls; bundled-code control)",
+    "RUNNER_CONFORMANCE_OK (7 positive cases, 7 required failure/cancellation controls; bundled-code control)",
   );
 }

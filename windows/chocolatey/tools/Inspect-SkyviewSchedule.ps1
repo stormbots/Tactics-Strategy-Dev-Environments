@@ -60,7 +60,7 @@ function Get-SkyviewSchedule {
             nextRun=$null; lastRun=$null; lastResult='unavailable'; resultDetail='Unavailable'
             catchUp=$null; logFolder='C:\ProgramData\SkyviewRobotics\Logs'
             logsAvailable=[bool](Test-Path -LiteralPath 'C:\ProgramData\SkyviewRobotics\Logs' -PathType Container)
-            note=$(if ($missing) { 'Weekly maintenance is not installed. Use Install or Repair on Overview.' } elseif ($code -eq '80070005') { 'This account cannot read the task. Use Repair on Overview to restore read access.' } else { "Task Scheduler information could not be read (0x$code)." })
+            note=$(if ($missing) { 'Weekly maintenance is not installed. Review the schedule before choosing any setup changes.' } elseif ($code -eq '80070005') { 'SDE does not have permission to read this task. Check access with your teacher or administrator, then refresh. Your task has not been changed.' } else { "SDE could not read the task information (0x$code). Refresh and save a support report if the check still fails." })
             observedAt=[datetimeoffset]::UtcNow.ToString('o'); createdAt=$null; lastSuccess=$null
         }
     }
