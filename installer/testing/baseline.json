@@ -1,0 +1,1179 @@
+{
+  "unit": {
+    "src/App.test.tsx": [
+      "keeps an interrupted operation unacknowledged after successful validation",
+      "shows machine-only interruptions and keeps changes blocked after passing validation",
+      "acknowledges both sources in one action and returns to ordinary Install preflight without launching",
+      "does not resume a partially acknowledged pair and keeps its saved report reference",
+      "returns to Overview after a safe startup machine acknowledgment without starting a change",
+      "returns to Overview after a safe startup user acknowledgment without starting a change",
+      "explains a nonblocking health warning without reviving the interruption (protected receipt: false)",
+      "explains a nonblocking health warning without reviving the interruption (protected receipt: true)",
+      "unknown activity permits acknowledgment but not continuation; Check Again does not replay work",
+      "unconfirmed machine submission cannot resume or silently retry consent",
+      "cancel forgets the pending request and a later Check Again does not launch it",
+      "refreshes safety after Install confirmation rather than using stale ready findings",
+      "shows unavailable findings as blocked, with diagnostics still accessible",
+      "unreadable account evidence receives source-specific guidance rather than a false machine repair instruction",
+      "retries startup validation without starting Install",
+      "retains a required schedule failure and its details without inventing an incident",
+      "shows a prominent busy indicator while startup validation is pending",
+      "puts streaming installation output beside progress without expanding details",
+      "shows a keyboard-accessible UI with no detected axe violations",
+      "shows graphical validation and labels optional statuses",
+      "offers a retry and focuses the result after a child failure",
+      "shows updates separately from successful validation, including both versions",
+      "reads and refreshes Schedule, displays never-run history, and recovers from errors",
+      "shows the version and approved external links on About",
+      "reviews Repair without starting it and retains the explicit start action",
+      "reviews Update for an available managed update without starting it",
+      "retains unknown diagnostics as plain text and offers diagnostic review",
+      "blocks guidance actions while an operation is streaming checks",
+      "keeps command diagnostics ending in not found on the diagnostic-review path",
+      "never reports ready from partial validation without a successful summary",
+      "keeps one optional-update action and editor access under Other actions",
+      "binds editor Open to the latest verified installation without a frontend path argument",
+      "opens Overview with active safety and no competing mutation",
+      "opens Overview with unknown safety and no competing mutation",
+      "opens Overview with untrusted safety and no competing mutation",
+      "opens Overview with incident safety and no competing mutation",
+      "keeps a focused editor action stable when delayed update discovery changes the next step",
+      "shows a proven native non-start without inventing an incident or re-prompting",
+      "cancelled error text without native non-start evidence stays uncertain",
+      "keeps passed checks separate from an uncertain native mutation outcome",
+      "checks incomplete verification explicitly after reported completion without reinstalling",
+      "Back from an unstarted review submits no operation",
+      "requires review again when options change before confirmation",
+      "navigation during a delayed review inspection does not submit or redirect later",
+      "rapid confirmation and navigation preserve one actual operation and its verification",
+      "reopen forgets an unstarted review and queries current observations",
+      "reopen reconstructs active work honestly without saved progress or replay",
+      "retains an unresolved repair and download diagnostics without an automatic repair loop",
+      "finishing acknowledgment after navigation retains the receipt without replay or redirection",
+      "drops late stream output after completion and while a newer request is active",
+      "Cancel during fresh confirmation inspection abandons the request without reopening review",
+      "unmount during admission discards even a pending read-only operation request",
+      "waits for startup safety before validation and stays checking between phases",
+      "submits only one startup sequence during StrictMode effect replay",
+      "defers startup validation for known active work without inventing a failed check",
+      "keeps unavailable startup safety separate from tool verification",
+      "does not redirect navigation when delayed startup validation finishes",
+      "does not submit startup validation after unmount while safety was pending",
+      "keeps a queued explicit check busy and rejects duplicate clicks before admission",
+      "keeps new maintenance observations informational and offers schedule review"
+    ],
+    "src/RecoveryIncidentHistory.test.tsx": [
+      "confirms selected per-account view deletion without deleting evidence and rejects duplicate clicks",
+      "failed or stale view deletion is not success and leaves the entry available for refresh",
+      "a page containing only deleted views is not reported as absent evidence and retains paging",
+      "unavailable cosmetic preferences leave operational observations visible without a delete action",
+      "keeps machine uncertainty distinct from observed account consent and never offers execution or deletion",
+      "a failed source does not hide the other source or imply empty history",
+      "does not combine ambiguous generations and pages each source independently",
+      "waits while app operations are busy and refresh never replays or acknowledges"
+    ],
+    "src/RecoveryPage.test.tsx": [
+      "shows the requested neutral card with unknown package health",
+      "shows the requested neutral card with healthy package health",
+      "does not show the clear card for active findings or work",
+      "does not show the clear card for unknown findings or work",
+      "does not show the clear card for untrusted findings or work",
+      "does not show the clear card for machine-unavailable findings or work",
+      "does not show the clear card for user-unavailable findings or work",
+      "does not show the clear card for incomplete findings or work",
+      "does not show the clear card for acknowledgment findings or work",
+      "does not show the clear card for pending findings or work",
+      "does not show the clear card for error findings or work",
+      "keeps acknowledgment report failures outside the clear card and disables support while busy",
+      "leads the submitted Windows interruption with one next action and keeps precise evidence collapsed",
+      "does not claim saved machine consent when missing",
+      "does not claim saved machine consent when unavailable",
+      "does not claim saved machine consent when different-source",
+      "does not let the computer acknowledgment claim consent for a separate account incident",
+      "does not give restart or repair instructions while an installation is active",
+      "unavailable records lead to support rather than pretending a restart repairs them",
+      "unknown activity takes priority over repair guidance for incomplete packages",
+      "uses the computer power menu rather than Windows instructions on Mint",
+      "offers the existing single acknowledgment action with automatic summary explanation",
+      "retains continue and cancellation callbacks without starting a request automatically",
+      "keeps report-save warnings visible without putting reference IDs in the main reading path",
+      "keeps unavailable state blocked and disables all actions while a check is running"
+    ],
+    "src/RecoveryReportHistory.test.tsx": [
+      "shows separate unavailable versus empty history and never implies completion",
+      "loads bounded pages without purging and deduplicates overlapping results",
+      "renders only a sandboxed preview, preserving unknown acknowledgment and no completion claim",
+      "export is explicit, cancel is not success, and the original report stays retained",
+      "requires explicit selected-report deletion confirmation and prevents duplicate commits",
+      "an unreadable bundle is not exported, but selected deletion remains explicit",
+      "a changed report's failed export/delete is not success or implicit state clearance",
+      "recent report references are directly viewable without falsely assuming first-page ordering"
+    ],
+    "src/SelfUpdate.test.tsx": [
+      "displays current without concealing tool failure or current pause",
+      "displays paused without concealing tool failure or current pause",
+      "displays deferred without concealing tool failure or current pause",
+      "displays unavailable without concealing tool failure or current pause",
+      "displays failed without concealing tool failure or current pause",
+      "displays updated without concealing tool failure or current pause",
+      "missing history and policy do not mean current or enabled",
+      "uses self-service guidance for interrupted without claiming repair or dropping authentication",
+      "uses self-service guidance for untrusted without claiming repair or dropping authentication",
+      "uses self-service guidance for needs_repair without claiming repair or dropping authentication",
+      "saves only one boolean request while pending and keeps last-attempt history",
+      "does not claim a confirmed policy after a failed save; refresh restores availability"
+    ],
+    "src/ThemeControl.test.tsx": [
+      "defaults to System, follows live changes, and unsubscribes",
+      "persists manual overrides and restores them before rendering",
+      "falls back to Light with System selected if theme detection is unavailable",
+      "continues working when preference storage is blocked",
+      "follows and cleans up system changes in webviews with legacy listeners",
+      "falls back safely when system detection throws"
+    ],
+    "src/UpdateCenter.test.tsx": [
+      "deduplicates checks and rejects a late pre-operation tool result",
+      "dismissal belongs to one version and a later version is announced",
+      "failed refresh retains successful check time and never says current",
+      "preflight blockers prevent confirmation, and cancellation starts no operation",
+      "unavailable preflight checks need explicit acknowledgement",
+      "treats a failed preflight request as acknowledged uncertainty, not a pass",
+      "a failed request clears an old download offer without claiming current",
+      "honors a server supplied retry time",
+      "malformed retry times remain a non-blocking unavailable check",
+      "keeps VSCodium maintenance eligibility separate from usability",
+      "keeps PyCharm maintenance eligibility separate from usability",
+      "keeps DBeaver maintenance eligibility separate from usability",
+      "keeps Chrome maintenance eligibility separate from usability",
+      "keeps Firefox maintenance eligibility separate from usability",
+      "keeps Node package-version differences informational without requesting a retry"
+    ],
+    "src/ZoomControl.test.tsx": [
+      "defaults to 100%, has no slider, and steps through bounded levels",
+      "restores the saved scale before rendering and on remount",
+      "rejects saved scales outside the five supported values",
+      "works when preference storage is blocked"
+    ],
+    "src/editorLocation.test.ts": [
+      "accepts a checked Windows installation while rejecting commands, UNC and escaped resources",
+      "keeps a verified selection as data without granting update authority",
+      "rejects incomplete or mismatched observations {\"schema\":true}",
+      "rejects incomplete or mismatched observations {\"status\":\"candidate\"}",
+      "rejects incomplete or mismatched observations {\"maintenanceEligibility\":\"allowed\"}",
+      "rejects incomplete or mismatched observations {\"platform\":\"other\"}",
+      "rejects incomplete or mismatched observations {\"extra\":true}",
+      "rejects incomplete or mismatched observations {\"root\":\"/home/../student/My Editor\"}",
+      "rejects incomplete or mismatched observations {\"executable\":\"/bin/sh\"}",
+      "rejects incomplete or mismatched observations {\"cli\":\"/tmp/other.js\"}",
+      "rejects incomplete or mismatched observations {\"selectionId\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}",
+      "rejects incomplete or mismatched observations {\"version\":\"unknown\"}",
+      "rejects incomplete or mismatched observations {\"electronVersion\":\"\"}",
+      "invalidates an old selection when the newest check cannot verify it"
+    ],
+    "src/model.test.ts": [
+      "structured protocol carries runtime and preference data without making it validation success",
+      "structured protocol parses events and preserves message pipes",
+      "structured protocol rejects malformed events and arbitrary native output",
+      "structured protocol parses all validation severities",
+      "operation states retains native Validation time across report creation and resets it for a new run",
+      "operation states timestamps failed checks but does not invent a timestamp for absent or malformed checks",
+      "operation states completes install only with successful validation",
+      "operation states completes repair only with successful validation",
+      "operation states completes validate only with successful validation",
+      "operation states completes update only with successful validation",
+      "operation states treats child exit failures as failures",
+      "operation states requires a complete validator report",
+      "operation states fails even if a contradictory summary claims success",
+      "operation states preserves meaningful backend errors",
+      "operation states allows retry without stale errors or validation",
+      "operation states keeps progress monotonic",
+      "workstation state detection distinguishes missing tools from unverified requirements",
+      "workstation state detection does not fail optional identity or authentication",
+      "tool metadata does not count unavailable version metadata as a completed update check",
+      "tool metadata deduplicates records and keeps update availability independent of failures",
+      "tool metadata rejects incomplete, contradictory, malformed, or mismatched records",
+      "tool metadata displays versions and directs failed checks to validation without guessing",
+      "keeps unknown failures neutral and does not infer a repair",
+      "does not describe runtime or command failures as missing installations",
+      "does not infer a missing tool from a diagnostic suffix: Git: expected runtime family or usable command; detected version not found",
+      "does not infer a missing tool from a diagnostic suffix: Node.js: unexpected package metadata not found",
+      "does not infer a missing tool from a diagnostic suffix: Python: unexpected module: not installed",
+      "recognizes complete missing-tool messages: Git: not installed",
+      "recognizes complete missing-tool messages: Python 3.14 not found",
+      "recognizes complete missing-tool messages: Google Chrome not found"
+    ],
+    "src/nativeReadAdapters.test.ts": [
+      "serializes real gate-taking adapters behind startup while gate-free queries proceed",
+      "uses one owned sequence for explicit read-only validation without recursive enqueue",
+      "does not turn the read sequence into mutation permission or a mutation queue"
+    ],
+    "src/nativeReadQueue.test.ts": [
+      "keeps diagnostics behind both phases of the owner's read sequence",
+      "does not retry a failed read and lets the next request run",
+      "rejects a stale scheduling identity rather than entering a different sequence"
+    ],
+    "src/nodeObservation.test.ts": [
+      "retains the selected Node/npm pair without maintenance permission",
+      "preserves incomplete and unusable evidence without fabricating a pass",
+      "rejects incomplete passes, another installation's npm and injected authority",
+      "does not derive executable evidence from raw diagnostics or another event",
+      "accepts bounded Linux pairs without importing npm from another installation"
+    ],
+    "src/operationLifecycle.test.ts": [
+      "native operation outcomes only native evidence establishes a non-start",
+      "native operation outcomes undefined never becomes completed from passed checks",
+      "native operation outcomes uncertain never becomes completed from passed checks",
+      "native operation outcomes not_requested never becomes completed from passed checks",
+      "native operation outcomes a transport failure remains uncertain and keeps the actual diagnostic",
+      "native operation outcomes known completion with missing verification recommends a check, never another mutation",
+      "native operation outcomes keeps an unresolved repair and its uncertainty explicit without retrying",
+      "native operation outcomes native completion does not turn failed required checks into Ready",
+      "native operation outcomes verified completion returns to the shared recommendation, not a forced editor action",
+      "native operation outcomes shows verification only from the existing reported phase",
+      "review binding equivalent fresh native observations do not cause repeated confirmation",
+      "review binding versions, options, platform, validation and incident identity invalidate a review"
+    ],
+    "src/overviewDecision.test.ts": [
+      "shared Overview recommendation existing tools are ready without account history or package-health proof",
+      "shared Overview recommendation keeps exact optional-update wording, editor alternative and a single review action",
+      "shared Overview recommendation does not infer updates from notChecked metadata",
+      "shared Overview recommendation does not infer updates from unavailable metadata",
+      "shared Overview recommendation does not infer updates from inconsistent metadata",
+      "shared Overview recommendation uses neutral setup scope for missing tools without inventing prior setup",
+      "shared Overview recommendation maps only supported repair findings to Repair",
+      "shared Overview recommendation timestamp null cannot establish readiness",
+      "shared Overview recommendation timestamp 0 cannot establish readiness",
+      "shared Overview recommendation timestamp -1 cannot establish readiness",
+      "shared Overview recommendation timestamp NaN cannot establish readiness",
+      "shared Overview recommendation requires completed validation, not partial passes or installer exit success",
+      "shared Overview recommendation rejects mismatched summaries and validation/errors after the summary",
+      "shared Overview recommendation permits tool metadata after terminal validation without requiring a fixed check count",
+      "shared Overview recommendation shows checking then failed collection without a manufactured incident",
+      "shared Overview recommendation unsupported platforms cannot recommend setup or Ready",
+      "shared Overview recommendation active overrides ready, missing tools and updates; retains findings",
+      "shared Overview recommendation unknown overrides ready, missing tools and updates; retains findings",
+      "shared Overview recommendation untrusted overrides ready, missing tools and updates; retains findings",
+      "shared Overview recommendation native-incomplete overrides ready, missing tools and updates; retains findings",
+      "shared Overview recommendation incident overrides ready, missing tools and updates; retains findings",
+      "shared Overview recommendation attention overrides ready, missing tools and updates; retains findings",
+      "shared Overview recommendation missing or refreshing safety is not clear; never infers a setup incident",
+      "shared Overview recommendation a task owns the card while new blockers remain in Details and alternatives are suppressed",
+      "request/operation freshness changed evidence invalidates a reviewed scope without repurposing its action",
+      "request/operation freshness maintenance failure remains available without inventing a recovery incident",
+      "request/operation freshness late success cannot replace a newer failure or settle a request twice",
+      "request/operation freshness a new operation epoch rejects pre-mutation validation, tools and safety",
+      "request/operation freshness reopen starts from absent observations rather than a saved success",
+      "request/operation freshness keeps disabled scheduling separate from tools and native safety",
+      "request/operation freshness keeps missing scheduling separate from tools and native safety",
+      "request/operation freshness keeps unavailable scheduling separate from tools and native safety"
+    ],
+    "src/recovery.test.ts": [
+      "uses a fixed input-free native observation and never persists preview state",
+      "acknowledges only the displayed user generation nonce, with automatic native report input",
+      "machine acknowledgment is not a separate save dialog or a mutation permit",
+      "unavailable and blocked observations never become request readiness"
+    ],
+    "src/recoveryIncidents.test.ts": [
+      "uses fixed source and bounded opaque-ID pagination, not a private path or mutation argument",
+      "preview has no workstation incident records and performs no native call",
+      "view deletion passes only the opaque native token and confirmation, not a path or fingerprint"
+    ],
+    "src/recoveryReports.test.ts": [
+      "pages with bounded fixed input and selects reports by ID, never path or caller HTML",
+      "browser preview has no workstation reports and cannot export or delete them"
+    ],
+    "src/runtimeObservation.test.ts": [
+      "retains explicit paired interpreter evidence from the backend",
+      "distinguishes an unfinished check, a failed capability and a completed search",
+      "cannot turn partial, wrong-family or malformed evidence into a pass",
+      "does not infer observations from arbitrary diagnostic messages or other events",
+      "accepts explicit Linux interpreter evidence and keeps environment failures distinct",
+      "does not impose a separate pip release-family restriction"
+    ],
+    "src/safeOperations.test.ts": [
+      "preflight contract allows clean checks without acknowledgement",
+      "preflight contract allows unavailable evidence only after one-attempt acknowledgement",
+      "preflight contract never permits acknowledgement to bypass a known blocker",
+      "preflight contract treats a failed or missing result set as unavailable rather than passed",
+      "maintenance health contract prioritizes running, missing, disabled and failed observations",
+      "maintenance health contract uses the last successful run for the fourteen-day overdue rule",
+      "maintenance health contract allows a known new schedule a fourteen-day grace period",
+      "maintenance health contract does not infer overdue when history and age are unavailable",
+      "Overview severity reserves red for readiness failure",
+      "Overview severity keeps healthy readiness and maintenance green"
+    ],
+    "src/supportReport.test.ts": [
+      "shares unavailable recovery categories without exporting unknown provider fields or implying no incident",
+      "produces a self-contained script-free report and omits logs by default",
+      "does not substitute report time for missing Validation time, even after a pass",
+      "includes only explicitly requested log content"
+    ],
+    "src/validationGuidance.test.ts": [
+      "backend validation guidance refreshes an old application-location check: DBeaver: not installed",
+      "backend validation guidance refreshes an old application-location check: Chrome: not installed",
+      "backend validation guidance refreshes an old application-location check: Firefox: not installed",
+      "backend validation guidance refreshes an old application-location check: DBeaver not found",
+      "backend validation guidance refreshes an old application-location check: Firefox not found",
+      "backend validation guidance refreshes an old application-location check: Google Chrome not found",
+      "backend validation guidance requests a fresh PyCharm check for an older location-only failure",
+      "backend validation guidance Windows check offers full Repair review: Git: not installed",
+      "backend validation guidance Windows check offers full Repair review: pip: not installed",
+      "backend validation guidance Windows check offers full Repair review: Development folder",
+      "backend validation guidance Windows check offers full Repair review: Editor extension: EditorConfig.EditorConfig",
+      "backend validation guidance Windows check offers full Repair review: Windows long paths enabled",
+      "backend validation guidance Windows check offers full Repair review: Windows developer mode enabled",
+      "backend validation guidance Mint check offers full Repair review: GitHub CLI not found",
+      "backend validation guidance Mint check offers full Repair review: Python 3.14 not found",
+      "backend validation guidance Mint check offers full Repair review: Python 3.14 could not create a venv with pip",
+      "backend validation guidance Mint check offers full Repair review: Development workspace missing: /home/student/Development",
+      "backend validation guidance Mint check offers full Repair review: VSCodium extension missing: esbenp.prettier-vscode",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Node.js: expected runtime family or usable command; detected v25.0.0",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Python: expected runtime family or usable command; detected Python 3.13.0",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Node.js must remain on 24.x; detected v22.0.0",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Expected Python 3.14.x; detected Python 3.13.0",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Expected Linux Mint; detected Ubuntu",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: /etc/os-release is unavailable",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Configured repository: Robotics",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Configured repository missing: /home/student/Development/robotics",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Weekly maintenance is disabled. Run Repair to enable it.",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Weekly maintenance timer is not active",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: Weekly maintenance task cannot be read by this account. Run Repair to restore read access.",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: VSCodium settings present",
+      "backend validation guidance directs runtime/platform/schedule/project uncertainty to diagnostic review: VSCodium settings file missing: /home/student/.config/VSCodium/User/settings.json",
+      "backend validation guidance explains known Git settings without running a broad operation: Git default init.defaultBranch = main",
+      "backend validation guidance explains known Git settings without running a broad operation: Git init.defaultBranch is not main",
+      "backend validation guidance explains known Git settings without running a broad operation: Git default fetch.prune = true",
+      "backend validation guidance explains known Git settings without running a broad operation: Git fetch.prune is not true",
+      "backend validation guidance explains known Git settings without running a broad operation: Git default pull.ff = only",
+      "backend validation guidance explains known Git settings without running a broad operation: Git pull.ff is not only",
+      "backend validation guidance explains known Git settings without running a broad operation: File extensions visible",
+      "backend validation guidance leaves optional information informational: Git identity: not configured (optional)",
+      "backend validation guidance leaves optional information informational: Git identity and GitHub sign-in are optional.",
+      "backend validation guidance leaves optional information informational: GitHub authentication: not configured (optional)",
+      "backend validation guidance leaves optional information informational: Git user identity is intentionally unset",
+      "backend validation guidance leaves optional information informational: GitHub CLI is installed but intentionally not authenticated",
+      "backend validation guidance offers Update only for a passing check with matching known update metadata",
+      "backend validation guidance fails safely to diagnostic review for unknown diagnostics: Git: unexpected permission problem",
+      "backend validation guidance fails safely to diagnostic review for unknown diagnostics: Editor extension: unrecognized.extension",
+      "backend validation guidance fails safely to diagnostic review for unknown diagnostics: VSCodium extension missing: unknown.extension",
+      "backend validation guidance fails safely to diagnostic review for unknown diagnostics: Future check: unknown failure",
+      "backend validation guidance fails safely to diagnostic review for unknown diagnostics: <script>alert('example')</script>",
+      "backend validation guidance never suggests provisioning an unsupported platform",
+      "backend validation guidance preserves warnings and supplies manual next steps",
+      "backend validation guidance keeps disabled scheduling informational with a read-only review path"
+    ]
+  },
+  "browser": [
+    {
+      "file": "accessibility.spec.ts",
+      "title": "desktop contrast, keyboard access, progress and completion",
+      "project": "chromium"
+    },
+    {
+      "file": "accessibility.spec.ts",
+      "title": "mobile layout and labels",
+      "project": "chromium"
+    },
+    {
+      "file": "accessibility.spec.ts",
+      "title": "Schedule and About keyboard, contrast and reflow at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "accessibility.spec.ts",
+      "title": "Schedule and About keyboard, contrast and reflow at 520px",
+      "project": "chromium"
+    },
+    {
+      "file": "accessibility.spec.ts",
+      "title": "support report shows exact content and keeps logs off by default",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light appearance placement and bounds at 320px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light appearance placement and bounds at 640px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light appearance placement and bounds at 1100px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light appearance placement and bounds at 1101px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light appearance placement and bounds at 1440px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light appearance placement and bounds at 1920px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark appearance placement and bounds at 320px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark appearance placement and bounds at 640px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark appearance placement and bounds at 1100px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark appearance placement and bounds at 1101px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark appearance placement and bounds at 1440px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark appearance placement and bounds at 1920px across all zoom levels",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "popover keyboard entry, dismissal, outside focus, navigation and resize",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "preferences survive panel dismissal and layout transitions with storage blocked",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light 640px implementation screenshot",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Light 1440px implementation screenshot",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark 640px implementation screenshot",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Dark 1440px implementation screenshot",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "short compact viewport scrolls the panel without clipping controls",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "theme tooltips work on keyboard focus and dismiss with Escape in wide layout",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "appearance changes preserve an active validation and its completed log",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "compact popover stays above navigation and page content",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "zoom limits retain keyboard focus on the enabled opposite button",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "popover refits when an already open window becomes very short",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Escape dismisses hovered theme tooltips when keyboard focus is elsewhere",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "Escape outside the appearance controls does not suppress the next focus tooltip",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "selected theme retains a distinct keyboard focus ring in forced colors",
+      "project": "chromium"
+    },
+    {
+      "file": "appearance.spec.ts",
+      "title": "holding a zoom key cannot reverse direction after focus moves at a limit",
+      "project": "chromium"
+    },
+    {
+      "file": "history-view-deletion.spec.ts",
+      "title": "History view confirmation in Light at 640px preserves other-source observations",
+      "project": "chromium"
+    },
+    {
+      "file": "history-view-deletion.spec.ts",
+      "title": "History view confirmation in Light at 1140px preserves other-source observations",
+      "project": "chromium"
+    },
+    {
+      "file": "history-view-deletion.spec.ts",
+      "title": "History view confirmation in Dark at 640px preserves other-source observations",
+      "project": "chromium"
+    },
+    {
+      "file": "history-view-deletion.spec.ts",
+      "title": "History view confirmation in Dark at 1140px preserves other-source observations",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "Light lifecycle results at 390px retain safe next steps",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "Light lifecycle results at 1140px retain safe next steps",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "Dark lifecycle results at 390px retain safe next steps",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "Dark lifecycle results at 1140px retain safe next steps",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "one confirmed operation keeps verification and result through navigation",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "changed review options require another review before execution",
+      "project": "chromium"
+    },
+    {
+      "file": "operation-lifecycle.spec.ts",
+      "title": "reopen discards an unstarted review and makes no operation request",
+      "project": "chromium"
+    },
+    {
+      "file": "overview.spec.ts",
+      "title": "Light guided states at 390px use one action and preserve diagnostic routes",
+      "project": "chromium"
+    },
+    {
+      "file": "overview.spec.ts",
+      "title": "Light guided states at 1140px use one action and preserve diagnostic routes",
+      "project": "chromium"
+    },
+    {
+      "file": "overview.spec.ts",
+      "title": "Dark guided states at 390px use one action and preserve diagnostic routes",
+      "project": "chromium"
+    },
+    {
+      "file": "overview.spec.ts",
+      "title": "Dark guided states at 1140px use one action and preserve diagnostic routes",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-history.spec.ts",
+      "title": "Saved Recovery report review and explicit deletion in Light at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-history.spec.ts",
+      "title": "Saved Recovery report review and explicit deletion in Light at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-history.spec.ts",
+      "title": "Saved Recovery report review and explicit deletion in Dark at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-history.spec.ts",
+      "title": "Saved Recovery report review and explicit deletion in Dark at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-incidents.spec.ts",
+      "title": "Report-independent observations in Light at 640px remain read-only",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-incidents.spec.ts",
+      "title": "Report-independent observations in Light at 1140px remain read-only",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-incidents.spec.ts",
+      "title": "Report-independent observations in Dark at 640px remain read-only",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery-incidents.spec.ts",
+      "title": "Report-independent observations in Dark at 1140px remain read-only",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Recovery findings remain accessible in Light at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Unknown health alone keeps Ready with diagnostic details in Light at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Student recovery shows one next step before details in Light at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Recovery findings remain accessible in Light at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Unknown health alone keeps Ready with diagnostic details in Light at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Student recovery shows one next step before details in Light at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Recovery findings remain accessible in Dark at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Unknown health alone keeps Ready with diagnostic details in Dark at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Student recovery shows one next step before details in Dark at 640px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Recovery findings remain accessible in Dark at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Unknown health alone keeps Ready with diagnostic details in Dark at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "recovery.spec.ts",
+      "title": "Student recovery shows one next step before details in Dark at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "self-update-setting.spec.ts",
+      "title": "student can toggle with keyboard; schedule/history stay independent and layout fits",
+      "project": "chromium"
+    },
+    {
+      "file": "self-update-setting.spec.ts",
+      "title": "student can toggle with keyboard; schedule/history stay independent and layout fits",
+      "project": "webkit-sidebar"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 90% through scroll and resize",
+      "project": "chromium"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 100% through scroll and resize",
+      "project": "chromium"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 115% through scroll and resize",
+      "project": "chromium"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 130% through scroll and resize",
+      "project": "chromium"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 150% through scroll and resize",
+      "project": "chromium"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 90% through scroll and resize",
+      "project": "webkit-sidebar"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 100% through scroll and resize",
+      "project": "webkit-sidebar"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 115% through scroll and resize",
+      "project": "webkit-sidebar"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 130% through scroll and resize",
+      "project": "webkit-sidebar"
+    },
+    {
+      "file": "sidebar.spec.ts",
+      "title": "desktop sidebar fills the viewport at 150% through scroll and resize",
+      "project": "webkit-sidebar"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Light theme, all pages, focus and reflow at 390px",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Light theme, all pages, focus and reflow at 900px",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Light theme, all pages, focus and reflow at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Dark theme, all pages, focus and reflow at 390px",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Dark theme, all pages, focus and reflow at 900px",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Dark theme, all pages, focus and reflow at 1140px",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "System follows live changes, manual override and returning to System",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "switching theme preserves an active operation and expanded log",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Light text, controls and focus meet contrast requirements",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "Dark text, controls and focus meet contrast requirements",
+      "project": "chromium"
+    },
+    {
+      "file": "themes.spec.ts",
+      "title": "unavailable system detection keeps System selected with Light fallback",
+      "project": "chromium"
+    },
+    {
+      "file": "update-discovery.spec.ts",
+      "title": "tool preview is read-only, accessible and cancellable in Light",
+      "project": "chromium"
+    },
+    {
+      "file": "update-discovery.spec.ts",
+      "title": "tool preview is read-only, accessible and cancellable in Dark",
+      "project": "chromium"
+    },
+    {
+      "file": "validation-guidance.spec.ts",
+      "title": "Light guidance at 640px preserves status and requires explicit action",
+      "project": "chromium"
+    },
+    {
+      "file": "validation-guidance.spec.ts",
+      "title": "Light guidance at 1040px preserves status and requires explicit action",
+      "project": "chromium"
+    },
+    {
+      "file": "validation-guidance.spec.ts",
+      "title": "Dark guidance at 640px preserves status and requires explicit action",
+      "project": "chromium"
+    },
+    {
+      "file": "validation-guidance.spec.ts",
+      "title": "Dark guidance at 1040px preserves status and requires explicit action",
+      "project": "chromium"
+    },
+    {
+      "file": "workflow-combinations.spec.ts",
+      "title": "Light combined safety findings at 390px retain diagnostics at every zoom",
+      "project": "chromium"
+    },
+    {
+      "file": "workflow-combinations.spec.ts",
+      "title": "Light combined safety findings at 1140px retain diagnostics at every zoom",
+      "project": "chromium"
+    },
+    {
+      "file": "workflow-combinations.spec.ts",
+      "title": "Dark combined safety findings at 390px retain diagnostics at every zoom",
+      "project": "chromium"
+    },
+    {
+      "file": "workflow-combinations.spec.ts",
+      "title": "Dark combined safety findings at 1140px retain diagnostics at every zoom",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 90% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 100% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 115% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 130% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 150% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 90% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 100% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 115% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 130% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Light 150% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 90% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 100% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 115% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 130% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 150% at 640px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 90% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 100% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 115% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 130% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "Dark 150% at 1040px: scales and reflows every page",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "zoom buttons support keyboard activation and bounded single steps",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "zoom and theme changes preserve an active operation and log",
+      "project": "chromium"
+    },
+    {
+      "file": "zoom.spec.ts",
+      "title": "pointer buttons reach every zoom level after scaling",
+      "project": "chromium"
+    },
+    {
+      "file": "runner.spec.ts",
+      "title": "runner conformance: locator retries and negation preserve browser semantics",
+      "project": "chromium",
+      "added": true
+    },
+    {
+      "file": "runner.spec.ts",
+      "title": "runner conformance: polling failures and cancellation cannot pass",
+      "project": "chromium",
+      "added": true
+    },
+    {
+      "file": "runner.spec.ts",
+      "title": "runner conformance: locator retries and negation preserve browser semantics",
+      "project": "webkit-sidebar",
+      "added": true
+    },
+    {
+      "file": "runner.spec.ts",
+      "title": "runner conformance: polling failures and cancellation cannot pass",
+      "project": "webkit-sidebar",
+      "added": true
+    }
+  ],
+  "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
+  "assertions": {
+    "browser-tests/accessibility.spec.ts": {
+      "count": 76,
+      "sha256": "d95e52148f84da408dbff463339f1040abde5cc873eb2cd0195e11f3b239fbea"
+    },
+    "browser-tests/appearance-helpers.ts": {
+      "count": 2,
+      "sha256": "1bd6d445942be7a944f383947c01f2d2cc94b948a5ca21059467b4ee2514fea6"
+    },
+    "browser-tests/appearance.spec.ts": {
+      "count": 116,
+      "sha256": "ce6f38eafc33d2a2d45134c07ffe56d93f580e244c370c60def152202d1cea43"
+    },
+    "browser-tests/guided-helpers.ts": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "browser-tests/history-view-deletion.spec.ts": {
+      "count": 16,
+      "sha256": "7d197fc91f169a6bd38d05a7892d583ac583b537f8ebe423561e50fac3280b0b"
+    },
+    "browser-tests/operation-lifecycle.spec.ts": {
+      "count": 52,
+      "sha256": "5ae32840d8e14774f1a4113b4fc7276628650f76e35fb80f1a4bdbe88855b272"
+    },
+    "browser-tests/overview.spec.ts": {
+      "count": 22,
+      "sha256": "f31e61ca46bf6c7df72f54479811784e7fa800148708372a8b52d9df25384fe1"
+    },
+    "browser-tests/recovery-history.spec.ts": {
+      "count": 20,
+      "sha256": "47f9539102b6e42c37368c6dc1a8fafca8daa4b415d77dfc892b351fd21214c7"
+    },
+    "browser-tests/recovery-incidents.spec.ts": {
+      "count": 16,
+      "sha256": "ef3657813c56c10db7ec1feff166527f62e14c4c1160767090344749a9fde0de"
+    },
+    "browser-tests/recovery.spec.ts": {
+      "count": 82,
+      "sha256": "ee6d3faeb5a613a06bce7043698ac3a5f73d3e44c9fe8333ed0f83b54b05d88d"
+    },
+    "browser-tests/self-update-setting.spec.ts": {
+      "count": 20,
+      "sha256": "ce6a4db5d9a9107ab0576117ef9c4636fa341ce9a221f0837a4581efcad7db7f"
+    },
+    "browser-tests/sidebar.spec.ts": {
+      "count": 26,
+      "sha256": "d0583f18e0d722be698c259f244d850c8547bf410585e101aaaad4c9a50c71ce"
+    },
+    "browser-tests/themes.spec.ts": {
+      "count": 54,
+      "sha256": "d96f79b41ee51ea8909b09021561712772e268efd155a51d94e484c97fa2413a"
+    },
+    "browser-tests/update-discovery.spec.ts": {
+      "count": 24,
+      "sha256": "7b54a0c79961bc0a153d1e1db226c0dfbc2c4e86c8b2c8306d01e7881d014363"
+    },
+    "browser-tests/validation-guidance.spec.ts": {
+      "count": 36,
+      "sha256": "50cf347c426868ae62e5b8b4e1828a1ee5859b70eca270d963f897fd78cd59a5"
+    },
+    "browser-tests/workflow-combinations.spec.ts": {
+      "count": 24,
+      "sha256": "1400efdb65440b044595c85ab01862eed313c6bdf0dc99f60a8c84f10a9d2109"
+    },
+    "browser-tests/zoom.spec.ts": {
+      "count": 42,
+      "sha256": "25b8842aac205ea2ae42712893cb2a78061d89b22dd10799c0276a6556923ea7"
+    },
+    "src/App.test.tsx": {
+      "count": 405,
+      "sha256": "d47f4e11ff42649b2965aa0312259d285d1cc31cde238a8ff163de6340c7678f"
+    },
+    "src/RecoveryIncidentHistory.test.tsx": {
+      "count": 50,
+      "sha256": "8b79b483299301601f07ded959ad373e7713bcc045363b72e54c591245299e35"
+    },
+    "src/RecoveryPage.test.tsx": {
+      "count": 124,
+      "sha256": "b594dc5cc306b81ed0d8960227b4d43396b75ccf29a1029f615dda564211cb7f"
+    },
+    "src/RecoveryReportHistory.test.tsx": {
+      "count": 54,
+      "sha256": "155fda9031878fadece3361e61ac7170d53bab784a7b10a4232a3f4e0aaa3707"
+    },
+    "src/SelfUpdate.test.tsx": {
+      "count": 66,
+      "sha256": "b06df82ab3e399a3aa34774c86f03b6b84f3fa240f5dba34399621e5a499e83b"
+    },
+    "src/ThemeControl.test.tsx": {
+      "count": 40,
+      "sha256": "b14a311c4ba2ff8ccfbb76845cb2dc8b4fe86e82f7490c74412471866fd2914f"
+    },
+    "src/UpdateCenter.test.tsx": {
+      "count": 62,
+      "sha256": "6523f30d17840cfd5b25271256d8f842aa1bfa75b16dbf0a1f275f80895f8edc"
+    },
+    "src/ZoomControl.test.tsx": {
+      "count": 22,
+      "sha256": "10d8be53fc857c01db2562552ae53ba008613ace5d6554fb91d11fd18665d952"
+    },
+    "src/editorLocation.test.ts": {
+      "count": 18,
+      "sha256": "784705f6f7ff084c58c4f9e329aa152642dcc568954025fc6b7e857aed6af5cf"
+    },
+    "src/model.test.ts": {
+      "count": 106,
+      "sha256": "c45755998f1be58fdc138b96b051b1dff28e0c9f1e3163cb4e90f56d3f0efa33"
+    },
+    "src/nativeReadAdapters.test.ts": {
+      "count": 12,
+      "sha256": "dea36e1198cbfd6c9364117f6474c91588acb722658e1ee008801c251c537066"
+    },
+    "src/nativeReadQueue.test.ts": {
+      "count": 20,
+      "sha256": "ff9c8007dfff1cf0e7f737724814fb74992d7543bec8dcde042b135f9416f8cc"
+    },
+    "src/nodeObservation.test.ts": {
+      "count": 24,
+      "sha256": "a52ed8ce4b0e70812bc6fec17fed3908edacc7545efb8ff4396ce06984fb43a9"
+    },
+    "src/operationLifecycle.test.ts": {
+      "count": 46,
+      "sha256": "e5f6b432a5d4d24dabf4d1fd1efe0aa83ff08c9628c9429fb85330c15224fce3"
+    },
+    "src/overviewDecision.test.ts": {
+      "count": 110,
+      "sha256": "ee2bd636e00fcd02b6a7b0f39d4f1f3c8108cda305ec913830d8609925285850"
+    },
+    "src/recovery.test.ts": {
+      "count": 26,
+      "sha256": "600022585568c4aa29c89224d05eefe7859e49eb6a3d58212e2b9aefed3c51f3"
+    },
+    "src/recoveryIncidents.test.ts": {
+      "count": 12,
+      "sha256": "a70d06a2a883e5db8420d6ecf724aa5570d50ab750ef440a2f912d4123cb0dcb"
+    },
+    "src/recoveryReports.test.ts": {
+      "count": 12,
+      "sha256": "34628147e88e5a6de2d684be21c0e124cc2256ed29e1d66aba610e85a4df9a89"
+    },
+    "src/runtimeObservation.test.ts": {
+      "count": 28,
+      "sha256": "c8dc1fd0c42bdfb45db843b6429669072b0cb0e3fffee8c731a36a2e0a8bf1eb"
+    },
+    "src/safeOperations.test.ts": {
+      "count": 34,
+      "sha256": "a6df84fa38c57e04d49fa57158a0c514d71ddd47fda4a0f775ded2dfb0e807ba"
+    },
+    "src/supportReport.test.ts": {
+      "count": 36,
+      "sha256": "907f8f8b0e2a6276c97b791b968344961e1fd466f58622310501a39fff677a2c"
+    },
+    "src/validationGuidance.test.ts": {
+      "count": 66,
+      "sha256": "78338a8f0e582fcf20f4b1aa31640578c01f9e442771d73f7f7ea3f51e63e58a"
+    }
+  },
+  "updates": [
+    {
+      "source": "d77452b865df2c4116e20d3303ca5c6b10da7457",
+      "issue": 174,
+      "addedUnitCases": 5,
+      "review": "Existing assertion expressions preserved in order; only the five reviewed maintenance cases were added."
+    }
+  ]
+}

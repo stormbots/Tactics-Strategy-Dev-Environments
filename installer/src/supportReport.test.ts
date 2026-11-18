@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { expect, it, vi } from "../testing/unitApi";
 import { supportHtml, supportSnapshot } from "./supportReport";
 it("shares unavailable recovery categories without exporting unknown provider fields or implying no incident", () => {
   const recovery = {

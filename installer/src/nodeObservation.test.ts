@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it } from "../testing/unitApi";
 import { nodeObservation } from "./nodeObservation";
 const record = {
   schema: 1,

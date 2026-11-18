@@ -49,7 +49,7 @@ For the complete development process, use [From an idea to a release](docs/stude
 
 ## Engineering
 
-One Tauri 2 / React / Vite app orchestrates the existing PowerShell/Chocolatey and Bash/APT backends. See [architecture and security](docs/ARCHITECTURE.md), [build instructions](docs/BUILD.md), [maintenance](docs/maintenance.md), and [acceptance tests](docs/ACCEPTANCE-TEST.md).
+One Tauri 2 / React / esbuild app orchestrates the existing PowerShell/Chocolatey and Bash/APT backends. See [architecture and security](docs/ARCHITECTURE.md), [build instructions](docs/BUILD.md), [maintenance](docs/maintenance.md), and [acceptance tests](docs/ACCEPTANCE-TEST.md).
 
 GitHub Actions tests the app and backends, builds native NSIS and DEB installers on their respective runners, verifies checksums, and initially publishes a prerelease only when both packages succeed. After manual acceptance and merge review, the tested release is promoted to stable without replacing its tag or assets. Existing platform tags and published fallback assets are preserved.
 

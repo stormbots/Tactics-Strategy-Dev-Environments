@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page } from "../testing/browserApi";
 export async function openAppearance(page: Page) {
   await page.waitForFunction(() => {
     const slot = document.getElementById("compact-appearance-slot");

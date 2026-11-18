@@ -1,6 +1,6 @@
 import { disclosure, otherAction } from "./guided-helpers";
 import { chooseTheme, chooseZoom, closeAppearance } from "./appearance-helpers";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "../testing/browserApi";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 async function audit(page: Page) {

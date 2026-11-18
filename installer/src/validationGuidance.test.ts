@@ -1,9 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "../testing/unitApi";
 import { validationGuidance } from "./validationGuidance";
 import type { Check, ToolRecord } from "./model";
 const fail = (message: string): Check => ({ status: "FAIL", message });
 
 describe("backend validation guidance", () => {
+  it("keeps disabled scheduling informational with a read-only review path", () => {
+    const message =
+      "Weekly maintenance is disabled. Future automatic development-tool maintenance is not scheduled. Review Schedule.";
+    const result = validationGuidance({ status: "INFO", message });
+    expect(result?.impact).toBe(message);
+    expect(result?.destination).toBe("schedule");
+    expect(result?.operation).toBeUndefined();
+    expect(result?.next).toContain("does not start maintenance");
+  });
   it.each([
     "DBeaver: not installed",
     "Chrome: not installed",

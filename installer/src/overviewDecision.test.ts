@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "../testing/unitApi";
 import {
   beginObservation,
   overviewDecision,
@@ -274,6 +274,44 @@ describe("request/operation freshness", () => {
     expect(d.state).toBe("ready");
     expect(d.details.maintenance?.lastResult).toBe("failure");
   });
+  it.each(["disabled", "missing", "unavailable"] as const)(
+    "keeps %s scheduling separate from tools and native safety",
+    (status) => {
+      const i = fixture();
+      i.validation = observed(
+        report([
+          "PASS|Git: 2.49",
+          "INFO|Weekly maintenance is disabled. Review Schedule.",
+        ]),
+      );
+      i.maintenance = observed({
+        status,
+        active: false,
+        identifier: "test timer",
+        frequency: "Unavailable",
+        nextRun: null,
+        lastRun: null,
+        lastResult: "failure",
+        resultDetail: "Earlier failure",
+        catchUp: null,
+        logFolder: "/logs",
+        logsAvailable: false,
+        note: "Review Schedule",
+        observedAt: "2026-11-17T00:00:00Z",
+        createdAt: null,
+        lastSuccess: null,
+      });
+      const d = overviewDecision(i);
+      expect(d.state).toBe("ready");
+      expect(d.details.maintenance?.status).toBe(status);
+      expect(d.details.maintenance?.lastResult).toBe("failure");
+      i.recovery = observed(safety({ readiness: "needs_acknowledgment" }));
+      expect(overviewDecision(i).state).not.toBe("ready");
+      i.recovery = observed(previewRecovery());
+      i.validation = observed(report(["FAIL|Python 3.14 not found"]));
+      expect(overviewDecision(i).state).not.toBe("ready");
+    },
+  );
   it("late success cannot replace a newer failure or settle a request twice", () => {
     const old = beginObservation(observed(report()), 1);
     const fresh = beginObservation(old, 1);

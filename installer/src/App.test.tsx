@@ -2,7 +2,7 @@ import * as readQueue from "./nativeReadQueue";
 import { StrictMode } from "react";
 import type { Report } from "./model";
 import * as updateApi from "./updateDiscovery";
-import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "../testing/unitApi";
 import {
   render,
   screen,
@@ -65,6 +65,7 @@ function interrupted(source: "machine" | "user" = "machine"): RecoveryState {
 vi.mock("./bridge", () => ({
   native: false,
   appVersion: "1.2.0",
+  setSelfUpdatePaused: vi.fn(async () => { throw new Error("No policy change is authorized in this fixture"); }),
   inspectSelfUpdate: vi.fn(async () => ({
     paused: true,
     policyChangedAt: null,
@@ -178,7 +179,7 @@ it("keeps an interrupted operation unacknowledged after successful validation", 
   expect(
     screen.queryByRole("button", { name: "Dismiss recovery notice" }),
   ).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Run validation" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Run validation" }));
   await screen.findByRole("heading", { name: "Review an interruption" });
   expect(vi.mocked(acknowledgeOperationIncident).mock.calls.length).toBe(
     acknowledgmentsBefore,
@@ -631,6 +632,32 @@ it("retains a required schedule failure and its details without inventing an inc
   expect(card?.classList.contains("tone-red")).toBe(false);
   openDisclosure("Details");
   expect(screen.getByText("Maintenance: missing")).toBeTruthy();
+});
+it("keeps new maintenance observations informational and offers schedule review", async () => {
+  vi.mocked(inspect).mockResolvedValueOnce({
+    validation_collected_at: 1793990000,
+    code: 0,
+    success: true,
+    lines: [
+      "SKYVIEW_EVENT|validation|PASS|Git: 2.49",
+      "SKYVIEW_EVENT|validation|INFO|Weekly maintenance is disabled. Review Schedule.",
+      "SKYVIEW_EVENT|summary|0|Validation completed with 0 failed checks",
+    ],
+    log_path: "validation.log",
+    platform: { label: "Linux Mint 22.3", supported: true },
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "Ready!" });
+  fireEvent.click(screen.getByRole("button", { name: "Validation" }));
+  expect(screen.getByText("INFORMATION")).toBeTruthy();
+  expect(
+    screen.getAllByText("Weekly maintenance is disabled. Review Schedule.", {
+      selector: "p",
+    }).length,
+  ).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("button", { name: "View Schedule" }));
+  await screen.findByRole("heading", { name: "Scheduled maintenance" });
+  expect(vi.mocked(operate)).not.toHaveBeenCalled();
 });
 function openDisclosure(name: string) {
   const summary = screen.getByText(name, {});

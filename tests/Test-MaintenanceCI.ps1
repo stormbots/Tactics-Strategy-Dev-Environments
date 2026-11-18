@@ -11,7 +11,7 @@ Copy-Item (Join-Path $PSScriptRoot '../windows/chocolatey/tools/ScheduledMainten
 Copy-Item (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Inspect-SkyviewSchedule.ps1') $fixture
 $probe = Join-Path $fixture 'Probe.ps1'
 @'
-param($TaskName,$ExpectedStatus,$ExpectedMessage,[switch]$DenyControl)
+param($TaskName,$ExpectedState,$ExpectedMessage,[switch]$DenyControl)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'ScheduledMaintenance.ps1')
 . (Join-Path $PSScriptRoot 'Inspect-SkyviewSchedule.ps1')
@@ -20,7 +20,7 @@ $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Probe must run as a standard user.' }
 $result = Get-SkyviewMaintenanceResult -TaskName $TaskName
 Write-Output ($result | ConvertTo-Json -Compress)
-if ($result.Status -ne $ExpectedStatus -or $result.Message -notlike "*$ExpectedMessage*") { throw 'Unexpected maintenance validation result.' }
+if ($result.Status -ne 'INFO' -or $result.ScheduleStatus -ne $ExpectedState -or $result.Message -notlike "*$ExpectedMessage*") { throw 'Unexpected maintenance observation.' }
 if ($DenyControl) {
     $service = New-Object -ComObject Schedule.Service
     $service.Connect()
@@ -66,10 +66,10 @@ exit 0
 '@ | Set-Content -LiteralPath $probe -Encoding UTF8
 $password = ConvertTo-SecureString ("Ci!" + [guid]::NewGuid().ToString('N') + 'aA7') -AsPlainText -Force
 $credential = New-Object Management.Automation.PSCredential("$env:COMPUTERNAME\$userName",$password)
-function Invoke-StandardUserProbe($Name,$Status,$Message,[switch]$DenyControl) {
+function Invoke-StandardUserProbe($Name,$State,$Message,[switch]$DenyControl) {
     $stdout = Join-Path $fixture 'stdout.txt'
     $stderr = Join-Path $fixture 'stderr.txt'
-    $arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$probe`" -TaskName `"$Name`" -ExpectedStatus $Status -ExpectedMessage `"$Message`""
+    $arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$probe`" -TaskName `"$Name`" -ExpectedState $State -ExpectedMessage `"$Message`""
     if ($DenyControl) { $arguments += ' -DenyControl' }
     $process = Start-Process -FilePath 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -ArgumentList $arguments -Credential $credential -LoadUserProfile -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
     [void]$process.Handle
@@ -96,14 +96,15 @@ try {
     $scheduler.Connect()
     $registered = $scheduler.GetFolder('\').GetTask($taskName)
     $registered.SetSecurityDescriptor('D:P(A;;FA;;;SY)(A;;FA;;;BA)',0)
-    Invoke-StandardUserProbe $taskName FAIL 'cannot be read'
+    Invoke-StandardUserProbe $taskName unavailable 'cannot read the task'
     Set-SkyviewMaintenanceReadAccess -TaskName $taskName
-    Invoke-StandardUserProbe $taskName PASS 'Weekly maintenance enabled' -DenyControl
+    Invoke-StandardUserProbe $taskName enabled 'Weekly maintenance is enabled' -DenyControl
     $registered.Enabled = $false
-    Invoke-StandardUserProbe $taskName FAIL 'disabled'
-    Invoke-StandardUserProbe "$taskName missing" FAIL 'missing'
+    Invoke-StandardUserProbe $taskName disabled 'disabled'
+    if ($registered.Enabled) { throw 'Read-only validation changed the disabled task.' }
+    Invoke-StandardUserProbe "$taskName missing" missing 'missing'
     if ($CheckInstalledTask) {
-        Invoke-StandardUserProbe 'Skyview Robotics - Dev Tool Updates' PASS 'Weekly maintenance enabled'
+        Invoke-StandardUserProbe 'Skyview Robotics - Dev Tool Updates' enabled 'Weekly maintenance is enabled'
     }
     Write-Host 'SKYVIEW_MAINTENANCE_PERMISSIONS_OK'
 }

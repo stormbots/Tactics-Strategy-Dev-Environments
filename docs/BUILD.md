@@ -2,11 +2,11 @@
 
 ## Development
 
-Use Node 24, a current stable Rust toolchain, and Tauri 2 platform prerequisites. Windows native builds need Visual Studio C++ build tools/Windows SDK. Linux native builds need GTK 3, WebKitGTK 4.1, librsvg, the Ayatana appindicator development package and patchelf. The Windows and Ubuntu CI jobs install/provide these prerequisites.
+Use Node 24.19 or newer within the Node 24 family, a current stable Rust toolchain, and Tauri 2 platform prerequisites. Windows native builds need Visual Studio C++ build tools/Windows SDK. Linux native builds need GTK 3, WebKitGTK 4.1, librsvg, the Ayatana appindicator development package and patchelf. The Windows and Ubuntu CI jobs install/provide these prerequisites.
 
 From `installer`: `npm ci`, `npm test`, `npm run build`. For the explicitly simulated browser design preview, use `npm run dev`. Native development uses `npm run tauri dev`; validation reads the source backend, but privileged setup is intentionally rejected in debug builds. Provision using an installed release package.
 
-For browser verification, install Playwright Chromium with `npx playwright install chromium`, then `npm run test:browser`. Rust tests run from `installer/src-tauri` using `cargo test --locked`. Python backend checks use `python tests/backend_contracts.py`. Windows read-only parser/validator checks use `tests/Test-BackendContracts.ps1`. ShellCheck runs on `linux/*.sh` and `linux/lib/*.sh`; actionlint verifies workflows.
+For browser verification, install both required engines with `npx playwright-core install --with-deps chromium webkit`, then `npm run test:browser`. The default command runs Chromium and the WebKit sidebar checks. See [the tooling migration](TOOLING-MIGRATION.md) for the build/test stack, case-preservation checks and dependency review requirements. Rust tests run from `installer/src-tauri` using `cargo test --locked`. Python backend checks use `python tests/backend_contracts.py`. Windows read-only parser/validator checks use `tests/Test-BackendContracts.ps1`. ShellCheck runs on `linux/*.sh` and `linux/lib/*.sh`; actionlint verifies workflows.
 
 Before a Windows release build, run `choco pack windows/chocolatey/skyview-student-dev.nuspec --outputdirectory windows` from the repository root. This packages the existing backend and dependencies, not a separate JavaScript installer. Build from `installer` with `npm run tauri build -- --bundles nsis` on Windows, or `--bundles deb` on Linux. Tauri's bundle resource mapping places each existing backend under `backend/windows` and `backend/linux` in the protected installed application resource directory.
 

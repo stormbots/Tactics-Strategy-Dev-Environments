@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "../testing/browserApi";
 import { chooseZoom, closeAppearance } from "./appearance-helpers";
 
 async function expectFullHeightSidebar(page: Page) {

@@ -190,15 +190,12 @@ fi
 EDITOR_RECORD="${EDITOR_OUTPUT%%$'\n'*}"
 EDITOR_RECORD="${EDITOR_RECORD#SKYVIEW_EVENT|application|VSCodium|}"
 
-if systemctl is-enabled skyview-student-dev-update.timer >/dev/null 2>&1; then
-  pass "Weekly maintenance timer is enabled"
-else
-  fail "Weekly maintenance timer is not enabled"
-fi
-if systemctl is-active skyview-student-dev-update.timer >/dev/null 2>&1; then
-  pass "Weekly maintenance timer is active"
-else
-  fail "Weekly maintenance timer is not active"
+# Scheduling is observed separately from required-tool readiness. This helper
+# reads the fixed timer/service only; it never starts or enables either unit.
+SCHEDULE_HELPER="$SCRIPT_DIR/lib/schedule.py"
+[[ -f "$SCHEDULE_HELPER" ]] || SCHEDULE_HELPER="$SKYVIEW_LIB/schedule.py"
+if ! /usr/bin/python3 "$SCHEDULE_HELPER" --validation; then
+  info "Weekly maintenance could not be checked. Review Schedule and save a support report if the check still fails."
 fi
 
 PYCHARM_LOCATION="$SCRIPT_DIR/lib/pycharm_location.py"
