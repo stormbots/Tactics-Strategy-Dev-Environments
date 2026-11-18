@@ -58,6 +58,7 @@ export function editorPreferences(lines: string[]): EditorPreferences | null {
       value.schema !== 1 ||
       value.component !== "VSCodium" ||
       value.scope !== "standardUserFile" ||
+      typeof value.status !== "string" ||
       !Object.hasOwn(reasons, value.status) ||
       !reasons[value.status as keyof typeof reasons].includes(value.reason) ||
       !(

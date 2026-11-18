@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../testing/browserApi";
 import axe from "axe-core";
 import { chooseTheme, closeAppearance } from "./appearance-helpers";
 

@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it } from "../testing/unitApi";
 import {
   completeEditorPreferences,
   editorPreferences,
@@ -39,6 +39,7 @@ it("accepts Windows and Linux display locations without turning them into comman
 });
 it.each([
   { schema: true },
+  { status: ["unreadable"], reason: "accessDenied" },
   { component: "Other editor" },
   { scope: "workspace" },
   { status: "read", reason: "accessDenied" },

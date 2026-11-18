@@ -24,13 +24,17 @@ The confirmed access-denied record must also match its warning row before the sp
 
 The retained snapshot feeds only the Validation display. The existing current report, review fingerprint, request identity, native read queue and fresh native admission still control readiness and changes. Neither this view nor an old result can acknowledge an incident or resume policy.
 
-## Local verification and remaining gates
+## Test preservation and verification
 
-- Full local frontend suite: 332 passed. Production TypeScript/Vite build passed. The final additional collection-success/result-code checks passed their 16 focused parser cases and the browser flow afterward.
-- Production-App tests cover no action on opening review, duplicate rechecks, deferred results, unresolved access, collection failure, late navigation and independent required-tool failure after the preferences finding resolves.
-- Two browser simulations passed in Chromium 154 at 390 and 1140 pixels, with keyboard entry, focus, long-path layout, accessibility checks and failed-check continuation. Color-contrast rules were excluded from these automated accessibility checks. These are simulated backend observations, not native permission or owner UAT evidence.
-- Backend contracts and CI-policy tests: 35 each passed. Native source and integrity files are unchanged.
+This branch now includes main `6d1e775d546c6cb79a11f632070c594dd2f64222`, whose full exact-main run passed. The earlier dependency blocker was resolved by the merged tooling migration; this increment uses the esbuild/Node/Playwright-core stack and keeps the full npm audit gate.
 
-This branch starts from main `6aa9cefe69edfb3b82c1f426722addd76cebcc07` and does not depend on unmerged #174. It uses the unchanged development toolchain for local tests. The known high-severity dependency advisory still blocks release CI; no audit exception is implied by successful local tests.
+The inventory explicitly registers the 19 prepared unit cases and two prepared Chromium scenarios. Every existing main App assertion remains in order, and the prepared parser/browser assertion expressions are unchanged. One additional regression rejects an array in the status field instead of allowing JavaScript property-key coercion to accept it. Malformed evidence cannot replace the retained display snapshot. The complete unit inventory is now 338 cases across 23 files; the default browser inventory is 130 cases (122 Chromium and eight WebKit).
 
-No PR or new CI is needed merely to preserve this checkpoint. Opening the eventual code PR requires full validation under the current policy, including Windows/Mint native, both trust jobs and acceptance. Refresh the branch and rerun checks after dependency remediation. Signing, exact authenticated-candidate owner UAT and separate stable promotion authorization remain required.
+- The complete local unit suite and its seven positive/seven failure controls passed, along with type checking, production build, installed-distribution checks and full npm audit (zero vulnerabilities).
+- Production-App cases cover no action on opening review, duplicate rechecks, deferred results, unresolved access, collection failure, late navigation and independent required-tool failure after the preferences finding resolves.
+- Browser verification covers the two prepared flow scenarios at 390 and 1140 pixels and existing Overview, validation-guidance, operation-lifecycle and combined safety flows. These are simulated backend observations, not native permission or owner UAT evidence. The flow's automated accessibility check excludes color contrast; the existing broader appearance/contrast checks remain required.
+- Backend and CI-policy checks remain part of validation. Native/backend source, integrity files, IPC permissions, workflow gates and package versions are unchanged.
+
+Full Windows/Mint native, both trust jobs, integrity and acceptance are required for the focused PR and the resulting exact main. The existing read-only validation path performs follow-up checks; this increment adds no writer, permission change, elevation path, installation action, automatic retry or safety acknowledgment. Later Overview integration remains open.
+
+Human signing approval, owner UAT on the exact authenticated candidate and separate stable-promotion authorization remain required. No release version or publication is initiated by this increment.
