@@ -33,9 +33,9 @@ The status still says Disabled. Earlier failures and a Mint timer that remains
 active in the current session stay visible. The card explains that saving does
 not enable, disable or start anything. An unsupported context offers check/support
 guidance without a new required-tool warning. A saved choice is recognized again
-only alongside fresh matching Disabled evidence. Overview integration remains a
-separate completion criterion; this increment does not report maintenance as
-healthy or settle its history/current-session findings.
+only alongside fresh matching Disabled evidence. The Overview maintenance card recognizes the same saved choice without reporting
+maintenance as healthy or settling its history/current-session findings. The
+broader procedural Your next step integration remains a separate criterion.
 
 Full restoration remains subject to the [scope and preservation audit](MAINTENANCE-RESTORATION-SCOPE.md). This local preference cannot silently block or permit a future installer action. Actual operation review, normal OS permission, fresh native admission and all signing/UAT/promotion gates remain independent.
 
@@ -102,3 +102,31 @@ Type checking/build, dependency audit (zero findings), backend contracts (35),
 document and diff checks pass. Full CI must run all 134 browser cases and the
 native/trust/acceptance gates before merge. Exact-main evidence, human signing,
 exact authenticated-candidate owner UAT and separate promotion remain required.
+
+
+## Overview maintenance card
+
+The Overview card presents only maintenance findings. Review opens Schedule;
+support uses the existing report review. Neither action starts maintenance,
+changes settings or writes the preference. The card reads a saved choice only
+alongside fresh, matching Disabled evidence. It immediately drops the displayed
+confirmation for a pending read or a different observation/context. Storage
+failure, stale data, missing context and incomplete history cannot claim the
+choice is settled. Late preference reads cannot update an unmounted card.
+
+A matching saved choice changes the display heading to “You chose to leave weekly
+maintenance disabled.” The actual Disabled state, a Mint timer still active in
+the current session, running work and earlier failed/unavailable results remain
+visible. A preference never changes the health classifier, required-tool
+readiness, task-card decision, native admission or operation review. Earlier
+history and observed time are available in the card's own Details.
+
+All 371 unit cases pass, including eight added display/context cases. Two new
+browser cases at 390px/1140px pass through Overview, Schedule Save and back,
+then test changed context and failed inspection. They verify keyboard/focus,
+accessibility, no horizontal overflow and zero modifying operations. Build/type
+check, audit (zero findings), backend contracts (35), metadata tests (68),
+CI-policy tests (35), docs and diff checks pass. Every original assertion
+fingerprint and inventory remains intact. Full CI must run all 136 browser
+cases and all native/trust/acceptance gates. Exact-main, signing, owner UAT and
+separate promotion requirements remain unchanged.
