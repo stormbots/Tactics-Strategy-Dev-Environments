@@ -1,6 +1,6 @@
-# Local leave-disabled choice: preparatory contract
+# Local leave-disabled choice
 
-Part of #161. This branch builds on the maintenance inspection implementation in #178. The module is preparatory: it is not connected to the UI or a native context provider and does not complete the leave-disabled workflow.
+Part of #161. Schedule now offers an explicit “Leave maintenance disabled” choice, using the read-only inspection and machine/definition context merged through #178 and #180. Full exact-main validation of that context passed at `e031209bf7f7c9bf5b512b3d9db0036c97997f1a`: [Build evidence](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/actions/runs/44585391535).
 
 An explicit choice can settle the current user's display decision while the observed schedule remains Disabled. It is a preference in that user's local app profile, not native policy, a signed receipt, proof of intent or consent to any operation. Editing it can affect only that local display. No native consumer may use it to enable maintenance, resume SDE updates, acknowledge an incident or authorize execution.
 
@@ -14,26 +14,36 @@ An explicit choice can settle the current user's display decision while the obse
 - Storage failures and failed readback return an unsaved result with a useful message. They cannot manufacture a successful save. Existing history and schedule observations remain unchanged.
 - The choice can be recognized again after a temporary unknown read only when new verified Disabled evidence and the same context are available. It never changes that state to Enabled or settles an active-work finding.
 
-## Required before UI integration
+## Save workflow
 
-The native context increment below adds bounded read-only machine/definition identifiers. Its required native CI evidence must pass before offering Save. A hostname, a timestamp or displayed frequency alone is insufficient. Do not add privileged write authority for this preference.
+Opening Schedule reads the current status and any matching saved choice. It does
+not write. For a verified Disabled schedule with recognized context, the student
+can choose **Leave maintenance disabled**. That click checks the schedule again.
+Only fresh, complete Disabled evidence for the same machine, target and definition
+can save the choice. Changed or incomplete results require a new review; no old
+choice is applied as proof that the check succeeded.
 
-Connect it only to the explicit leave-disabled decision. Recheck fresh status before saving, reject duplicate/late submissions and invalidate the displayed choice on changed context or state. A disabled-but-active Mint timer still needs truthful current-session guidance. Respect support/report, navigation and storage-denial paths in the same flow.
+The check and save stay in the same card. Duplicate clicks cannot start another
+request. Leaving the page invalidates the request, including a save waiting for
+its hash, before it can write. Storage denial or failed readback stays unsaved
+with a retry. A failed native check retains the existing check/support path.
+Success moves focus to the schedule heading and confirms the choice in place.
+
+The status still says Disabled. Earlier failures and a Mint timer that remains
+active in the current session stay visible. The card explains that saving does
+not enable, disable or start anything. An unsupported context offers check/support
+guidance without a new required-tool warning. A saved choice is recognized again
+only alongside fresh matching Disabled evidence. Overview integration remains a
+separate completion criterion; this increment does not report maintenance as
+healthy or settle its history/current-session findings.
 
 Full restoration remains subject to the [scope and preservation audit](MAINTENANCE-RESTORATION-SCOPE.md). This local preference cannot silently block or permit a future installer action. Actual operation review, normal OS permission, fresh native admission and all signing/UAT/promotion gates remain independent.
-
-## Local evidence
-
-Eight focused cases pass: read-only opening; explicit save and unchanged history; context separation; unsupported evidence states; stale/future observations; malformed/oversized/future records; storage/readback failures; missing identity/unsupported targets. Type checking and production build pass. The module is not imported by the application entry point, so this is contract evidence, not a shipped workflow or owner UAT result.
-
-The original preparatory branch was published without a code PR or CI dispatch. The current native context increment requires full validation before UI integration. Preserve the passing inspection implementation and complete the explicit user flow separately.
 
 ## Native context increment
 
 The existing read-only schedule readers now provide optional `choiceContext`.
-This is a foundation for the explicit user choice; the Save control is still
-unavailable and the module remains unconnected to the application UI. Native
-context CI must pass before that integration.
+Context is used only to bind the local display preference. Its native CI and
+full exact-main evidence passed before this UI integration.
 
 Windows reads the OS installation's MachineGuid through the read-only 64-bit
 registry view and hashes it with a domain prefix. It hashes the bounded task XML
@@ -68,9 +78,9 @@ identifier or task XML is placed in the local saved-choice record.
 Required native evidence includes standard-user Windows context reading without
 control permission, changed-definition invalidation and unchanged task state;
 Mint protected-file refusal cases and systemd state regressions remain required.
-UI integration still needs explicit Save, fresh rechecking, duplicate/late-result
-handling, storage-denial guidance and truthful Disabled/current-session/history
-messages in place. All existing release gates remain required.
+The UI keeps explicit Save, fresh rechecking, duplicate/late-result handling,
+storage-denial guidance and truthful Disabled/current-session/history messages
+in place. All existing release gates remain required.
 
 Local validation of this increment: all 353 unit cases and the seven positive /
 seven required failure runner controls pass; type checking and build pass. Six
@@ -80,3 +90,15 @@ metadata tests (68), CI-policy tests (35), PowerShell parsing/refusal, document
 and diff checks pass. The Linux integrity manifest includes the updated reader.
 These checks do not substitute for Windows standard-user/native evidence or the
 required protected/systemd cases. Full native/trust/acceptance CI is required.
+
+## UI validation
+
+All 363 unit cases pass, including ten new flow/cancellation cases and the eight
+saved-choice contract cases. The seven positive/seven required failure runner
+controls pass. Both new keyboard/persistence/storage-denial/accessibility cases
+pass at 390px and 1140px, along with the two existing maintenance-inspection
+browser cases. Every earlier assertion fingerprint and test inventory is retained.
+Type checking/build, dependency audit (zero findings), backend contracts (35),
+document and diff checks pass. Full CI must run all 134 browser cases and the
+native/trust/acceptance gates before merge. Exact-main evidence, human signing,
+exact authenticated-candidate owner UAT and separate promotion remain required.
