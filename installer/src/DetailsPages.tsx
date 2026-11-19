@@ -15,6 +15,7 @@ import {
   type Destination,
 } from "./bridge";
 import type { Schedule, SelfUpdate } from "./model";
+import { MaintenanceInspectionReview } from "./MaintenanceInspectionReview";
 
 export function localTime(
   value: string | null,
@@ -45,8 +46,12 @@ const statuses: Record<Schedule["status"], string> = {
 };
 export function SchedulePage({
   openTarget,
+  onSupport,
+  onObservation,
 }: {
   openTarget: (target: Destination) => void;
+  onSupport: () => void;
+  onObservation?: (value: Schedule | null) => void;
 }) {
   const [selfUpdate, setSelfUpdate] = useState<SelfUpdate | null>(null);
   const [selfUpdateError, setSelfUpdateError] = useState("");
@@ -56,42 +61,64 @@ export function SchedulePage({
   const [error, setError] = useState("");
   const [refreshed, setRefreshed] = useState<string | null>(null);
   const request = useRef(0);
-  async function refresh() {
+  const reading = useRef(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const lastObserved = useRef<Schedule | null>(null);
+  const [earlier, setEarlier] = useState<Schedule | null>(null);
+  async function refresh(scheduleOnly = false) {
+    if (reading.current || savingPolicy) return;
+    reading.current = true;
+    setEarlier(scheduleOnly ? lastObserved.current : null);
     const id = ++request.current;
     setLoading(true);
-    setError("");
-    setSelfUpdate(null);
-    setSelfUpdateError("");
-    const update = inspectSelfUpdate()
-      .then((value) => {
-        if (id === request.current) setSelfUpdate(value);
-      })
-      .catch(() => {
-        if (id === request.current)
-          setSelfUpdateError(
-            "SDE update status unavailable. Refresh, then review Recovery and collect a support report if it remains unavailable.",
-          );
-      });
+    if (!scheduleOnly) {
+      setSelfUpdate(null);
+      setSelfUpdateError("");
+    }
+    const update = scheduleOnly
+      ? Promise.resolve()
+      : inspectSelfUpdate()
+          .then((value) => {
+            if (id === request.current) setSelfUpdate(value);
+          })
+          .catch(() => {
+            if (id === request.current)
+              setSelfUpdateError(
+                "SDE update status unavailable. Refresh, then review Recovery and collect a support report if it remains unavailable.",
+              );
+          });
     try {
       const result = await inspectSchedule();
       if (id === request.current) {
         setData(result);
+        setError("");
+        if (result.status !== "unavailable") {
+          lastObserved.current = result;
+          setEarlier(null);
+        }
+        onObservation?.(result);
         setRefreshed(new Date().toISOString());
       }
     } catch (e) {
       if (id === request.current) {
         setData(null);
         setError(String(e));
+        onObservation?.(null);
       }
     } finally {
       await update;
-      if (id === request.current) setLoading(false);
+      if (id === request.current) {
+        reading.current = false;
+        setLoading(false);
+        if (scheduleOnly) heading.current?.focus();
+      }
     }
   }
   useEffect(() => {
     void refresh();
     return () => {
       request.current++;
+      reading.current = false;
     };
   }, []);
   return (
@@ -101,7 +128,9 @@ export function SchedulePage({
       aria-busy={loading}
     >
       <div className="section-header">
-        <h2 id="schedule-heading">Scheduled maintenance</h2>
+        <h2 id="schedule-heading" ref={heading} tabIndex={-1}>
+          Scheduled maintenance
+        </h2>
         <button
           className="secondary"
           disabled={loading || savingPolicy}
@@ -139,7 +168,29 @@ export function SchedulePage({
           )
         )}
       </div>
-      {!loading && (
+      <MaintenanceInspectionReview
+        data={data}
+        error={error}
+        busy={loading || savingPolicy}
+        onCheck={() => void refresh(true)}
+        onSupport={onSupport}
+      />
+      {earlier && (
+        <details className="maintenance-scope">
+          <summary>Earlier maintenance observation</summary>
+          <p>
+            These are earlier results, not a completed new check. Observed{" "}
+            {localTime(earlier.observedAt)}.
+          </p>
+          <p>
+            {statuses[earlier.status]} · {earlier.identifier}
+          </p>
+          <p>
+            Last result: {results[earlier.lastResult]}. {earlier.resultDetail}
+          </p>
+        </details>
+      )}
+      {(!loading || selfUpdate || selfUpdateError) && (
         <SelfUpdatePanel
           data={selfUpdate}
           error={selfUpdateError}
@@ -148,7 +199,12 @@ export function SchedulePage({
       )}
       {!loading && data && (
         <>
-          {data.note && <p className="notice">{data.note}</p>}
+          {data.note && (
+            <details>
+              <summary>Technical details</summary>
+              <p className="notice">{data.note}</p>
+            </details>
+          )}
           <dl className="information-grid">
             <div>
               <dt>Task / timer</dt>

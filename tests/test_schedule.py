@@ -156,6 +156,55 @@ class ScheduleValidation(unittest.TestCase):
         inspect.assert_not_called()
 
 
+class ScheduleInspectionCauses(unittest.TestCase):
+    def test_system_errors_have_bounded_confirmed_causes(self):
+        cases = [(PermissionError(), 'accessDenied'),
+                 (subprocess.TimeoutExpired('systemctl', 10), 'timedOut'),
+                 (OSError('untrusted diagnostic'), 'readFailed')]
+        for error, reason in cases:
+            with self.subTest(reason=reason), patch.object(schedule.subprocess, 'run', side_effect=error):
+                result = schedule.inspect()
+                self.assertEqual(result['status'], 'unavailable')
+                self.assertEqual(result['inspectionScope'], 'schedule')
+                self.assertEqual(result['inspectionReason'], reason)
+                self.assertLessEqual(len(result['note']), 1024)
+
+    def test_nonzero_is_not_missing_or_denied_without_evidence(self):
+        for diagnostic, reason in [('Unit not found', 'readFailed'),
+                                    ('permission denied in arbitrary text', 'readFailed'),
+                                    ('org.freedesktop.DBus.Error.AccessDenied', 'accessDenied')]:
+            completed = subprocess.CompletedProcess([], 1, '', diagnostic)
+            with self.subTest(diagnostic=diagnostic), patch.object(schedule.subprocess, 'run', return_value=completed):
+                result = schedule.inspect()
+                self.assertEqual(result['status'], 'unavailable')
+                self.assertEqual(result['inspectionReason'], reason)
+
+    def test_missing_timer_requires_an_actual_not_found_observation(self):
+        with patch.object(schedule, 'show', return_value={'LoadState': 'not-found'}):
+            result = schedule.inspect()
+        self.assertEqual(result['status'], 'missing')
+        self.assertEqual(result['inspectionReason'], 'notInstalled')
+
+    def test_unrecognized_unit_state_does_not_become_verified_disabled(self):
+        for state in ('masked', 'static', 'bad', ''):
+            with self.subTest(state=state), patch.object(schedule, 'show', return_value=dict(LoadState='loaded', UnitFileState=state)):
+                result = schedule.inspect()
+                self.assertEqual(result['status'], 'unavailable')
+                self.assertEqual(result['inspectionReason'], 'unknown')
+
+    def test_failed_history_preserves_the_verified_timer_state(self):
+        timer = dict(LoadState='loaded', UnitFileState='disabled', ActiveState='active')
+        for failure in [schedule.InspectionError('accessDenied', 'denied'),
+                        {'LoadState': 'not-found'}]:
+            with self.subTest(failure=str(failure)), patch.object(schedule, 'show', side_effect=[timer, failure]):
+                result = schedule.inspect()
+                self.assertEqual(result['status'], 'disabled')
+                self.assertTrue(result['active'])
+                self.assertEqual(result['inspectionScope'], 'history')
+                self.assertEqual(result['inspectionReason'], 'accessDenied' if isinstance(failure, Exception) else 'notInstalled')
+                self.assertEqual(result['lastResult'], 'unavailable')
+
+
 @unittest.skipUnless(sys.platform == 'linux' and os.geteuid() == 0,
                      'Protected filesystem checks require disposable Linux root runner')
 class ProtectedHistory(unittest.TestCase):

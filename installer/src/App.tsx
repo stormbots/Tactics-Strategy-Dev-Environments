@@ -1423,7 +1423,12 @@ export default function App() {
             )}
           </section>
         ) : page === "schedule" ? (
-          <SchedulePage openTarget={openTarget} />
+          <SchedulePage openTarget={openTarget} onSupport={() => setReportOpen(true)}
+            onObservation={(value) => {
+              maintenanceRequest.current++;
+              setMaintenance(value);
+              setMaintenanceLoading(false);
+            }} />
         ) : (
           <>
             <ApplicationUpdates data={discovery} about />

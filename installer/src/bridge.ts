@@ -145,6 +145,8 @@ export async function operate(
 export async function inspectSchedule(): Promise<Schedule> {
   if (native) return invoke("inspect_schedule");
   return {
+    inspectionScope: "schedule",
+    inspectionReason: "verified",
     status: "enabled",
     active: true,
     identifier: "skyview-student-dev-update.timer",

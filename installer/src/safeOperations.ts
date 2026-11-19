@@ -91,9 +91,9 @@ export function maintenanceHealth(
 ): MaintenanceHealth {
   if (observation.lastResult === "running") return "running";
   if (observation.status === "missing") return "missing";
-  if (observation.status === "disabled" || !observation.active)
-    return "disabled";
   if (observation.status === "unavailable") return "unavailable";
+  if (observation.status === "disabled") return "disabled";
+  if (!observation.active) return "unavailable";
   if (observation.lastResult === "failure") return "failed";
 
   const success = time(observation.lastSuccess);

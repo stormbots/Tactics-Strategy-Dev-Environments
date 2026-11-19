@@ -383,6 +383,15 @@
       "a complete preferences result does not depend on unrelated tool success",
       "requires all three supported recommendation records for a successful read",
       "rejects malformed/ambiguous evidence: {\"status\":[\"unreadable\"],\"reason\":\"accessDenied\"}"
+    ],
+    "src/MaintenanceInspection.test.tsx": [
+      "rechecks denied access in place, rejects duplicate clicks and reports actual Disabled",
+      "keeps a failed retry and earlier evidence visible without calling it a current result",
+      "a fresh unavailable response retains earlier observations and offers another check",
+      "keeps a verified schedule separate from incomplete history",
+      "ignores a completed read after leaving the schedule page",
+      "StrictMode abandoned reads cannot block or replace the current inspection",
+      "uses confirmed causes without confusing missing, timeout or active disabled timers"
     ]
   },
   "browser": [
@@ -1041,6 +1050,18 @@
       "project": "chromium",
       "title": "VSCodium access review stays in place at 1140px",
       "added": true
+    },
+    {
+      "file": "maintenance-inspection.spec.ts",
+      "project": "chromium",
+      "title": "Maintenance inspection stays in place at 390px",
+      "added": true
+    },
+    {
+      "file": "maintenance-inspection.spec.ts",
+      "project": "chromium",
+      "title": "Maintenance inspection stays in place at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1208,6 +1229,14 @@
     "browser-tests/editor-access.spec.ts": {
       "count": 24,
       "sha256": "52f13a358f8917e226df01d8139975485154dd9fc26f9ad242a3da6f22d0b492"
+    },
+    "src/MaintenanceInspection.test.tsx": {
+      "count": 75,
+      "sha256": "f0aef2a6402ef208f04c80779bc0da837765295111256613c626a1561f348ddc"
+    },
+    "browser-tests/maintenance-inspection.spec.ts": {
+      "count": 38,
+      "sha256": "0f5ce1d6647fac33cd4809c92021736cd76552d93b3d9182f0505651e14e90d5"
     }
   },
   "updates": [
@@ -1223,6 +1252,13 @@
       "addedUnitCases": 20,
       "addedBrowserCases": 2,
       "review": "Every main App assertion remains in order; all prepared editor preferences and browser assertion expressions are unchanged. One additional malformed-status regression rejects array coercion before replacing retained display evidence."
+    },
+    {
+      "source": "7524cf2a3d324d2876585d74249ed8cb9c42a2e4",
+      "issue": 161,
+      "addedUnitCases": 7,
+      "addedBrowserCases": 2,
+      "review": "All earlier test inventories and assertion fingerprints retained; added read-only maintenance continuation, native cause and stale-evidence coverage."
     }
   ]
 }

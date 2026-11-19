@@ -21,12 +21,17 @@ if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
 $result = Get-SkyviewMaintenanceResult -TaskName $TaskName
 Write-Output ($result | ConvertTo-Json -Compress)
 if ($result.Status -ne 'INFO' -or $result.ScheduleStatus -ne $ExpectedState -or $result.Message -notlike "*$ExpectedMessage*") { throw 'Unexpected maintenance observation.' }
+$details = Get-SkyviewSchedule
+$expectedReason = if ($ExpectedState -eq 'unavailable') { 'accessDenied' } elseif ($ExpectedState -eq 'missing') { 'notInstalled' } else { 'verified' }
+if ($details.status -ne $ExpectedState -or $details.inspectionScope -ne 'schedule' -or $details.inspectionReason -ne $expectedReason) { throw 'Structured schedule cause did not match the actual standard-user task observation.' }
+
 if ($DenyControl) {
     $service = New-Object -ComObject Schedule.Service
     $service.Connect()
     $task = $service.GetFolder('\').GetTask($TaskName)
     $schedule = ConvertTo-SkyviewSchedule -Task $task
     if ($schedule.status -ne 'enabled' -or $schedule.lastResult -ne 'never') { throw 'Normal user could not read schedule details.' }
+    if ($schedule.inspectionScope -ne 'schedule' -or $schedule.inspectionReason -ne 'verified') { throw 'Standard-user structured schedule evidence missing.' }
     foreach ($operation in @('run','change permissions')) {
         $denied = $false
         try {
@@ -67,6 +72,12 @@ exit 0
 $password = ConvertTo-SecureString ("Ci!" + [guid]::NewGuid().ToString('N') + 'aA7') -AsPlainText -Force
 $credential = New-Object Management.Automation.PSCredential("$env:COMPUTERNAME\$userName",$password)
 function Invoke-StandardUserProbe($Name,$State,$Message,[switch]$DenyControl) {
+    # Parameterize only the fixed task name in this disposable fixture copy.
+    # The production reader and native command retain their fixed owned target.
+    if ($Name -notmatch '^[a-zA-Z0-9 -]+$') { throw 'Invalid fixture task name.' }
+    $reader = Get-Content (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Inspect-SkyviewSchedule.ps1') -Raw
+    if (-not $reader.Contains("GetTask('Skyview Robotics - Dev Tool Updates')")) { throw 'Expected fixed production task lookup missing.' }
+    $reader.Replace('Skyview Robotics - Dev Tool Updates', $Name) | Set-Content (Join-Path $fixture 'Inspect-SkyviewSchedule.ps1') -Encoding UTF8
     $stdout = Join-Path $fixture 'stdout.txt'
     $stderr = Join-Path $fixture 'stderr.txt'
     $arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$probe`" -TaskName `"$Name`" -ExpectedState $State -ExpectedMessage `"$Message`""
