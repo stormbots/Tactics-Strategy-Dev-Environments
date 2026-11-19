@@ -21,7 +21,7 @@ def repository_bytes(data):
         # Refuse options, other suites/components, or an already-customized URI.
         match = re.fullmatch(
             rb"([ \t]*deb[ \t]+)(http://packages\.linuxmint\.com/?|https://fastly\.linuxmint\.io/?)"
-            rb"([ \t]+zena[ \t]+main[ \t]+upstream[ \t]+import[ \t]+backport[ \t]*(?:\r?\n)?)",
+            rb"([ \t]+zena[ \t]+main[ \t]+upstream[ \t]+import[ \t]+backport[ \t]*(?:#id:linuxmint_main[ \t]*)?(?:\r?\n)?)",
             line,
         )
         if match is None:

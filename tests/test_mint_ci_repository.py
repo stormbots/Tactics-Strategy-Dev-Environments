@@ -19,6 +19,19 @@ class Repository(unittest.TestCase):
         expected = before.replace(b"deb http://packages.linuxmint.com", b"deb https://fastly.linuxmint.io")
         self.assertEqual(repository_bytes(before), expected)
 
+    def test_upstream_zena_source_marker_is_preserved(self):
+        # linuxmint/mint-upgrade-info@62711a5, wilma/official-package-repositories.list
+        # defines Zena with this APT-ignored marker; the old parser rejected it.
+        before = self.source.rstrip(b"\n") + b" #id:linuxmint_main\n"
+        expected = before.replace(b"http://packages.linuxmint.com", b"https://fastly.linuxmint.io")
+        self.assertEqual(repository_bytes(before), expected)
+        self.assertEqual(repository_bytes(expected), expected)
+
+    def test_source_marker_with_spacing_and_crlf_is_preserved(self):
+        before = self.source.rstrip(b"\n") + b"\t #id:linuxmint_main \t\r\n"
+        self.assertEqual(repository_bytes(before), before.replace(
+            b"http://packages.linuxmint.com", b"https://fastly.linuxmint.io"))
+
     def test_idempotent_and_preserves_optional_trailing_slash(self):
         for uri in (b"http://packages.linuxmint.com", b"http://packages.linuxmint.com/"):
             before = self.source.replace(b"http://packages.linuxmint.com", uri)
@@ -33,6 +46,7 @@ class Repository(unittest.TestCase):
                      self.source.replace(b"deb ", b"deb [trusted=yes] "),
                      self.source.replace(b".com ", b".com.evil.invalid "),
                      self.source.replace(b"http:", b"https:"),
+                     self.source.rstrip(b"\n") + b" #unknown-marker\n",
                      b"#" * 65537):
             with self.subTest(data=data[:100]), self.assertRaises(ValueError):
                 repository_bytes(data)

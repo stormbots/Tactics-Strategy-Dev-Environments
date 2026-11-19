@@ -35,3 +35,18 @@ This is an executable CI change and requires full PR validation, followed by
 full exact-main evidence after protected merge. Earlier successful feature PR
 and Windows checks cannot replace that evidence. Do not retry the unchanged
 failed main run again.
+
+## Source-line marker correction
+
+PR #179's first native runs stopped before APT: the helper rejected Mint's
+`#id:linuxmint_main` marker after the repository components. The initial tests
+used a template without that marker. This was a parser defect, so an unchanged
+retry would fail again.
+
+[Mint's pinned upgrade source list](https://github.com/linuxmint/mint-upgrade-info/blob/62711a5c12604dd02862c00e2a19f33a74ff0b4d/usr/share/mint-upgrade-info/wilma/official-package-repositories.list)
+defines Zena with that exact marker. The helper now accepts and preserves the
+optional fixed marker, including surrounding spaces and line endings. It still
+rejects other suites, components, source options, markers and duplicate entries.
+Regression tests cover this upstream format, which the initial parser rejected.
+The failed logs did not capture the original source line; native validation
+must still confirm the ISO fixture. Signature and acceptance gates remain intact.
