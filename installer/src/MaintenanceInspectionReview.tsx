@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Schedule } from "./model";
 
 export function maintenanceFinding(data: Schedule | null, error = "") {
@@ -69,12 +70,14 @@ export function MaintenanceInspectionReview({
   busy,
   onCheck,
   onSupport,
+  children,
 }: {
   data: Schedule | null;
   error: string;
   busy: boolean;
   onCheck: () => void;
   onSupport: () => void;
+  children?: ReactNode;
 }) {
   const finding = maintenanceFinding(data, error);
   if (!finding) return null;
@@ -86,6 +89,7 @@ export function MaintenanceInspectionReview({
       <h3>{finding.title}</h3>
       <p>{finding.detail}</p>
       <p>{finding.next}</p>
+      {children}
       <div className="result-actions">
         <button className="secondary" disabled={busy} onClick={onCheck}>
           Check maintenance status again

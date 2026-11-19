@@ -15,6 +15,11 @@ import {
   type Destination,
 } from "./bridge";
 import type { Schedule, SelfUpdate } from "./model";
+import { MaintenanceDisabledChoice } from "./MaintenanceChoiceControl";
+import {
+  readDisabledChoice,
+  saveDisabledChoice,
+} from "./maintenanceDisabledChoice";
 import { MaintenanceInspectionReview } from "./MaintenanceInspectionReview";
 
 export function localTime(
@@ -65,9 +70,16 @@ export function SchedulePage({
   const heading = useRef<HTMLHeadingElement>(null);
   const lastObserved = useRef<Schedule | null>(null);
   const [earlier, setEarlier] = useState<Schedule | null>(null);
-  async function refresh(scheduleOnly = false) {
+  const [choiceSaved, setChoiceSaved] = useState(false);
+  const [choiceMessage, setChoiceMessage] = useState("");
+  async function refresh(scheduleOnly = false, saveChoice = false) {
     if (reading.current || savingPolicy) return;
     reading.current = true;
+    const requestedContext = saveChoice ? data?.choiceContext : undefined;
+    setChoiceSaved(false);
+    setChoiceMessage(
+      saveChoice ? "Checking the schedule before saving your choice…" : "",
+    );
     setEarlier(scheduleOnly ? lastObserved.current : null);
     const id = ++request.current;
     setLoading(true);
@@ -98,11 +110,65 @@ export function SchedulePage({
         }
         onObservation?.(result);
         setRefreshed(new Date().toISOString());
+        if (saveChoice) {
+          const context = result.choiceContext;
+          const matches =
+            context &&
+            requestedContext &&
+            context.identifier === requestedContext.identifier &&
+            context.machineId === requestedContext.machineId &&
+            context.definitionId === requestedContext.definitionId;
+          if (
+            !matches ||
+            result.status !== "disabled" ||
+            result.inspectionScope !== "schedule" ||
+            result.inspectionReason !== "verified"
+          ) {
+            setChoiceMessage(
+              "The schedule changed or could not be confirmed. Your choice was not saved. Review the result below, then choose again if needed.",
+            );
+          } else {
+            const store = {
+              getItem: (key: string) => window.localStorage.getItem(key),
+              setItem: (key: string, value: string) =>
+                window.localStorage.setItem(key, value),
+            };
+            const saved = await saveDisabledChoice(
+              context,
+              result,
+              store,
+              Date.now(),
+              () =>
+                id === request.current &&
+                reading.current &&
+                Date.now() >= Date.parse(result.observedAt) &&
+                Date.now() - Date.parse(result.observedAt) <= 300_000,
+            );
+            if (id === request.current) {
+              setChoiceSaved(saved.saved);
+              setChoiceMessage(
+                saved.saved
+                  ? "Your choice is saved. Maintenance has not been changed."
+                  : (saved.error ?? "Your choice was not saved. Try again."),
+              );
+            }
+          }
+        } else if (result.choiceContext) {
+          const saved = await readDisabledChoice(result.choiceContext, result, {
+            getItem: (key) => window.localStorage.getItem(key),
+            setItem: (key, value) => window.localStorage.setItem(key, value),
+          });
+          if (id === request.current) setChoiceSaved(saved);
+        }
       }
     } catch (e) {
       if (id === request.current) {
         setData(null);
         setError(String(e));
+        if (saveChoice)
+          setChoiceMessage(
+            "The check did not finish, so your choice was not saved. Check again or create a support report here.",
+          );
         onObservation?.(null);
       }
     } finally {
@@ -174,7 +240,17 @@ export function SchedulePage({
         busy={loading || savingPolicy}
         onCheck={() => void refresh(true)}
         onSupport={onSupport}
-      />
+      >
+        <MaintenanceDisabledChoice
+          data={data}
+          saved={choiceSaved}
+          busy={loading || savingPolicy}
+          onSave={() => void refresh(true, true)}
+        />
+      </MaintenanceInspectionReview>
+      <p aria-live="polite" aria-atomic="true">
+        {choiceMessage}
+      </p>
       {earlier && (
         <details className="maintenance-scope">
           <summary>Earlier maintenance observation</summary>

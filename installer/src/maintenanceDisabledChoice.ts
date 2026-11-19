@@ -111,6 +111,7 @@ export async function saveDisabledChoice(
   observation: Schedule,
   store: Store,
   now = Date.now(),
+  isCurrent: () => boolean = () => true,
 ): Promise<{ saved: boolean; error?: string }> {
   if (!freshDisabled(context, observation, now))
     return {
@@ -126,6 +127,12 @@ export async function saveDisabledChoice(
       chosenAt: new Date(now).toISOString(),
     };
     const raw = JSON.stringify(value);
+    if (!isCurrent())
+      return {
+        saved: false,
+        error:
+          "Your choice was not saved. Review the current schedule and try again.",
+      };
     store.setItem(disabledChoiceKey, raw);
     if (store.getItem(disabledChoiceKey) !== raw)
       throw new Error("Choice was not confirmed");
