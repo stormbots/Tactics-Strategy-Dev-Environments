@@ -25,6 +25,13 @@ $details = Get-SkyviewSchedule
 $expectedReason = if ($ExpectedState -eq 'unavailable') { 'accessDenied' } elseif ($ExpectedState -eq 'missing') { 'notInstalled' } else { 'verified' }
 if ($details.status -ne $ExpectedState -or $details.inspectionScope -ne 'schedule' -or $details.inspectionReason -ne $expectedReason) { throw 'Structured schedule cause did not match the actual standard-user task observation.' }
 
+if ($TaskName -eq 'Skyview Robotics - Dev Tool Updates') {
+    if ($details.choiceContext.machineId -cnotmatch '^[0-9a-f]{64}$' -or $details.choiceContext.definitionId -cnotmatch '^[0-9a-f]{64}$' -or $details.choiceContext.identifier -ne $details.identifier) { throw 'Standard user could not read the installed task choice context.' }
+    Write-Output 'SDE_STANDARD_USER_MAINTENANCE_CONTEXT_OK'
+} elseif ($details.PSObject.Properties.Name -contains 'choiceContext') {
+    throw 'Foreign fixture action must not produce an installed-task choice context.'
+}
+
 if ($DenyControl) {
     $service = New-Object -ComObject Schedule.Service
     $service.Connect()

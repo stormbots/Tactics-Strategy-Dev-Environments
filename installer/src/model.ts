@@ -15,6 +15,7 @@ export type ToolRecord = {
     "current" | "notChecked" | "unavailable" | "native" | "inconsistent";
 };
 export type Schedule = {
+  choiceContext?: { machineId: string; identifier: string; definitionId: string };
   inspectionScope?: "schedule" | "history";
   inspectionReason?:
     | "verified"

@@ -1,6 +1,40 @@
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
 
+function Get-SkyviewChoiceContext {
+    param($Task)
+    # Display preference binding only: no mutation, elevation or permission changes.
+    try {
+        $xml = [string]$Task.Xml
+        if (-not $xml -or $xml.Length -gt 65536) { return }
+        [xml]$definition = $xml
+        $actions = @($definition.Task.Actions.ChildNodes)
+        if ($actions.Count -ne 1 -or $actions[0].LocalName -ne 'Exec') { return }
+        if ($actions[0].Command -ine 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe') { return }
+        $approved = @(
+            '-NoProfile -ExecutionPolicy Bypass -File "C:\ProgramData\SkyviewRobotics\AutoUpdate-SkyviewTools.ps1"',
+            '-NoProfile -ExecutionPolicy Bypass -File "C:\ProgramData\SkyviewRobotics\SelfUpdate\Invoke-SkyviewMaintenance.ps1"'
+        )
+        if ([string]$actions[0].Arguments -notin $approved) { return }
+        if ([string]$definition.Task.Principals.Principal.UserId -notin @('S-1-5-18', 'SYSTEM')) { return }
+        $security = New-Object Security.AccessControl.RawSecurityDescriptor($Task.GetSecurityDescriptor(1))
+        if ($security.Owner.Value -notin @('S-1-5-18', 'S-1-5-32-544')) { return }
+        $registry = [Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine', 'Registry64')
+        try {
+            $key = $registry.OpenSubKey('SOFTWARE\Microsoft\Cryptography', $false)
+            try { $machine = [string]$key.GetValue('MachineGuid', $null) } finally { if ($key) { $key.Dispose() } }
+        } finally { $registry.Dispose() }
+        $guid = [guid]::Empty
+        if ($machine.Length -gt 40 -or -not [guid]::TryParse($machine, [ref]$guid) -or $guid -eq [guid]::Empty) { return }
+        $hash = [Security.Cryptography.SHA256]::Create()
+        try {
+            $machineHash = [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes("sde-maintenance-machine-v1`0" + $guid.ToString('D')))).Replace('-', '').ToLowerInvariant()
+            $definitionHash = [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($xml))).Replace('-', '').ToLowerInvariant()
+        } finally { $hash.Dispose() }
+        @{ machineId=$machineHash; identifier='\Skyview Robotics - Dev Tool Updates'; definitionId=$definitionHash }
+    } catch { return } # A context failure must not hide a readable schedule.
+}
+
 function ConvertTo-SkyviewSchedule {
     param($Task)
     [xml]$definition = $Task.Xml
@@ -27,7 +61,7 @@ function ConvertTo-SkyviewSchedule {
     $result = if ($Task.State -in @(2,4)) { 'running' } elseif (-not $last) { 'never' } elseif ($Task.LastTaskResult -eq 75) { 'deferred' } elseif ($Task.LastTaskResult -eq 0) { 'success' } else { 'failure' }
     $code = [int64]$Task.LastTaskResult -band 0xffffffffL
     $observed = [datetimeoffset]::UtcNow.ToString('o')
-    [pscustomobject]@{
+    $record = [pscustomobject]@{
         status = $(if ($Task.Enabled) { 'enabled' } else { 'disabled' })
         active = [bool]($Task.State -in @(2,3,4))
         identifier = '\Skyview Robotics - Dev Tool Updates'
@@ -44,6 +78,9 @@ function ConvertTo-SkyviewSchedule {
         createdAt = $null
         lastSuccess = $(if ($result -eq 'success') { $last } else { $null })
     }
+    $context = Get-SkyviewChoiceContext -Task $Task
+    if ($context) { $record | Add-Member -NotePropertyName choiceContext -NotePropertyValue $context }
+    $record
 }
 function Get-SkyviewSchedule {
     try {

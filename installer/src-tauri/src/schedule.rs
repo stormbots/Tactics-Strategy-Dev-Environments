@@ -37,7 +37,21 @@ pub enum InspectionScope {
 }
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ChoiceContext {
+    pub machine_id: String,
+    pub identifier: String,
+    pub definition_id: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Schedule {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    pub choice_context: Option<ChoiceContext>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -121,7 +135,25 @@ fn validate_inspection(record: &Schedule) -> Result<(), String> {
         ) => true,
         _ => false,
     };
-    if valid {
+    let context_valid = record.choice_context.as_ref().map_or(true, |context| {
+        let hex = |value: &str| {
+            value.len() == 64
+                && value
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        };
+        hex(&context.machine_id)
+            && hex(&context.definition_id)
+            && context.identifier == record.identifier
+            && matches!(
+                context.identifier.as_str(),
+                "skyview-student-dev-update.timer" | "\\Skyview Robotics - Dev Tool Updates"
+            )
+            && matches!(record.inspection_scope, Some(S::Schedule))
+            && matches!(record.inspection_reason, Some(R::Verified))
+            && matches!(record.status, Status::Enabled | Status::Disabled)
+    });
+    if valid && context_valid {
         Ok(())
     } else {
         Err("Maintenance returned conflicting inspection information. Please check again.".into())
@@ -154,6 +186,47 @@ mod tests {
             "logFolder":"/logs","logsAvailable":false,"note":"","observedAt":"2026-11-18T00:00:00Z",
             "createdAt":null,"lastSuccess":null})
     }
+    #[test]
+    fn choice_context_is_bounded_and_cannot_change_native_evidence() {
+        let mut row = fixture("disabled", "schedule", "verified");
+        row["identifier"] = serde_json::json!("skyview-student-dev-update.timer");
+        row["choiceContext"] = serde_json::json!({"machineId":"a".repeat(64),
+            "identifier":"skyview-student-dev-update.timer", "definitionId":"b".repeat(64)});
+        let record: Schedule = serde_json::from_value(row.clone()).unwrap();
+        validate_inspection(&record).unwrap();
+        for (field, value) in [
+            ("machineId", serde_json::json!("bad")),
+            ("definitionId", serde_json::json!("B".repeat(64))),
+            ("identifier", serde_json::json!("foreign timer")),
+        ] {
+            let mut invalid = row.clone();
+            invalid["choiceContext"][field] = value;
+            let record: Schedule = serde_json::from_value(invalid).unwrap();
+            assert!(validate_inspection(&record).is_err());
+        }
+        for field in ["status", "inspectionScope", "inspectionReason"] {
+            let mut invalid = row.clone();
+            invalid[field] = serde_json::json!(if field == "status" {
+                "missing"
+            } else if field == "inspectionScope" {
+                "history"
+            } else {
+                "unknown"
+            });
+            let record: Schedule = serde_json::from_value(invalid).unwrap();
+            assert!(validate_inspection(&record).is_err());
+        }
+        for value in [
+            serde_json::Value::Null,
+            serde_json::json!({}),
+            serde_json::json!({"machineId":"a".repeat(64),"identifier":"skyview-student-dev-update.timer","definitionId":"b".repeat(64),"permit":true}),
+        ] {
+            let mut invalid = row.clone();
+            invalid["choiceContext"] = value;
+            assert!(serde_json::from_value::<Schedule>(invalid).is_err());
+        }
+    }
+
     #[test]
     fn structured_causes_keep_schedule_and_history_distinct() {
         for (status, scope, reason) in [
