@@ -6,6 +6,7 @@ source /etc/os-release
 [[ "$ID" == linuxmint && "$VERSION_ID" == 22* ]] || { echo 'Actual supported Mint required'; exit 1; }
 printf 'Native evidence: %s; kernel/container desktop UAT remains separate\n' "$PRETTY_NAME"
 export DEBIAN_FRONTEND=noninteractive
+python3 -I /work/tests/mint_ci_repository.py
 apt-get update
 # Dependencies for the real unprivileged profile preservation fixture.
 apt-get -y --no-remove install git jq

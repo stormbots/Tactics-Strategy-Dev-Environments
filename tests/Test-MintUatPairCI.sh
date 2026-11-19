@@ -5,6 +5,7 @@ set -Eeuo pipefail
 source /etc/os-release
 [[ "$ID" == linuxmint && "$VERSION_ID" == 22* ]] || exit 1
 export DEBIAN_FRONTEND=noninteractive
+python3 -I /work/tests/mint_ci_repository.py
 apt-get update
 root=/opt/sde-uat-pair
 install -d -m 0700 "$root"

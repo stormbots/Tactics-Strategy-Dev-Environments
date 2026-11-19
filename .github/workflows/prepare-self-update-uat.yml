@@ -7,6 +7,8 @@ on:
       - 'tests/test_uat_version.py'
       - 'tests/Probe-NativeUpgrade.ps1'
       - 'tests/Test-MintUatPairCI.sh'
+      - 'tests/mint_ci_repository.py'
+      - 'tests/test_mint_ci_repository.py'
       - 'linux/self-update/**'
       - 'linux/lib/schedule.py'
       - 'tests/test_schedule.py'
