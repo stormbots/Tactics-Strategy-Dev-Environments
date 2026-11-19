@@ -77,6 +77,7 @@ jobs:
           shellcheck --external-sources --severity=warning linux/*.sh linux/lib/*.sh
           python3 -m unittest discover -s tests -p 'test_uat_version.py'
           python3 tests/backend_contracts.py
+          python3 -m unittest discover -s tests -p 'test_mint_ci_repository.py' -v
           python3 -m unittest discover -s tests -p 'test_command_permissions.py' -v
           python3 -m unittest discover -s tests -p 'test_metadata.py'
           python3 -m unittest discover -s tests -p 'test_update_preflight.py'
