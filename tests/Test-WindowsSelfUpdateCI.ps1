@@ -17,10 +17,17 @@ $baseline = 'C:\ProgramData\SkyviewRobotics\Update-SkyviewTools.ps1'
 if (-not (Test-Path -LiteralPath $baseline)) { throw 'Expected the real provisioned baseline before SYSTEM upgrade testing.' }
 # Preserve a customized disabled task through the packaging hook.
 $maintenanceTask = 'Skyview Robotics - Dev Tool Updates'
+. (Join-Path $PSScriptRoot '../windows/chocolatey/tools/Inspect-SkyviewSchedule.ps1')
+$originalContext = (Get-SkyviewSchedule).choiceContext
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At 4:35am
 Set-ScheduledTask -TaskName $maintenanceTask -Trigger $trigger | Out-Null
 Disable-ScheduledTask -TaskName $maintenanceTask | Out-Null
 $before = [xml](Export-ScheduledTask -TaskName $maintenanceTask)
+$disabledObservation = Get-SkyviewSchedule
+$changedContext = $disabledObservation.choiceContext
+if ($originalContext.machineId -cnotmatch '^[0-9a-f]{64}$' -or $changedContext.definitionId -cnotmatch '^[0-9a-f]{64}$' -or $originalContext.machineId -ne $changedContext.machineId -or $originalContext.definitionId -eq $changedContext.definitionId -or $disabledObservation.status -ne 'disabled') { throw 'Installed task context did not bind the machine and changed disabled definition.' }
+if ((Get-SkyviewSchedule).choiceContext.definitionId -ne $changedContext.definitionId) { throw 'Read-only context was not stable.' }
+Write-Output 'SDE_NATIVE_MAINTENANCE_CONTEXT_OK'
 $worker = Join-Path $root 'worker.ps1' 
 @'
 $ErrorActionPreference = 'Stop'

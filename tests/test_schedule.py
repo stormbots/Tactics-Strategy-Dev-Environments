@@ -205,6 +205,59 @@ class ScheduleInspectionCauses(unittest.TestCase):
                 self.assertEqual(result['lastResult'], 'unavailable')
 
 
+class ChoiceContext(unittest.TestCase):
+    def records(self):
+        return tuple(dict(FragmentPath='/etc/systemd/system/' + unit,
+                          NeedDaemonReload='no', DropInPaths='')
+                     for unit in (schedule.TIMER, schedule.SERVICE))
+
+    def inspect(self, machine=b'a' * 32, timer=b'[Timer]\nOnCalendar=Sun 03:00\n',
+                service=b'[Service]\nExecStart=/fixed/worker\n', records=None):
+        values = [machine, timer, service]
+        with patch.object(schedule, 'context_file', side_effect=values):
+            return schedule.choice_context(*(records or self.records()))
+
+    def test_stable_opaque_context_ignores_volatile_execution_history(self):
+        records = self.records()
+        first = self.inspect(records=records)
+        records[0].update(NextElapseUSecRealtime='new time', ActiveState='active')
+        records[1].update(InvocationID='new invocation')
+        self.assertEqual(first, self.inspect(records=records))
+        self.assertEqual(set(first), {'machineId', 'identifier', 'definitionId'})
+        self.assertRegex(first['machineId'], '^[0-9a-f]{64}$')
+        self.assertRegex(first['definitionId'], '^[0-9a-f]{64}$')
+        self.assertNotIn('a' * 32, json.dumps(first))
+
+    def test_machine_or_definition_changes_invalidate_context(self):
+        first = self.inspect()
+        self.assertNotEqual(first['machineId'], self.inspect(machine=b'b' * 32)['machineId'])
+        self.assertNotEqual(first['definitionId'], self.inspect(timer=b'custom timer')['definitionId'])
+        self.assertNotEqual(first['definitionId'], self.inspect(service=b'new worker')['definitionId'])
+
+    def test_unreadable_missing_or_unsupported_context_is_omitted(self):
+        for changes in (dict(FragmentPath='/tmp/foreign'), dict(NeedDaemonReload='yes'),
+                        dict(DropInPaths='/etc/systemd/system/other.conf')):
+            records = self.records()
+            records[0].update(changes)
+            self.assertIsNone(self.inspect(records=records))
+        for machine in (b'', b'0' * 32, b'not-a-machine-id'):
+            self.assertIsNone(self.inspect(machine=machine))
+        for error in (PermissionError(), ValueError(), FileNotFoundError()):
+            with patch.object(schedule, 'context_file', side_effect=error):
+                self.assertIsNone(schedule.choice_context(*self.records()))
+
+    def test_known_history_dropin_is_bound_and_other_dropins_are_not_accepted(self):
+        records = self.records()
+        records[1]['DropInPaths'] = '/etc/systemd/system/' + schedule.SERVICE + '.d/sde-self-update.conf'
+        with patch.object(schedule, 'context_file', side_effect=[b'a' * 32, b'timer', b'service', b'history hooks']):
+            first = schedule.choice_context(*records)
+        with patch.object(schedule, 'context_file', side_effect=[b'a' * 32, b'timer', b'service', b'new hooks']):
+            second = schedule.choice_context(*records)
+        self.assertNotEqual(first['definitionId'], second['definitionId'])
+        records[1]['DropInPaths'] += ' /another/dropin'
+        self.assertIsNone(self.inspect(records=records))
+
+
 @unittest.skipUnless(sys.platform == 'linux' and os.geteuid() == 0,
                      'Protected filesystem checks require disposable Linux root runner')
 class ProtectedHistory(unittest.TestCase):
@@ -223,6 +276,25 @@ class ProtectedHistory(unittest.TestCase):
         for item in reversed(self.patches):
             item.stop()
         self.fixture.cleanup()
+
+    def test_context_files_reject_links_permissions_and_oversized_data(self):
+        target = self.root / 'definition'
+        target.write_bytes(b'unit definition')
+        self.assertEqual(schedule.context_file(target, 64), b'unit definition')
+        target.chmod(0o666)
+        with self.assertRaises(ValueError):
+            schedule.context_file(target, 64)
+        target.chmod(0o644)
+        with self.assertRaises(ValueError):
+            schedule.context_file(target, 4)
+        alias = self.root / 'alias'
+        alias.symlink_to(target)
+        with self.assertRaises(OSError):
+            schedule.context_file(alias, 64)
+        self.root.chmod(0o777)
+        with self.assertRaises(ValueError):
+            schedule.context_file(target, 64)
+        self.root.chmod(0o755)
 
     def test_atomic_publication_is_readable_and_retains_start_identity(self):
         hook.record_attempt('start', {'INVOCATION_ID': INVOCATION})

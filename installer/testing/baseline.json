@@ -392,6 +392,16 @@
       "ignores a completed read after leaving the schedule page",
       "StrictMode abandoned reads cannot block or replace the current inspection",
       "uses confirmed causes without confusing missing, timeout or active disabled timers"
+    ],
+    "src/maintenanceDisabledChoice.test.ts": [
+      "opening a disabled finding reads without saving or changing observations",
+      "an explicit saved choice is local display data and keeps Disabled and history intact",
+      "choices do not apply to another device, schedule or definition",
+      "unreadable, missing, enabled and history-only evidence cannot settle a decision",
+      "stale or future observations cannot save or apply a choice",
+      "malformed, oversized or future records cannot manufacture a saved decision",
+      "storage or readback failures stay unsaved and do not become successful choices",
+      "missing identity and unsupported targets leave the choice unsettled"
     ]
   },
   "browser": [
@@ -1237,6 +1247,10 @@
     "browser-tests/maintenance-inspection.spec.ts": {
       "count": 38,
       "sha256": "0f5ce1d6647fac33cd4809c92021736cd76552d93b3d9182f0505651e14e90d5"
+    },
+    "src/maintenanceDisabledChoice.test.ts": {
+      "count": 40,
+      "sha256": "09aa99f9f35ef53d479fe2cc58537f2dde961dab69463b10b35ed23bc28a8932"
     }
   },
   "updates": [
@@ -1259,6 +1273,12 @@
       "addedUnitCases": 7,
       "addedBrowserCases": 2,
       "review": "All earlier test inventories and assertion fingerprints retained; added read-only maintenance continuation, native cause and stale-evidence coverage."
+    },
+    {
+      "source": "3239b846df23cfeac678d1189afa3c856cb43d0c",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "review": "Preparatory local-choice contract only, not wired to native context or UI; existing assertions preserved."
     }
   ]
 }

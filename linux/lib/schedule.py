@@ -1,5 +1,6 @@
 """Read-only inspection of the fixed system timer and its service."""
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -108,6 +109,55 @@ def durable_result(record, service, timer):
         return None
     return record
 
+def context_file(path, limit):
+    """Bounded normal-user read; context is display data, never execution authority."""
+    for parent in path.parents:
+        metadata = parent.lstat()
+        if metadata.st_uid != 0 or metadata.st_mode & 0o022 or not stat.S_ISDIR(metadata.st_mode):
+            raise ValueError('Unverified context ancestor')
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        before = os.fstat(stream.fileno())
+        if before.st_uid != 0 or before.st_mode & 0o022 or not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+            raise ValueError('Unverified context file')
+        data = stream.read(limit + 1)
+        after = os.fstat(stream.fileno())
+        identity = lambda m: (m.st_dev, m.st_ino, m.st_size, m.st_mtime_ns, m.st_ctime_ns)
+        if len(data) > limit or identity(before) != identity(after):
+            raise ValueError('Incomplete context read')
+    return data
+
+
+def choice_context(timer, service):
+    """Recognize only the fixed installed unit layout; unsupported layouts omit context."""
+    try:
+        machine = context_file(Path('/etc/machine-id'), 33).strip()
+        if not re.fullmatch(b'[0-9a-f]{32}', machine) or machine == b'0' * 32:
+            return None
+        definitions = []
+        for unit, record in ((TIMER, timer), (SERVICE, service)):
+            expected = '/etc/systemd/system/' + unit
+            if record.get('FragmentPath') != expected or record.get('NeedDaemonReload') != 'no':
+                return None
+            paths = [expected]
+            dropins = record.get('DropInPaths', '')
+            if dropins:
+                # Current installed history hooks. Other layouts require review.
+                known = '/etc/systemd/system/' + SERVICE + '.d/sde-self-update.conf'
+                if unit != SERVICE or dropins != known:
+                    return None
+                paths.append(known)
+            for path in paths:
+                definitions.append([path, context_file(Path(path), 65536).decode('utf-8')])
+        if not definitions[0][1].strip() or not definitions[1][1].strip():
+            return None
+        payload = json.dumps(definitions, separators=(',', ':'), ensure_ascii=True).encode('ascii')
+        return dict(machineId=hashlib.sha256(b'sde-maintenance-machine-v1\0' + machine).hexdigest(),
+                    identifier=TIMER, definitionId=hashlib.sha256(payload).hexdigest())
+    except (OSError, ValueError, UnicodeError):
+        return None
+
+
 def inspect():
     observed = datetime.datetime.now(datetime.timezone.utc).isoformat()
     r = dict(status="unavailable", active=False, identifier=TIMER, frequency="Unavailable",
@@ -145,6 +195,9 @@ def inspect():
             r["note"] = "SDE could not read the maintenance service information. Review the schedule and save a support report if the check still fails."
             return r
         r["inspectionScope"] = "schedule"
+        context = choice_context(timer, service)
+        if context is not None:
+            r["choiceContext"] = context
         raw_last = service.get("ExecMainStartTimestamp", "")
         last = timestamp(raw_last)
         r["lastRun"] = last
