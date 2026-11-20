@@ -57,6 +57,7 @@ import {
   useUpdateDiscovery,
 } from "./UpdateCenter";
 import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
+import { MaintenanceOverviewCard } from "./MaintenanceOverviewCard";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
@@ -1269,6 +1270,8 @@ export default function App() {
                 </details>
               </div>
             </section>
+            <MaintenanceOverviewCard data={maintenance} pending={maintenanceLoading} busy={busy}
+              onReview={() => navigate("schedule")} onSupport={() => setReportOpen(true)} />
             <details className="tools-preview">
               <summary>Development tools</summary>
               <div className="tool-grid">

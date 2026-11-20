@@ -414,6 +414,16 @@
       "leaving during the follow-up cannot write a late saved choice",
       "invalidated asynchronous save cannot persist after fingerprinting",
       "unrecognized context and incomplete history do not offer Save"
+    ],
+    "src/MaintenanceOverviewCard.test.tsx": [
+      "disabled Overview is actionable and reads without writing or changing its observation",
+      "saved choice stays distinct from Disabled, active timer and failed history",
+      "changed definitions invalidate the displayed choice immediately",
+      "pending and unavailable reads cannot reuse a saved choice",
+      "incomplete history and stale observations cannot claim the choice is settled",
+      "blocked preference storage leaves ordinary review available without altering the saved record",
+      "successful active maintenance needs no findings card but running and unknown history remain visible",
+      "missing context and missing schedules never manufacture a saved decision"
     ]
   },
   "browser": [
@@ -1094,6 +1104,18 @@
       "project": "chromium",
       "file": "maintenance-choice.spec.ts",
       "title": "Maintenance choice stays explicit and in place at 1140px"
+    },
+    {
+      "project": "chromium",
+      "file": "maintenance-overview.spec.ts",
+      "title": "Overview keeps the saved maintenance choice separate from findings at 390px",
+      "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "maintenance-overview.spec.ts",
+      "title": "Overview keeps the saved maintenance choice separate from findings at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1281,6 +1303,14 @@
     "browser-tests/maintenance-choice.spec.ts": {
       "count": 36,
       "sha256": "9ef684e6d60c19dfe87dd18d324917ded2357774c5077d383e0c180e1c2a9d6e"
+    },
+    "src/MaintenanceOverviewCard.test.tsx": {
+      "count": 62,
+      "sha256": "8f2b7a6cc2768fb59911e6bfbffe9bc56378cbfc2111f50ed4327f7fb5ce1c4e"
+    },
+    "browser-tests/maintenance-overview.spec.ts": {
+      "count": 36,
+      "sha256": "36b3a050c6d36657c3a4a91cb9fe1937e8271621f94966a5faf53830760b0dc9"
     }
   },
   "updates": [
@@ -1316,6 +1346,13 @@
       "addedUnitCases": 10,
       "addedBrowserCases": 2,
       "review": "Explicit display-only Save continuation and cancellation coverage. All original assertion fingerprints and inventories preserved."
+    },
+    {
+      "source": "53e827527a7c0e1e2275e2c81072ba7aa66b0bbb",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "addedBrowserCases": 2,
+      "review": "Read-only Overview maintenance card; every earlier assertion fingerprint and inventory retained. Saved-choice display never changes health or native authority."
     }
   ]
 }
