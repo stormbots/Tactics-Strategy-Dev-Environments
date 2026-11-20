@@ -434,6 +434,16 @@
       "confirmed restart evidence failures use a bounded explanation and unknown codes remain unknown",
       "ready safety removes the card while health-only uncertainty does not become a blocker",
       "pending and failed reads cannot display a cleared finding or stale operation details"
+    ],
+    "src/PythonReadinessCard.test.tsx": [
+      "a complete supported search is distinct from an incomplete collection",
+      "wrong-family, inconsistent and capability-without-identity records cannot establish absence or a pass",
+      "a verified required family produces no error card even when other versions exist",
+      "absence explains the requirement without inferring a conflicting default version",
+      "timeouts remain incomplete and do not claim Python is absent",
+      "capability failures show the verified family and the affected test capability",
+      "malformed or legacy diagnostics offer review without interpreting arbitrary text as a new cause",
+      "rechecking keeps earlier findings labeled and disabled then removes the card after a verified pass"
     ]
   },
   "browser": [
@@ -1138,6 +1148,18 @@
       "file": "change-safety-overview.spec.ts",
       "title": "Overview safety finding stays specific and review-only at 1140px",
       "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "python-readiness-card.spec.ts",
+      "title": "Python finding uses structured evidence and read-only follow-up at 390px",
+      "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "python-readiness-card.spec.ts",
+      "title": "Python finding uses structured evidence and read-only follow-up at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1341,6 +1363,14 @@
     "browser-tests/change-safety-overview.spec.ts": {
       "count": 32,
       "sha256": "e9f519a1a942c1ba64405943e38f0a4abc9739b168d9664985a08544baa07f1c"
+    },
+    "src/PythonReadinessCard.test.tsx": {
+      "count": 50,
+      "sha256": "23bfad8a26b7a472b6e42f9613c363ee0e7374a891b91970e3d94c3ebd1a0825"
+    },
+    "browser-tests/python-readiness-card.spec.ts": {
+      "count": 32,
+      "sha256": "0cbbe54d332e3e15d823d4bf3253fc7f988e5d295e782063def2f24a57ce7e7d"
     }
   },
   "updates": [
@@ -1390,6 +1420,13 @@
       "addedUnitCases": 8,
       "addedBrowserCases": 2,
       "review": "Standalone read-only Change Safety finding. Every earlier assertion fingerprint/inventory retained; no acknowledgment or native authority added."
+    },
+    {
+      "source": "44e6748d8d6e4b9d8935f033fb6bb19825652e09",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "addedBrowserCases": 2,
+      "review": "Python card consumes one consistent structured observation and complete collection. Earlier assertions/inventories retained; no setup authority or default-version inference."
     }
   ]
 }
