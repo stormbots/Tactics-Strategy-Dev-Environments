@@ -60,6 +60,7 @@ import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { MaintenanceOverviewCard } from "./MaintenanceOverviewCard";
 import { ChangeSafetyOverviewCard } from "./ChangeSafetyOverviewCard";
 import { PythonReadinessCard } from "./PythonReadinessCard";
+import { EditorAccessOverviewCard } from "./EditorAccessOverviewCard";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
@@ -223,6 +224,7 @@ export default function App() {
     "overview" | "validation" | "recovery" | "schedule" | "about"
   >("overview");
   const navigationVersion = useRef(0);
+  const accessOverviewNavigation = useRef<number | null>(null);
   function navigate(next: typeof page) {
     navigationVersion.current++;
     setPage(next);
@@ -501,9 +503,15 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (s.stage === "running") progressHeading.current?.focus();
-    if (s.stage === "success" || s.stage === "failure")
-      resultHeading.current?.focus();
+    const inOverviewAccess = page === "overview" && accessOverviewNavigation.current === navigationVersion.current;
+    if (s.stage === "running") {
+      if (inOverviewAccess) document.getElementById("editor-access-overview-heading")?.focus();
+      else progressHeading.current?.focus();
+    }
+    if (s.stage === "success" || s.stage === "failure") {
+      if (inOverviewAccess) (document.getElementById("editor-access-overview-heading") ?? pageHeading.current)?.focus();
+      else resultHeading.current?.focus();
+    }
   }, [s.stage]);
   function openReview(mode: OperationKind, safety: RecoveryState | null) {
     reviewed.current = {
@@ -529,7 +537,8 @@ export default function App() {
     actionInFlight.current = true;
     const navigation = navigationVersion.current;
     const inAccessReview =
-      selected === "validate" && keepAccessReview && page === "validation";
+      selected === "validate" && keepAccessReview && (page === "validation" || page === "overview");
+    accessOverviewNavigation.current = inAccessReview && page === "overview" ? navigation : null;
     setFocusedPrimary(null);
     setReadSequencePending(selected === "validate");
     try {
@@ -625,7 +634,8 @@ export default function App() {
           if (!mounted.current || request !== validationRequest.current) return;
           acceptingLines.current = false;
           setObservedReport(report);
-          if (inAccessReview && completeEditorPreferences(report))
+          const preferencesResult = inAccessReview ? completeEditorPreferences(report) : null;
+          if (preferencesResult && (preferencesResult.status === "read" || preferencesResult.status === "missing" || preferencesResult.status === "invalid" || (preferencesResult.status === "unreadable" && preferencesResult.reason === "accessDenied")))
             setAccessReviewSnapshot(null);
           if (selected !== "validate")
             setOutcome({
@@ -675,8 +685,10 @@ export default function App() {
         inAccessReview &&
         mounted.current &&
         navigation === navigationVersion.current
-      )
-        pageHeading.current?.focus();
+      ) {
+        const target = page === "overview" ? document.getElementById("editor-access-overview-heading") ?? pageHeading.current : pageHeading.current;
+        target?.focus();
+      }
     }
   }
   async function acknowledgeRecovery() {
@@ -1272,6 +1284,8 @@ export default function App() {
                 </details>
               </div>
             </section>
+            <EditorAccessOverviewCard report={accessDisplayReport} stale={!!accessReviewSnapshot} busy={busy}
+              onCheck={() => void start("validate", false, false, true)} onSupport={() => setReportOpen(true)} />
             <PythonReadinessCard report={observedReport} pending={s.stage === "checking" || s.stage === "running" || readSequencePending}
               busy={busy} onReview={() => navigate("validation")}
               onCheck={() => void start("validate")} onSupport={() => setReportOpen(true)} />

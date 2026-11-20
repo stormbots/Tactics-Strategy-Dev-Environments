@@ -444,6 +444,16 @@
       "capability failures show the verified family and the affected test capability",
       "malformed or legacy diagnostics offer review without interpreting arbitrary text as a new cause",
       "rechecking keeps earlier findings labeled and disabled then removes the card after a verified pass"
+    ],
+    "src/EditorAccessOverviewCard.test.tsx": [
+      "Overview names VSCodium and confirms access denial without labeling settings broken",
+      "opening review starts no check and reveals normal-account guidance",
+      "check and support callbacks require explicit actions and do not alter the report",
+      "earlier evidence and an expanded review stay in place through busy and failed collection",
+      "a complete defaults result removes the access card without claiming settings were repaired",
+      "generic read failure and incomplete collection cannot be called permission denial",
+      "a changed confirmed path requires opening a new review and never becomes a native path argument",
+      "malformed metadata cannot manufacture an access finding"
     ]
   },
   "browser": [
@@ -1160,6 +1170,18 @@
       "file": "python-readiness-card.spec.ts",
       "title": "Python finding uses structured evidence and read-only follow-up at 1140px",
       "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "editor-access-overview.spec.ts",
+      "title": "Overview VSCodium access review remains in place at 390px",
+      "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "editor-access-overview.spec.ts",
+      "title": "Overview VSCodium access review remains in place at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1371,6 +1393,14 @@
     "browser-tests/python-readiness-card.spec.ts": {
       "count": 32,
       "sha256": "0cbbe54d332e3e15d823d4bf3253fc7f988e5d295e782063def2f24a57ce7e7d"
+    },
+    "src/EditorAccessOverviewCard.test.tsx": {
+      "count": 52,
+      "sha256": "998e3ac717a9b9308062ea99695b31793cbe53288e4f29baa64c027f5eb0f71a"
+    },
+    "browser-tests/editor-access-overview.spec.ts": {
+      "count": 46,
+      "sha256": "5e35dbd500d25b811e102c3740585e295b9d75097d7291bf1de71b5677130d2e"
     }
   },
   "updates": [
@@ -1427,6 +1457,13 @@
       "addedUnitCases": 8,
       "addedBrowserCases": 2,
       "review": "Python card consumes one consistent structured observation and complete collection. Earlier assertions/inventories retained; no setup authority or default-version inference."
+    },
+    {
+      "source": "4155b710a3622da25225d1a5f9bce9e5c2ebbb34",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "addedBrowserCases": 2,
+      "review": "Overview reuses confirmed VSCodium access-denial review and the existing read-only continuation. All earlier assertion fingerprints/inventories retained."
     }
   ]
 }

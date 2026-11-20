@@ -6,17 +6,19 @@ export function EditorAccessReview({
   busy,
   onCheck,
   onSupport,
+  showHeading = true,
 }: {
   path: string;
   busy: boolean;
   onCheck: () => void;
   onSupport: () => void;
+  showHeading?: boolean;
 }) {
   const [reviewing, setReviewing] = useState(false);
   const id = useId();
   return (
     <div className="validation-guidance">
-      <strong>We couldn’t finish checking VSCodium</strong>
+      {showHeading && <strong>We couldn’t finish checking VSCodium</strong>}
       <p>
         <b>Check incomplete</b>
       </p>
