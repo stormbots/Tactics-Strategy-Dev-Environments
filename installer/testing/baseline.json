@@ -424,6 +424,16 @@
       "blocked preference storage leaves ordinary review available without altering the saved record",
       "successful active maintenance needs no findings card but running and unknown history remain visible",
       "missing context and missing schedules never manufacture a saved decision"
+    ],
+    "src/ChangeSafetyOverviewCard.test.tsx": [
+      "review and support are explicit callbacks and cannot change the safety observation",
+      "account name and times cannot be substituted for an unknown system operation",
+      "missing names and invalid times stay unknown without an invented failure",
+      "running work warns against force-closing and does not suggest restart",
+      "unreadable sources stay distinct from a missing operation or confirmed failure",
+      "confirmed restart evidence failures use a bounded explanation and unknown codes remain unknown",
+      "ready safety removes the card while health-only uncertainty does not become a blocker",
+      "pending and failed reads cannot display a cleared finding or stale operation details"
     ]
   },
   "browser": [
@@ -1116,6 +1126,18 @@
       "file": "maintenance-overview.spec.ts",
       "title": "Overview keeps the saved maintenance choice separate from findings at 1140px",
       "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "change-safety-overview.spec.ts",
+      "title": "Overview safety finding stays specific and review-only at 390px",
+      "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "change-safety-overview.spec.ts",
+      "title": "Overview safety finding stays specific and review-only at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1311,6 +1333,14 @@
     "browser-tests/maintenance-overview.spec.ts": {
       "count": 36,
       "sha256": "36b3a050c6d36657c3a4a91cb9fe1937e8271621f94966a5faf53830760b0dc9"
+    },
+    "src/ChangeSafetyOverviewCard.test.tsx": {
+      "count": 66,
+      "sha256": "5e721570928184238231129b1a3d43520c93412a63fc488781620bf1d86c1855"
+    },
+    "browser-tests/change-safety-overview.spec.ts": {
+      "count": 32,
+      "sha256": "e9f519a1a942c1ba64405943e38f0a4abc9739b168d9664985a08544baa07f1c"
     }
   },
   "updates": [
@@ -1353,6 +1383,13 @@
       "addedUnitCases": 8,
       "addedBrowserCases": 2,
       "review": "Read-only Overview maintenance card; every earlier assertion fingerprint and inventory retained. Saved-choice display never changes health or native authority."
+    },
+    {
+      "source": "ed3c027c134f7c5c2590437581fc605c9b30ece7",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "addedBrowserCases": 2,
+      "review": "Standalone read-only Change Safety finding. Every earlier assertion fingerprint/inventory retained; no acknowledgment or native authority added."
     }
   ]
 }
