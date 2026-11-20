@@ -166,3 +166,46 @@ build/type check, audit zero, backend contracts 35, metadata tests 68, CI-policy
 remain unchanged. Full CI must run all 140 browser cases, Windows/Mint native,
 both trust jobs and acceptance. Full exact-main validation, human signing,
 authenticated exact-candidate owner UAT and separate promotion remain mandatory.
+
+## Refine UX #161: VSCodium access review on Overview
+
+The Overview card reuses `completeEditorPreferences` and the existing
+`EditorAccessReview`. It appears only for a complete, confirmed access-denied
+observation of the bounded preferences file. Partial/malformed data and generic
+read failure cannot be presented as a newly confirmed permission denial. The
+card names VSCodium and explains it as the app used to write code; it does not
+refer to Python, maintenance or Change Safety.
+
+Opening Review access problem starts no check or mutation. The explicit recheck
+runs existing read-only validation, using the same display-only earlier Report
+retention as Validation. The review stays expanded for the same path. A new
+confirmed path requires a new review. Incomplete collection or an unavailable /
+generic read failure cannot dismiss the earlier access finding; it stays clearly
+labeled as earlier evidence with retry/support. A complete fresh access-denied
+result replaces the earlier observation without claiming success. Confirmed
+read/defaults/invalid-contents results can settle access denial, but do not prove
+other editor capabilities or settings are healthy.
+
+Focus stays with the Overview card during its recheck and at its result. If the
+card clears, focus returns to the page heading. Navigation invalidates that focus
+request, so a late result cannot pull the student back from another page. The
+existing Validation route keeps its behavior. Earlier Report retention remains
+presentation-only and never feeds readiness, preflight, native admission or
+operation consent.
+
+No permissions, settings, app installations, native commands or IPC path
+arguments are added. Normal-account and teacher/administrator access guidance
+remains in the shared review. Support opens the existing report-review flow.
+Other editor findings and broader procedural/setup/restoration/location work
+remain separate #161 completion criteria.
+
+Validation includes all 395 unit cases, eight new card cases, two new narrow/wide
+browser cases and the two existing Validation access-review browser cases.
+Browser coverage includes keyboard/focus, failed collection, generic read failure,
+continued access denial, fresh defaults, navigation during a late result,
+accessibility/layout and zero modifying operations. Build/type check, audit zero,
+backend contracts 35, metadata 68, CI-policy 35, docs/diff pass; earlier assertion
+fingerprints/inventories remain intact. Full CI must run all 142 browser cases
+and the native/trust/acceptance gates. Exact-main validation, human signing,
+exact authenticated-candidate owner UAT and separately authorized promotion
+remain mandatory.
