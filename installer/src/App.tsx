@@ -59,6 +59,7 @@ import {
 import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { MaintenanceOverviewCard } from "./MaintenanceOverviewCard";
 import { ChangeSafetyOverviewCard } from "./ChangeSafetyOverviewCard";
+import { PythonReadinessCard } from "./PythonReadinessCard";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
@@ -1271,6 +1272,9 @@ export default function App() {
                 </details>
               </div>
             </section>
+            <PythonReadinessCard report={observedReport} pending={s.stage === "checking" || s.stage === "running" || readSequencePending}
+              busy={busy} onReview={() => navigate("validation")}
+              onCheck={() => void start("validate")} onSupport={() => setReportOpen(true)} />
             <ChangeSafetyOverviewCard state={recovery} pending={recoveryLoading || readSequencePending}
               error={recoveryError} busy={busy} onReview={() => navigate("recovery")}
               onSupport={() => setReportOpen(true)} />

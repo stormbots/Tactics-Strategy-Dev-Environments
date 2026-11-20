@@ -126,3 +126,43 @@ This increment does not complete the broader procedural Your next step card,
 restoration/preservation or application/project-location requirements. Human
 signing, exact authenticated-candidate owner UAT and separate stable promotion
 remain mandatory. Opening review is never an execution permit.
+
+## Refine UX #161: structured Python readiness card
+
+The Overview Python card consumes existing typed runtime events and collected
+validation Reports. One complete, consistent Python runtime event and one paired
+Python check are required. The collection must have its timestamp, terminal
+summary, matching failure count and consistent exit/success status. Duplicate,
+malformed, contradictory or partial evidence cannot establish a pass or a
+confirmed supported-search result. Capability failures that claim a discovered
+interpreter also require its verified-family version and executable evidence.
+
+The card distinguishes a completed supported search that found no Python 3.14,
+an unfinished check, confirmed timeouts, interpreter failure, test-environment
+failure and a pip capability failure. It does not parse arbitrary diagnostic
+text to invent a cause or an incompatible default version. A usable verified
+3.14 family removes the card; another installed Python version is not an error.
+The record does not provide a default-version inventory, so the card does not
+invent a “3.15 is the default” finding.
+
+Review opens existing Validation, Check setup again runs the existing read-only
+validation path, and support opens report review. These controls do not install
+software, change PATH/defaults, approve a full operation, acknowledge an incident
+or grant native permission. Earlier Python findings remain labeled and disabled
+while the new check runs; failed collection keeps an earlier result labeled with
+retry/support guidance. That retained display Report never feeds readiness,
+preflight or execution decisions.
+
+This is a bounded presentation/read-only continuation increment. A complete
+missing-family installation workflow, full-operation preservation, other tool
+cards and the procedural Your next step integration remain separate completion
+criteria. Review of a Python check does not promise that an installation has
+been approved or completed.
+
+Local evidence: all 387 unit cases (eight added structured/continuation cases),
+two narrow/wide keyboard/read-only-follow-up/accessibility browser cases,
+build/type check, audit zero, backend contracts 35, metadata tests 68, CI-policy
+35, docs and diff checks pass. All original assertion fingerprints/inventories
+remain unchanged. Full CI must run all 140 browser cases, Windows/Mint native,
+both trust jobs and acceptance. Full exact-main validation, human signing,
+authenticated exact-candidate owner UAT and separate promotion remain mandatory.
