@@ -85,3 +85,44 @@ Keep every existing Build/native/trust/Windows SYSTEM/Mint 22.3 upgrade gate.
 Human signing approval, authenticated candidate owner UAT and separately
 authorized stable promotion remain distinct mandatory gates. Original Windows
 interruption evidence and historical Mint v1.2.18 35/0/0 remain untouched.
+
+## Refine UX #161: standalone Change Safety finding
+
+The Overview Change Safety card consumes the existing `RecoveryState`, request
+loading state and recovery read error. It does not change the task decision,
+readiness classification, native inspection or acknowledgment behavior.
+
+- A readable account incident supplies only its own known operation name, start
+  time and last-recorded time. Unknown names or invalid/missing times are shown
+  as unavailable. The system snapshot currently supplies no operation name or
+  start time; the card says so instead of borrowing account-incident details.
+- The native observation time is labeled as the system safety check time. It is
+  never presented as the time an operation started or completed.
+- Recognized native reason codes explain an unconfirmed earlier process lifetime,
+  unavailable restart evidence or an incomplete native activity check. Unknown
+  reasons remain unknown. Missing read access does not prove a failed operation.
+- Active work, incomplete package state and retained interruption review keep
+  distinct wording. The card does not infer failure from an interruption or
+  request a restart without supporting evidence. It references no tool-readiness,
+  Python or maintenance finding.
+- **Address safety finding** opens existing Recovery review. Report creation
+  opens existing support review. Neither action acknowledges or clears evidence,
+  terminates work, submits consent or grants permission to start a change.
+- Pending reads show checking without stale operation details. A fresh clear
+  safety observation removes the card; unknown package health alone is not a new
+  blocker. Read errors, untrusted/unreadable sources, active/unknown activity,
+  incomplete package state or outstanding acknowledgment keep review available.
+
+All 379 unit cases pass, including eight new source/uncertainty/action-boundary
+cases. Two new browser cases at 390px/1140px verify the keyboard route into
+Recovery, independent Python wording, no acknowledgment/operation, removal after
+a fresh clear safety observation, accessibility and narrow layout. Every earlier
+test inventory and assertion fingerprint remains intact. Build/type check,
+audit (zero findings), backend contracts (35), metadata tests (68), CI-policy
+checks (35), documentation and diff checks pass locally. Full CI must run all
+138 browser cases and all native/trust/acceptance gates before merge.
+
+This increment does not complete the broader procedural Your next step card,
+restoration/preservation or application/project-location requirements. Human
+signing, exact authenticated-candidate owner UAT and separate stable promotion
+remain mandatory. Opening review is never an execution permit.

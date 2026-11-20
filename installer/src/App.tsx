@@ -58,6 +58,7 @@ import {
 } from "./UpdateCenter";
 import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { MaintenanceOverviewCard } from "./MaintenanceOverviewCard";
+import { ChangeSafetyOverviewCard } from "./ChangeSafetyOverviewCard";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
@@ -1270,6 +1271,9 @@ export default function App() {
                 </details>
               </div>
             </section>
+            <ChangeSafetyOverviewCard state={recovery} pending={recoveryLoading || readSequencePending}
+              error={recoveryError} busy={busy} onReview={() => navigate("recovery")}
+              onSupport={() => setReportOpen(true)} />
             <MaintenanceOverviewCard data={maintenance} pending={maintenanceLoading} busy={busy}
               onReview={() => navigate("schedule")} onSupport={() => setReportOpen(true)} />
             <details className="tools-preview">
