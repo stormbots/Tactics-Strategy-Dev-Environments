@@ -209,3 +209,42 @@ fingerprints/inventories remain intact. Full CI must run all 142 browser cases
 and the native/trust/acceptance gates. Exact-main validation, human signing,
 exact authenticated-candidate owner UAT and separately authorized promotion
 remain mandatory.
+
+## Refine UX #161: Node.js/npm finding on Overview
+
+The Node.js/npm card consumes the existing bounded runtime observation. A
+confirmed result requires one structured record, one matching Node.js check,
+a collection time, a terminal summary with the actual failure count, and
+consistent success/exit status. The original Windows/Linux executable and
+associated npm path checks remain intact. Contradictory negative states cannot
+become a confirmed cause. A usable Node.js 24/npm pair hides the finding; an extra
+installed version alone creates no error. Recognition remains verification only,
+with maintenance eligibility explicitly not evaluated.
+
+The card distinguishes a supported search that did not find the required family,
+a Node.js command failure, an associated npm failure and an unfinished check.
+Missing or malformed metadata cannot establish absence or blame another runtime.
+Main wording explains npm without requiring raw technical details. The card
+refers only to its own finding.
+
+Review opens existing Validation. Check setup again uses existing read-only full
+validation and updates the finding on Overview. Earlier observations stay labeled
+while the check runs or if collection fails; they never feed readiness or native
+admission. Support opens the existing report-review flow. These actions install
+nothing and change no defaults, package permissions or operation consent.
+Supported installation, full-operation preservation/restoration and the broader
+procedural summary remain separate completion criteria; this increment does not
+promise a Node.js-only Repair.
+
+Validation adds eight unit cases and two narrow/wide browser cases covering
+keyboard review, timeout, npm failure, in-place successful recheck, accessibility,
+layout and zero modifying operations. All original assertions and inventories
+remain intact. Full CI must cover all 403 unit and 144 browser cases and preserve
+Windows/Mint native, trust, integrity and acceptance gates. Exact-main evidence,
+human signing, authenticated exact-candidate owner UAT and separately authorized
+promotion remain mandatory.
+
+Local evidence: all 403 unit cases, the two new Node.js/npm browser cases and four
+existing Python/VSCodium Overview browser cases pass. Build/type check, audit
+(zero vulnerabilities), backend contracts 35, metadata 68, CI-policy 35 and offline
+document/diff checks pass. Native and full-browser evidence remain CI requirements.

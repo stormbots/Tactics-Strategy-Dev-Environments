@@ -60,6 +60,7 @@ import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { MaintenanceOverviewCard } from "./MaintenanceOverviewCard";
 import { ChangeSafetyOverviewCard } from "./ChangeSafetyOverviewCard";
 import { PythonReadinessCard } from "./PythonReadinessCard";
+import { NodeReadinessCard } from "./NodeReadinessCard";
 import { EditorAccessOverviewCard } from "./EditorAccessOverviewCard";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
@@ -1286,6 +1287,9 @@ export default function App() {
             </section>
             <EditorAccessOverviewCard report={accessDisplayReport} stale={!!accessReviewSnapshot} busy={busy}
               onCheck={() => void start("validate", false, false, true)} onSupport={() => setReportOpen(true)} />
+            <NodeReadinessCard report={observedReport} pending={s.stage === "checking" || s.stage === "running" || readSequencePending}
+              busy={busy} onReview={() => navigate("validation")} onCheck={() => void start("validate")}
+              onSupport={() => setReportOpen(true)} />
             <PythonReadinessCard report={observedReport} pending={s.stage === "checking" || s.stage === "running" || readSequencePending}
               busy={busy} onReview={() => navigate("validation")}
               onCheck={() => void start("validate")} onSupport={() => setReportOpen(true)} />
