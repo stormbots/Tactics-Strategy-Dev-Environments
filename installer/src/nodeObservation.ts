@@ -1,4 +1,10 @@
-import { parseEvent } from "./model";
+import {
+  checksFrom,
+  collectionTime,
+  parseEvent,
+  toolForCheck,
+  type Report,
+} from "./model";
 
 /** Verification data only. A passing pair grants no package-maintenance authority. */
 export type NodeObservation = {
@@ -150,8 +156,55 @@ export function nodeObservation(line: string): NodeObservation | null {
         value.executable !== null)
     )
       return null;
+    if ((value.version === null) !== (value.executable === null)) return null;
+    if (
+      value.status === "unusable" &&
+      !["nodeFailed", "npmFailed"].includes(value.reason)
+    )
+      return null;
+    if (value.status === "incomplete" && value.reason === "notDiscovered")
+      return null;
+    if (
+      ["npmFailed", "npmTimeout"].includes(value.reason) &&
+      (!value.version || !value.executable)
+    )
+      return null;
     return value;
   } catch {
     return null;
   }
+}
+
+export function completeNodeObservation(
+  report: Report,
+): NodeObservation | null {
+  const events = report.lines.map(parseEvent),
+    records = report.lines.filter(
+      (_, i) => events[i]?.kind === "runtime" && events[i]?.key === "Node.js",
+    );
+  const checks = checksFrom(report.lines),
+    failed = checks.filter((c) => c.status === "FAIL").length;
+  const terminal = events
+    .filter((e) => e && ["validation", "summary", "error"].includes(e.kind))
+    .at(-1);
+  if (
+    records.length !== 1 ||
+    !checks.length ||
+    collectionTime(report.validation_collected_at) === null ||
+    terminal?.kind !== "summary" ||
+    terminal.key !== String(failed) ||
+    ![0, 1].includes(report.code) ||
+    report.success !== (failed === 0) ||
+    (report.code === 0) !== (failed === 0)
+  )
+    return null;
+  const value = nodeObservation(records[0]),
+    paired = checks.filter((c) => toolForCheck(c) === "Node.js");
+  if (
+    !value ||
+    paired.length !== 1 ||
+    paired[0].status !== (value.status === "passed" ? "PASS" : "FAIL")
+  )
+    return null;
+  return value;
 }

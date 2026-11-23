@@ -454,6 +454,16 @@
       "generic read failure and incomplete collection cannot be called permission denial",
       "a changed confirmed path requires opening a new review and never becomes a native path argument",
       "malformed metadata cannot manufacture an access finding"
+    ],
+    "src/NodeReadinessCard.test.tsx": [
+      "accepts verified Windows and Linux pairs without converting recognition to maintenance permission",
+      "rejects wrong-family, unrelated npm, unsafe paths, extra fields and invented ownership",
+      "requires one consistent record, paired check and complete collection",
+      "negative npm and incomplete results preserve their distinctions without claiming absence",
+      "a verified pair hides the card while another runtime may remain installed",
+      "review, full setup check and support are explicit read-only callback paths",
+      "earlier findings remain labeled and disabled during a failed follow-up then clear on a verified pair",
+      "unknown legacy diagnostics stay uncertain instead of becoming a missing-runtime claim"
     ]
   },
   "browser": [
@@ -1182,6 +1192,18 @@
       "file": "editor-access-overview.spec.ts",
       "title": "Overview VSCodium access review remains in place at 1140px",
       "added": true
+    },
+    {
+      "file": "node-readiness-card.spec.ts",
+      "title": "Node.js/npm finding keeps failed and incomplete checks distinct at 390px",
+      "project": "chromium",
+      "added": true
+    },
+    {
+      "file": "node-readiness-card.spec.ts",
+      "title": "Node.js/npm finding keeps failed and incomplete checks distinct at 1140px",
+      "project": "chromium",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1401,6 +1423,14 @@
     "browser-tests/editor-access-overview.spec.ts": {
       "count": 46,
       "sha256": "5e35dbd500d25b811e102c3740585e295b9d75097d7291bf1de71b5677130d2e"
+    },
+    "src/NodeReadinessCard.test.tsx": {
+      "count": 60,
+      "sha256": "210718b7f9b1d27a63ad7d6af24bc344ab2ec40a06966bde03b1386dd97bd7c8"
+    },
+    "browser-tests/node-readiness-card.spec.ts": {
+      "count": 40,
+      "sha256": "a1beab4ee87614be96a704454e19013cf9af104100a1e4454b6562efc08e1215"
     }
   },
   "updates": [
@@ -1464,6 +1494,13 @@
       "addedUnitCases": 8,
       "addedBrowserCases": 2,
       "review": "Overview reuses confirmed VSCodium access-denial review and the existing read-only continuation. All earlier assertion fingerprints/inventories retained."
+    },
+    {
+      "source": "aae178822a87237582d25b30d90a28302c183167",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "addedBrowserCases": 2,
+      "review": "Read-only structured Node.js/npm Overview finding. Original parser path constraints, every earlier assertion fingerprint and inventory retained. Recognition grants no maintenance authority."
     }
   ]
 }
