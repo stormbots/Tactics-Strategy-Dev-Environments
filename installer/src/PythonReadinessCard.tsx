@@ -132,12 +132,7 @@ export function PythonReadinessCard({
   const checks = checksFrom(shown.lines).filter(
     (c) => toolForCheck(c) === "Python",
   );
-  if (
-    value?.status === "passed" ||
-    (!value &&
-      !checks.some((c) => c.status === "FAIL" || c.status === "WARNING"))
-  )
-    return null;
+  if (!pythonReadinessCardVisible(shown)) return null;
   const text = wording(value);
   return (
     <section
@@ -146,7 +141,9 @@ export function PythonReadinessCard({
       aria-busy={pending}
     >
       <p className="eyebrow">Tool readiness · Python</p>
-      <h2 id="python-readiness-heading">{text.title}</h2>
+      <h2 id="python-readiness-heading" tabIndex={-1}>
+        {text.title}
+      </h2>
       {!report && (
         <p role="status">
           {pending
@@ -187,5 +184,17 @@ export function PythonReadinessCard({
         </button>
       </div>
     </section>
+  );
+}
+
+export function pythonReadinessCardVisible(report: Report): boolean {
+  const value = completePythonObservation(report);
+  const checks = checksFrom(report.lines).filter(
+    (c) => toolForCheck(c) === "Python",
+  );
+  return (
+    value?.status !== "passed" &&
+    (!!value ||
+      checks.some((c) => c.status === "FAIL" || c.status === "WARNING"))
   );
 }

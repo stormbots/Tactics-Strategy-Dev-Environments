@@ -16,13 +16,8 @@ export function EditorAccessOverviewCard({
   onCheck: () => void;
   onSupport: () => void;
 }) {
-  const value = report ? completeEditorPreferences(report) : null;
-  if (
-    value?.status !== "unreadable" ||
-    value.reason !== "accessDenied" ||
-    !value.path
-  )
-    return null;
+  const value = editorAccessFinding(report);
+  if (!value?.path) return null;
   return (
     <section
       className="information-card"
@@ -50,4 +45,13 @@ export function EditorAccessOverviewCard({
       />
     </section>
   );
+}
+
+export function editorAccessFinding(report: Report | null) {
+  const value = report ? completeEditorPreferences(report) : null;
+  return value?.status === "unreadable" &&
+    value.reason === "accessDenied" &&
+    value.path
+    ? value
+    : null;
 }

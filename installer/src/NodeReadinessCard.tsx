@@ -63,12 +63,7 @@ export function NodeReadinessCard({
     checks = checksFrom(shown.lines).filter(
       (c) => toolForCheck(c) === "Node.js" || /^npm:/.test(c.message),
     );
-  if (
-    value?.status === "passed" ||
-    (!value &&
-      !checks.some((c) => c.status === "FAIL" || c.status === "WARNING"))
-  )
-    return null;
+  if (!nodeReadinessCardVisible(shown)) return null;
   const text = wording(value);
   return (
     <section
@@ -77,7 +72,9 @@ export function NodeReadinessCard({
       aria-busy={pending}
     >
       <p className="eyebrow">Tool readiness · Node.js/npm</p>
-      <h2 id="node-readiness-heading">{text.title}</h2>
+      <h2 id="node-readiness-heading" tabIndex={-1}>
+        {text.title}
+      </h2>
       {!report && (
         <p role="status">
           {pending
@@ -120,5 +117,17 @@ export function NodeReadinessCard({
         </button>
       </div>
     </section>
+  );
+}
+
+export function nodeReadinessCardVisible(report: Report): boolean {
+  const value = completeNodeObservation(report);
+  const checks = checksFrom(report.lines).filter(
+    (c) => toolForCheck(c) === "Node.js" || /^npm:/.test(c.message),
+  );
+  return (
+    value?.status !== "passed" &&
+    (!!value ||
+      checks.some((c) => c.status === "FAIL" || c.status === "WARNING"))
   );
 }

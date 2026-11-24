@@ -62,18 +62,7 @@ export function ChangeSafetyOverviewCard({
   onReview: () => void;
   onSupport: () => void;
 }) {
-  const clear =
-    !pending &&
-    !error &&
-    state?.readiness === "ready_for_native_recheck" &&
-    state.effectiveActivity === "inactive" &&
-    state.nativeSafety.trust === "trusted" &&
-    state.nativeSafety.packageHealth !== "incomplete" &&
-    state.machine.available &&
-    state.user.available &&
-    !state.canAcknowledgeMachine &&
-    !state.canAcknowledgeUser;
-  if (clear) return null;
+  if (!changeSafetyNeedsReview(state, pending, error)) return null;
   const account = state?.user.available ? state.user.incident : null;
   const system =
     state?.machine.available &&
@@ -85,7 +74,7 @@ export function ChangeSafetyOverviewCard({
       aria-busy={pending}
     >
       <p className="eyebrow">Change safety</p>
-      <h2 id="change-safety-overview-heading">
+      <h2 id="change-safety-overview-heading" tabIndex={-1}>
         {pending ? "Checking change safety…" : "Change safety needs review"}
       </h2>
       {pending ? (
@@ -162,5 +151,24 @@ export function ChangeSafetyOverviewCard({
         </button>
       </div>
     </section>
+  );
+}
+
+export function changeSafetyNeedsReview(
+  state: RecoveryState | null,
+  pending: boolean,
+  error: string,
+): boolean {
+  return !(
+    !pending &&
+    !error &&
+    state?.readiness === "ready_for_native_recheck" &&
+    state.effectiveActivity === "inactive" &&
+    state.nativeSafety.trust === "trusted" &&
+    state.nativeSafety.packageHealth !== "incomplete" &&
+    state.machine.available &&
+    state.user.available &&
+    !state.canAcknowledgeMachine &&
+    !state.canAcknowledgeUser
   );
 }

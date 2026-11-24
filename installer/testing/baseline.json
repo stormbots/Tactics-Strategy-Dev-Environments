@@ -464,6 +464,16 @@
       "review, full setup check and support are explicit read-only callback paths",
       "earlier findings remain labeled and disabled during a failed follow-up then clear on a verified pair",
       "unknown legacy diagnostics stay uncertain instead of becoming a missing-runtime claim"
+    ],
+    "src/OverviewActionPlan.test.tsx": [
+      "lists one Python finding without inventing a safety or maintenance problem",
+      "a passing runtime removes only its item while unresolved safety stays",
+      "Node and Python use their own cards without combining their causes",
+      "keeps supported fallback guidance for pending, partial, legacy and unrepresented failures",
+      "links retained confirmed editor denial to its own access card",
+      "maintenance navigation describes a review item without claiming disabled tools are broken",
+      "links move focus to the current heading and never perform a setup action",
+      "busy links are disabled and a removed target cannot start another action"
     ]
   },
   "browser": [
@@ -1204,6 +1214,18 @@
       "title": "Node.js/npm finding keeps failed and incomplete checks distinct at 1140px",
       "project": "chromium",
       "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "overview-action-plan.spec.ts",
+      "title": "Procedural plan links current findings and preserves safety at 390px",
+      "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "overview-action-plan.spec.ts",
+      "title": "Procedural plan links current findings and preserves safety at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1431,6 +1453,14 @@
     "browser-tests/node-readiness-card.spec.ts": {
       "count": 40,
       "sha256": "a1beab4ee87614be96a704454e19013cf9af104100a1e4454b6562efc08e1215"
+    },
+    "src/OverviewActionPlan.test.tsx": {
+      "count": 42,
+      "sha256": "e6472d0c130f80cfaff23c0e0d974328e4a8be92515d302e1438760a4d1717da"
+    },
+    "browser-tests/overview-action-plan.spec.ts": {
+      "count": 28,
+      "sha256": "095e849a87a4e0595df7daef192d1bd0742d84e2b38832c8a9ad950b277f082a"
     }
   },
   "updates": [
@@ -1501,6 +1531,13 @@
       "addedUnitCases": 8,
       "addedBrowserCases": 2,
       "review": "Read-only structured Node.js/npm Overview finding. Original parser path constraints, every earlier assertion fingerprint and inventory retained. Recognition grants no maintenance authority."
+    },
+    {
+      "source": "ae032490b8801bd707cbe47576c900dc67268007",
+      "issue": 161,
+      "addedUnitCases": 8,
+      "addedBrowserCases": 2,
+      "review": "Procedural navigation reuses card visibility predicates. Every original assertion fingerprint and case inventory retained; no observation is execution authority."
     }
   ]
 }
