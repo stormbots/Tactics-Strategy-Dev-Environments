@@ -855,5 +855,80 @@ class ApplicationLocations(unittest.TestCase):
         self.assertIn('COUNTS 0 0 3',result.stdout)
 
 
+
+class EditorExtensionPreservation(unittest.TestCase):
+    """Execute the production Bash function with an isolated command recorder."""
+    def run_profile(self, policy, inventory='', query_exit=0, fail_install='', root=False):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory)
+            (fixture / 'extensions.txt').write_text(policy)
+            cli = fixture / 'codium'
+            cli.write_text("#!/usr/bin/python3\n" +
+                "import json,os,sys\nfrom pathlib import Path\n" +
+                "p=Path(os.environ['SDE_EXT_FIXTURE'])\n" +
+                "if os.environ.get('HOME')!=str(p):sys.exit(98)\n" +
+                "with (p/'calls').open('a') as f:f.write(json.dumps(sys.argv[1:])+'\\n')\n" +
+                "config=json.loads((p/'config').read_text())\n" +
+                "if sys.argv[1:]==['--list-extensions']:\n print(config['inventory']);sys.exit(config['query_exit'])\n" +
+                "if sys.argv[1:]==['--install-extension',config['fail_install']]:sys.exit(23)\n" +
+                "if len(sys.argv)!=3 or sys.argv[1]!='--install-extension':sys.exit(42)\n")
+            cli.chmod(0o755)
+            (fixture / 'config').write_text(json.dumps(dict(inventory=inventory,query_exit=query_exit,fail_install=fail_install)))
+            env = dict(os.environ, PATH=str(fixture)+':/usr/bin:/bin',SDE_EXT_FIXTURE=str(fixture))
+            script = 'source "$1"; id(){ printf "%s\\n" '+('0' if root else '1000')+'; }; '
+            if root:
+                script += 'runuser(){ [[ "$1" == -u && "$2" == student && "$3" == -- ]] || exit 99; shift 3; "$@"; }; '
+            script += 'install_codium_extensions_for_user student "$2" "$2/extensions.txt"'
+            result=subprocess.run(['/bin/bash','-c',script,'probe',str(ROOT/'linux/lib/common.sh'),str(fixture)],env=env,capture_output=True,text=True)
+            calls=[json.loads(line) for line in (fixture/'calls').read_text().splitlines()] if (fixture/'calls').exists() else []
+            return result,calls
+
+    def test_keeps_existing_case_insensitive_and_foreign_extensions(self):
+        result,calls=self.run_profile('EditorConfig.EditorConfig\nesbenp.prettier-vscode\n','editorconfig.editorconfig\nesbenp.prettier-vscode\nstudent.personal-extension')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(calls,[['--list-extensions']])
+
+    def test_installs_only_missing_and_never_forces_or_repeats_a_duplicate(self):
+        result,calls=self.run_profile('keep.extension\nnew.extension\nNEW.EXTENSION\n','keep.extension')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(calls,[['--list-extensions'],['--install-extension','new.extension']])
+
+    def test_empty_policy_does_not_query_or_install(self):
+        result,calls=self.run_profile('  # no required extensions\n\n',query_exit=23)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(calls,[])
+
+    def test_unreadable_inventory_cannot_be_treated_as_missing(self):
+        result,calls=self.run_profile('new.extension\n',query_exit=23)
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(calls,[['--list-extensions']])
+        self.assertIn('No extensions were changed',result.stderr)
+
+    def test_malformed_inventory_stops_before_any_installation(self):
+        for inventory in ['keep.extension\nnot an extension','--install-extension anything','a.'+'x'*257]:
+            with self.subTest(inventory=inventory):
+                result,calls=self.run_profile('new.extension\n',inventory)
+                self.assertNotEqual(result.returncode,0)
+                self.assertEqual(calls,[['--list-extensions']])
+
+    def test_policy_is_checked_completely_before_any_change(self):
+        for policy in ['new.extension\nbad --argument\n','x.y\n'*257,'x'*65537]:
+            with self.subTest(length=len(policy)):
+                result,calls=self.run_profile(policy)
+                self.assertNotEqual(result.returncode,0)
+                self.assertEqual(calls,[])
+
+    def test_installation_failure_stops_without_retrying_or_changing_later_entries(self):
+        result,calls=self.run_profile('new.extension\nlater.extension\n',fail_install='new.extension')
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(calls,[['--list-extensions'],['--install-extension','new.extension']])
+
+    def test_root_path_uses_the_requested_normal_user_for_both_commands(self):
+        result,calls=self.run_profile('new.extension\n',root=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(calls,[['--list-extensions'],['--install-extension','new.extension']])
+
+
 if __name__ == "__main__":
     unittest.main()

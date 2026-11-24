@@ -12,7 +12,7 @@ $user = 'SdeProfile' + [guid]::NewGuid().ToString('N').Substring(0,6)
 $created = $false
 New-Item -ItemType Directory $fixture | Out-Null
 try {
-    foreach ($name in @('Configure-SkyviewUser.ps1','Coordination.ps1','Setup-SkyviewRepositories.ps1','settings.json')) {
+    foreach ($name in @('Configure-SkyviewUser.ps1','EditorExtensions.ps1','Coordination.ps1','Setup-SkyviewRepositories.ps1','settings.json')) {
         Copy-Item (Join-Path $backend $name) $fixture
         if ((Get-FileHash (Join-Path $fixture $name)).Hash -cne (Get-FileHash (Join-Path $backend $name)).Hash) { throw 'Profile code copy changed.' }
     }

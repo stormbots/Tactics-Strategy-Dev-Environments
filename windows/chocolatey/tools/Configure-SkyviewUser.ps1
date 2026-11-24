@@ -18,16 +18,8 @@ if (-not (Test-Path $explorer)) { New-Item $explorer -Force | Out-Null }
 Set-ItemProperty $explorer -Name HideFileExt -Type DWord -Value 0
 $codium = 'C:\Program Files\VSCodium\bin\codium.cmd'
 if (-not (Test-Path $codium)) { $codium = (Get-Command codium -ErrorAction Stop).Source }
-foreach ($ext in (Get-Content (Join-Path $PSScriptRoot 'extensions.txt') | Where-Object { $_ -and $_ -notmatch '^\s*#' })) {
-    Event phase extensions "Installing editor extension $ext"
-    $previous = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = 'Continue'
-        & $codium --install-extension $ext --force 2>&1 | ForEach-Object { Write-Host $_ }
-        $code = $LASTEXITCODE
-    } finally { $ErrorActionPreference = $previous }
-    if ($code -ne 0) { throw "Editor extension $ext failed with exit code $code." }
-}
+. (Join-Path $PSScriptRoot 'EditorExtensions.ps1')
+Install-SkyviewMissingEditorExtensions -Codium $codium -ListPath (Join-Path $PSScriptRoot 'extensions.txt')
 Event phase settings 'Your VSCodium preferences are preserved, including an empty file or the choice to use defaults.'
 $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'
 if (-not (Test-Path $config)) { $config = Join-Path $PSScriptRoot 'repositories.csv' }

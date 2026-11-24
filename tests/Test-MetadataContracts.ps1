@@ -93,3 +93,5 @@ foreach ($name in @('System disk','User disk','Package manager','Restart')) {
     Assert ($null -ne $observation -and $observation.status -in @('pass','blocking','warning','unavailable')) "Native preflight missing $name."
 }
 Assert (($observations | Where-Object name -eq 'System disk').status -ne 'unavailable') 'Native system disk observation failed.'
+# Exercise production extension selection with an inert command recorder.
+& (Join-Path $PSScriptRoot 'Test-EditorExtensionPreservation.ps1')
