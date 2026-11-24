@@ -107,16 +107,46 @@ DESKTOP
 }
 
 install_codium_extensions_for_user() {
-  local user="$1" home="$2" ext_file="$3" ext
+  local user="$1" home="$2" ext_file="$3" ext inventory
+  local -a required=()
+  local -A installed=()
   [[ -f "$ext_file" ]] || die "Extension list not found: $ext_file"
+  [[ "$(stat -c %s -- "$ext_file")" -le 65536 ]] || die "The required extension list is too large. No extensions were changed."
   command -v codium >/dev/null 2>&1 || die "VSCodium CLI (codium) is not installed."
-  while IFS= read -r ext; do
-    [[ -z "$ext" || "$ext" =~ ^[[:space:]]*# ]] && continue
-    log "Ensuring VSCodium extension for ${user}: ${ext}"
-    if [[ "$(id -u)" -eq 0 ]]; then
-      runuser -u "$user" -- env HOME="$home" codium --install-extension "$ext" --force >/dev/null
-    else
-      env HOME="$home" codium --install-extension "$ext" --force >/dev/null
-    fi
+  while IFS= read -r ext || [[ -n "$ext" ]]; do
+    ext="${ext#"${ext%%[![:space:]]*}"}"
+    ext="${ext%"${ext##*[![:space:]]}"}"
+    [[ -z "$ext" || "$ext" == \#* ]] && continue
+    [[ ${#ext} -le 256 && "$ext" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "The required extension list could not be read. No extensions were changed."
+    required+=("$ext")
+    [[ ${#required[@]} -le 256 ]] || die "The required extension list is too large. No extensions were changed."
   done < "$ext_file"
+  [[ ${#required[@]} -gt 0 ]] || return 0
+  if [[ "$(id -u)" -eq 0 ]]; then
+    inventory="$(runuser -u "$user" -- env HOME="$home" codium --list-extensions)" || die "SDE could not read your installed VSCodium extensions. No extensions were changed. Check VSCodium and try again."
+  else
+    inventory="$(env HOME="$home" codium --list-extensions)" || die "SDE could not read your installed VSCodium extensions. No extensions were changed. Check VSCodium and try again."
+  fi
+  [[ ${#inventory} -le 1048576 ]] || die "The installed extension list is too large. No extensions were changed."
+  while IFS= read -r ext; do
+    ext="${ext#"${ext%%[![:space:]]*}"}"
+    ext="${ext%"${ext##*[![:space:]]}"}"
+    [[ -z "$ext" ]] && continue
+    [[ ${#ext} -le 256 && "$ext" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "SDE could not read your installed VSCodium extensions. No extensions were changed. Check VSCodium and try again."
+    installed["${ext,,}"]=1
+    [[ ${#installed[@]} -le 4096 ]] || die "The installed extension list is too large. No extensions were changed."
+  done <<< "$inventory"
+  for ext in "${required[@]}"; do
+    if [[ -n "${installed[${ext,,}]:-}" ]]; then
+      log "Keeping installed VSCodium extension: $ext"
+      continue
+    fi
+    log "Installing missing VSCodium extension for ${user}: ${ext}"
+    if [[ "$(id -u)" -eq 0 ]]; then
+      runuser -u "$user" -- env HOME="$home" codium --install-extension "$ext" >/dev/null || die "Editor extension $ext could not be installed."
+    else
+      env HOME="$home" codium --install-extension "$ext" >/dev/null || die "Editor extension $ext could not be installed."
+    fi
+    installed["${ext,,}"]=1
+  done
 }

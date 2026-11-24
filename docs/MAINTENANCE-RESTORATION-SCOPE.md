@@ -72,3 +72,48 @@ The next code increment is item 1. Items 2–4 remain separate completion criter
 This is a source review at the pinned commit, with links to the actual first-party entry points. No provisioning, scheduling change, privileged operation or owner-machine experiment was run for this audit. The successful exact-main run is existing implementation evidence; it does not replace the additional preservation/restoration cases listed above.
 
 Only this Markdown reference changes. Current CI policy assigns it lightweight reference validation. Runtime, dependencies, workflows, versions and all release gates remain unchanged.
+
+## Extension preservation increment
+
+The follow-up profile phase now reads the installed VSCodium extension IDs before
+installing a required extension. Both [Windows](../windows/chocolatey/tools/EditorExtensions.ps1)
+and [Mint](../linux/lib/common.sh) keep existing IDs, including personal entries,
+and compare IDs without regard to case. They install only missing required IDs,
+without `--force`. Existing versions and disabled choices are not deliberately
+reinstalled, upgraded or enabled by this step. A failed installation stops the
+remaining extension work; it does not retry or claim the profile phase completed.
+
+The Windows profile and legacy Chocolatey configuration entries share the same
+helper. Deployment copies that helper with the other maintained scripts; the
+existing native migration fixture checks its installed presence. Benign CLI stderr
+is kept as diagnostic output, while stdout and the process exit code determine
+whether inventory succeeded. A legacy extension-install failure now fails its
+configuration stage instead of only warning and continuing.
+
+The entire required list and installed inventory are checked before installation.
+An unsuccessful query or malformed inventory stops the step, rather than becoming
+an empty list. Empty required lists run no extension query. Required lists accept
+at most 64 KiB and 256 entries; accepted inventory text is limited to 1 MiB and
+bounded IDs. The ordinary Windows profile still refuses elevation. Mint uses the
+requested normal user and HOME for its query and installation calls. The existing
+CLI selection is unchanged; this is not a new installation-selection or ownership
+contract.
+
+This addresses extension reinstallation in the scope table above. It does not
+settle Explorer preferences, runtime/default/foreign-launch ownership, saved
+project locations or maintenance restoration. The existing native required-
+extension validation and automatic operation follow-up checks remain required;
+an installed ID alone is not proof that every extension feature works. No new
+restoration button or narrower Repair promise is introduced.
+
+Local tests execute the production Bash function with an isolated CLI recorder:
+existing/foreign and case-varied IDs, missing/duplicate entries, empty policy,
+failed/malformed inventory, malformed/oversized policy, failed installation and
+the normal-user command path. The eight new cases bring metadata coverage to 76.
+Backend contracts 35, CI-policy 35, Bash syntax/static analysis, integrity and
+offline documentation checks pass. Windows has the corresponding production-helper
+command-recorder tests in its existing metadata checks; native CI must execute
+them. Existing real standard-user profile fixtures keep their controlled empty
+extension policy and now copy the Windows helper too. Those fixtures verify
+profile preservation, not a real marketplace download or installed-extension UAT.
+Full Windows/Mint, trust, integrity, acceptance and exact-main gates remain required.

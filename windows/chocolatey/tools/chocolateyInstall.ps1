@@ -74,6 +74,7 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'NodeRuntimeProbe.cjs',
         'GitPreferences.ps1',
         'EditorPreferences.ps1',
+        'EditorExtensions.ps1',
         'EditorLocation.ps1',
         'PyCharmLocation.ps1',
         'ApplicationLocations.ps1',
@@ -165,30 +166,8 @@ Invoke-ConfigStage 9 'Configuring VSCodium and standard extensions' {
     }
 
     if ($codiumPath) {
-        foreach ($ext in (Get-Content (Join-Path $Tools 'extensions.txt') | Where-Object { $_ })) {
-            Write-Host "  Installing VSCodium extension $ext"
-
-            # VSCodium can emit harmless Node.js deprecation warnings on stderr even
-            # when the extension installation succeeds. Under Windows PowerShell 5.1,
-            # $ErrorActionPreference='Stop' can promote that native stderr output into
-            # a terminating PowerShell error. Temporarily relax the preference for the
-            # native VSCodium process and use its exit code as the success criterion.
-            $previousErrorActionPreference = $ErrorActionPreference
-            try {
-                $ErrorActionPreference = 'Continue'
-                & $codiumPath --install-extension $ext --force 2>&1 | ForEach-Object {
-                    Write-Host "    $_"
-                }
-                $codiumExit = $LASTEXITCODE
-            }
-            finally {
-                $ErrorActionPreference = $previousErrorActionPreference
-            }
-
-            if ($codiumExit -ne 0) {
-                Write-Warning "Extension install failed: $ext (exit code $codiumExit)"
-            }
-        }
+        . (Join-Path $Tools 'EditorExtensions.ps1')
+        Install-SkyviewMissingEditorExtensions -Codium $codiumPath -ListPath (Join-Path $Tools 'extensions.txt')
     }
     else {
         Write-Warning 'VSCodium CLI was not found during package installation. Run the validation script after sign-out/sign-in.'
