@@ -154,3 +154,35 @@ them. Existing real standard-user profile fixtures keep their controlled empty
 extension policy and now copy the Windows helper too. Those fixtures verify
 profile preservation, not a real marketplace download or installed-extension UAT.
 Full Windows/Mint, trust, integrity, acceptance and exact-main gates remain required.
+
+## Windows disclosure in operation review
+
+The application review now uses
+[WindowsFilenameDisclosure](../installer/src/WindowsFilenameDisclosure.tsx) before
+Install, Repair and development-tool Update approval. It explains why complete
+filenames matter, names examples, and says that the profile step enables
+extensions if they are hidden. It explicitly identifies the required setting as
+an exception that can replace the current preference. The note is visible in the
+review, rather than hidden in technical details.
+
+The application supplies its detected platform label. Mint receives no Windows
+setting claim. The note is presentation only: it offers no checkbox or setting
+writer, acknowledges no uncertainty, changes no preflight or native admission,
+and leaves the existing required Windows visibility check intact. Existing
+Cancel/Back and explicit approval actions retain their behavior. App-only update
+handling is unchanged.
+
+Four new unit cases cover disclosure before explicit Install approval, blocked
+Update/cancellation, platform scoping and retained uncertainty acknowledgment.
+Two narrow/wide browser cases exercise all three real application review routes,
+keyboard navigation, cancellation, order before approval, accessibility/layout
+and zero modifying calls; the Mint review is checked separately. Original test
+assertions and inventories remain intact. Full required inventory is now 415 unit
+and 148 browser cases. Full native/trust/integrity/acceptance and exact-main
+validation remain mandatory. This implementation is not exact-candidate owner
+UAT or approval to sign or promote the release.
+
+Local evidence: all 415 unit cases, two new disclosure browser cases and four
+existing guidance browser cases pass. Build/type check, audit zero, backend
+contracts 35, metadata 76, CI-policy 35, offline docs and diff checks pass. Full
+148-case browser/native evidence remains a CI requirement.

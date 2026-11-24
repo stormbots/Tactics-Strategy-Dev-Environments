@@ -246,12 +246,14 @@ export function ToolUpdatePreview({
   onContinue,
   onCancel,
   platformSupported,
+  platformLabel = "",
 }: {
   data: Discovery;
   snapshot: ToolRecord[];
   onContinue: (acknowledgedUncertainty: boolean) => void;
   onCancel: () => void;
   platformSupported: boolean;
+  platformLabel?: string;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -328,6 +330,7 @@ export function ToolUpdatePreview({
       <PreflightReview
         operation="update"
         platformSupported={platformSupported}
+        platformLabel={platformLabel}
         onContinue={onContinue}
         onCancel={onCancel}
       />

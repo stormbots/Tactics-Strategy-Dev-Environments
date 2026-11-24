@@ -63,6 +63,7 @@ import { PythonReadinessCard } from "./PythonReadinessCard";
 import { OverviewActionPlan, overviewFindingLinks } from "./OverviewActionPlan";
 import { NodeReadinessCard } from "./NodeReadinessCard";
 import { EditorAccessOverviewCard } from "./EditorAccessOverviewCard";
+import { WindowsFilenameDisclosure } from "./WindowsFilenameDisclosure";
 import { PreflightReview } from "./PreflightReview";
 import { SupportReportDialog } from "./SupportReportDialog";
 import { RecoveryPage } from "./RecoveryPage";
@@ -1059,6 +1060,7 @@ export default function App() {
                     key={reviewGeneration}
                     operation="install"
                     platformSupported={s.platform.supported}
+                    platformLabel={s.platform.label}
                     onContinue={(acknowledged) =>
                       void start("install", true, acknowledged)
                     }
@@ -1071,6 +1073,7 @@ export default function App() {
                   data={discovery}
                   snapshot={s.tools}
                   platformSupported={s.platform.supported}
+                  platformLabel={s.platform.label}
                   onContinue={(acknowledged) =>
                     void start("update", true, acknowledged)
                   }
@@ -1082,6 +1085,10 @@ export default function App() {
                     Review your fixes
                   </h2>
                   <p>{operationScope.repair}</p>
+                  <WindowsFilenameDisclosure
+                    platformLabel={s.platform.label}
+                    operation="repair"
+                  />
                   <ul aria-label="Current repair findings">
                     {s.checks
                       .filter((check) => check.status === "FAIL")
