@@ -474,6 +474,12 @@
       "maintenance navigation describes a review item without claiming disabled tools are broken",
       "links move focus to the current heading and never perform a setup action",
       "busy links are disabled and a removed target cannot start another action"
+    ],
+    "src/WindowsFilenameDisclosure.test.tsx": [
+      "Windows Install discloses the required change before explicit approval",
+      "Windows Update keeps its disclosure while blockers prevent approval and Cancel stays read-only",
+      "Mint and unknown platforms receive no Windows claim and the disclosure offers no setting controls",
+      "the required-setting explanation cannot acknowledge unavailable preflight information"
     ]
   },
   "browser": [
@@ -1226,6 +1232,18 @@
       "file": "overview-action-plan.spec.ts",
       "title": "Procedural plan links current findings and preserves safety at 1140px",
       "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "windows-filename-review.spec.ts",
+      "title": "Windows required filename setting is disclosed before every approval at 390px",
+      "added": true
+    },
+    {
+      "project": "chromium",
+      "file": "windows-filename-review.spec.ts",
+      "title": "Windows required filename setting is disclosed before every approval at 1140px",
+      "added": true
     }
   ],
   "source": "6aa9cefe69edfb3b82c1f426722addd76cebcc07",
@@ -1461,6 +1479,14 @@
     "browser-tests/overview-action-plan.spec.ts": {
       "count": 28,
       "sha256": "095e849a87a4e0595df7daef192d1bd0742d84e2b38832c8a9ad950b277f082a"
+    },
+    "src/WindowsFilenameDisclosure.test.tsx": {
+      "count": 38,
+      "sha256": "88ccf76f4550b7a00a53d58596ead657d8ca568f292654cf293227d3a2a4ff4f"
+    },
+    "browser-tests/windows-filename-review.spec.ts": {
+      "count": 28,
+      "sha256": "2dce5bcd180af460569263f848ba62789e8705aad80bb8f47a67f50f7d0c6556"
     }
   },
   "updates": [
@@ -1538,6 +1564,13 @@
       "addedUnitCases": 8,
       "addedBrowserCases": 2,
       "review": "Procedural navigation reuses card visibility predicates. Every original assertion fingerprint and case inventory retained; no observation is execution authority."
+    },
+    {
+      "source": "6795cdadcbdefa2f57c23bf3ed20cc82387811c8",
+      "issue": 161,
+      "addedUnitCases": 4,
+      "addedBrowserCases": 2,
+      "review": "Owner-required Windows filename visibility disclosure before Install/Repair/tool Update approval. Earlier assertions/inventories and all existing preflight/consent controls retained."
     }
   ]
 }

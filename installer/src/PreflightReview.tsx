@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { WindowsFilenameDisclosure } from "./WindowsFilenameDisclosure";
 import { checkPreflight } from "./updateDiscovery";
 import {
   preflightDecision,
@@ -10,11 +11,13 @@ import {
 export function PreflightReview({
   operation,
   platformSupported,
+  platformLabel = "",
   onContinue,
   onCancel,
 }: {
   operation: Extract<OperationKind, "install" | "update">;
   platformSupported: boolean;
+  platformLabel?: string;
   onContinue: (acknowledgedUncertainty: boolean) => void;
   onCancel: () => void;
 }) {
@@ -83,6 +86,10 @@ export function PreflightReview({
         SDE checks this laptop before requesting administrator approval. No
         provisioning or package changes have started.
       </p>
+      <WindowsFilenameDisclosure
+        platformLabel={platformLabel}
+        operation={operation}
+      />
       <p
         role="status"
         className={blocked ? "preflight-summary blocking" : "preflight-summary"}
