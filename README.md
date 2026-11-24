@@ -32,6 +32,8 @@ The app checks local workstation readiness when it opens, then checks managed-to
 
 Tools include Git, GitHub CLI, Node/npm, Python, VSCodium and the repository's standard extension set, PyCharm, DBeaver, Chrome, Firefox, PowerShell 7, OpenSSH, and 7-Zip utilities. Linux's system Python remains untouched and Snap stays disabled. Student repositories and existing editor settings are preserved. Existing strict-JSON Linux settings receive missing defaults; user values win. Windows and JSONC settings remain intact with a warning where defaults cannot safely be merged.
 
+**Windows file-name visibility is required.** File Explorer must show extensions such as `.py` and `.json` so students and instructors see consistent, complete filenames. This is an owner-approved exception to preserving personal preferences: full Install/Repair and the development-tool Update profile phase enforce this setting. Their approval review must explain the change. Validation checks the requirement without changing the setting. See the [preservation exception and release checks](docs/MAINTENANCE-RESTORATION-SCOPE.md#windows-file-name-visibility-exception).
+
 ## Stable fallback and advanced manual installation
 
 The original packages remain available:

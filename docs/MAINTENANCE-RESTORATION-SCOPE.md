@@ -4,6 +4,42 @@ Part of [#161](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/is
 
 The accepted rule remains: keep related steps together, automate required follow-up checks, and update findings in place. Restoration still needs full scope review, explicit approval, normal operating-system permission and fresh native safety checks. A read-only check or a saved leave-disabled choice cannot approve a change.
 
+## Windows file-name visibility exception
+
+Owner decision, November 24, 2026, under [#161](https://github.com/stormbots/Tactics-Strategy-Dev-Environments/issues/161): **showing file-name extensions remains required on Windows.** Students and instructors need consistent, complete filenames, such as `robot.py` and `settings.json`.
+
+This is a narrow exception to the general rule that preserves personal preferences
+and intentional settings. Every preservation promise in this release must account
+for the exception. The required setting is File Explorer’s `HideFileExt=0`.
+Other personal settings retain their accepted preservation rules. The exception
+does not provide a general permission to reset preferences.
+
+The existing [Windows validator](../windows/chocolatey/tools/Validate-SkyviewEnvironment.ps1)
+requires **File extensions visible**. A hidden-extension preference cannot satisfy
+that check. Keep the requirement and its existing failure behavior; do not turn it
+into an optional recommendation, warning, saved exception or automatic pass.
+
+[Install/Repair profile configuration](../windows/chocolatey/tools/Configure-SkyviewUser.ps1)
+and [legacy Windows setup](../windows/chocolatey/tools/chocolateyInstall.ps1)
+already set `HideFileExt=0`. The development-tool Update operation also runs the
+profile configuration phase. Before approval, the relevant review must state that
+Windows will show file-name extensions. General wording about preserving settings
+must include this exception. Existing full-operation scope, explicit approval,
+normal operating-system permission and fresh native safety checks still apply.
+Validation and startup inspection remain read-only. SDE application-only upgrades
+retain their separate preservation contract.
+
+A student can satisfy the requirement manually in File Explorer with **View → Show
+→ File name extensions**, then check again. A passing visibility check resolves
+only that requirement.
+
+This owner decision resolves the Explorer policy question in the original audit
+below. The original source review remains historical evidence. Required release
+checks include clear pre-approval disclosure, retained validation failure while
+extensions are hidden, and successful recheck after visibility is enabled. The
+policy record does not claim that the final UI disclosure or owner UAT has passed.
+Runtime/default/launch ownership and project-location criteria remain open.
+
 ## Finding
 
 **The existing restoration candidate is full Install/Repair, not a schedule-only operation.** Both platforms' setup paths write the managed schedule. Update does not provide that restoration contract. The current source establishes the route, but the required disabled/missing-state restoration and preservation cases still need native proof before the new UI can promise completion.
@@ -33,7 +69,7 @@ These are source observations, not approval to change a student's computer or pr
 | --- | --- | --- | --- |
 | Managed packages and runtime selection | [Setup](../windows/Install-SkyviewStudentDev.ps1) runs Node provisioning and forces the configuration metapackage to rerun. [Node24](../windows/chocolatey/tools/Node24.ps1) can remove conflicting Chocolatey Node registrations; it rejects some external layouts. The [metapackage](../windows/chocolatey/skyview-student-dev.nuspec) has the full baseline dependencies. | [Setup](../linux/Install-SkyviewStudentDev.sh) refreshes sources, installs the approved Node/Python families and the wider tool set, and can install Chrome and PyCharm. | A successful read-only coexistence check is not proof that full setup preserves another default, manager or installation. Inventory ownership and defaults before changes; keep unsupported layouts blocked with useful guidance. Preserve the accepted coexistence rules. |
 | Machine configuration and installed helpers | [Configuration stages](../windows/chocolatey/tools/chocolateyInstall.ps1) create/protect directories, copy maintained files, enable Windows long paths and Developer Mode, set system Git long-path support and manage Node pinning. | Setup writes package-source configuration, managed support files and version state. [PyCharm setup](../linux/lib/common.sh) can replace managed launch symlinks and its desktop entry after checksum verification. | Disclose these effects. Verify ownership and foreign objects before replacement. Product discovery alone must not grant maintenance authority over another installation or launch target. |
-| Current-user preferences and extensions | [User configuration](../windows/chocolatey/tools/Configure-SkyviewUser.ps1) preserves Git and VSCodium preferences, but writes Explorer's `HideFileExt` and force-installs listed editor extensions. | [User configuration](../linux/Configure-SkyviewUser.sh) preserves Git/VSCodium preferences, installs listed extensions and creates the default workspace. | Keep the verified Git/editor preservation. Resolve whether existing Explorer and extension choices are preserved before promising that the new maintenance workflow preserves intentional user settings. Disclose required changes; do not silently infer ownership from discovery. |
+| Current-user preferences and extensions | [User configuration](../windows/chocolatey/tools/Configure-SkyviewUser.ps1) preserves Git and VSCodium preferences, but writes Explorer's `HideFileExt` and force-installs listed editor extensions. | [User configuration](../linux/Configure-SkyviewUser.sh) preserves Git/VSCodium preferences, installs listed extensions and creates the default workspace. | Keep the verified Git/editor preservation. Apply the Windows file-name visibility exception above. Apply the extension preservation increment below. Include required setting changes in the approval review before making preservation promises. Disclose required changes; do not silently infer ownership from discovery. |
 | Projects and workspaces | [Repository setup](../windows/chocolatey/tools/Setup-SkyviewRepositories.ps1) skips existing `.git` entries and preserves other existing destinations, but can clone configured missing destinations under `C:\Development`. | User configuration checks a `.git` directory under the default workspace and otherwise skips an existing destination or clones a missing one. A worktree's `.git` file does not satisfy that directory test. | Neither route implements the accepted saved-location/identity contract. Existing work is not deleted by these branches, but a moved project can be missed and a second clone can be created at the default destination. Verify identities, worktrees, moved/disconnected locations and changed selections before offering the completed workflow. |
 | Development-tool scheduling | Configuration re-registers the fixed SYSTEM task with `-Force`, a Sunday 03:00 trigger, catch-up and the existing read-only student ACL. | Setup installs fixed units, reloads systemd and enables/starts the timer. Its [unit](../linux/systemd/skyview-student-dev-update.timer) uses Sunday 03:00, randomized delay and `Persistent=true`. | Account for disabled/customized state, overwritten definitions and catch-up. Confirm behavior on actual disabled/missing fixtures. A leave-disabled UI decision must not silently become permission to re-register or enable later. |
 | SDE app-update policy and earlier results | The schedule can point at the installed maintenance launcher. | The service definition depends on the installed maintenance engine. | Inspect protected app-update policy separately before and after. Do not infer resumption from schedule enablement, erase earlier results or claim that a successful full operation proves a successful app update. |
@@ -99,9 +135,10 @@ requested normal user and HOME for its query and installation calls. The existin
 CLI selection is unchanged; this is not a new installation-selection or ownership
 contract.
 
-This addresses extension reinstallation in the scope table above. It does not
-settle Explorer preferences, runtime/default/foreign-launch ownership, saved
-project locations or maintenance restoration. The existing native required-
+This addresses extension reinstallation in the scope table above. The owner’s
+Windows file-name visibility exception above resolves Explorer policy; its final
+UI disclosure still needs release evidence. Runtime/default/foreign-launch
+ownership, saved project locations and maintenance restoration remain open. The existing native required-
 extension validation and automatic operation follow-up checks remain required;
 an installed ID alone is not proof that every extension feature works. No new
 restoration button or narrower Repair promise is introduced.
