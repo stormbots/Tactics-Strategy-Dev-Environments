@@ -60,6 +60,7 @@ import { AboutPage, localTime, SchedulePage } from "./DetailsPages";
 import { MaintenanceOverviewCard } from "./MaintenanceOverviewCard";
 import { ChangeSafetyOverviewCard } from "./ChangeSafetyOverviewCard";
 import { PythonReadinessCard } from "./PythonReadinessCard";
+import { OverviewActionPlan, overviewFindingLinks } from "./OverviewActionPlan";
 import { NodeReadinessCard } from "./NodeReadinessCard";
 import { EditorAccessOverviewCard } from "./EditorAccessOverviewCard";
 import { PreflightReview } from "./PreflightReview";
@@ -280,6 +281,14 @@ export default function App() {
     accessObservation.reason === "accessDenied"
       ? (accessObservation.path ?? undefined)
       : undefined;
+  const actionPlan = overviewFindingLinks({
+    report: observedReport,
+    accessReport: accessDisplayReport,
+    recovery,
+    safetyError: recoveryError,
+    maintenance,
+    pending: busy || maintenanceLoading || !s.platform.supported,
+  });
   const validationDisplayChecks = accessReviewSnapshot
     ? checksFrom(accessReviewSnapshot.lines)
     : s.checks;
@@ -1132,10 +1141,16 @@ export default function App() {
               ) : (
                 <>
                   <h2 id="next-step-heading" tabIndex={-1} ref={resultHeading}>
-                    {decision.heading}
+                    {actionPlan.length
+                      ? `Review ${actionPlan.length === 1 ? "the item" : `the ${actionPlan.length} items`} below`
+                      : decision.heading}
                   </h2>
-                  <p className="operation-description">{decision.body}</p>
-                  {displayedPrimary && (
+                  {actionPlan.length ? (
+                    <OverviewActionPlan items={actionPlan} busy={busy} />
+                  ) : (
+                    <p className="operation-description">{decision.body}</p>
+                  )}
+                  {!actionPlan.length && displayedPrimary && (
                     <button
                       className="primary"
                       disabled={busy}
@@ -1170,7 +1185,7 @@ export default function App() {
                     {decision.secondary
                       .filter(
                         (action) =>
-                          action !== displayedPrimary?.id &&
+                          (!!actionPlan.length || action !== displayedPrimary?.id) &&
                           action !== "review-issue" &&
                           (!result ||
                             (action === "check" &&

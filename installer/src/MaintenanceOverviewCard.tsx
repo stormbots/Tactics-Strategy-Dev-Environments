@@ -40,7 +40,7 @@ export function MaintenanceOverviewCard({
     data,
     !data && !pending ? "unavailable" : "",
   );
-  if (!pending && !finding && data?.lastResult === "success") return null;
+  if (!maintenanceOverviewVisible(data, pending)) return null;
   const title = pending
     ? "Checking weekly maintenance…"
     : saved
@@ -58,7 +58,9 @@ export function MaintenanceOverviewCard({
       aria-busy={pending}
     >
       <p className="eyebrow">Weekly maintenance</p>
-      <h2 id="maintenance-overview-heading">{title}</h2>
+      <h2 id="maintenance-overview-heading" tabIndex={-1}>
+        {title}
+      </h2>
       {pending ? (
         <p>
           SDE is reading the schedule. This check does not start maintenance.
@@ -116,5 +118,16 @@ export function MaintenanceOverviewCard({
         </button>
       </div>
     </section>
+  );
+}
+
+export function maintenanceOverviewVisible(
+  data: Schedule | null,
+  pending: boolean,
+): boolean {
+  return (
+    pending ||
+    !!maintenanceFinding(data, !data ? "unavailable" : "") ||
+    data?.lastResult !== "success"
   );
 }

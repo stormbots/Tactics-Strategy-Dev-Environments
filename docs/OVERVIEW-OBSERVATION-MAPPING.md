@@ -248,3 +248,41 @@ Local evidence: all 403 unit cases, the two new Node.js/npm browser cases and fo
 existing Python/VSCodium Overview browser cases pass. Build/type check, audit
 (zero vulnerabilities), backend contracts 35, metadata 68, CI-policy 35 and offline
 document/diff checks pass. Native and full-browser evidence remain CI requirements.
+
+## Refine UX #161: procedural Overview action plan
+
+After complete structured collection, Your next step lists the current supported
+Overview review items and links directly to their card headings. The singular or
+plural heading uses the actual list length. Python, Node.js/npm, VSCodium access,
+Change Safety and maintenance share their existing card visibility predicates
+with the plan. A passing runtime removes its own item without dismissing safety.
+Each card still explains only its own situation.
+
+The plan is navigation only: a keyboard or pointer activation focuses and scrolls
+to the existing card. It does not run validation, acknowledge an incident, save a
+preference or approve a setup change. Card review actions retain those explicit
+steps. Weekly maintenance uses the neutral View weekly maintenance details label:
+a saved disabled choice is not converted into a broken-tool claim. Existing
+supported actions remain available under Other actions.
+
+The ordinary plan does not replace progress, operation review or result screens.
+Unsupported platforms, pending or partial collection, legacy diagnostic-only
+reports and failures without a corresponding card keep the existing guidance.
+Earlier display-only findings retained by cards are not counted as fresh results.
+No operation/default/native API, safety decision or consent authority changes.
+
+Eight new unit cases cover combined and single findings, independent resolution,
+editor and maintenance links, fallback states, disabled links and actual focus.
+Two narrow/wide browser cases verify the combined Python/safety flow, changing
+counts after read-only validation, focus, accessibility, layout and zero mutation
+or acknowledgment. All original assertions and test inventories remain intact.
+The full suite now requires 411 unit and 146 browser cases. Supported installation,
+full-operation preservation/restoration, other tool/editor findings and app/project
+locations remain open #161 criteria. Full PR and exact-main native/trust/integrity/
+acceptance validation, human signing, authenticated exact-candidate owner UAT and
+separate promotion authorization remain required.
+
+Local evidence: all 411 unit cases, the two new plan browser cases and ten existing
+card browser cases pass. Build/type check, audit zero, backend contracts 35,
+metadata 68, CI-policy 35 and offline document/diff checks pass. Full browser and
+native evidence remain CI requirements.
