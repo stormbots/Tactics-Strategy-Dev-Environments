@@ -12,10 +12,12 @@ $user = 'SdeProfile' + [guid]::NewGuid().ToString('N').Substring(0,6)
 $created = $false
 New-Item -ItemType Directory $fixture | Out-Null
 try {
-    foreach ($name in @('Configure-SkyviewUser.ps1','EditorExtensions.ps1','Coordination.ps1','Setup-SkyviewRepositories.ps1','settings.json')) {
+    foreach ($name in @('Configure-SkyviewUser.ps1','EditorExtensions.ps1','EditorLocation.ps1','ProjectLocation.ps1','Coordination.ps1','Setup-SkyviewRepositories.ps1','settings.json')) {
         Copy-Item (Join-Path $backend $name) $fixture
         if ((Get-FileHash (Join-Path $fixture $name)).Hash -cne (Get-FileHash (Join-Path $backend $name)).Hash) { throw 'Profile code copy changed.' }
     }
+    & git.exe init -q (Join-Path $fixture 'foreign repository')
+    if ($LASTEXITCODE -ne 0) { throw 'Could not prepare foreign-owned Git fixture.' }
     '# Controlled empty extension fixture' | Set-Content (Join-Path $fixture 'extensions.txt') -Encoding UTF8
     $probe = Join-Path $fixture 'student.ps1'
     @'
@@ -73,6 +75,24 @@ foreach ($check in @(@('user.name','Synthetic Student'),@('user.email','student@
 & git config --global --get pull.ff
 if ($LASTEXITCODE -ne 1) { throw 'An unset Git preference was changed.' }
 if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced').HideFileExt -ne 0) { throw 'Disclosed Explorer configuration not applied.' }
+. (Join-Path $PSScriptRoot 'ProjectLocation.ps1')
+$source=Join-Path $env:USERPROFILE 'worktree source'
+$linked=Join-Path $env:USERPROFILE 'linked worktree'
+& git.exe init -q $source
+if ($LASTEXITCODE -ne 0) { throw 'Could not initialize student repository.' }
+& git.exe -C $source -c commit.gpgsign=false commit -qm fixture --allow-empty
+if ($LASTEXITCODE -ne 0) { throw 'Could not prepare student repository commit.' }
+& git.exe -C $source worktree add -qb student-worktree $linked
+if ($LASTEXITCODE -ne 0) { throw 'Could not prepare student worktree.' }
+$dirty=Join-Path $linked 'uncommitted.txt'
+[IO.File]::WriteAllText($dirty,'keep student work',$utf8)
+$dirtyHash=(Get-FileHash $dirty).Hash
+$localConfig=(Get-FileHash (Join-Path $source '.git/config')).Hash
+if ((Get-SkyviewProjectLocation $source).status -cne 'verified') { throw 'Real standard-user repository did not verify.' }
+if ((Get-SkyviewProjectLocation $linked).status -cne 'verified') { throw 'Real standard-user worktree did not verify.' }
+if ((Get-SkyviewProjectLocation (Join-Path $PSScriptRoot 'foreign repository')).status -cne 'incomplete') { throw 'Git ownership trust refusal was bypassed.' }
+if ((Get-FileHash $dirty).Hash -cne $dirtyHash -or (Get-FileHash (Join-Path $source '.git/config')).Hash -cne $localConfig -or (Get-FileHash $gitConfig).Hash -cne $beforeGit) { throw 'Read-only project inspection changed student files/configuration.' }
+Write-Output 'SDE_PROJECT_WORKTREE_STANDARD_USER_WINDOWS_OK'
 Write-Output 'SDE_PROFILE_PRESERVATION_WINDOWS_OK'
 exit 0
 '@ | Set-Content $probe -Encoding UTF8

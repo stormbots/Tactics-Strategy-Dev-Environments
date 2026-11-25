@@ -127,12 +127,16 @@ if ($editorLocation.status -ceq 'verified') { $installed['VSCodium']=$editorLoca
 $editorChecks=@(Get-SkyviewEditorRequiredChecks $editorLocation)
 if (-not $editorChecks.Count) { Result FAIL 'VSCodium: SDE could not finish checking the editor installation.' }
 foreach ($entry in $editorChecks) { Result $entry.Status $entry.Message }
+. (Join-Path $PSScriptRoot 'ProjectLocation.ps1')
 $config = 'C:\ProgramData\SkyviewRobotics\repositories.csv'
 if (Test-Path $config) {
     foreach ($repo in (Import-Csv $config)) {
         if (-not $repo.Url) { continue }
         $folder = if ($repo.Folder) { $repo.Folder } else { $repo.Name }
-        Check (Test-Path (Join-Path "C:\Development\$folder" '.git')) "Configured repository: $($repo.Name)"
+        if ($folder -notmatch '\A[A-Za-z0-9_-][A-Za-z0-9._-]*\z' -or $folder -eq '..') { Result FAIL 'A configured project folder name could not be checked.';continue }
+        $projectLocation=Get-SkyviewProjectLocation (Join-Path 'C:\Development' $folder)
+        if ($projectLocation.status -ceq 'verified') { Result PASS "Configured repository working folder verified: $folder" }
+        else { Result FAIL "SDE could not finish checking the project folder for $folder. Review its location and Git access. Your files have not been changed." }
     }
 }
 . (Join-Path $PSScriptRoot 'ToolRecords.ps1')

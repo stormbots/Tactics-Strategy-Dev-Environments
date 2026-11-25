@@ -5,7 +5,11 @@ $directory=Join-Path ([IO.Path]::GetTempPath()) ('sde git preferences '+[guid]::
 $null=[IO.Directory]::CreateDirectory($directory)
 $keys=@('GIT_CONFIG_GLOBAL','GIT_CONFIG_SYSTEM','GIT_CONFIG_NOSYSTEM','GIT_DIR','GIT_WORK_TREE')
 $saved=@{}
-foreach ($key in $keys) { $saved[$key]=[Environment]::GetEnvironmentVariable($key,'Process') }
+$present=@{}
+foreach ($key in $keys) {
+    $present[$key]=Test-Path -LiteralPath ("Env:"+$key)
+    $saved[$key]=[Environment]::GetEnvironmentVariable($key,'Process')
+}
 $count=0
 function Assert-GitPreference($Condition,[string]$Message) {
     if (-not $Condition) { throw $Message }
@@ -79,9 +83,16 @@ try {
         }
         Assert-GitPreference ((Get-SkyviewGitPreferences).status -eq 'unusable') 'Failed command supplied a version-text pass.'
     } finally { ${function:Invoke-SkyviewGitQuery}=$originalQuery }
-    Write-Host "GIT_PREFERENCES_CONTRACTS_OK ($count assertions)"
 } finally {
-    foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key,$saved[$key],'Process') }
+    foreach ($key in $keys) {
+        if ($present[$key]) { [Environment]::SetEnvironmentVariable($key,$saved[$key],'Process') }
+        else { Remove-Item -LiteralPath ("Env:"+$key) -ErrorAction SilentlyContinue }
+    }
     [IO.Directory]::Delete($directory,$true)
 }
+foreach ($key in $keys) {
+    Assert-GitPreference ((Test-Path -LiteralPath ("Env:"+$key)) -eq $present[$key]) "Git environment presence changed: $key"
+    if ($present[$key]) { Assert-GitPreference ([Environment]::GetEnvironmentVariable($key,'Process') -ceq $saved[$key]) "Git environment value changed: $key" }
+}
+Write-Host "GIT_PREFERENCES_CONTRACTS_OK ($count assertions)"
 $global:LASTEXITCODE=0

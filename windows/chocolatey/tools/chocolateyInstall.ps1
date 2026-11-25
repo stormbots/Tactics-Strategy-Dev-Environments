@@ -76,6 +76,7 @@ Invoke-ConfigStage 2 'Copying Skyview maintenance and validation files' {
         'EditorPreferences.ps1',
         'EditorExtensions.ps1',
         'EditorLocation.ps1',
+        'ProjectLocation.ps1',
         'PyCharmLocation.ps1',
         'ApplicationLocations.ps1',
         'Inspect-SkyviewEditorLocation.ps1',

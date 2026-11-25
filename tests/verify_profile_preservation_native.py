@@ -27,7 +27,7 @@ def main(backend=None):
         fixture.chmod(0o755)
         (fixture / 'lib').mkdir()
         (fixture / 'config').mkdir()
-        for name in ('common.sh', 'coordination.sh', 'coordination.py'):
+        for name in ('common.sh', 'coordination.sh', 'coordination.py', 'project_location.py', 'editor_location.py'):
             shutil.copyfile(backend / 'lib' / name, fixture / 'lib' / name)
         script = fixture / 'Configure-SkyviewUser.sh'
         shutil.copyfile(backend / script.name, script)
@@ -38,12 +38,16 @@ def main(backend=None):
         (fixture / 'bin').mkdir()
         # Presence check only; any unexpected extension execution must fail.
         (fixture / 'bin/codium').symlink_to('/usr/bin/false')
+        foreign = fixture / 'foreign-repository'
+        subprocess.run(['/usr/bin/git', 'init', '-q', str(foreign)], check=True, capture_output=True)
+        assert foreign.stat().st_uid == os.geteuid() == 0, 'Foreign fixture must be root-owned'
         home = fixture / 'home'
         home.mkdir()
         os.chown(home, 65534, 65534)
         home.chmod(0o700)
         env = {'HOME': str(home), 'USER': 'nobody', 'LOGNAME': 'nobody',
-               'PATH': f'{fixture / "bin"}:/usr/bin:/bin', 'LANG': 'C.UTF-8'}
+               'PATH': f'{fixture / "bin"}:/usr/bin:/bin', 'LANG': 'C.UTF-8',
+               'GIT_CONFIG_NOSYSTEM': '1'}
 
         def student():
             os.setgroups([])
@@ -103,6 +107,29 @@ def main(backend=None):
         unset = subprocess.run(['/usr/bin/git', 'config', '--global', '--get', 'pull.ff'], cwd=home,
                                env=env, preexec_fn=student, capture_output=True)
         assert unset.returncode == 1 and unset.stdout == b''
+        source = home / 'worktree source'
+        linked = home / 'linked worktree'
+        run('/usr/bin/git', 'init', '-q', str(source))
+        run('/usr/bin/git', '-C', str(source), '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture', '--allow-empty')
+        run('/usr/bin/git', '-C', str(source), 'worktree', 'add', '-qb', 'student-worktree', str(linked))
+        run('/usr/bin/python3', '-c', 'import pathlib,sys;pathlib.Path(sys.argv[1]).write_text("keep student work")', str(linked / 'uncommitted.txt'))
+        before_config = (source / '.git/config').read_bytes()
+        before_dirty = (linked / 'uncommitted.txt').read_bytes()
+        helper = fixture / 'lib/project_location.py'
+        for path in (source, linked):
+            value = json.loads(run('/usr/bin/python3', str(helper), '--json', str(path)).stdout)
+            assert value['status'] == 'verified', value
+        # Establish a real negative control under the fixture's own trust policy.
+        # Hosted system config may intentionally trust foreign repositories.
+        control = subprocess.run(['/usr/bin/git', '-C', str(foreign), 'rev-parse', '--show-toplevel'],
+                                 cwd=home, env=env, preexec_fn=student, capture_output=True, text=True)
+        assert control.returncode != 0 and 'dubious ownership' in control.stderr.lower(), 'Foreign Git negative control did not refuse ownership'
+        refused = json.loads(run('/usr/bin/python3', str(helper), '--json', str(foreign)).stdout)
+        assert refused['status'] == 'incomplete', 'Git ownership/trust refusal was bypassed'
+        assert (source / '.git/config').read_bytes() == before_config
+        assert (linked / 'uncommitted.txt').read_bytes() == before_dirty
+        assert gitconfig.read_bytes() == before_git
+        print('SDE_PROJECT_WORKTREE_STANDARD_USER_LINUX_OK')
         assert not (ROOT / 'transaction.json').exists()
     print('SDE_PROFILE_PRESERVATION_LINUX_OK: real non-root profile; project/Git bytes, strict JSON/JSONC, empty and absent settings retained')
 

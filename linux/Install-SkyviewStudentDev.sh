@@ -161,6 +161,7 @@ sudo install -m 0644 "$SCRIPT_DIR/lib/editor_settings_probe.cjs" "$SKYVIEW_LIB/e
 sudo install -m 0644 "$SCRIPT_DIR/lib/application_locations.py" "$SKYVIEW_LIB/application_locations.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/pycharm_location.py" "$SKYVIEW_LIB/pycharm_location.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_location.py" "$SKYVIEW_LIB/editor_location.py"
+sudo install -m 0644 "$SCRIPT_DIR/lib/project_location.py" "$SKYVIEW_LIB/project_location.py"
 sudo install -m 0644 "$SCRIPT_DIR/lib/editor_identity.cjs" "$SKYVIEW_LIB/editor_identity.cjs"
 sudo install -d -m 0755 "$SKYVIEW_LIB/jsonc-parser"
 for parser_file in parser.js scanner.js LICENSE.md; do
