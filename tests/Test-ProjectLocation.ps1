@@ -3,7 +3,15 @@ $ErrorActionPreference='Stop'
 function Assert-Project($condition,$message) { if (-not $condition) { throw $message } }
 $fixture=Join-Path ([IO.Path]::GetTempPath()) ('sde project '+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $fixture | Out-Null
+$projectEnvironment=@{}
+$initialProjectEnvironment=[Environment]::GetEnvironmentVariables()
+foreach ($key in @($initialProjectEnvironment.Keys | Where-Object { $_ -like 'GIT_*' })) { $projectEnvironment[$key]=[string]$initialProjectEnvironment[$key] }
 try {
+    foreach ($key in $projectEnvironment.Keys) { Remove-Item -LiteralPath ("Env:"+$key) -ErrorAction Stop }
+    $env:GIT_CONFIG_NOSYSTEM='1'
+    $env:GIT_CONFIG_GLOBAL=Join-Path $fixture 'controlled-global.gitconfig'
+    [IO.File]::WriteAllText($env:GIT_CONFIG_GLOBAL,'')
+    if (-not $fixture -or (Test-Path -LiteralPath 'Env:GIT_DIR')) { throw 'Project fixture environment was not isolated.' }
     function Test-SkyviewEditorOrdinaryUser { return $false }
     Assert-Project ((Get-SkyviewProjectLocation $fixture).reason -ceq 'normalUserRequired') 'Elevated project inspection was allowed.'
     function Test-SkyviewEditorOrdinaryUser { return $true }
@@ -43,4 +51,8 @@ try {
     Assert-Project ((Get-SkyviewProjectLocation $fixture).reason -ceq 'gitUnavailable') 'Missing Git became a missing project or a pass.'
     $global:LASTEXITCODE=0
     Write-Host 'SDE_PROJECT_WORKING_FOLDER_WINDOWS_OK'
-} finally { Remove-Item -LiteralPath $fixture -Recurse -Force }
+} finally {
+    foreach ($key in @([Environment]::GetEnvironmentVariables().Keys | Where-Object { $_ -like 'GIT_*' })) { Remove-Item -LiteralPath ("Env:"+$key) -ErrorAction SilentlyContinue }
+    foreach ($key in $projectEnvironment.Keys) { [Environment]::SetEnvironmentVariable($key,$projectEnvironment[$key],'Process') }
+    Remove-Item -LiteralPath $fixture -Recurse -Force
+}

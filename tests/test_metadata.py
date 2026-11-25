@@ -1031,6 +1031,20 @@ class ProjectWorkingFolders(unittest.TestCase):
         with patch.object(self.project.shutil,'which',return_value=None):
             self.assertEqual(self.project.inspect(str(self.root))['reason'],'gitUnavailable')
 
+    def test_foreign_owner_control_depends_on_git_trust_policy_without_app_waivers(self):
+        repo=self.repository();config=self.root/'controlled-system.gitconfig';config.write_text('')
+        environment=dict(self.env,GIT_CONFIG_SYSTEM=str(config),GIT_CONFIG_NOSYSTEM='0',GIT_TEST_ASSUME_DIFFERENT_OWNER='1')
+        arguments=['git','-C',str(repo),'rev-parse','--show-toplevel','--is-inside-work-tree']
+        refused=subprocess.run(arguments,env=environment,capture_output=True,text=True)
+        self.assertNotEqual(refused.returncode,0)
+        self.assertIn('dubious ownership',refused.stderr.lower())
+        config.write_text('[safe]\n\tdirectory = *\n')
+        allowed=subprocess.run(arguments,env=environment,capture_output=True,text=True)
+        self.assertEqual(allowed.returncode,0,allowed.stderr)
+        with patch.dict(os.environ,{'GIT_CONFIG_SYSTEM':str(config),'GIT_CONFIG_NOSYSTEM':'0'}):
+            self.assertEqual(self.project.inspect(str(repo))['status'],'verified')
+        self.assertEqual(config.read_text(),'[safe]\n\tdirectory = *\n')
+
     def test_validation_requires_one_verified_result_and_rejects_injected_names(self):
         import io
         from contextlib import redirect_stdout

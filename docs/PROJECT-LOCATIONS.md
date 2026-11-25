@@ -58,11 +58,11 @@ location. This check alone does not complete that flow or change provisioning.
 
 ## Validation
 
-Ten new Python cases exercise real repositories/worktrees, dirty-file and Git
+Eleven new Python cases exercise real repositories/worktrees, dirty-file and Git
 configuration byte preservation, fork remotes, fake Git entries, parent roots,
 environment injection/tracing, hooks/fsmonitor, elevation/path refusal, failed
 or malformed queries, missing Git and single-result validation. Metadata coverage
-is now 86 cases. Windows tests exercise the production helper and diagnostic
+is now 87 cases. Windows tests exercise the production helper and diagnostic
 runner in existing backend contracts. Existing standard-user Windows/Mint profile
 fixtures additionally require real repository/worktree verification, refusal of
 a foreign-owned repository and retained student/configuration bytes. Native
@@ -73,8 +73,27 @@ and exact-main validation are required. Native fixtures are implementation
 evidence, not owner UAT. Human signing, exact authenticated-candidate owner UAT
 and separately authorized promotion remain mandatory.
 
-Local evidence: all 86 metadata cases, backend contracts 35, CI-policy 35, Bash
+Local evidence: all 87 metadata cases, backend contracts 35, CI-policy 35, Bash
 syntax/ShellCheck, the complete Linux integrity manifest and offline docs/diff
 checks pass. Windows helper execution and protected standard-user/native fixtures
 remain CI requirements. Frontend sources and their 415 unit / 148 browser inventory
 are unchanged by this increment.
+
+## Fixture trust isolation
+
+The first native attempt found two fixture setup assumptions. Windows test cleanup
+must preserve whether Git environment variables were absent, rather than leaving
+an empty `GIT_DIR` that Git rejects. The project fixture now isolates and restores
+its Git environment and uses a controlled global configuration with system config
+disabled. The earlier preference test asserts restoration of both presence and
+value.
+
+The Linux foreign-owner negative fixture also disables system Git configuration,
+checks the fixture's actual root ownership and requires Git itself to refuse the
+folder before checking SDE's result. A system `safe.directory` policy can
+legitimately allow foreign repositories; that is not a bypass added by SDE. A new
+local control demonstrates Git's refusal with an empty trust policy and acceptance
+under an explicit system exemption. Production continues to respect the ordinary
+user's trust context; no production `safe.directory` override or weaker assertion
+was introduced. Actual Windows/protected native execution remains required CI
+evidence after these fixture changes.
