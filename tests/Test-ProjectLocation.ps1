@@ -24,7 +24,7 @@ try {
     $worktree=Join-Path $fixture 'linked worktree'
     & git.exe -C $fixture worktree add -qb student-worktree $worktree
     if ($LASTEXITCODE -ne 0) { throw 'Could not prepare linked worktree.' }
-    Assert-Project (-not (Get-Item -LiteralPath (Join-Path $worktree '.git')).PSIsContainer) 'Worktree fixture lacks Git file.'
+    Assert-Project (-not (Get-Item -LiteralPath (Join-Path $worktree '.git') -Force).PSIsContainer) 'Worktree fixture lacks Git file.'
     Assert-Project ((Get-SkyviewProjectLocation $worktree).status -ceq 'verified') 'Linked worktree not verified.'
     $child=Join-Path $fixture 'ordinary child';New-Item -ItemType Directory $child | Out-Null
     Assert-Project ((Get-SkyviewProjectLocation $child).reason -ceq 'rootMismatch') 'Parent Git repository certified a child.'

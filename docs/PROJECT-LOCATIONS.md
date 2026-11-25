@@ -97,3 +97,9 @@ under an explicit system exemption. Production continues to respect the ordinary
 user's trust context; no production `safe.directory` override or weaker assertion
 was introduced. Actual Windows/protected native execution remains required CI
 evidence after these fixture changes.
+
+Git for Windows marks a linked worktree's `.git` file hidden. The fixture reads
+that existing file with `Get-Item -Force` before asserting that it is a file.
+This does not alter attributes or relax the required working-folder check.
+Production inspection already uses `-Force`. Git metadata visibility is separate
+from SDE's required display of file-name extensions in File Explorer.
