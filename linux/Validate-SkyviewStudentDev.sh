@@ -221,10 +221,18 @@ if [[ -f "$REPO_FILE" ]]; then
     [[ -z "$name" ]] && continue
     case "${enabled,,}" in
       1|true|yes|y)
-        if [[ -d "$TARGET_HOME/Development/$name/.git" ]]; then
-          pass "Configured repository cloned: $name"
+        PROJECT_HELPER="$SCRIPT_DIR/lib/project_location.py"
+        [[ -f "$PROJECT_HELPER" ]] || PROJECT_HELPER="$SKYVIEW_LIB/project_location.py"
+        PROJECT_OUTPUT="$(/usr/bin/python3 "$PROJECT_HELPER" --validate "$name" "$TARGET_HOME/Development/$name")"
+        PROJECT_EXIT=$?
+        if [[ "$PROJECT_EXIT" -eq 0 && "$PROJECT_OUTPUT" == SKYVIEW_EVENT\|validation\|PASS\|* && "$PROJECT_OUTPUT" != *$'\n'* ]]; then
+          printf '%s\n' "$PROJECT_OUTPUT"
+          PASS_COUNT=$((PASS_COUNT+1))
+        elif [[ "$PROJECT_EXIT" -eq 1 && "$PROJECT_OUTPUT" == SKYVIEW_EVENT\|validation\|FAIL\|* && "$PROJECT_OUTPUT" != *$'\n'* ]]; then
+          printf '%s\n' "$PROJECT_OUTPUT"
+          FAIL_COUNT=$((FAIL_COUNT+1))
         else
-          fail "Configured repository missing: $TARGET_HOME/Development/$name"
+          fail "SDE could not finish checking the project folder. Review its location and Git access. Your files have not been changed."
         fi
         ;;
     esac

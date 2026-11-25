@@ -930,5 +930,118 @@ class EditorExtensionPreservation(unittest.TestCase):
         self.assertEqual(calls,[['--list-extensions'],['--install-extension','new.extension']])
 
 
+
+class ProjectWorkingFolders(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        module('editor_location')
+        cls.project = module('project_location')
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='sde project café ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.env = {k:v for k,v in os.environ.items() if not k.startswith('GIT_')}
+        self.env.update(HOME=str(self.root),GIT_CONFIG_NOSYSTEM='1',GIT_CONFIG_GLOBAL='/dev/null')
+        environment=patch.dict(os.environ,self.env,clear=True);environment.start();self.addCleanup(environment.stop)
+        normal=patch.object(self.project,'normal_user',return_value=True);normal.start();self.addCleanup(normal.stop)
+
+    def git(self, *arguments):
+        return subprocess.run(['git',*arguments],env=self.env,check=True,capture_output=True,text=True).stdout.strip()
+
+    def repository(self):
+        repo=self.root/'original repo';self.git('init','-q',str(repo))
+        (repo/'student.txt').write_text('committed bytes\n')
+        self.git('-C',str(repo),'add','student.txt')
+        self.git('-C',str(repo),'-c','user.name=Synthetic Student','-c','user.email=student@example.invalid','-c','commit.gpgsign=false','commit','-qm','fixture')
+        return repo
+
+    def snapshot(self):
+        return {str(p.relative_to(self.root)):p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+
+    def test_real_repository_and_fork_configuration_are_preserved(self):
+        repo=self.repository();self.git('-C',str(repo),'remote','add','origin','https://example.invalid/student/fork.git')
+        (repo/'student.txt').write_text('uncommitted work\n');before=self.snapshot()
+        value=self.project.inspect(str(repo))
+        self.assertEqual(value,dict(schema=1,status='verified',reason='verified',root=str(repo)))
+        self.assertEqual(self.snapshot(),before)
+
+    def test_linked_worktree_git_file_is_verified_without_touching_either_tree(self):
+        repo=self.repository();worktree=self.root/'moved worktree'
+        self.git('-C',str(repo),'worktree','add','-qb','student-worktree',str(worktree))
+        self.assertTrue((worktree/'.git').is_file())
+        (worktree/'student.txt').write_text('dirty worktree\n');before=self.snapshot()
+        self.assertEqual(self.project.inspect(str(worktree))['status'],'verified')
+        self.assertEqual(self.snapshot(),before)
+
+    def test_fake_git_entries_do_not_prove_a_working_folder(self):
+        for entry in ('directory','file'):
+            folder=self.root/entry;folder.mkdir()
+            if entry=='directory':(folder/'.git').mkdir()
+            else:(folder/'.git').write_text('gitdir: /missing/sde-project-fixture\n')
+            value=self.project.inspect(str(folder))
+            self.assertEqual(value['status'],'incomplete');self.assertIsNone(value['root'])
+
+    def test_a_parent_repository_cannot_certify_the_selected_child(self):
+        repo=self.repository();child=repo/'ordinary subfolder';child.mkdir()
+        self.assertEqual(self.project.inspect(str(child))['reason'],'rootMismatch')
+
+    def test_git_environment_cannot_select_another_repository_or_write_trace_files(self):
+        repo=self.repository();other=self.root/'not a repository';other.mkdir();trace=self.root/'trace'
+        with patch.dict(os.environ,{'GIT_DIR':str(repo/'.git'),'GIT_WORK_TREE':str(repo),'GIT_TRACE':str(trace),'GIT_CONFIG_COUNT':'1','GIT_CONFIG_KEY_0':'safe.directory','GIT_CONFIG_VALUE_0':'*'}):
+            self.assertEqual(self.project.inspect(str(other))['status'],'incomplete')
+            self.assertEqual(self.project.inspect(str(repo))['status'],'verified')
+            self.assertEqual(os.environ['GIT_DIR'],str(repo/'.git'))
+            self.assertFalse(trace.exists())
+
+    def test_repository_hooks_and_fsmonitor_are_not_executed(self):
+        repo=self.repository();hooks=self.root/'hooks';hooks.mkdir();marker=self.root/'hook-ran'
+        hook=hooks/'post-checkout';hook.write_text('#!/bin/sh\ntouch "'+str(marker)+'"\n');hook.chmod(0o755)
+        self.git('-C',str(repo),'config','core.hooksPath',str(hooks))
+        self.git('-C',str(repo),'config','core.fsmonitor',str(hook));before=self.snapshot()
+        self.assertEqual(self.project.inspect(str(repo))['status'],'verified')
+        self.assertFalse(marker.exists());self.assertEqual(self.snapshot(),before)
+
+    def test_elevation_invalid_paths_and_unavailable_locations_never_run_git(self):
+        from unittest.mock import Mock
+        run=Mock()
+        with patch.object(self.project,'normal_user',return_value=False):
+            self.assertEqual(self.project.inspect(str(self.root),run)['reason'],'normalUserRequired')
+        for path in ('relative',str(self.root)+'|data',str(self.root)+'\n',str(self.root)+'\u202e'):
+            self.assertEqual(self.project.inspect(path,run)['reason'],'unsupportedPath')
+        self.assertEqual(self.project.inspect(str(self.root/'missing'),run)['reason'],'locationUnavailable')
+        file=self.root/'file';file.write_text('not a directory')
+        self.assertEqual(self.project.inspect(str(file),run)['reason'],'notDirectory')
+        run.assert_not_called()
+
+    def test_trust_refusal_timeout_and_malformed_output_remain_incomplete(self):
+        from unittest.mock import Mock
+        from types import SimpleNamespace
+        for code,text in [(1,'fatal: dubious ownership'),(-1,''),(0,str(self.root)),(0,str(self.root)+'\nfalse'),(0,str(self.root)+'\ntrue\nextra')]:
+            run=Mock(return_value=SimpleNamespace(code=code,text=text))
+            value=self.project.inspect(str(self.root),run)
+            self.assertEqual(value['status'],'incomplete');self.assertIsNone(value['root'])
+            self.assertEqual(run.call_args.args[1],6)
+            self.assertIn('--no-optional-locks',run.call_args.args[0])
+            self.assertIn('--no-pager',run.call_args.args[0])
+            self.assertIn('core.fsmonitor=false',run.call_args.args[0])
+            self.assertNotIn('safe.directory=*',run.call_args.args[0])
+
+    def test_missing_git_is_incomplete_rather_than_a_missing_project(self):
+        with patch.object(self.project.shutil,'which',return_value=None):
+            self.assertEqual(self.project.inspect(str(self.root))['reason'],'gitUnavailable')
+
+    def test_validation_requires_one_verified_result_and_rejects_injected_names(self):
+        import io
+        from contextlib import redirect_stdout
+        for name,passed in [('student-project',True),('student-project',False),('bad\nproject',True)]:
+            with patch.object(self.project,'inspect',return_value={'status':'verified' if passed else 'incomplete'}),redirect_stdout(io.StringIO()) as output:
+                code=self.project.validate(name,str(self.root))
+            lines=output.getvalue().splitlines()
+            self.assertEqual(len(lines),1)
+            self.assertEqual(code,0 if passed and name=='student-project' else 1)
+            self.assertTrue(lines[0].startswith('SKYVIEW_EVENT|validation|'+('PASS' if code==0 else 'FAIL')+'|'))
+
+
 if __name__ == "__main__":
     unittest.main()

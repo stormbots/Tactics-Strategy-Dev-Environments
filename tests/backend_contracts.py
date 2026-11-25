@@ -249,6 +249,7 @@ class Backends(unittest.TestCase):
     def test_linux_integrity_manifest_matches_shipped_sources(self):
         entries = dict(line.split(None, 1)[::-1] for line in self.text('linux/SHA256SUMS').splitlines() if line.strip())
         self.assertTrue({'./Validate-SkyviewStudentDev.sh', './lib/coordination.py', './lib/coordination.sh', './lib/node_runtime.py', './lib/node_runtime_probe.cjs', './lib/application_locations.py', './lib/pycharm_location.py', './lib/editor_location.py', './lib/editor_identity.cjs', './lib/editor_preferences.py', './lib/editor_settings_probe.cjs', './lib/jsonc-parser/parser.js', './lib/jsonc-parser/scanner.js', './lib/jsonc-parser/LICENSE.md'}.issubset(entries))
+        self.assertIn('./lib/project_location.py', entries)
         for name, expected in entries.items():
             self.assertEqual(hashlib.sha256((ROOT / 'linux' / name).read_bytes()).hexdigest(), expected, name)
     def test_canonical_extensions_match(self):

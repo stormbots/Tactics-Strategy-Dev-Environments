@@ -33,11 +33,11 @@ def safe_path(value):
             and not re.search(r'[\x00-\x1f\x7f|]', value))
 
 
-def query(arguments, timeout):
+def query(arguments, timeout, remove_environment=()):
     if timeout <= 0:
         return Probe(-1)
     environment = {k: v for k, v in os.environ.items()
-                   if k not in ('NODE_OPTIONS', 'NODE_PATH', 'NODE_COMPILE_CACHE', 'NODE_V8_COVERAGE',
+                   if k not in remove_environment and k not in ('NODE_OPTIONS', 'NODE_PATH', 'NODE_COMPILE_CACHE', 'NODE_V8_COVERAGE',
                                 'ELECTRON_RUN_AS_NODE', 'VSCODE_DEV', 'VSCODE_CWD',
                                 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS')}
     environment['ELECTRON_RUN_AS_NODE'] = '1'

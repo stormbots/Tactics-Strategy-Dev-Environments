@@ -110,3 +110,5 @@ Write-Host 'PowerShell parsing and real validator exit contract passed.'
 & (Join-Path $PSScriptRoot 'Test-PyCharmLocation.ps1')
 & (Join-Path $PSScriptRoot 'Test-ApplicationLocations.ps1')
 $global:LASTEXITCODE = 0
+& (Join-Path $PSScriptRoot 'Test-ProjectLocation.ps1')
+$global:LASTEXITCODE = 0

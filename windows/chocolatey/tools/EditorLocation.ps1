@@ -76,7 +76,7 @@ function Get-SkyviewEditorFingerprint([string]$Executable) {
     try { return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes(($hashes -join "`n")+"`n"+$Executable)))).Replace('-','').ToLowerInvariant() }
     finally { $sha.Dispose() }
 }
-function Invoke-SkyviewEditorQuery([string]$Executable,[string[]]$Arguments,[int]$TimeoutMs) {
+function Invoke-SkyviewEditorQuery([string]$Executable,[string[]]$Arguments,[int]$TimeoutMs,[string[]]$RemoveEnvironment=@()) {
     if ($TimeoutMs -le 0) { return @{Code=-1;Text=''} }
     $start=New-Object Diagnostics.ProcessStartInfo
     $start.FileName=$Executable
@@ -84,6 +84,7 @@ function Invoke-SkyviewEditorQuery([string]$Executable,[string[]]$Arguments,[int
     $start.UseShellExecute=$false; $start.CreateNoWindow=$true
     $start.WorkingDirectory=[IO.Path]::GetTempPath()
     foreach ($key in @('NODE_OPTIONS','NODE_PATH','NODE_COMPILE_CACHE','NODE_V8_COVERAGE','VSCODE_DEV','VSCODE_CWD','JAVA_TOOL_OPTIONS','JDK_JAVA_OPTIONS','_JAVA_OPTIONS')) { $start.EnvironmentVariables.Remove($key) }
+    foreach ($key in $RemoveEnvironment) { $start.EnvironmentVariables.Remove($key) }
     $start.EnvironmentVariables['ELECTRON_RUN_AS_NODE']='1'
     $start.RedirectStandardOutput=$true; $start.RedirectStandardError=$true
     $process=New-Object Diagnostics.Process
