@@ -103,3 +103,8 @@ that existing file with `Get-Item -Force` before asserting that it is a file.
 This does not alter attributes or relax the required working-folder check.
 Production inspection already uses `-Force`. Git metadata visibility is separate
 from SDE's required display of file-name extensions in File Explorer.
+
+The next saved-location work follows the
+[shared-reference implementation contract](SAVED-PROJECT-LOCATIONS-PLAN.md).
+It connects validation, Open and approved setup before exposing a completed Save
+workflow; the owner-approved design requires no additional permission to begin.
