@@ -27,6 +27,7 @@ pub mod mutation;
 #[cfg(test)]
 mod mutation_tests;
 pub mod observations;
+pub mod project_references;
 pub mod recovery;
 #[cfg(test)]
 #[path = "../../installer/src-tauri/src/recovery_acknowledgment.rs"]

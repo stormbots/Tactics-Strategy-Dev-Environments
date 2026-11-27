@@ -85,6 +85,60 @@ foreign replacement. Define recovery for an interrupted write. Keep the old
 record on refusal or failure; a malformed existing record is not an empty record.
 Cross-process changes and stale UI tickets must be covered explicitly.
 
+## Version 1 format foundation
+
+The native [format module](../coordination/src/project_references.rs) defines the
+bounded data format below. It is a parser only. It reads no files, writes no
+preferences and adds no application command or completed Save flow. Connecting
+the user-owned file reader, every consumer and the reviewed operation snapshot
+remains required before Save becomes available.
+
+```json
+{
+  "schema": 1,
+  "platform": "linux",
+  "revision": 1,
+  "workspace": "/home/student/Development",
+  "projects": [
+    {
+      "projectId": "robot-code",
+      "path": "/media/student/School/robot"
+    }
+  ]
+}
+```
+
+Every field is required. The platform is `linux` or `windows` and must match the
+consumer. The revision is an integer from 1 through 9007199254740991, so readers
+using JavaScript numbers can represent it exactly. Later persistence must compare
+the expected revision and handle exhaustion without wrapping or silently resetting.
+The complete UTF-8 JSON record is at most 16384 bytes. Unknown fields, duplicate
+keys, unsupported schemas, invalid UTF-8 and trailing JSON are errors.
+
+`projects` holds at most 64 bindings; an empty list is valid. Each `projectId` is
+unique and case-sensitive, with 1–128 ASCII letters, digits, underscores, hyphens
+or dots. Its first character cannot be a dot. A binding uses an explicit path;
+it need not live inside the workspace. Names, nearby folders and common Git
+metadata do not imply that two bindings or clones are interchangeable.
+
+Paths contain at most 4096 UTF-8 bytes and use an explicit absolute spelling.
+Linux uses `/`; Windows uses a local drive and backslashes, such as
+`C:\Development`. Reject relative paths, empty or dot segments, trailing
+separators except filesystem roots, controls, bidirectional override/isolate
+characters and `|`. Windows also rejects UNC/device forms, forward slashes,
+alternate-stream colons, wildcard characters, ordinary DOS device names and
+trailing dots/spaces. Supported Unicode and spaces remain literal data. There
+is no shell expansion, home expansion, path normalization or filesystem lookup.
+
+A decoded record is only syntactically acceptable data. It is not proof of
+existence, access, ownership, current folder identity, Git trust, project identity
+or readiness. In particular, an unmounted drive can have a valid saved path.
+Keep that reference visible after an access failure; never decode failure into an
+empty/default record. Secure file ownership, link defenses, atomic persistence,
+fresh inspection and shared-consumer integration are separate implementation
+requirements. The public decoded types expose read-only accessors, and callers
+cannot deserialize directly into them to skip validation.
+
 ## Identity and requirement policy
 
 Extend read-only observations only as needed to show bounded repository/worktree
