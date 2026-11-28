@@ -3,6 +3,9 @@
 use serde::Deserialize;
 use std::collections::HashSet;
 
+#[cfg(any(target_os = "linux", windows))]
+pub mod store;
+
 pub const MAX_BYTES: usize = 16_384;
 pub const MAX_PROJECTS: usize = 64;
 const MAX_PATH_BYTES: usize = 4096;
