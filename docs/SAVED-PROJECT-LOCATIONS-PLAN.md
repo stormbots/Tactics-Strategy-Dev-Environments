@@ -139,6 +139,59 @@ fresh inspection and shared-consumer integration are separate implementation
 requirements. The public decoded types expose read-only accessors, and callers
 cannot deserialize directly into them to skip validation.
 
+## Read-only file observation foundation
+
+The [file observer](../coordination/src/project_references/store.rs) reads only
+`references.json` inside an existing directory supplied by trusted native code.
+The caller must choose its fixed per-account application storage directory;
+never accept this directory from IPC, project content or a saved preference.
+This foundation is not yet connected to application commands or script consumers.
+It adds no Save, provisioning, repair or default-location behavior.
+
+The public observer requires an ordinary account. It distinguishes:
+
+| Observation | Meaning |
+| --- | --- |
+| Absent | The fixed record was not found inside a checked, existing private directory. |
+| Saved | Bounded bytes decoded and the private file/directory identities remained consistent during observation. |
+| Unavailable | Storage, ownership, permissions, links, file identity or record contents could not be accepted. |
+
+An absent storage directory is **Unavailable** in this low-level API. It is not
+proof of an absent record. The future fixed-path resolver must handle a genuine
+first-use directory separately, without treating denied access or malformed state
+as permission to use an old default. Observing creates no directory, marker or
+lock file, changes no ACL or mode, and never repairs a rejected record.
+
+Linux requires ordinary effective/real user identity, account-owned private
+storage and a singly linked regular record. Ancestors must be plain directories
+owned by this account or root; other writable ancestors are refused except
+root-owned sticky directories. The file is opened without following its final
+link and in nonblocking mode, so a FIFO cannot stall the reader. Windows requires
+a non-administrator token, current-account ownership, a checked DACL, ordinary
+directories without reparse points and a singly linked record. Its handles deny
+concurrent write/delete sharing. Trusted system/administrator access is retained;
+foreign read/write grants on private storage are refused. Ancestor checks retain
+the system servicing identity without granting it ownership of a user's record.
+
+Reads stop at the record byte bound. Invalid, oversized, linked or unavailable
+records remain unresolved and unchanged. File and directory object identities
+are checked again before Saved is returned. A local SHA-256 fingerprint includes
+those identities and the exact record bytes; replacing a record with identical
+bytes/revision must produce different comparison evidence. This is observation
+data, not a Save ticket, project inspection or operation permit. Future consumers
+must read again, check folder identity and retain their own fresh native gates.
+These checks do not provide an atomic filesystem snapshot or an execution lock.
+
+Tests exercise absent versus unavailable storage, preserved disconnected paths,
+malformed/oversized bytes, private permissions, hard links, replacement records
+and directories, Linux links/FIFOs and root-only foreign ownership, and Windows
+junction/ACL handling. The production ordinary-account guard is tested separately
+from low-level file fixtures on privileged CI hosts. Actual Windows execution
+and supported Mint ownership remain required native evidence. A managed local
+workspace with foreign-owned namespace ancestors is intentionally refused; do
+not relax the production owner checks to make such a fixture pass. Secure writes,
+shared consumers and the connected UI remain open implementation work.
+
 ## Identity and requirement policy
 
 Extend read-only observations only as needed to show bounded repository/worktree
